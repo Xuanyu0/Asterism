@@ -18,6 +18,7 @@
 
 import { defineStore } from 'pinia'
 import type { DraftEdge, DraftNode } from '@/definitions/types/draft_types'
+import type { NodeKind } from '@/definitions/types/graph_types'
 
 /**
  * 功能：
@@ -40,6 +41,37 @@ export const useDraftStore = defineStore('draft_store', {
     }),
 
     actions: {
+
+                /**
+         * 功能：
+         *     创建新的节点草稿。
+         *
+         * 规则：
+         *     1. 自动清除当前 DraftEdge。
+         *     2. 新草稿拥有默认空文本。
+         *     3. 不直接进入 GraphData。
+         *
+         * NOTE:
+         *     Add Node 流程应优先调用本接口，
+         *     而不是直接构造 DraftNode。
+         */
+        createDraftNode(
+            kind: NodeKind,
+            x: number,
+            y: number
+        ): void {
+            this.draftEdge = null
+
+            this.draftNode = {
+                kind,
+                x,
+                y,
+                label: '',
+                summary: '',
+            }
+        },
+
+
         /**
          * 功能：
          *     设置当前节点草稿。
@@ -59,7 +91,7 @@ export const useDraftStore = defineStore('draft_store', {
             this.draftNode = draftNode
         },
 
-        
+
         /**
          * 功能：
          *     更新当前节点草稿。
