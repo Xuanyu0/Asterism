@@ -1,0 +1,20 @@
+# Node依赖
+node_modules/
+
+# 构建产物
+dist/
+
+# VSCode配置
+.vscode/
+
+# 环境变量
+.env
+
+# 日志文件
+*.log
+
+# Windows ADS垃圾文件
+*.Zone.Identifier
+
+# macOS垃圾文件
+.DS_Store
