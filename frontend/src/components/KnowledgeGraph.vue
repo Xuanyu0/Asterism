@@ -6,7 +6,7 @@
 import { onBeforeUnmount, onMounted, ref, computed, watch } from 'vue' // Vue 生命周期、响应式和 DOM
 import cytoscape, { type Core } from 'cytoscape' // Cytoscape 和 Core 类型
 import { toCyElements } from '@/definitions/types/graph_types' // GraphData -> Cytoscape elements
-import { useGraphStore } from '@/stores/graph_store' // Graph store
+import { useGraphStore } from '@/graph/graph_store' // Graph store
 
 const graphContainer = ref<HTMLDivElement | null>(null) // Cytoscape 容器
 let cy: Core | null = null // Cytoscape 实例

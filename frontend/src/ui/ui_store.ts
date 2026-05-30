@@ -25,7 +25,7 @@ import type { GraphOperation } from '@/definitions/types/graph_operation_types'
 import type { NodeData, EdgeData } from '@/definitions/types/graph_types'
 import { OperationValidator } from '@/definitions/validators/operation_validator'
 import type { ValidationResult } from '@/definitions/types/validation_types'
-import { useGraphStore } from './graph_store'
+import { useGraphStore } from '../graph/graph_store'
 
 import type {
     InteractionMode,

@@ -16,7 +16,7 @@
  * runValidatorSmokeTest()
  */
 
-import { useGraphStore } from '@/stores/graph_store'
+import { useGraphStore } from '@/graph/graph_store'
 import { GraphValidator } from '@/definitions/validators/graph_validator'
 import type { GraphOperation } from '@/definitions/types/graph_operation_types'
 import { goldenGraph } from '@/mock/golden_graph.ts'

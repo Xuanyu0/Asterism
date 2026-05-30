@@ -13,7 +13,7 @@
  * initTestRuntime()
  */
 
-import { useGraphStore } from '@/stores/graph_store'
+import { useGraphStore } from '@/graph/graph_store'
 import { mockGraph } from '@/mock/mockGraph'
 import { goldenGraph } from '@/mock/golden_graph'
 
