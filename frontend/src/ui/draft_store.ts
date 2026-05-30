@@ -59,6 +59,33 @@ export const useDraftStore = defineStore('draft_store', {
             this.draftNode = draftNode
         },
 
+        
+        /**
+         * 功能：
+         *     更新当前节点草稿。
+         *
+         * 规则：
+         *     1. 当前必须存在 DraftNode。
+         *     2. 只更新传入字段。
+         *     3. 不会直接修改 GraphData。
+         *
+         * NOTE:
+         *     浮空窗编辑节点信息时，
+         *     应通过本接口修改 DraftNode。
+         */
+        updateDraftNode(
+            patch: Partial<DraftNode>
+        ): void {
+            if (!this.draftNode) {
+                return
+            }
+
+            this.draftNode = {
+                ...this.draftNode,
+                ...patch,
+            }
+        },
+
         /**
          * 功能：
          *     删除当前节点草稿。
