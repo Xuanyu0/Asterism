@@ -27,35 +27,131 @@ import { OperationValidator } from '@/definitions/validators/operation_validator
 import type { ValidationResult } from '@/definitions/types/validation_types'
 import { useGraphStore } from './graph_store'
 
+import type {
+    InteractionMode,
+    CognitionAction,
+    OperationTool,
+    AddTarget,
+    PendingAddNodeState,
+    PendingAddEdgeState,
+} from '@/definitions/types/ui_types'
+
+
+/**
+ * 功能：
+ *     UI Runtime 的状态定义。
+ *
+ * 规则：
+ *     1. 本状态只描述用户当前 UI 意图。
+ *     2. 本状态不保存 GraphData。
+ *     3. GraphData 修改必须通过 graph_store 完成。
+ *     4. UI Runtime 可以随时重建，不影响图谱本体。
+ */
 export interface UIStoreState {
-    interactionMode: 'camera' | 'click' // 当前交互模式
-    selectedCognitionAction: string | null // 当前选中的认知演化按钮
-    selectedOperationAction: string | null // 当前选中的修改/显示按钮
-    floatingWindowData: NodeData | EdgeData | null // 浮空窗数据
-    lastOperationValidation: ValidationResult | null // 最近一次局部校验结果
+    interactionMode: InteractionMode
+    selectedCognitionAction: CognitionAction | null
+    selectedOperationTool: OperationTool | null
+    pendingAddTarget: AddTarget | null
+    pendingAddNode: PendingAddNodeState
+    pendingAddEdge: PendingAddEdgeState
+    floatingWindowData: NodeData | EdgeData | null
+    lastOperationValidation: ValidationResult | null
 }
+
+
 
 export const useUIStore = defineStore('ui_store', {
     state: (): UIStoreState => ({
-        interactionMode: 'camera',
-        selectedCognitionAction: null,
-        selectedOperationAction: null,
-        floatingWindowData: null,
-        lastOperationValidation: null,
+    interactionMode: 'cognition',
+    selectedCognitionAction: null,
+    selectedOperationTool: null,
+    pendingAddTarget: null,
+    pendingAddNode: {
+        kind: null,
+    },
+    pendingAddEdge: {
+        kind: null,
+        direction: null,
+        sourceNodeId: null,
+    },
+    floatingWindowData: null,
+    lastOperationValidation: null,
     }),
 
     actions: {
-        toggleInteractionMode() {
-            this.interactionMode = this.interactionMode === 'camera' ? 'click' : 'camera'
+                /**
+         * 功能：
+         *     切换当前主交互模式。
+         *
+         * 规则：
+         *     1. cognition 与 operation 互斥。
+         *     2. 切换模式时重置当前操作状态。
+         */
+        setInteractionMode(mode: InteractionMode) {
+            this.interactionMode = mode
+
+            this.selectedCognitionAction = null
+            this.selectedOperationTool = null
+            this.pendingAddTarget = null
+
+            this.pendingAddNode.kind = null
+
+            this.pendingAddEdge.kind = null
+            this.pendingAddEdge.direction = null
+            this.pendingAddEdge.sourceNodeId = null
         },
 
-        selectCognitionAction(actionType: string | null) {
+
+
+        selectCognitionAction(actionType: CognitionAction | null) {
             this.selectedCognitionAction = actionType
         },
 
-        selectOperationAction(actionType: string | null) {
-            this.selectedOperationAction = actionType
+        selectOperationTool(tool: OperationTool | null) {
+            this.selectedOperationTool = tool
         },
+
+        /**
+         * 功能：
+         *     设置 Add 模式下当前目标。
+         *
+         * 规则：
+         *     1. 仅在 add 工具下有效。
+         *     2. node 表示准备添加节点。
+         *     3. edge 表示准备添加边。
+         */
+        setAddTarget(
+            target: AddTarget | null
+        ) {
+            this.pendingAddTarget = target
+
+            this.pendingAddNode.kind = null
+
+            this.pendingAddEdge.kind = null
+            this.pendingAddEdge.direction = null
+            this.pendingAddEdge.sourceNodeId = null
+        },
+
+        /**
+         * 功能：
+         *     重置 Operation Runtime 状态。
+         *
+         * 规则：
+         *     1. 不影响当前 GraphData。
+         *     2. 清空所有待定添加状态。
+         */
+        resetOperationState() {
+            this.selectedOperationTool = null
+
+            this.pendingAddTarget = null
+
+            this.pendingAddNode.kind = null
+
+            this.pendingAddEdge.kind = null
+            this.pendingAddEdge.direction = null
+            this.pendingAddEdge.sourceNodeId = null
+        },
+
 
         openFloatingWindow(data: NodeData | EdgeData) {
             this.floatingWindowData = data

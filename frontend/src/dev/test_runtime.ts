@@ -20,7 +20,7 @@ import { goldenGraph } from '@/mock/golden_graph'
 export function initTestRuntime() {
     const graphStore = useGraphStore()    // 获取图状态 store
 
-    graphStore.setCurrentGraph(goldenGraph)    // 设置当前测试图
+    // graphStore.setCurrentGraph(goldenGraph)    // 设置当前测试图
 }
 
 /**
