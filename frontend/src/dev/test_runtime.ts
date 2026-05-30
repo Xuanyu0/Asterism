@@ -22,3 +22,29 @@ export function initTestRuntime() {
 
     graphStore.setCurrentGraph(goldenGraph)    // 设置当前测试图
 }
+
+/**
+ * 功能：
+ *     测试 GraphData 是否可以通过 graph_store 保存到本地，并再次加载回来。
+ *
+ * 规则：
+ *     1. 先把 goldenGraph 设置为 currentGraph。
+ *     2. 再调用 saveCurrentGraph() 写入 localStorage。
+ *     3. 再清空 currentGraph。
+ *     4. 最后调用 loadGraphToCurrent() 从 localStorage 读回。
+ *
+ * 使用：
+ *     在 main.ts 或浏览器控制台临时调用 testGraphPersistenceRuntime()
+ */
+export function testGraphPersistenceRuntime(): void {
+    const graphStore = useGraphStore()
+
+    graphStore.setCurrentGraph(goldenGraph)
+    graphStore.saveCurrentGraph()
+    graphStore.currentGraph = null
+
+    const isLoaded = graphStore.loadGraphToCurrent(goldenGraph.id)
+
+    console.log('Graph persistence loaded:', isLoaded)
+    console.log('Current graph:', graphStore.currentGraph)
+}
