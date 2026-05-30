@@ -23,6 +23,12 @@ import type { EdgeId, GraphData, GraphId, NodeId } from '@/definitions/types/gra
 import type { GraphOperation } from '@/definitions/types/graph_operation_types'
 import { OperationValidator } from '@/definitions/validators/operation_validator'
 import type { ValidationResult } from '@/definitions/types/validation_types'
+import {
+    saveGraph,
+    loadGraph,
+    deleteGraph
+} from '@/graph/graph_persistence'
+
 
 const MAX_UNDO_STACK_SIZE = 20    // 删除撤销栈最大数量，避免长时间操作后占用过多内存
 
@@ -33,6 +39,7 @@ export interface GraphStoreState {
     graphPath: GraphId[]    // 当前图路径，用于子图逐级返回
     lastValidationResult: ValidationResult | null    // 最近一次操作校验结果
     undoStack: GraphData[]    // 删除操作撤销栈，刷新网页后自然清空
+    lastSaveTime: number | null    // 最近一次成功保存当前图谱的时间戳
 }
 
 export const useGraphStore = defineStore('graph_store', {
@@ -43,6 +50,7 @@ export const useGraphStore = defineStore('graph_store', {
         graphPath: [],    // 初始路径为空
         lastValidationResult: null,    // 初始没有校验结果
         undoStack: [],    // 初始没有可撤销状态
+        lastSaveTime: null as number | null,
     }),
 
     actions: {
@@ -54,6 +62,75 @@ export const useGraphStore = defineStore('graph_store', {
             this.lastValidationResult = null    // 切图后清空校验结果
             this.undoStack = []    // 切图后清空删除撤销栈
         },
+
+        /**
+         * 功能：
+         *     保存当前图谱到本地持久化存储。
+         *
+         * 规则：
+         *     1. 当前必须存在 currentGraph。
+         *     2. 保存单位是完整 GraphData。
+         *     3. 保存成功后记录保存时间。
+         *     4. 不修改 currentGraph 内容。
+         *
+         * 使用：
+         *     graphStore.saveCurrentGraph()
+         */
+        saveCurrentGraph(): void {
+            if (!this.currentGraph) {
+                return
+            }
+
+            saveGraph(this.currentGraph)
+
+            this.lastSaveTime = Date.now()
+        },
+
+        /**
+         * 功能：
+         *     从本地持久化存储加载图谱，并替换当前图谱。
+         *
+         * 规则：
+         *     1. 找不到对应 GraphData 时不修改 currentGraph。
+         *     2. 加载成功后直接替换 currentGraph。
+         *     3. 加载成功后清空选中状态。
+         *     4. 加载成功后清空删除撤销栈。
+         *     5. 本函数不负责完整图校验。
+         *
+         * 使用：
+         *     const success = graphStore.loadGraphToCurrent(graphId)
+         */
+        loadGraphToCurrent(graphId: GraphId): boolean {
+            const graph = loadGraph(graphId)
+
+            if (!graph) {
+                return false
+            }
+
+            this.currentGraph = graph
+            this.selectedNodeId = null
+            this.selectedEdgeId = null
+            this.undoStack = []
+
+            return true
+        },
+
+        /**
+         * 功能：
+         *     删除本地持久化中的图谱数据。
+         *
+         * 规则：
+         *     1. 不影响当前运行中的 currentGraph。
+         *     2. 只删除本地存储中的记录。
+         *     3. 如果删除的是当前图谱的持久化副本，当前内存中的图谱仍然保留。
+         *
+         * 使用：
+         *     graphStore.deleteSavedGraph(graphId)
+         */
+        deleteSavedGraph(graphId: GraphId): void {
+            deleteGraph(graphId)
+        },
+
 
         selectNode(nodeId: NodeId | null) {
             this.selectedNodeId = nodeId    // 设置当前选中节点
