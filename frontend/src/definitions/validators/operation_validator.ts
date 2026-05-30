@@ -24,7 +24,7 @@
  * const result = OperationValidator.validateOperation(graphData, operation)
  */
 
-import type { EdgeData, GraphData, NodeId } from '@/definations/types/graph_types'
+import type { EdgeData, GraphData, NodeId } from '@/definitions/types/graph_types'
 import type {
     AddEdgeOperation,
     AddNodeOperation,
@@ -36,10 +36,10 @@ import type {
     MoveNodeOperation,
     UpdateEdgeOperation,
     UpdateNodeOperation,
-} from '@/definations/types/graph_operation_types'
-import { DEFAULT_GRAPH_RULES } from '@/definations/rules/graph_rules'
-import * as RuleCheckers from '@/definations/validators/rule_checkers'
-import type { ValidationIssue, ValidationResult } from '@/definations/types/validation_types'
+} from '@/definitions/types/graph_operation_types'
+import { DEFAULT_GRAPH_RULES } from '@/definitions/rules/graph_rules'
+import * as RuleCheckers from '@/definitions/validators/rule_checkers'
+import type { ValidationIssue, ValidationResult } from '@/definitions/types/validation_types'
 
 export class OperationValidator {
     static validateOperation(graph: GraphData, operation: GraphOperation): ValidationResult {

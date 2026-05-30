@@ -20,7 +20,7 @@
  * import type { GraphOperation } from '@/definations/types/graph_operation_types'
  */
 
-import type { EdgeData, EdgeId, NodeData, NodeId, NodePosition } from '@/definations/types/graph_types'
+import type { EdgeData, EdgeId, NodeData, NodeId, NodePosition } from '@/definitions/types/graph_types'
 
 export interface ExploreOperation {
     type: 'explore' // 探索：开始新一轮学习，结束后添加知识块

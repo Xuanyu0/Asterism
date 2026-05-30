@@ -17,8 +17,8 @@
  */
 
 import { useGraphStore } from '@/stores/graph_store'
-import { GraphValidator } from '@/definations/graph_validator'
-import type { GraphOperation } from '@/definations/types/graph_operation_types'
+import { GraphValidator } from '@/definitions/validators/graph_validator'
+import type { GraphOperation } from '@/definitions/types/graph_operation_types'
 import { goldenGraph } from '@/mock/golden_graph.ts'
 
 export function runValidatorSmokeTest() {
@@ -28,8 +28,16 @@ export function runValidatorSmokeTest() {
 
     console.log('初始图：', graphStore.currentGraph)    // 输出初始图
 
-    const firstNode = goldenGraph.nodes[0]    // 取第一个节点
-    const firstEdge = goldenGraph.edges[0]    // 取第一条边
+    const firstNode = Object.values(goldenGraph.nodes)[0]
+    const firstEdge = Object.values(goldenGraph.edges)[0]
+
+    if (!firstNode) {
+        throw new Error('validator_smoke_test requires at least one node')
+    }
+
+    if (!firstEdge) {
+        throw new Error('validator_smoke_test requires at least one edge')
+    }
 
     const updateNodeOperation: GraphOperation = {
         type: 'update_node',

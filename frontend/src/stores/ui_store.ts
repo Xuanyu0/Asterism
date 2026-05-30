@@ -21,10 +21,10 @@
  */
 
 import { defineStore } from 'pinia'
-import type { GraphOperation } from '@/definations/types/graph_operation_types'
-import type { NodeData, EdgeData } from '@/definations/types/graph_types'
-import { OperationValidator } from '@/definations/validators/operation_validator'
-import type { ValidationResult } from '@/definations/types/validation_types'
+import type { GraphOperation } from '@/definitions/types/graph_operation_types'
+import type { NodeData, EdgeData } from '@/definitions/types/graph_types'
+import { OperationValidator } from '@/definitions/validators/operation_validator'
+import type { ValidationResult } from '@/definitions/types/validation_types'
 import { useGraphStore } from './graph_store'
 
 export interface UIStoreState {

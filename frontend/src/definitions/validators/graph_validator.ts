@@ -9,10 +9,10 @@
  * const result = GraphValidator.validateGraph(graphData)
  */
 
-import type { GraphData, NodeData, EdgeData } from '@/definations/types/graph_types'
-import type { ValidationIssue, ValidationResult } from '@/definations/types/validation_types'
-import * as RuleCheckers from '@/definations/validators/rule_checkers'
-import { DEFAULT_GRAPH_RULES } from '@/definations/rules/graph_rules'
+import type { GraphData, NodeData, EdgeData } from '@/definitions/types/graph_types'
+import type { ValidationIssue, ValidationResult } from '@/definitions/types/validation_types'
+import * as RuleCheckers from '@/definitions/validators/rule_checkers'
+import { DEFAULT_GRAPH_RULES } from '@/definitions/rules/graph_rules'
 
 export class GraphValidator {
     static validateGraph(graph: GraphData): ValidationResult {

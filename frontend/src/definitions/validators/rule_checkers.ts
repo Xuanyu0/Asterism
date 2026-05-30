@@ -18,9 +18,9 @@
  * const issues = RuleCheckers.validateSelfLoop(edge)
  */
 
-import type { NodeData, EdgeData, GraphData } from '@/definations/types/graph_types'
-import { DEFAULT_GRAPH_RULES } from '@/definations/rules/graph_rules'
-import type { ValidationIssue } from '@/definations/types/validation_types'
+import type { NodeData, EdgeData, GraphData } from '@/definitions/types/graph_types'
+import { DEFAULT_GRAPH_RULES } from '@/definitions/rules/graph_rules'
+import type { ValidationIssue } from '@/definitions/types/validation_types'
 
 export function validateNodeLabel(node: NodeData): ValidationIssue[] {
     if ((node.label ?? '').length <= DEFAULT_GRAPH_RULES.nodeLabelMaxLength) return []

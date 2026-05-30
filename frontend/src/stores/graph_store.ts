@@ -19,10 +19,10 @@
  */
 
 import { defineStore } from 'pinia'
-import type { EdgeId, GraphData, GraphId, NodeId } from '@/definations/types/graph_types'
-import type { GraphOperation } from '@/definations/types/graph_operation_types'
-import { OperationValidator } from '@/definations/validators/operation_validator'
-import type { ValidationResult } from '@/definations/types/validation_types'
+import type { EdgeId, GraphData, GraphId, NodeId } from '@/definitions/types/graph_types'
+import type { GraphOperation } from '@/definitions/types/graph_operation_types'
+import { OperationValidator } from '@/definitions/validators/operation_validator'
+import type { ValidationResult } from '@/definitions/types/validation_types'
 
 const MAX_UNDO_STACK_SIZE = 20    // 删除撤销栈最大数量，避免长时间操作后占用过多内存
 
