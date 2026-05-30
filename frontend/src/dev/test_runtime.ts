@@ -48,3 +48,22 @@ export function testGraphPersistenceRuntime(): void {
     console.log('Graph persistence loaded:', isLoaded)
     console.log('Current graph:', graphStore.currentGraph)
 }
+
+/**
+ * 功能：
+ *     把开发期测试函数挂载到浏览器 window 对象。
+ *
+ * 规则：
+ *     1. 只用于开发期手动测试。
+ *     2. 不参与正式 UI 交互。
+ *     3. 后续正式 UI 完成后可以删除。
+ *
+ * 使用：
+ *     浏览器控制台输入：
+ *         window.testGraphPersistenceRuntime()
+ */
+export function exposeTestRuntimeToWindow(): void {
+    Object.assign(window, {
+        testGraphPersistenceRuntime,
+    })
+}
