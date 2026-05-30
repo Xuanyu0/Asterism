@@ -17,10 +17,13 @@ import { useGraphStore } from '@/graph/graph_store'
 import { mockGraph } from '@/mock/mockGraph'
 import { goldenGraph } from '@/mock/golden_graph'
 
+import { useUIStore } from '@/ui/ui_store'
+
+
 export function initTestRuntime() {
     const graphStore = useGraphStore()    // 获取图状态 store
 
-    // graphStore.setCurrentGraph(goldenGraph)    // 设置当前测试图
+    graphStore.setCurrentGraph(goldenGraph)    // 设置当前测试图
 }
 
 /**
@@ -61,9 +64,42 @@ export function testGraphPersistenceRuntime(): void {
  * 使用：
  *     浏览器控制台输入：
  *         window.testGraphPersistenceRuntime()
+ *         window.enterAddRealNodeMode()
  */
 export function exposeTestRuntimeToWindow(): void {
     Object.assign(window, {
         testGraphPersistenceRuntime,
+        enterAddRealNodeMode,
     })
+}
+
+
+/**
+ * 功能：
+ *     模拟用户进入 Add Node 流程。
+ *
+ * 规则：
+ *     1. 只用于开发期测试。
+ *     2. 不直接修改 GraphData。
+ *     3. 只设置 UI Runtime 状态。
+ *
+ * 使用：
+ *     浏览器控制台输入：
+ *         window.enterAddRealNodeMode()
+ */
+export function enterAddRealNodeMode(): void {
+    const uiStore = useUIStore()
+
+    uiStore.setInteractionMode('operation')
+    uiStore.selectOperationTool('add')
+    uiStore.setAddTarget('node')
+    uiStore.selectNodeKind('real')
+
+    console.log('Enter Add Real Node Mode:', {
+        interactionMode: uiStore.interactionMode,
+        selectedOperationTool: uiStore.selectedOperationTool,
+        pendingAddTarget: uiStore.pendingAddTarget,
+        pendingNodeKind: uiStore.pendingAddNode.kind,
+    })
+
 }

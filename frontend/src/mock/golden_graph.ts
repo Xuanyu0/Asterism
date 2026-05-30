@@ -16,7 +16,6 @@ export const goldenGraph: GraphData = {
     kind: 'main',
     title: '金牌测试图',
     nodes: [
-        // 普通实节点
         {
             id: 'node-1',
             graphId: 'graph-golden',
@@ -27,6 +26,7 @@ export const goldenGraph: GraphData = {
             summary: '普通实节点',
             abstractionLevel: 0,
             degree: 2,
+            position: { x: 50, y: 120 },
         },
         {
             id: 'node-2',
@@ -38,8 +38,8 @@ export const goldenGraph: GraphData = {
             summary: '普通实节点',
             abstractionLevel: 0,
             degree: 2,
+            position: { x: 350, y: 120 },
         },
-        // 抽象实节点
         {
             id: 'node-3',
             graphId: 'graph-golden',
@@ -51,8 +51,8 @@ export const goldenGraph: GraphData = {
             abstractionLevel: 1,
             degree: 2,
             childGraphId: 'graph-sub-3',
+            position: { x: 650, y: 120 },
         },
-        // 虚节点
         {
             id: 'node-4',
             graphId: 'graph-golden',
@@ -61,8 +61,8 @@ export const goldenGraph: GraphData = {
             label: '虚节点4',
             abstractionLevel: 0,
             degree: 1,
+            position: { x: 950, y: 120 },
         },
-        // 沟通节点（引用 node-1）
         {
             id: 'node-5',
             graphId: 'graph-golden',
@@ -74,8 +74,8 @@ export const goldenGraph: GraphData = {
             degree: 1,
             sourceGraphId: 'graph-golden',
             sourceNodeId: 'node-1',
+            position: { x: 50, y: 520 },
         },
-        // 普通实节点
         {
             id: 'node-6',
             graphId: 'graph-golden',
@@ -86,6 +86,7 @@ export const goldenGraph: GraphData = {
             summary: '普通实节点',
             abstractionLevel: 0,
             degree: 1,
+            position: { x: 150, y: 520 },
         },
     ],
     edges: [

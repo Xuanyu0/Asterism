@@ -194,7 +194,14 @@ export const useGraphStore = defineStore('graph_store', {
             return result
         },
 
+        // ------------------------------private section
+
         privateApplyAddNode(graph: GraphData, operation: Extract<GraphOperation, { type: 'add_node' }>): GraphData {
+            console.log(
+                'Add Node Position:',
+                operation.node.position
+            )
+
             return {
                 ...graph,
                 nodes: [...graph.nodes, operation.node],
