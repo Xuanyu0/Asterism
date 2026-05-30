@@ -36,6 +36,13 @@ import type {
     PendingAddEdgeState,
 } from '@/definitions/types/ui_types'
 
+import type {
+    NodeKind,
+    EdgeKind,
+    EdgeDirection,
+} from '@/definitions/types/graph_types'
+
+
 
 /**
  * 功能：
@@ -187,5 +194,71 @@ export const useUIStore = defineStore('ui_store', {
 
             return validationResult
         },
+
+        /**
+         * 功能：
+         *     设置当前准备添加的节点类型。
+         *
+         * 规则：
+         *     1. 仅在 Add Node 流程中有效。
+         *     2. 设置后表示用户已经完成节点类型选择。
+         */
+        selectNodeKind(
+            kind: NodeKind | null
+        ) {
+            this.pendingAddNode.kind = kind
+        },
+
+        /**
+         * 功能：
+         *     设置当前准备添加的边类型。
+         *
+         * 规则：
+         *     1. real 表示实边。
+         *     2. virtual 表示虚边。
+         *     3. 修改边类型时重置边方向与起点。
+         */
+        selectEdgeKind(
+            kind: EdgeKind | null
+        ) {
+            this.pendingAddEdge.kind = kind
+
+            this.pendingAddEdge.direction = null
+            this.pendingAddEdge.sourceNodeId = null
+        },
+
+        /**
+         * 功能：
+         *     设置当前准备添加的边方向。
+         *
+         * 规则：
+         *     1. 只有确定边类型后才能设置方向。
+         *     2. 修改方向时重置起始节点。
+         */
+        selectEdgeDirection(
+            direction: EdgeDirection | null
+        ) {
+            this.pendingAddEdge.direction = direction
+
+            this.pendingAddEdge.sourceNodeId = null
+        },
+
+
+        /**
+         * 功能：
+         *     重置当前边添加流程。
+         *
+         * 规则：
+         *     1. 不影响节点添加流程。
+         *     2. 清空边相关运行时状态。
+         */
+        resetPendingEdge() {
+            this.pendingAddEdge.kind = null
+            this.pendingAddEdge.direction = null
+            this.pendingAddEdge.sourceNodeId = null
+        },
+
+
+
     },
 })
