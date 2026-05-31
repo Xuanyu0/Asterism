@@ -23,7 +23,7 @@ import { useUIStore } from '@/ui/ui_store'
 export function initTestRuntime() {
     const graphStore = useGraphStore()    // 获取图状态 store
 
-    graphStore.setCurrentGraph(goldenGraph)    // 设置当前测试图
+    graphStore.setCurrentGraph(goldenGraph)    // 设置当前测试图，这里刚刚注释掉了
 }
 
 /**

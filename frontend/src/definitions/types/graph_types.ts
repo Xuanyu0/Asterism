@@ -151,6 +151,7 @@ export function toCyElements(graph: GraphData): CyElements {
                 position: node.position, // 使用持久化位置恢复用户布局
                 classes: getNodeClasses(node), // 根据节点类型生成样式类
             })),
+            
         edges: graph.edges
             .filter((edge) => !foldedNodeIds.has(edge.source) && !foldedNodeIds.has(edge.target)) // 与隐藏节点相连的边不渲染
             .map((edge) => ({

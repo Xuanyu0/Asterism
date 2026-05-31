@@ -86,7 +86,7 @@ export const useUIStore = defineStore('ui_store', {
     }),
 
     actions: {
-                /**
+        /**
          * 功能：
          *     切换当前主交互模式。
          *

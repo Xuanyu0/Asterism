@@ -1,0 +1,193 @@
+[
+    {
+        "file": "App.vue",
+        "dependencies": [
+            "components/KnowledgeGraph.vue"
+        ]
+    },
+    {
+        "file": "components/KnowledgeGraph.vue",
+        "dependencies": [
+            "definitions/types/graph_types.ts",
+            "graph/graph_store.ts",
+            "ui/ui_store.ts",
+            "ui/draft_store.ts"
+        ]
+    },
+    {
+        "file": "components/WelcomeItem.vue",
+        "dependencies": []
+    },
+    {
+        "file": "components/icons/IconCommunity.vue",
+        "dependencies": []
+    },
+    {
+        "file": "components/icons/IconDocumentation.vue",
+        "dependencies": []
+    },
+    {
+        "file": "components/icons/IconEcosystem.vue",
+        "dependencies": []
+    },
+    {
+        "file": "components/icons/IconSupport.vue",
+        "dependencies": []
+    },
+    {
+        "file": "components/icons/IconTooling.vue",
+        "dependencies": []
+    },
+    {
+        "file": "definitions/rules/graph_rules.ts",
+        "dependencies": []
+    },
+    {
+        "file": "definitions/types/ai_types.ts",
+        "dependencies": []
+    },
+    {
+        "file": "definitions/types/draft_types.ts",
+        "dependencies": [
+            "definitions/types/graph_types.ts"
+        ]
+    },
+    {
+        "file": "definitions/types/graph_operation_types.ts",
+        "dependencies": [
+            "definitions/types/graph_types.ts"
+        ]
+    },
+    {
+        "file": "definitions/types/graph_types.ts",
+        "dependencies": []
+    },
+    {
+        "file": "definitions/types/ui_types.ts",
+        "dependencies": [
+            "definitions/types/graph_types.ts"
+        ]
+    },
+    {
+        "file": "definitions/types/validation_types.ts",
+        "dependencies": []
+    },
+    {
+        "file": "definitions/validators/graph_validator.ts",
+        "dependencies": [
+            "definitions/types/graph_types.ts",
+            "definitions/types/validation_types.ts",
+            "definitions/validators/rule_checkers.ts",
+            "definitions/rules/graph_rules.ts"
+        ]
+    },
+    {
+        "file": "definitions/validators/operation_validator.ts",
+        "dependencies": [
+            "definitions/types/graph_types.ts",
+            "definitions/types/graph_operation_types.ts",
+            "definitions/rules/graph_rules.ts",
+            "definitions/validators/rule_checkers.ts",
+            "definitions/types/validation_types.ts"
+        ]
+    },
+    {
+        "file": "definitions/validators/rule_checkers.ts",
+        "dependencies": [
+            "definitions/types/graph_types.ts",
+            "definitions/rules/graph_rules.ts",
+            "definitions/types/validation_types.ts"
+        ]
+    },
+    {
+        "file": "dev/test_runtime.ts",
+        "dependencies": [
+            "dev/test_runtime.ts",
+            "graph/graph_store.ts",
+            "mock/mockGraph.ts",
+            "mock/golden_graph.ts",
+            "ui/ui_store.ts"
+        ]
+    },
+    {
+        "file": "dev/validator_smoke_test.ts",
+        "dependencies": [
+            "graph/graph_store.ts",
+            "definitions/validators/graph_validator.ts",
+            "definitions/types/graph_operation_types.ts",
+            "mock/golden_graph.ts"
+        ]
+    },
+    {
+        "file": "graph/graph_persistence.ts",
+        "dependencies": [
+            "definitions/types/graph_types.ts"
+        ]
+    },
+    {
+        "file": "graph/graph_store.ts",
+        "dependencies": [
+            "definitions/types/graph_types.ts",
+            "definitions/types/graph_operation_types.ts",
+            "definitions/validators/operation_validator.ts",
+            "definitions/types/validation_types.ts",
+            "graph/graph_persistence.ts"
+        ]
+    },
+    {
+        "file": "main.ts",
+        "dependencies": [
+            "App.vue",
+            "router",
+            "dev/test_runtime.ts",
+            "dev/test_runtime.ts",
+            "assets/main.css"
+        ]
+    },
+    {
+        "file": "mock/golden_graph.ts",
+        "dependencies": [
+            "mock/golden_graph.ts",
+            "definitions/types/graph_types.ts"
+        ]
+    },
+    {
+        "file": "mock/mockGraph.ts",
+        "dependencies": [
+            "definitions/types/graph_types.ts"
+        ]
+    },
+    {
+        "file": "router/index.ts",
+        "dependencies": [
+            "views/KnowledgeGraphView.vue"
+        ]
+    },
+    {
+        "file": "ui/draft_store.ts",
+        "dependencies": [
+            "definitions/types/draft_types.ts",
+            "definitions/types/graph_types.ts"
+        ]
+    },
+    {
+        "file": "ui/ui_store.ts",
+        "dependencies": [
+            "definitions/types/graph_operation_types.ts",
+            "definitions/types/graph_types.ts",
+            "definitions/validators/operation_validator.ts",
+            "definitions/types/validation_types.ts",
+            "graph/graph_store.ts",
+            "definitions/types/ui_types.ts",
+            "definitions/types/graph_types.ts"
+        ]
+    },
+    {
+        "file": "views/HomeView.vue",
+        "dependencies": []
+    },
+    {
+        "file": "views/KnowledgeGraphView.vue",
+        "dependencies": []
+    }
+]

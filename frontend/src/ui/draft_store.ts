@@ -42,7 +42,7 @@ export const useDraftStore = defineStore('draft_store', {
 
     actions: {
 
-                /**
+        /**
          * 功能：
          *     创建新的节点草稿。
          *
