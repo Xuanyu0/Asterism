@@ -32,6 +32,16 @@ import {
 
 const MAX_UNDO_STACK_SIZE = 20    // 删除撤销栈最大数量，避免长时间操作后占用过多内存
 
+
+/**
+ * 功能：
+ *     Graph Runtime 状态定义。
+ *
+ * 规则：
+ *     1. currentGraph 是唯一事实源。
+ *     2. Draft 数据禁止进入本 Store。
+ *     3. Cytoscape Runtime 禁止进入本 Store。
+ */
 export interface GraphStoreState {
     currentGraph: GraphData | null    // 当前正在浏览或编辑的图
     selectedNodeId: NodeId | null    // 当前选中的节点 id
@@ -131,12 +141,29 @@ export const useGraphStore = defineStore('graph_store', {
             deleteGraph(graphId)
         },
 
-
+        /**
+         * 功能：
+         *     设置当前选中节点。
+         *
+         * 规则：
+         *     1. 属于 Runtime UI 状态。
+         *     2. 不修改 GraphData。
+         *     3. 不参与持久化。
+         */
         selectNode(nodeId: NodeId | null) {
             this.selectedNodeId = nodeId    // 设置当前选中节点
             this.selectedEdgeId = null    // 选中节点时取消选中边
         },
 
+        /**
+         * 功能：
+         *     设置当前选中边。
+         *
+         * 规则：
+         *     1. 属于 Runtime UI 状态。
+         *     2. 不修改 GraphData。
+         *     3. 不参与持久化。
+         */
         selectEdge(edgeId: EdgeId | null) {
             this.selectedEdgeId = edgeId    // 设置当前选中边
             this.selectedNodeId = null    // 选中边时取消选中节点
@@ -147,6 +174,16 @@ export const useGraphStore = defineStore('graph_store', {
             this.selectedEdgeId = null    // 清空边选择
         },
 
+        /**
+         * 功能：
+         *     撤销最近一次删除操作。
+         *
+         * 规则：
+         *     1. 恢复完整 GraphData Snapshot。
+         *     2. MVP 阶段仅支持删除撤销。
+         *     3. 刷新网页后 Undo 自动失效。
+         *     4. 不支持多步骤 Operation Replay。
+         */
         undoDelete(): boolean {
             const previousGraph = this.undoStack.pop()    // 取出最近一次删除前的完整图状态
 
@@ -161,6 +198,20 @@ export const useGraphStore = defineStore('graph_store', {
             return true
         },
 
+        /**
+         * 功能：
+         *     Graph Runtime 唯一图结构修改入口。
+         *
+         * 规则：
+         *     1. 所有 GraphData 修改必须经过本函数。
+         *     2. 先执行 OperationValidator 校验。
+         *     3. 校验通过后才允许修改 GraphData。
+         *     4. 删除操作自动记录 Undo Snapshot。
+         *     5. UI Runtime 与 Cytoscape Runtime 禁止直接修改 GraphData。
+         *
+         * 使用：
+         *     operation_controller.ts 调用本接口执行图操作。
+         */
         applyOperation(operation: GraphOperation): ValidationResult {
             if (!this.currentGraph) {
                 const result: ValidationResult = {
@@ -197,11 +248,6 @@ export const useGraphStore = defineStore('graph_store', {
         // ------------------------------private section
 
         privateApplyAddNode(graph: GraphData, operation: Extract<GraphOperation, { type: 'add_node' }>): GraphData {
-            console.log(
-                'Add Node Position:',
-                operation.node.position
-            )
-
             return {
                 ...graph,
                 nodes: [...graph.nodes, operation.node],
@@ -249,7 +295,16 @@ export const useGraphStore = defineStore('graph_store', {
                 updatedAt: new Date().toISOString(),
             }    // 返回更新边后的新图
         },
-
+        
+        /**
+         * 功能：
+         *     将节点位置写回 GraphData。
+         *
+         * 规则：
+         *     1. GraphData.position 是节点位置唯一事实源。
+         *     2. Cytoscape 不允许持久化自己的位置状态。
+         *     3. 拖动结束后必须通过 Operation 更新位置。
+         */
         privateApplyMoveNode(graph: GraphData, operation: Extract<GraphOperation, { type: 'move_node' }>): GraphData {
             return {
                 ...graph,
@@ -299,7 +354,20 @@ export const useGraphStore = defineStore('graph_store', {
                 updatedAt: new Date().toISOString(),
             }    // 展开时移除对应目标节点的折叠认知状态
         },
-
+        
+        /**
+         * 功能：
+         *     将 GraphOperation 转换为新的 GraphData。
+         *
+         * 规则：
+         *     1. 本函数不负责校验。
+         *     2. 本函数不修改传入 GraphData。
+         *     3. 所有操作返回新的 GraphData。
+         *     4. GraphData 是唯一事实源。
+         *
+         * 使用：
+         *     applyOperation() 内部调用。
+         */
         applyOperationToGraph(graph: GraphData, operation: GraphOperation): GraphData {
             switch (operation.type) {
                 case 'add_node':
