@@ -10,19 +10,25 @@
             "id": "vue"
         },
         {
-            "id": "cytoscape"
-        },
-        {
-            "id": "src/definitions/types/graph_types.ts"
-        },
-        {
             "id": "src/graph/graph_store.ts"
         },
         {
-            "id": "src/ui/ui_store.ts"
+            "id": "src/graph/cytoscape/graph_element_mapper.ts"
         },
         {
-            "id": "src/ui/draft_store.ts"
+            "id": "src/graph/cytoscape/use_cytoscape_renderer.ts"
+        },
+        {
+            "id": "src/graph/cytoscape/use_graph_interaction.ts"
+        },
+        {
+            "id": "src/components/graph/NodeWindow.vue"
+        },
+        {
+            "id": "src/components/graph/OperationToolbar.vue"
+        },
+        {
+            "id": "src/definitions/types/graph_types.ts"
         },
         {
             "id": "src/definitions/types/draft_types.ts"
@@ -58,7 +64,13 @@
             "id": "src/mock/golden_graph.ts"
         },
         {
-            "id": "src/dev/validator_smoke_test.ts"
+            "id": "src/ui/ui_store.ts"
+        },
+        {
+            "id": "cytoscape"
+        },
+        {
+            "id": "src/graph/cytoscape/cytoscape_style.ts"
         },
         {
             "id": "src/graph/graph_persistence.ts"
@@ -85,6 +97,9 @@
             "id": "src/views/KnowledgeGraphView.vue"
         },
         {
+            "id": "src/ui/draft_store.ts"
+        },
+        {
             "id": "node:fs"
         },
         {
@@ -109,26 +124,10 @@
             "source": "vue",
             "target": "src/components/KnowledgeGraph.vue",
             "imports": [
-                "onBeforeUnmount",
-                "onMounted",
                 "ref",
-                "computed",
+                "onMounted",
+                "onBeforeUnmount",
                 "watch"
-            ]
-        },
-        {
-            "source": "cytoscape",
-            "target": "src/components/KnowledgeGraph.vue",
-            "imports": [
-                "default:cytoscape",
-                "type:Core"
-            ]
-        },
-        {
-            "source": "src/definitions/types/graph_types.ts",
-            "target": "src/components/KnowledgeGraph.vue",
-            "imports": [
-                "toCyElements"
             ]
         },
         {
@@ -139,17 +138,38 @@
             ]
         },
         {
-            "source": "src/ui/ui_store.ts",
+            "source": "src/graph/cytoscape/graph_element_mapper.ts",
             "target": "src/components/KnowledgeGraph.vue",
             "imports": [
-                "useUIStore"
+                "mapGraphDataToCyElements"
             ]
         },
         {
-            "source": "src/ui/draft_store.ts",
+            "source": "src/graph/cytoscape/use_cytoscape_renderer.ts",
             "target": "src/components/KnowledgeGraph.vue",
             "imports": [
-                "useDraftStore"
+                "useCytoscapeRenderer"
+            ]
+        },
+        {
+            "source": "src/graph/cytoscape/use_graph_interaction.ts",
+            "target": "src/components/KnowledgeGraph.vue",
+            "imports": [
+                "useGraphInteraction"
+            ]
+        },
+        {
+            "source": "src/components/graph/NodeWindow.vue",
+            "target": "src/components/KnowledgeGraph.vue",
+            "imports": [
+                "default:NodeWindow"
+            ]
+        },
+        {
+            "source": "src/components/graph/OperationToolbar.vue",
+            "target": "src/components/KnowledgeGraph.vue",
+            "imports": [
+                "default:OperationToolbar"
             ]
         },
         {
@@ -313,31 +333,73 @@
             ]
         },
         {
-            "source": "src/graph/graph_store.ts",
-            "target": "src/dev/validator_smoke_test.ts",
+            "source": "src/definitions/types/graph_types.ts",
+            "target": "src/graph/cytoscape/graph_element_mapper.ts",
             "imports": [
-                "useGraphStore"
+                "EdgeData",
+                "EdgeDirection",
+                "EdgeId",
+                "EdgeKind",
+                "EdgeViewRole",
+                "GraphData",
+                "NodeData",
+                "NodeId",
+                "NodeKind",
+                "NodePosition",
+                "NodeViewRole",
+                "RealNodeForm"
             ]
         },
         {
-            "source": "src/definitions/validators/graph_validator.ts",
-            "target": "src/dev/validator_smoke_test.ts",
+            "source": "cytoscape",
+            "target": "src/graph/cytoscape/use_cytoscape_renderer.ts",
             "imports": [
-                "GraphValidator"
+                "default:cytoscape"
             ]
         },
         {
-            "source": "src/definitions/types/graph_operation_types.ts",
-            "target": "src/dev/validator_smoke_test.ts",
+            "source": "cytoscape",
+            "target": "src/graph/cytoscape/use_cytoscape_renderer.ts",
             "imports": [
-                "GraphOperation"
+                "Core"
             ]
         },
         {
-            "source": "src/mock/golden_graph.ts",
-            "target": "src/dev/validator_smoke_test.ts",
+            "source": "vue",
+            "target": "src/graph/cytoscape/use_cytoscape_renderer.ts",
             "imports": [
-                "goldenGraph"
+                "Ref"
+            ]
+        },
+        {
+            "source": "src/graph/cytoscape/graph_element_mapper.ts",
+            "target": "src/graph/cytoscape/use_cytoscape_renderer.ts",
+            "imports": [
+                "CyElements"
+            ]
+        },
+        {
+            "source": "src/graph/cytoscape/cytoscape_style.ts",
+            "target": "src/graph/cytoscape/use_cytoscape_renderer.ts",
+            "imports": [
+                "createCytoscapeStyle"
+            ]
+        },
+        {
+            "source": "cytoscape",
+            "target": "src/graph/cytoscape/use_graph_interaction.ts",
+            "imports": [
+                "Core",
+                "EventObject"
+            ]
+        },
+        {
+            "source": "src/definitions/types/graph_types.ts",
+            "target": "src/graph/cytoscape/use_graph_interaction.ts",
+            "imports": [
+                "NodeId",
+                "EdgeId",
+                "NodePosition"
             ]
         },
         {

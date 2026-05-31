@@ -27,6 +27,7 @@ import { useGraphStore } from '@/graph/graph_store'
 import { mapGraphDataToCyElements } from '@/graph/cytoscape/graph_element_mapper'
 import { useCytoscapeRenderer } from '@/graph/cytoscape/use_cytoscape_renderer'
 import { useGraphInteraction } from '@/graph/cytoscape/use_graph_interaction'
+import { useOperationController } from '@/ui/operation_controller'
 
 import NodeWindow from './graph/NodeWindow.vue'
 import OperationToolbar from './graph/OperationToolbar.vue'
@@ -34,6 +35,7 @@ import OperationToolbar from './graph/OperationToolbar.vue'
 const cyContainer = ref<HTMLDivElement | null>(null)
 const graphStore = useGraphStore()
 const renderer = useCytoscapeRenderer(cyContainer)
+const operationController = useOperationController()
 
 onMounted(() => {
     renderer.mount()
@@ -48,18 +50,29 @@ onMounted(() => {
     if (cy) {
         useGraphInteraction(cy, {
             onCanvasClicked(position) {
-                console.log('canvas clicked', position)
+                operationController.handleCanvasClicked(position)
             },
+
             onNodeClicked(nodeId) {
-                console.log('node clicked', nodeId)
+                operationController.handleNodeClicked({
+                    nodeId,
+                })
             },
+
             onEdgeClicked(edgeId) {
-                console.log('edge clicked', edgeId)
+                operationController.handleEdgeClicked({
+                    edgeId,
+                })
             },
+
             onNodeDragEnded(nodeId, position) {
-                console.log('node drag ended', nodeId, position)
+                operationController.handleNodeDragEnded({
+                    nodeId,
+                    position,
+                })
             },
         })
+
     }
 })
 
