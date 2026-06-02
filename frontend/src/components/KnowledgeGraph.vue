@@ -46,15 +46,33 @@
  *     4. 绑定 Cytoscape 语义交互事件
  *     5. 挂载 NodeWindow 与 OperationToolbar
  *
+ * 前端机制（Vue 3 框架行为）：
+ *     - <script setup lang="ts">：
+ *       Vue 3 编译期语法糖。顶层变量自动暴露给模板，import 的组件自动注册。
+ *       C++ 类比：编译器自动生成声明，无需手动写 return / components。
+ *
+ *     - ref<HTMLDivElement | null>(null)：
+ *       Vue 响应式引用。模板中的 ref="cyContainer" 自动将 DOM 元素赋值给 .value。
+ *       C++ 类比：std::shared_ptr + Observer 通知，但框架自动管理注册/注销。
+ *
+ *     - onMounted / onBeforeUnmount：
+ *       生命周期钩子。onMounted ≈ 构造函数（DOM 已挂载），
+ *       onBeforeUnmount ≈ 析构函数（组件销毁前清理）。注意 onMounted 之前 ref 为空。
+ *
+ *     - watch(source, callback, { deep: true })：
+ *       响应式观察者。source 中访问的响应式值变化时触发 callback。
+ *       deep: true 递归监听嵌套属性。C++ 类比：Observer + 自动深比较 + 自动注册/注销。
+ *
  * 外部如何使用：
  *     App.vue 直接挂载本组件。
  */
 
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+
 import { useGraphStore } from '@/graph/graph_store'
-import { mapGraphDataToCyElements } from '@/graph/cytoscape/graph_element_mapper'
-import { useCytoscapeRenderer } from '@/graph/cytoscape/use_cytoscape_renderer'
-import { useGraphInteraction } from '@/graph/cytoscape/use_graph_interaction'
+import { mapGraphDataToCyElements } from '@/render/cytoscape/graph_element_mapper.ts'
+import { useCytoscapeRenderer } from '@/render/cytoscape/use_cytoscape_renderer.ts'
+import { useGraphInteraction } from '@/render/cytoscape/use_graph_interaction.ts'
 import { useOperationController } from '@/ui/operation_controller'
 
 import NodeWindow from './graph/NodeWindow.vue'

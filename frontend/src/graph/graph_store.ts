@@ -12,25 +12,22 @@
  * 5. applyOperation：统一接收 Operation，先校验再执行
  *
  * 外部如何使用：
- * import { useGraphStore } from '@/stores/graph_store'
+ * import { useGraphStore } from '@/graph/graph_store'
  * const graphStore = useGraphStore()
  * graphStore.setCurrentGraph(mockGraph)
  * graphStore.applyOperation(operation)
  */
 
 import { defineStore } from 'pinia'
+
 import type { EdgeId, GraphData, GraphId, NodeId } from '@/definitions/types/graph_types'
 import type { GraphOperation } from '@/definitions/types/graph_operation_types'
 import { OperationValidator } from '@/definitions/validators/operation_validator'
 import type { ValidationResult } from '@/definitions/types/validation_types'
-import {
-    saveGraph,
-    loadGraph,
-    deleteGraph
-} from '@/graph/graph_persistence'
 
-
-const MAX_UNDO_STACK_SIZE = 20    // 删除撤销栈最大数量，避免长时间操作后占用过多内存
+import { saveGraph, loadGraph, deleteGraph } from '@/graph/utilities/graph_persistence'
+import { applyOperationToGraph, pushUndoSnapshot, shouldPushUndoSnapshot } from '@/graph/utilities/operation_executor'
+import { normalizeGraph } from '@/graph/utilities/graph_utils'
 
 
 /**
@@ -52,6 +49,26 @@ export interface GraphStoreState {
     lastSaveTime: number | null    // 最近一次成功保存当前图谱的时间戳
 }
 
+/**
+ * 功能：
+ *     创建 Graph Store 实例，管理 GraphData 状态与图操作。
+ *     GraphData 唯一事实源，所有图数据修改必须经过本 Store。
+ *
+ * 总体结构：
+ *     1. state: GraphStoreState — 当前图数据、选中状态、撤销栈
+ *     2. actions: 图操作入口（setCurrentGraph / applyOperation / saveCurrentGraph / undoDelete 等）
+ *
+ * 规则：
+ *     1. Draft 数据与 Cytoscape Runtime 禁止进入本 Store。
+ *     2. UI Runtime 必须通过 operation_controller 间接调用本 Store。
+ *     3. 所有修改先执行 OperationValidator 校验，通过后才允许。
+ *
+ * 使用：
+ *     import { useGraphStore } from '@/graph/graph_store'
+ *     const graphStore = useGraphStore()
+ *     graphStore.setCurrentGraph(graph)
+ *     graphStore.applyOperation(operation)
+ */
 export const useGraphStore = defineStore('graph_store', {
     state: (): GraphStoreState => ({
         currentGraph: null,    // 初始没有图数据
@@ -65,12 +82,12 @@ export const useGraphStore = defineStore('graph_store', {
 
     actions: {
         setCurrentGraph(graph: GraphData) {
-            this.currentGraph = this.normalizeGraph(graph)    // 设置当前图，并补齐运行时默认字段
-            this.graphPath = [graph.id]    // 初始化图路径
-            this.selectedNodeId = null    // 切图后清空节点选择
-            this.selectedEdgeId = null    // 切图后清空边选择
-            this.lastValidationResult = null    // 切图后清空校验结果
-            this.undoStack = []    // 切图后清空删除撤销栈
+            this.currentGraph = normalizeGraph(graph)
+            this.graphPath = [graph.id]
+            this.selectedNodeId = null
+            this.selectedEdgeId = null
+            this.lastValidationResult = null
+            this.undoStack = []
         },
 
         /**
@@ -151,8 +168,8 @@ export const useGraphStore = defineStore('graph_store', {
          *     3. 不参与持久化。
          */
         selectNode(nodeId: NodeId | null) {
-            this.selectedNodeId = nodeId    // 设置当前选中节点
-            this.selectedEdgeId = null    // 选中节点时取消选中边
+            this.selectedNodeId = nodeId
+            this.selectedEdgeId = null
         },
 
         /**
@@ -165,13 +182,13 @@ export const useGraphStore = defineStore('graph_store', {
          *     3. 不参与持久化。
          */
         selectEdge(edgeId: EdgeId | null) {
-            this.selectedEdgeId = edgeId    // 设置当前选中边
-            this.selectedNodeId = null    // 选中边时取消选中节点
+            this.selectedEdgeId = edgeId
+            this.selectedNodeId = null
         },
 
         clearSelection() {
-            this.selectedNodeId = null    // 清空节点选择
-            this.selectedEdgeId = null    // 清空边选择
+            this.selectedNodeId = null
+            this.selectedEdgeId = null
         },
 
         /**
@@ -182,18 +199,17 @@ export const useGraphStore = defineStore('graph_store', {
          *     1. 恢复完整 GraphData Snapshot。
          *     2. MVP 阶段仅支持删除撤销。
          *     3. 刷新网页后 Undo 自动失效。
-         *     4. 不支持多步骤 Operation Replay。
          */
         undoDelete(): boolean {
-            const previousGraph = this.undoStack.pop()    // 取出最近一次删除前的完整图状态
+            const previousGraph = this.undoStack.pop()
 
             if (!previousGraph) {
-                return false    // 没有可撤销状态时直接返回失败
+                return false
             }
 
-            this.currentGraph = previousGraph    // 恢复删除前的 GraphData
-            this.selectedNodeId = null    // 撤销后清空节点选择
-            this.selectedEdgeId = null    // 撤销后清空边选择
+            this.currentGraph = previousGraph
+            this.selectedNodeId = null
+            this.selectedEdgeId = null
 
             return true
         },
@@ -207,7 +223,6 @@ export const useGraphStore = defineStore('graph_store', {
          *     2. 先执行 OperationValidator 校验。
          *     3. 校验通过后才允许修改 GraphData。
          *     4. 删除操作自动记录 Undo Snapshot。
-         *     5. UI Runtime 与 Cytoscape Runtime 禁止直接修改 GraphData。
          *
          * 使用：
          *     operation_controller.ts 调用本接口执行图操作。
@@ -222,251 +237,27 @@ export const useGraphStore = defineStore('graph_store', {
                         message: '当前没有可操作的知识图谱。',
                         targetType: 'graph',
                     }],
-                }    // 没有当前图时返回错误
+                }
 
-                this.lastValidationResult = result    // 保存校验结果
+                this.lastValidationResult = result
 
                 return result
             }
 
-            const result = OperationValidator.validateOperation(this.currentGraph, operation)    // 操作前局部校验
-            this.lastValidationResult = result    // 保存校验结果
+            const result = OperationValidator.validateOperation(this.currentGraph, operation)
+            this.lastValidationResult = result
 
             if (!result.valid) {
-                return result    // 校验不通过则不修改图数据
+                return result
             }
 
-            if (this.shouldPushUndoSnapshot(operation)) {
-                this.pushUndoSnapshot(this.currentGraph)    // 删除前保存完整图状态，用于 CTRL + Z 撤销
+            if (shouldPushUndoSnapshot(operation)) {
+                this.undoStack = pushUndoSnapshot(this.undoStack, this.currentGraph)
             }
 
-            this.currentGraph = this.applyOperationToGraph(this.currentGraph, operation)    // 校验通过后执行操作
+            this.currentGraph = applyOperationToGraph(this.currentGraph, operation)
 
             return result
-        },
-
-        // ------------------------------private section
-
-        privateApplyAddNode(graph: GraphData, operation: Extract<GraphOperation, { type: 'add_node' }>): GraphData {
-            return {
-                ...graph,
-                nodes: [...graph.nodes, operation.node],
-                updatedAt: new Date().toISOString(),
-            }    // 返回添加节点后的新图
-        },
-
-        privateApplyAddEdge(graph: GraphData, operation: Extract<GraphOperation, { type: 'add_edge' }>): GraphData {
-            return {
-                ...graph,
-                edges: [...graph.edges, operation.edge],
-                updatedAt: new Date().toISOString(),
-            }    // 返回添加边后的新图
-        },
-
-        privateApplyDeleteNode(graph: GraphData, operation: Extract<GraphOperation, { type: 'delete_node' }>): GraphData {
-            return this.cleanGraphAfterDeleteNode({
-                ...graph,
-                nodes: graph.nodes.filter(node => node.id !== operation.nodeId),
-                edges: graph.edges.filter(edge => edge.source !== operation.nodeId && edge.target !== operation.nodeId),
-                updatedAt: new Date().toISOString(),
-            }, operation.nodeId)    // 删除节点时同时删除相关边，并清理折叠认知状态
-        },
-
-        privateApplyDeleteEdge(graph: GraphData, operation: Extract<GraphOperation, { type: 'delete_edge' }>): GraphData {
-            return {
-                ...graph,
-                edges: graph.edges.filter(edge => edge.id !== operation.edgeId),
-                updatedAt: new Date().toISOString(),
-            }    // 返回删除边后的新图
-        },
-
-        privateApplyUpdateNode(graph: GraphData, operation: Extract<GraphOperation, { type: 'update_node' }>): GraphData {
-            return {
-                ...graph,
-                nodes: graph.nodes.map(node => node.id === operation.node.id ? operation.node : node),
-                updatedAt: new Date().toISOString(),
-            }    // 返回更新节点后的新图
-        },
-
-        privateApplyUpdateEdge(graph: GraphData, operation: Extract<GraphOperation, { type: 'update_edge' }>): GraphData {
-            return {
-                ...graph,
-                edges: graph.edges.map(edge => edge.id === operation.edge.id ? operation.edge : edge),
-                updatedAt: new Date().toISOString(),
-            }    // 返回更新边后的新图
-        },
-        
-        /**
-         * 功能：
-         *     将节点位置写回 GraphData。
-         *
-         * 规则：
-         *     1. GraphData.position 是节点位置唯一事实源。
-         *     2. Cytoscape 不允许持久化自己的位置状态。
-         *     3. 拖动结束后必须通过 Operation 更新位置。
-         */
-        privateApplyMoveNode(graph: GraphData, operation: Extract<GraphOperation, { type: 'move_node' }>): GraphData {
-            return {
-                ...graph,
-                nodes: graph.nodes.map(node => node.id === operation.nodeId ? {
-                    ...node,
-                    position: operation.position,
-                } : node),
-                updatedAt: new Date().toISOString(),
-            }    // 拖动结束后将节点位置写回 GraphData
-        },
-
-        privateApplyCollapseDependency(graph: GraphData, operation: Extract<GraphOperation, { type: 'collapse_dependency' }>): GraphData {
-            const foldedNodeIds = this.collectDependencyNodeIds(graph, operation.targetNodeId)    // 计算目标节点前置依赖节点
-
-            if (foldedNodeIds.length === 0) {
-                return graph    // 没有可折叠依赖时不修改图状态
-            }
-
-            const currentCognitiveState = graph.cognitiveState ?? { foldedDependencies: [] }    // 兼容旧图数据
-            const otherFoldedDependencies = currentCognitiveState.foldedDependencies.filter(item => item.targetNodeId !== operation.targetNodeId)    // 同一目标节点只保留一个折叠状态
-
-            return {
-                ...graph,
-                cognitiveState: {
-                    ...currentCognitiveState,
-                    foldedDependencies: [
-                        ...otherFoldedDependencies,
-                        {
-                            targetNodeId: operation.targetNodeId,
-                            foldedNodeIds,
-                        },
-                    ],
-                },
-                updatedAt: new Date().toISOString(),
-            }    // 将折叠状态作为认知状态持久化
-        },
-
-        privateApplyExpandDependency(graph: GraphData, operation: Extract<GraphOperation, { type: 'expand_dependency' }>): GraphData {
-            const currentCognitiveState = graph.cognitiveState ?? { foldedDependencies: [] }    // 兼容旧图数据
-
-            return {
-                ...graph,
-                cognitiveState: {
-                    ...currentCognitiveState,
-                    foldedDependencies: currentCognitiveState.foldedDependencies.filter(item => item.targetNodeId !== operation.targetNodeId),
-                },
-                updatedAt: new Date().toISOString(),
-            }    // 展开时移除对应目标节点的折叠认知状态
-        },
-        
-        /**
-         * 功能：
-         *     将 GraphOperation 转换为新的 GraphData。
-         *
-         * 规则：
-         *     1. 本函数不负责校验。
-         *     2. 本函数不修改传入 GraphData。
-         *     3. 所有操作返回新的 GraphData。
-         *     4. GraphData 是唯一事实源。
-         *
-         * 使用：
-         *     applyOperation() 内部调用。
-         */
-        applyOperationToGraph(graph: GraphData, operation: GraphOperation): GraphData {
-            switch (operation.type) {
-                case 'add_node':
-                    return this.privateApplyAddNode(graph, operation)    // 执行添加节点
-
-                case 'add_edge':
-                    return this.privateApplyAddEdge(graph, operation)    // 执行添加边
-
-                case 'delete_node':
-                    return this.privateApplyDeleteNode(graph, operation)    // 执行删除节点
-
-                case 'delete_edge':
-                    return this.privateApplyDeleteEdge(graph, operation)    // 执行删除边
-
-                case 'update_node':
-                    return this.privateApplyUpdateNode(graph, operation)    // 执行更新节点
-
-                case 'update_edge':
-                    return this.privateApplyUpdateEdge(graph, operation)    // 执行更新边
-
-                case 'move_node':
-                    return this.privateApplyMoveNode(graph, operation)    // 执行节点移动
-
-                case 'collapse_dependency':
-                    return this.privateApplyCollapseDependency(graph, operation)    // 执行依赖折叠
-
-                case 'expand_dependency':
-                    return this.privateApplyExpandDependency(graph, operation)    // 执行依赖展开
-
-                default:
-                    return graph    // 认知操作暂不在这里修改 GraphData
-            }
-        },
-
-        shouldPushUndoSnapshot(operation: GraphOperation): boolean {
-            return operation.type === 'delete_node' || operation.type === 'delete_edge'    // MVP 阶段 CTRL + Z 只撤销删除
-        },
-
-        pushUndoSnapshot(graph: GraphData) {
-            const snapshot = structuredClone(graph)    // 保存删除前完整 GraphData
-
-            this.undoStack = [...this.undoStack, snapshot].slice(-MAX_UNDO_STACK_SIZE)    // 限制撤销栈长度
-        },
-
-        normalizeGraph(graph: GraphData): GraphData {
-            return {
-                ...graph,
-                cognitiveState: graph.cognitiveState ?? {
-                    foldedDependencies: [],
-                },
-            }    // 补齐 GraphData 的认知状态默认值
-        },
-
-        cleanGraphAfterDeleteNode(graph: GraphData, deletedNodeId: NodeId): GraphData {
-            const currentCognitiveState = graph.cognitiveState ?? { foldedDependencies: [] }    // 兼容旧图数据
-
-            return {
-                ...graph,
-                cognitiveState: {
-                    ...currentCognitiveState,
-                    foldedDependencies: currentCognitiveState.foldedDependencies
-                        .filter(item => item.targetNodeId !== deletedNodeId)
-                        .map(item => ({
-                            ...item,
-                            foldedNodeIds: item.foldedNodeIds.filter(nodeId => nodeId !== deletedNodeId),
-                        }))
-                        .filter(item => item.foldedNodeIds.length > 0),
-                },
-            }    // 删除节点后清理失效的折叠状态
-        },
-
-        collectDependencyNodeIds(graph: GraphData, targetNodeId: NodeId): NodeId[] {
-            const visitedNodeIds = new Set<NodeId>()    // 已经访问过的前置节点
-            const stack: NodeId[] = [targetNodeId]    // 从目标节点反向搜索有向实边前置依赖
-
-            while (stack.length > 0) {
-                const currentNodeId = stack.pop()
-
-                if (!currentNodeId) {
-                    continue
-                }
-
-                const incomingDependencyEdges = graph.edges.filter(edge =>
-                    edge.target === currentNodeId &&
-                    edge.kind === 'real' &&
-                    edge.direction === 'directed',
-                )    // 只沿有向实边向前搜索依赖
-
-                for (const edge of incomingDependencyEdges) {
-                    if (!visitedNodeIds.has(edge.source)) {
-                        visitedNodeIds.add(edge.source)
-                        stack.push(edge.source)
-                    }
-                }
-            }
-
-            visitedNodeIds.delete(targetNodeId)    // 防御性处理，避免目标节点被折叠
-
-            return Array.from(visitedNodeIds)
         },
     },
 })

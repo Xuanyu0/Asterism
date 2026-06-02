@@ -120,11 +120,16 @@ src/
 2. **OperationToolbar Runtime** — 完善 Add Edge / Delete / Fold / Move
 3. **OperationController 收口** — 彻底封死 ui_store/draft_store 对外暴露
 
-## 暂时不要做
+## 当前 MVP 阶段暂不启动
 
-- AI Runtime / Agent Runtime
-- Auto Save / IndexedDB / SQLite / Supabase
-- Add Edge MVP / Delete MVP / Fold MVP（等 NodeWindow/OperationToolbar/OperationController 完成后再说）
+以下属于后续阶段规划，MVP 阶段先聚焦前端 Runtime 本身：
+
+- AI Runtime (LangChain / LangGraph)
+- FastAPI 后端
+- Supabase 集成
+- Auto Save / IndexedDB
+- Add Edge / Delete / Fold MVP 交互层
+  （等 NodeWindow / OperationToolbar / OperationController 完成后再说）
 
 ## 设计文档
 

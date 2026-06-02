@@ -21,6 +21,7 @@ import type {
     NodeId,
     EdgeId,
     GraphPosition,
+    NodePosition
 } from '@/definitions/types/graph_types'
 import type { DraftNode } from '@/definitions/types/draft_types'
 import { useGraphStore } from '@/graph/graph_store'
