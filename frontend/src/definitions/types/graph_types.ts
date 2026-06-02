@@ -15,6 +15,20 @@
 
 // --- Graph ---
 
+/**
+ * 功能：
+ *     图空间中的二维坐标。
+ *
+ * 规则：
+ *     1. 表示 Cytoscape model position。
+ *     2. 不表示 DOM 像素坐标。
+ *     3. 可用于节点位置、画布点击位置、拖拽结束位置。
+ */
+export interface GraphPosition {
+    x: number
+    y: number
+}
+
 export type GraphId = string // 图 ID：主图、子图、知识块都用它区分作用域
 export type NodeId = string // 节点 ID：节点在整个系统中的唯一标识
 export type EdgeId = string // 边 ID：边在整个系统中的唯一标识
@@ -51,10 +65,9 @@ export type RealNodeForm = 'normal' | 'abstract' // 实节点形态：普通实�
 
 export type NodeViewRole = 'normal' | 'communication' // 节点在当前图中的显示身份：普通显示 / 沟通显示
 
-export interface NodePosition {
-    x: number // 节点在图空间中的 x 坐标，也就是 Cytoscape 的 model position
-    y: number // 节点在图空间中的 y 坐标，也就是 Cytoscape 的 model position
-}
+
+export type NodePosition = GraphPosition
+
 
 export interface NodeData {
     id: NodeId // 节点唯一 ID，Cytoscape、Supabase、AI 都靠它定位节点

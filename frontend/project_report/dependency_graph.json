@@ -22,10 +22,19 @@
             "id": "src/graph/cytoscape/use_graph_interaction.ts"
         },
         {
+            "id": "src/ui/operation_controller.ts"
+        },
+        {
             "id": "src/components/graph/NodeWindow.vue"
         },
         {
             "id": "src/components/graph/OperationToolbar.vue"
+        },
+        {
+            "id": "src/ui/draft_store.ts"
+        },
+        {
+            "id": "src/ui/ui_store.ts"
         },
         {
             "id": "src/definitions/types/graph_types.ts"
@@ -64,9 +73,6 @@
             "id": "src/mock/golden_graph.ts"
         },
         {
-            "id": "src/ui/ui_store.ts"
-        },
-        {
             "id": "cytoscape"
         },
         {
@@ -95,9 +101,6 @@
         },
         {
             "id": "src/views/KnowledgeGraphView.vue"
-        },
-        {
-            "id": "src/ui/draft_store.ts"
         },
         {
             "id": "node:fs"
@@ -159,6 +162,13 @@
             ]
         },
         {
+            "source": "src/ui/operation_controller.ts",
+            "target": "src/components/KnowledgeGraph.vue",
+            "imports": [
+                "useOperationController"
+            ]
+        },
+        {
             "source": "src/components/graph/NodeWindow.vue",
             "target": "src/components/KnowledgeGraph.vue",
             "imports": [
@@ -170,6 +180,34 @@
             "target": "src/components/KnowledgeGraph.vue",
             "imports": [
                 "default:OperationToolbar"
+            ]
+        },
+        {
+            "source": "vue",
+            "target": "src/components/graph/NodeWindow.vue",
+            "imports": [
+                "computed"
+            ]
+        },
+        {
+            "source": "src/ui/draft_store.ts",
+            "target": "src/components/graph/NodeWindow.vue",
+            "imports": [
+                "useDraftStore"
+            ]
+        },
+        {
+            "source": "src/ui/operation_controller.ts",
+            "target": "src/components/graph/NodeWindow.vue",
+            "imports": [
+                "useOperationController"
+            ]
+        },
+        {
+            "source": "src/ui/ui_store.ts",
+            "target": "src/components/graph/OperationToolbar.vue",
+            "imports": [
+                "useUIStore"
             ]
         },
         {
@@ -557,6 +595,44 @@
             "target": "src/ui/draft_store.ts",
             "imports": [
                 "NodeKind"
+            ]
+        },
+        {
+            "source": "src/definitions/types/graph_types.ts",
+            "target": "src/ui/operation_controller.ts",
+            "imports": [
+                "NodeData",
+                "NodeId",
+                "EdgeId",
+                "NodePosition"
+            ]
+        },
+        {
+            "source": "src/definitions/types/draft_types.ts",
+            "target": "src/ui/operation_controller.ts",
+            "imports": [
+                "DraftNode"
+            ]
+        },
+        {
+            "source": "src/graph/graph_store.ts",
+            "target": "src/ui/operation_controller.ts",
+            "imports": [
+                "useGraphStore"
+            ]
+        },
+        {
+            "source": "src/ui/ui_store.ts",
+            "target": "src/ui/operation_controller.ts",
+            "imports": [
+                "useUIStore"
+            ]
+        },
+        {
+            "source": "src/ui/draft_store.ts",
+            "target": "src/ui/operation_controller.ts",
+            "imports": [
+                "useDraftStore"
             ]
         },
         {

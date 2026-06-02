@@ -20,7 +20,7 @@ import type {
     NodeData,
     NodeId,
     EdgeId,
-    NodePosition,
+    GraphPosition,
 } from '@/definitions/types/graph_types'
 import type { DraftNode } from '@/definitions/types/draft_types'
 import { useGraphStore } from '@/graph/graph_store'
@@ -35,7 +35,7 @@ import { useDraftStore } from '@/ui/draft_store'
  *     1. 坐标来自 Cytoscape 交互适配层。
  *     2. 是否创建 DraftNode 由当前 UI Runtime 状态决定。
  */
-export interface CanvasClickedPayload extends NodePosition {
+export interface CanvasClickedPayload extends GraphPosition {
 
 }
 
