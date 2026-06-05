@@ -13,13 +13,13 @@
             "id": "src/graph/graph_store.ts"
         },
         {
-            "id": "src/graph/cytoscape/graph_element_mapper.ts"
+            "id": "src/render/cytoscape/graph_element_mapper.ts"
         },
         {
-            "id": "src/graph/cytoscape/use_cytoscape_renderer.ts"
+            "id": "src/render/cytoscape/use_cytoscape_renderer.ts"
         },
         {
-            "id": "src/graph/cytoscape/use_graph_interaction.ts"
+            "id": "src/render/cytoscape/use_graph_interaction.ts"
         },
         {
             "id": "src/ui/operation_controller.ts"
@@ -73,16 +73,16 @@
             "id": "src/mock/golden_graph.ts"
         },
         {
-            "id": "cytoscape"
-        },
-        {
-            "id": "src/graph/cytoscape/cytoscape_style.ts"
-        },
-        {
-            "id": "src/graph/graph_persistence.ts"
-        },
-        {
             "id": "pinia"
+        },
+        {
+            "id": "src/graph/utilities/graph_persistence.ts"
+        },
+        {
+            "id": "src/graph/utilities/operation_executor.ts"
+        },
+        {
+            "id": "src/graph/utilities/graph_utils.ts"
         },
         {
             "id": "src/main.ts"
@@ -92,6 +92,12 @@
         },
         {
             "id": "src/assets/main.css"
+        },
+        {
+            "id": "cytoscape"
+        },
+        {
+            "id": "src/render/cytoscape/cytoscape_style.ts"
         },
         {
             "id": "vue-router"
@@ -141,21 +147,21 @@
             ]
         },
         {
-            "source": "src/graph/cytoscape/graph_element_mapper.ts",
+            "source": "src/render/cytoscape/graph_element_mapper.ts",
             "target": "src/components/KnowledgeGraph.vue",
             "imports": [
                 "mapGraphDataToCyElements"
             ]
         },
         {
-            "source": "src/graph/cytoscape/use_cytoscape_renderer.ts",
+            "source": "src/render/cytoscape/use_cytoscape_renderer.ts",
             "target": "src/components/KnowledgeGraph.vue",
             "imports": [
                 "useCytoscapeRenderer"
             ]
         },
         {
-            "source": "src/graph/cytoscape/use_graph_interaction.ts",
+            "source": "src/render/cytoscape/use_graph_interaction.ts",
             "target": "src/components/KnowledgeGraph.vue",
             "imports": [
                 "useGraphInteraction"
@@ -371,84 +377,6 @@
             ]
         },
         {
-            "source": "src/definitions/types/graph_types.ts",
-            "target": "src/graph/cytoscape/graph_element_mapper.ts",
-            "imports": [
-                "EdgeData",
-                "EdgeDirection",
-                "EdgeId",
-                "EdgeKind",
-                "EdgeViewRole",
-                "GraphData",
-                "NodeData",
-                "NodeId",
-                "NodeKind",
-                "NodePosition",
-                "NodeViewRole",
-                "RealNodeForm"
-            ]
-        },
-        {
-            "source": "cytoscape",
-            "target": "src/graph/cytoscape/use_cytoscape_renderer.ts",
-            "imports": [
-                "default:cytoscape"
-            ]
-        },
-        {
-            "source": "cytoscape",
-            "target": "src/graph/cytoscape/use_cytoscape_renderer.ts",
-            "imports": [
-                "Core"
-            ]
-        },
-        {
-            "source": "vue",
-            "target": "src/graph/cytoscape/use_cytoscape_renderer.ts",
-            "imports": [
-                "Ref"
-            ]
-        },
-        {
-            "source": "src/graph/cytoscape/graph_element_mapper.ts",
-            "target": "src/graph/cytoscape/use_cytoscape_renderer.ts",
-            "imports": [
-                "CyElements"
-            ]
-        },
-        {
-            "source": "src/graph/cytoscape/cytoscape_style.ts",
-            "target": "src/graph/cytoscape/use_cytoscape_renderer.ts",
-            "imports": [
-                "createCytoscapeStyle"
-            ]
-        },
-        {
-            "source": "cytoscape",
-            "target": "src/graph/cytoscape/use_graph_interaction.ts",
-            "imports": [
-                "Core",
-                "EventObject"
-            ]
-        },
-        {
-            "source": "src/definitions/types/graph_types.ts",
-            "target": "src/graph/cytoscape/use_graph_interaction.ts",
-            "imports": [
-                "NodeId",
-                "EdgeId",
-                "NodePosition"
-            ]
-        },
-        {
-            "source": "src/definitions/types/graph_types.ts",
-            "target": "src/graph/graph_persistence.ts",
-            "imports": [
-                "GraphData",
-                "GraphId"
-            ]
-        },
-        {
             "source": "pinia",
             "target": "src/graph/graph_store.ts",
             "imports": [
@@ -487,12 +415,66 @@
             ]
         },
         {
-            "source": "src/graph/graph_persistence.ts",
+            "source": "src/graph/utilities/graph_persistence.ts",
             "target": "src/graph/graph_store.ts",
             "imports": [
                 "saveGraph",
                 "loadGraph",
                 "deleteGraph"
+            ]
+        },
+        {
+            "source": "src/graph/utilities/operation_executor.ts",
+            "target": "src/graph/graph_store.ts",
+            "imports": [
+                "applyOperationToGraph",
+                "pushUndoSnapshot",
+                "shouldPushUndoSnapshot"
+            ]
+        },
+        {
+            "source": "src/graph/utilities/graph_utils.ts",
+            "target": "src/graph/graph_store.ts",
+            "imports": [
+                "normalizeGraph"
+            ]
+        },
+        {
+            "source": "src/definitions/types/graph_types.ts",
+            "target": "src/graph/utilities/graph_persistence.ts",
+            "imports": [
+                "GraphData",
+                "GraphId"
+            ]
+        },
+        {
+            "source": "src/definitions/types/graph_types.ts",
+            "target": "src/graph/utilities/graph_utils.ts",
+            "imports": [
+                "GraphData",
+                "NodeId"
+            ]
+        },
+        {
+            "source": "src/definitions/types/graph_types.ts",
+            "target": "src/graph/utilities/operation_executor.ts",
+            "imports": [
+                "GraphData"
+            ]
+        },
+        {
+            "source": "src/definitions/types/graph_operation_types.ts",
+            "target": "src/graph/utilities/operation_executor.ts",
+            "imports": [
+                "GraphOperation"
+            ]
+        },
+        {
+            "source": "src/graph/utilities/graph_utils.ts",
+            "target": "src/graph/utilities/operation_executor.ts",
+            "imports": [
+                "cleanGraphAfterDeleteNode",
+                "collectDependencyNodeIds"
             ]
         },
         {
@@ -561,6 +543,76 @@
             ]
         },
         {
+            "source": "src/definitions/types/graph_types.ts",
+            "target": "src/render/cytoscape/graph_element_mapper.ts",
+            "imports": [
+                "EdgeData",
+                "EdgeDirection",
+                "EdgeId",
+                "EdgeKind",
+                "EdgeViewRole",
+                "GraphData",
+                "NodeData",
+                "NodeId",
+                "NodeKind",
+                "NodePosition",
+                "NodeViewRole",
+                "RealNodeForm"
+            ]
+        },
+        {
+            "source": "cytoscape",
+            "target": "src/render/cytoscape/use_cytoscape_renderer.ts",
+            "imports": [
+                "default:cytoscape"
+            ]
+        },
+        {
+            "source": "cytoscape",
+            "target": "src/render/cytoscape/use_cytoscape_renderer.ts",
+            "imports": [
+                "Core"
+            ]
+        },
+        {
+            "source": "vue",
+            "target": "src/render/cytoscape/use_cytoscape_renderer.ts",
+            "imports": [
+                "Ref"
+            ]
+        },
+        {
+            "source": "src/render/cytoscape/graph_element_mapper.ts",
+            "target": "src/render/cytoscape/use_cytoscape_renderer.ts",
+            "imports": [
+                "CyElements"
+            ]
+        },
+        {
+            "source": "src/render/cytoscape/cytoscape_style.ts",
+            "target": "src/render/cytoscape/use_cytoscape_renderer.ts",
+            "imports": [
+                "createCytoscapeStyle"
+            ]
+        },
+        {
+            "source": "cytoscape",
+            "target": "src/render/cytoscape/use_graph_interaction.ts",
+            "imports": [
+                "Core",
+                "EventObject"
+            ]
+        },
+        {
+            "source": "src/definitions/types/graph_types.ts",
+            "target": "src/render/cytoscape/use_graph_interaction.ts",
+            "imports": [
+                "NodeId",
+                "EdgeId",
+                "NodePosition"
+            ]
+        },
+        {
             "source": "vue-router",
             "target": "src/router/index.ts",
             "imports": [
@@ -604,6 +656,7 @@
                 "NodeData",
                 "NodeId",
                 "EdgeId",
+                "GraphPosition",
                 "NodePosition"
             ]
         },
@@ -658,24 +711,10 @@
             ]
         },
         {
-            "source": "src/definitions/validators/operation_validator.ts",
-            "target": "src/ui/ui_store.ts",
-            "imports": [
-                "OperationValidator"
-            ]
-        },
-        {
             "source": "src/definitions/types/validation_types.ts",
             "target": "src/ui/ui_store.ts",
             "imports": [
                 "ValidationResult"
-            ]
-        },
-        {
-            "source": "src/graph/graph_store.ts",
-            "target": "src/ui/ui_store.ts",
-            "imports": [
-                "useGraphStore"
             ]
         },
         {
@@ -697,6 +736,13 @@
                 "NodeKind",
                 "EdgeKind",
                 "EdgeDirection"
+            ]
+        },
+        {
+            "source": "src/graph/graph_store.ts",
+            "target": "src/ui/ui_store.ts",
+            "imports": [
+                "useGraphStore"
             ]
         },
         {
