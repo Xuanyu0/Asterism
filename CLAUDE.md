@@ -131,6 +131,16 @@ src/
 2. **OperationToolbar Runtime** — 完善 Add Edge / Delete / Fold / Move
 3. **OperationController 收口** — 彻底封死 ui_store/draft_store 对外暴露
 
+**Phase 1 完成标志**：
+
+| # | 任务 | 可验证标志 |
+|---|------|----------|
+| 1 | NodeWindow Runtime | DraftNode 和 ExistingNode 共用同一个 `NodeWindow.vue` 组件；浮空窗确认后统一走 `update_node` operation |
+| 2 | OperationToolbar Runtime | 工具栏上的 add_edge / delete / fold / move 四种操作通过 `operation_controller` 发出 `GraphOperation`，不直接调 `graph_store` |
+| 3 | OperationController 收口 | `ui_store` 和 `draft_store` 不再被组件层之外的代码直接引用任何写操作；所有写入路径必经 `operation_controller` |
+
+**定性标准**：从 UI 事件到 GraphData 变更，中间每一条路径都经过单向数据流的完整链路，不存在任何短路。
+
 ### Phase 2：Graph Engine（架构核心层）
 
 将 `operation_executor.ts` / `graph_persistence.ts` / `graph_utils.ts` 抽离为独立模块：
