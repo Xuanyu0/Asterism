@@ -83,15 +83,19 @@ src/
 │   ├── rules/graph_rules.ts
 │   ├── types/                      # graph_types, ui_types, draft_types, ai_types 等
 │   └── validators/                 # operation_validator, graph_validator, rule_checkers
-├── graph/
-│   ├── graph_store.ts              # Pinia Store：GraphData 唯一事实源
-│   ├── graph_persistence.ts        # localStorage 持久化
+├── graph/                          # 数据层（GraphData SSOT）
+│   ├── graph_store.ts              # Pinia Store：对外唯一入口
+│   └── utilities/                  # 内部实现
+│       ├── graph_persistence.ts    # localStorage 持久化
+│       ├── operation_executor.ts   # Operation 执行器（纯函数）
+│       └── graph_utils.ts          # 图工具函数（纯函数）
+├── render/                         # 渲染层（Cytoscape 适配）
 │   └── cytoscape/
 │       ├── graph_element_mapper.ts # GraphData → CyElements 投影
 │       ├── cytoscape_style.ts      # Cytoscape 样式
 │       ├── use_cytoscape_renderer.ts # Cytoscape 生命周期 (mount/sync/destroy)
 │       └── use_graph_interaction.ts  # 交互事件 → 语义事件
-├── ui/
+├── ui/                             # UI 意图层
 │   ├── ui_store.ts                 # Pinia Store：UI 意图
 │   ├── draft_store.ts              # Pinia Store：草稿
 │   └── operation_controller.ts     # UI Runtime 编排器
@@ -111,29 +115,46 @@ src/
 
 ## 重要 Commit
 
+- `0ddcbaa` — refactor graph isolate store internals and extract render layer（拆分 graph 内部实现至 utilities/，分离 render/ 渲染层）
+- `8288b26` — cleanup frontend remove unused scaffold files and add coding conventions
 - `3755f74` — refactor-graph-isolate-cytoscape-runtime（已完成 Cytoscape 隔离）
-- `639358d` — refactor(graph): isolate cytoscape runtime layers
 
-## 下一阶段任务（按优先级）
+## 开发策略
+
+**Graph Engine 是整个项目的底层核心系统**，最终必须作为独立、框架无关的模块实现。当前前端的 `graph_store.ts` + `operation_executor.ts` 是其雏形，后续将抽离为独立引擎。
+
+## 开发阶段总览
+
+### Phase 1：前端 Runtime 完成（正在进行）
 
 1. **NodeWindow Runtime** — 统一 DraftNode 与 ExistingNode 编辑
 2. **OperationToolbar Runtime** — 完善 Add Edge / Delete / Fold / Move
 3. **OperationController 收口** — 彻底封死 ui_store/draft_store 对外暴露
 
-## 当前 MVP 阶段暂不启动
+### Phase 2：Graph Engine（架构核心层）
 
-以下属于后续阶段规划，MVP 阶段先聚焦前端 Runtime 本身：
+将 `operation_executor.ts` / `graph_persistence.ts` / `graph_utils.ts` 抽离为独立模块：
+- 框架无关（不依赖 Pinia / Vue）
+- 多图谱生命周期管理
+- 所有原子操作
+- 后端子进程、AI Runtime 可直接调用
 
-- AI Runtime (LangChain / LangGraph)
+### Phase 3：AI Runtime（MVP 后期，排在 Graph Engine 之后）
+
+- Compiler / Translator / Checker / Analyser Agent 信息流连通
+- 要求 Graph Engine 作为底层基础
+- 存储格式从 JSON 切换为 JSONB
+
+### MVP 阶段暂不启动
+
 - FastAPI 后端
 - Supabase 集成
 - Auto Save / IndexedDB
-- Add Edge / Delete / Fold MVP 交互层
-  （等 NodeWindow / OperationToolbar / OperationController 完成后再说）
+- 导航卡片、笔记库等高级 UI
 
 ## 设计文档
 
-- 完整设计文档：`E:\code\MyProject\MVP\设计文档\知识图谱设计.md`
+- 完整设计文档：`docs/知识图谱设计.md`
 
 ---
 
