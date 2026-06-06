@@ -84,7 +84,7 @@ export interface UIStoreState {
  */
 export const useUIStore = defineStore('ui_store', {
     state: (): UIStoreState => ({
-    interactionMode: 'cognition',
+    interactionMode: null,
     selectedCognitionAction: null,
     selectedOperationTool: null,
     pendingAddTarget: null,
@@ -299,6 +299,21 @@ export const useUIStore = defineStore('ui_store', {
         clearPendingDelete() {
             this.pendingDeleteNodeId = null
             this.pendingDeleteEdgeId = null
+        },
+
+        /**
+         * 功能：
+         *     退出当前模式，回到无模式默认状态。
+         *
+         * 规则：
+         *     1. 重置所有工具和子选择状态。
+         *     2. 将 interactionMode 置为 null。
+         *     3. 用于右键两级退出的第二层。
+         */
+        exitMode() {
+            this.resetOperationState()
+            this.selectedCognitionAction = null
+            this.interactionMode = null
         },
 
 

@@ -27,7 +27,7 @@
  */
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useUIStore } from '@/ui/ui_store'
+import { useOperationController } from '@/ui/operation_controller'
 
 import {
     createGoldenTestGraph,
@@ -193,18 +193,18 @@ function loadDeleteUndoGraph(): void {
  *     模拟用户进入 Add Real Node 流程。
  *
  * 规则：
- *     1. 只设置 UI Runtime 状态，不直接修改 GraphData。
+ *     1. 通过 operation_controller 设置 UI Runtime 状态，与正式 UI 交互路径一致。
  *
  * 使用：
  *     浏览器控制台输入 window.enterAddRealNodeMode()
  */
 function enterAddRealNodeMode(): void {
-    const uiStore = useUIStore()
+    const controller = useOperationController()
 
-    uiStore.setInteractionMode('operation')
-    uiStore.selectOperationTool('add')
-    uiStore.setAddTarget('node')
-    uiStore.selectNodeKind('real')
+    controller.enterOperationMode()
+    controller.selectOperationTool('add')
+    controller.selectAddTarget('node')
+    controller.selectAddNodeKind('real')
 
     console.log('✅ 已进入 Add Real Node 模式')
 }
@@ -214,12 +214,12 @@ function enterAddRealNodeMode(): void {
  *     模拟用户进入 Add Virtual Node 流程。
  */
 function enterAddVirtualNodeMode(): void {
-    const uiStore = useUIStore()
+    const controller = useOperationController()
 
-    uiStore.setInteractionMode('operation')
-    uiStore.selectOperationTool('add')
-    uiStore.setAddTarget('node')
-    uiStore.selectNodeKind('virtual')
+    controller.enterOperationMode()
+    controller.selectOperationTool('add')
+    controller.selectAddTarget('node')
+    controller.selectAddNodeKind('virtual')
 
     console.log('✅ 已进入 Add Virtual Node 模式')
 }
@@ -229,10 +229,10 @@ function enterAddVirtualNodeMode(): void {
  *     模拟用户进入 Delete 模式。
  */
 function enterDeleteMode(): void {
-    const uiStore = useUIStore()
+    const controller = useOperationController()
 
-    uiStore.setInteractionMode('operation')
-    uiStore.selectOperationTool('delete')
+    controller.enterOperationMode()
+    controller.selectOperationTool('delete')
 
     console.log('✅ 已进入 Delete 模式')
 }
@@ -242,10 +242,10 @@ function enterDeleteMode(): void {
  *     模拟用户进入 Fold 模式。
  */
 function enterFoldMode(): void {
-    const uiStore = useUIStore()
+    const controller = useOperationController()
 
-    uiStore.setInteractionMode('operation')
-    uiStore.selectOperationTool('fold')
+    controller.enterOperationMode()
+    controller.selectOperationTool('fold')
 
     console.log('✅ 已进入 Fold 模式')
 }

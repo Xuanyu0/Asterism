@@ -39,6 +39,7 @@ export interface GraphInteractionHandlers {
     onCanvasClicked?: (position: GraphCanvasPosition) => void
     onNodeClicked?: (nodeId: NodeId) => void
     onEdgeClicked?: (edgeId: EdgeId) => void
+    onRightClick?: () => void
 }
 
 /**
@@ -83,4 +84,7 @@ export function useGraphInteraction(
         }
     })
 
+    cy.on('cxttap', () => {
+        handlers.onRightClick?.()
+    })
 }

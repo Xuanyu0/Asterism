@@ -212,6 +212,67 @@ export function useOperationController() {
         uiStore.resetOperationState()
     }
 
+    /**
+     * 功能：
+     *     退出当前模式，回到无模式默认状态。
+     *
+     * 规则：
+     *     右键两级退出的第二层——清除模式本身。
+     */
+    function exitMode(): void {
+        uiStore.exitMode()
+    }
+
+    /**
+     * 功能：
+     *     进入 Arrangement 交互模式。
+     *
+     * 规则：
+     *     Phase 2 占位。当前模式下无激活工具。
+     */
+    function enterArrangementMode(): void {
+        uiStore.setInteractionMode('arrangement')
+    }
+
+    /**
+     * 功能：
+     *     处理画布区域右键点击。
+     *
+     * 规则：
+     *     两级退出：
+     *     1. 有激活工具 → 清工具，保留模式（第一层）。
+     *     2. 无激活工具 → 退出模式（第二层）。
+     */
+    function handleRightClick(): void {
+        const mode = uiStore.interactionMode
+
+        if (mode === null) {
+            return
+        }
+
+        if (mode === 'operation') {
+            if (uiStore.selectedOperationTool !== null) {
+                uiStore.resetOperationState()
+                return
+            }
+            uiStore.exitMode()
+            return
+        }
+
+        if (mode === 'cognition') {
+            if (uiStore.selectedCognitionAction !== null) {
+                uiStore.selectCognitionAction(null)
+                return
+            }
+            uiStore.exitMode()
+            return
+        }
+
+        if (mode === 'arrangement') {
+            uiStore.exitMode()
+        }
+    }
+
     // ====================================================================
     // Cognition 模式（Phase 2 / AI Runtime 实现，当前占位）
     // ====================================================================
@@ -794,12 +855,14 @@ export function useOperationController() {
         // --- Operation 模式 ---
         enterOperationMode,
         enterCognitionMode,
+        enterArrangementMode,
         selectOperationTool,
         selectAddTarget,
         selectAddNodeKind,
         selectAddEdgeKind,
         selectAddEdgeDirection,
         resetOperationTool,
+        exitMode,
 
         // --- Cognition 模式（占位） ---
         explore,
@@ -815,6 +878,7 @@ export function useOperationController() {
         handleCanvasClicked,
         handleNodeClicked,
         handleEdgeClicked,
+        handleRightClick,
 
         // --- DraftNode 生命周期 ---
         updateDraftNode,

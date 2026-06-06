@@ -1,5 +1,5 @@
 <template>
-    <div class="relative h-screen w-screen bg-slate-50">
+    <div class="relative h-screen w-screen bg-slate-50" @contextmenu.prevent>
         <!--
             功能：
                 Cytoscape 真正挂载的 DOM 容器。
@@ -12,10 +12,8 @@
         <div
             ref="cyContainer"
             class="h-full w-full"
-            :class="{
-                'delete-mode': operationController.uiStore.interactionMode === 'operation' && operationController.uiStore.selectedOperationTool === 'delete',
-                'fold-mode': operationController.uiStore.interactionMode === 'operation' && operationController.uiStore.selectedOperationTool === 'fold',
-            }"
+            :class="containerClasses"
+            @contextmenu.prevent
         ></div>
 
         <!--
@@ -74,7 +72,7 @@
  *     App.vue 直接挂载本组件。
  */
 
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { mapGraphDataToCyElements } from '@/render/cytoscape/graph_element_mapper.ts'
@@ -90,6 +88,24 @@ const cyContainer = ref<HTMLDivElement | null>(null)
 const graphStore = useGraphStore()
 const renderer = useCytoscapeRenderer(cyContainer)
 const operationController = useOperationController()
+
+const containerClasses = computed(() => {
+    const s = operationController.uiStore
+    return {
+        'delete-mode': s.interactionMode === 'operation' && s.selectedOperationTool === 'delete',
+        'fold-mode': s.interactionMode === 'operation' && s.selectedOperationTool === 'fold',
+        'add-node-ready': s.interactionMode === 'operation'
+            && s.selectedOperationTool === 'add'
+            && s.pendingAddTarget === 'node'
+            && s.pendingAddNode.kind !== null,
+        'add-edge-ready': s.interactionMode === 'operation'
+            && s.selectedOperationTool === 'add'
+            && s.pendingAddTarget === 'edge'
+            && s.pendingAddEdge.kind !== null
+            && s.pendingAddEdge.direction !== null
+            && s.pendingAddEdge.sourceNodeId !== null,
+    }
+})
 
 onMounted(() => {
     renderer.mount()
@@ -118,6 +134,10 @@ onMounted(() => {
                 operationController.handleEdgeClicked({
                     edgeId,
                 })
+            },
+
+            onRightClick() {
+                operationController.handleRightClick()
             },
         })
     }
@@ -232,5 +252,13 @@ onBeforeUnmount(() => {
 
 .fold-mode {
     cursor: pointer;
+}
+
+.add-node-ready {
+    cursor: crosshair;
+}
+
+.add-edge-ready {
+    cursor: cell;
 }
 </style>
