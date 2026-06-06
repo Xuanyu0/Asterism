@@ -34,6 +34,7 @@ export function validateNodeLabel(node: NodeData): ValidationIssue[] {
 }
 
 export function validateNodeSummary(node: NodeData): ValidationIssue[] {
+    if (node.role !== 'knowledge') return [] // 引用节点无 summary 属性
     if ((node.summary ?? '').length <= DEFAULT_GRAPH_RULES.summaryMaxLength) return []
     return [{
         level: 'error',
@@ -68,6 +69,7 @@ export function validateSelfLoop(edge: EdgeData): ValidationIssue[] {
 
 export function validateDuplicateEdge(graph: GraphData, edge: EdgeData): ValidationIssue[] {
     const hasDuplicate = graph.edges.some(existingEdge => {
+        if (existingEdge.id === edge.id) return false // 排除自身
         const same = existingEdge.source === edge.source && existingEdge.target === edge.target
         const opposite = existingEdge.source === edge.target && existingEdge.target === edge.source
         return same || opposite
@@ -88,6 +90,7 @@ export function validateVirtualNodeEdgeRule(graph: GraphData, edge: EdgeData): V
     const sourceNode = nodeMap.get(edge.source)
     const targetNode = nodeMap.get(edge.target)
     if (!sourceNode || !targetNode) return issues
+    if (sourceNode.role !== 'knowledge' || targetNode.role !== 'knowledge') return issues
     if (sourceNode.kind !== 'virtual' && targetNode.kind !== 'virtual') return issues
 
     if (edge.kind !== 'virtual' || edge.direction !== 'undirected') {
@@ -105,7 +108,7 @@ export function validateVirtualNodeEdgeRule(graph: GraphData, edge: EdgeData): V
         return related.reduce((sum, e) => {
             const otherId = e.source === nodeId ? e.target : e.source
             const otherNode = nodeMap.get(otherId)
-            return sum + ((otherNode?.kind === 'virtual') ? 1 : 0)
+            return sum + ((otherNode?.role === 'knowledge' && otherNode.kind === 'virtual') ? 1 : 0)
         }, 0)
     }
 

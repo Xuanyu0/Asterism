@@ -9,7 +9,14 @@
                 2. h-full / w-full 继承父容器尺寸。
                 3. 本节点只给 Cytoscape 使用，不放业务逻辑。
         -->
-        <div ref="cyContainer" class="h-full w-full"></div>
+        <div
+            ref="cyContainer"
+            class="h-full w-full"
+            :class="{
+                'delete-mode': operationController.uiStore.interactionMode === 'operation' && operationController.uiStore.selectedOperationTool === 'delete',
+                'fold-mode': operationController.uiStore.interactionMode === 'operation' && operationController.uiStore.selectedOperationTool === 'fold',
+            }"
+        ></div>
 
         <!--
             功能：
@@ -112,13 +119,6 @@ onMounted(() => {
                     edgeId,
                 })
             },
-
-            onNodeDragEnded(nodeId, position) {
-                operationController.handleNodeDragEnded({
-                    nodeId,
-                    position,
-                })
-            },
         })
     }
 })
@@ -150,7 +150,87 @@ watch(
     },
 )
 
+/**
+ * 功能：
+ *     监听待定删除节点 ID 变化，施加/清除 Cytoscape 视觉高亮。
+ *
+ * 前端机制（Vue 3 框架行为）：
+ *     - watch 在依赖变化后的下一个微任务中执行回调。
+ *       因为 graphStore.applyOperation() 同步更新 currentGraph，
+ *       而 currentGraph watcher 先于本 watcher 注册（源码顺序），
+ *       所以 syncElements 中的 cy.json() 先执行（覆盖元素），
+ *       随后本 watcher 再尝试给已被 cy.json 覆盖的新元素加 class。
+ *       C++ 类比：析构顺序由注册顺序决定，但这里是调度顺序——Vue 按注册顺序 flush。
+ *
+ * 规则：
+ *     1. cy.json() 调用后 Cytoscape 元素 id 不变时可安全二次 addClass。
+ *     2. 目标元素可能已被删除（删除确认后清空 pendingDelete），需判空。
+ */
+watch(
+    () => operationController.uiStore.pendingDeleteNodeId,
+    (nodeId, prevNodeId) => {
+        const cy = renderer.getInstance()
+        if (!cy) {
+            return
+        }
+
+        // 移除上一个目标的高亮
+        if (prevNodeId) {
+            const prevTarget = cy.getElementById(prevNodeId)
+            if (prevTarget.length > 0) {
+                prevTarget.removeClass('delete-target')
+            }
+        }
+
+        // 施加新目标的高亮
+        if (nodeId) {
+            const target = cy.getElementById(nodeId)
+            if (target.length > 0) {
+                target.addClass('delete-target')
+            }
+        }
+    },
+)
+
+/**
+ * 功能：
+ *     监听待定删除边 ID 变化，施加/清除 Cytoscape 视觉高亮。
+ */
+watch(
+    () => operationController.uiStore.pendingDeleteEdgeId,
+    (edgeId, prevEdgeId) => {
+        const cy = renderer.getInstance()
+        if (!cy) {
+            return
+        }
+
+        if (prevEdgeId) {
+            const prevTarget = cy.getElementById(prevEdgeId)
+            if (prevTarget.length > 0) {
+                prevTarget.removeClass('delete-target')
+            }
+        }
+
+        if (edgeId) {
+            const target = cy.getElementById(edgeId)
+            if (target.length > 0) {
+                target.addClass('delete-target')
+            }
+        }
+    },
+)
+
 onBeforeUnmount(() => {
     renderer.destroy()
 })
 </script>
+
+<style scoped>
+.delete-mode {
+    cursor: pointer;
+}
+
+.fold-mode {
+    cursor: pointer;
+}
+</style>

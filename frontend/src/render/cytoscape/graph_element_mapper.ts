@@ -23,9 +23,10 @@ import type {
     GraphData,
     NodeData,
     NodeId,
-    NodeKind,
     NodePosition,
-    NodeViewRole,
+    NodeRole,
+    KnowledgeNodeKind,
+    ReferenceNodeKind,
     RealNodeForm,
 } from '@/definitions/types/graph_types'
 
@@ -40,9 +41,10 @@ import type {
 export interface CyNodeData {
     id: NodeId
     label: string
-    kind: NodeKind
-    form?: RealNodeForm
-    viewRole: NodeViewRole
+    role: NodeRole // 第一层判别：知识本体 / 引用投影
+    kind?: KnowledgeNodeKind // 仅知识节点
+    form?: RealNodeForm // 仅知识节点
+    referenceKind?: ReferenceNodeKind // 仅引用节点
     degree: number
     abstractionLevel: number
 }
@@ -117,11 +119,17 @@ export interface CyElements {
  *     2. 不修改节点数据。
  */
 export function getNodeClasses(node: NodeData): string[] {
-    return [
-        `node-${node.kind}`,
-        node.form ? `node-${node.form}` : '',
-        `view-${node.viewRole}`,
-    ].filter((className) => className.length > 0)
+    const classes: string[] = []
+
+    if (node.role === 'knowledge') {
+        classes.push(`node-${node.kind}`)
+        if (node.form) classes.push(`node-${node.form}`)
+    } else {
+        classes.push('node-reference')
+        classes.push(`ref-${node.referenceKind}`)
+    }
+
+    return classes
 }
 
 /**
@@ -164,17 +172,24 @@ export function getFoldedNodeIds(graph: GraphData): Set<NodeId> {
  *     2. position 允许作为普通值传入，但不能由 Cytoscape 反向直接修改 GraphData。
  */
 function mapNodeToCyElement(node: NodeData): CyNodeElement {
+    const data: CyNodeData = {
+        id: node.id,
+        label: node.label,
+        role: node.role,
+        degree: node.degree,
+        abstractionLevel: node.abstractionLevel,
+    }
+
+    if (node.role === 'knowledge') {
+        data.kind = node.kind
+        data.form = node.form
+    } else {
+        data.referenceKind = node.referenceKind
+    }
+
     return {
         group: 'nodes',
-        data: {
-            id: node.id,
-            label: node.label,
-            kind: node.kind,
-            form: node.form,
-            viewRole: node.viewRole,
-            degree: node.degree,
-            abstractionLevel: node.abstractionLevel,
-        },
+        data,
         position: node.position,
         classes: getNodeClasses(node),
     }

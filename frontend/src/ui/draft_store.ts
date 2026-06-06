@@ -18,7 +18,7 @@
 
 import { defineStore } from 'pinia'
 import type { DraftEdge, DraftNode } from '@/definitions/types/draft_types'
-import type { NodeKind } from '@/definitions/types/graph_types'
+import type { KnowledgeNodeKind } from '@/definitions/types/graph_types'
 
 /**
  * 功能：
@@ -56,7 +56,7 @@ export const useDraftStore = defineStore('draft_store', {
          *     而不是直接构造 DraftNode。
          */
         createDraftNode(
-            kind: NodeKind,
+            kind: KnowledgeNodeKind,
             x: number,
             y: number
         ): void {

@@ -12,7 +12,7 @@
  */
 
 import type { Core, EventObject } from 'cytoscape'
-import type { NodeId, EdgeId, NodePosition } from '@/definitions/types/graph_types'
+import type { NodeId, EdgeId } from '@/definitions/types/graph_types'
 
 /**
  * 功能：
@@ -22,8 +22,9 @@ import type { NodeId, EdgeId, NodePosition } from '@/definitions/types/graph_typ
  *     1. 坐标来自 Cytoscape renderedPosition。
  *     2. 后续是否写入 GraphData 由 operation_controller 决定。
  */
-export interface GraphCanvasPosition extends NodePosition {
-
+export interface GraphCanvasPosition {
+    x: number
+    y: number
 }
 
 /**
@@ -38,7 +39,6 @@ export interface GraphInteractionHandlers {
     onCanvasClicked?: (position: GraphCanvasPosition) => void
     onNodeClicked?: (nodeId: NodeId) => void
     onEdgeClicked?: (edgeId: EdgeId) => void
-    onNodeDragEnded?: (nodeId: NodeId, position: NodePosition) => void
 }
 
 /**
@@ -83,16 +83,4 @@ export function useGraphInteraction(
         }
     })
 
-    cy.on('dragfree', 'node', (event: EventObject) => {
-        const node = event.target
-        const position = node.position()
-
-        handlers.onNodeDragEnded?.(
-            node.id() as NodeId,
-            {
-                x: position.x,
-                y: position.y,
-            },
-        )
-    })
 }

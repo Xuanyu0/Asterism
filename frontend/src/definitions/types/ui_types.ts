@@ -24,7 +24,7 @@
 import type {
     EdgeDirection,
     EdgeKind,
-    NodeKind,
+    KnowledgeNodeKind,
     NodeId,
 } from '@/definitions/types/graph_types'
 
@@ -74,7 +74,6 @@ export type CognitionAction =
 export type OperationTool =
     | 'add'
     | 'delete'
-    | 'move'
     | 'fold'
 
 /**
@@ -100,7 +99,7 @@ export type AddTarget =
  *     3. 节点草稿在 label 未补全前不应该写入 GraphData。
  */
 export interface PendingAddNodeState {
-    kind: NodeKind | null    // 当前准备添加的节点类型
+    kind: KnowledgeNodeKind | null    // 当前准备添加的节点类型
 }
 
 /**

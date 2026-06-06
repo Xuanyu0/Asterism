@@ -1,29 +1,40 @@
-
 /**
  * 功能：
  *     统一接收图交互语义事件，并将用户意图转换为 Draft 或 GraphOperation。
+ *     三种交互模式（Cognition / Operation / Arrangement）的统一编排入口。
  *
  * 总体结构：
- *     1. handleCanvasClicked()
- *     2. handleNodeClicked()
- *     3. handleEdgeClicked()
- *     4. handleNodeDragEnded()
- *     5. updateDraftNode()
- *     6. confirmDraftNode()
- *     7. cancelDraftNode()
+ *     1. 语义事件 Payload 定义
+ *     2. ID 生成 helper
+ *     3. useOperationController()：
+ *        - Operation 模式：工具栏切换、Add/Delete/Fold 流程
+ *        - Cognition 模式（占位）：explore / discover / deconstruct / induce / internalize
+ *        - Arrangement 模式（占位）：move / adjust / 布局操作
+ *        - 通用：交互事件处理（handleCanvasClicked / handleNodeClicked / handleEdgeClicked）
+ *        - 通用：DraftNode 生命周期
+ *        - 通用：浮空窗编辑已有节点/边
+ *
+ * GraphEngine 铺垫：
+ *     本文件是 Phase 2 GraphEngine 的前端适配层雏形。
+ *     当前 operation_executor / operation_validator / graph_utils 已是纯函数/静态类，
+ *     不依赖 Vue/Pinia。Phase 2 只需将 graph_store + 纯函数层 + 类型抽离为独立引擎，
+ *     本 controller 退化为薄适配层。
  *
  * 外部如何使用：
- *     KnowledgeGraph.vue 与 NodeWindow.vue 调用本文件完成 UI Runtime 编排。
+ *     KnowledgeGraph.vue、NodeWindow.vue、OperationToolbar.vue 调用本文件。
  */
 
 import type {
+    EdgeData,
     NodeData,
     NodeId,
     EdgeId,
-    GraphPosition,
-    NodePosition
+    GraphPosition
 } from '@/definitions/types/graph_types'
 import type { DraftNode } from '@/definitions/types/draft_types'
+import type { OperationTool, AddTarget } from '@/definitions/types/ui_types'
+import type { EdgeKind, EdgeDirection } from '@/definitions/types/graph_types'
+import type { KnowledgeNodeKind } from '@/definitions/types/graph_types'
 import { useGraphStore } from '@/graph/graph_store'
 import { useUIStore } from '@/ui/ui_store'
 import { useDraftStore } from '@/ui/draft_store'
@@ -66,19 +77,6 @@ export interface EdgeClickedPayload {
 
 /**
  * 功能：
- *     节点拖动结束语义事件。
- *
- * 规则：
- *     1. 只有拖动结束后才写回 GraphData。
- *     2. 拖动过程中的 Cytoscape 临时位置不作为事实源。
- */
-export interface NodeDragEndedPayload {
-    nodeId: NodeId
-    position: NodePosition
-}
-
-/**
- * 功能：
  *     创建节点 id。
  *
  * 规则：
@@ -91,18 +89,207 @@ function createNodeId(): NodeId {
 
 /**
  * 功能：
- *     提供 UI 操作控制器。
+ *     创建边 id。
+ *
+ * 规则：
+ *     1. MVP 阶段使用前端临时 id。
+ *     2. 后续可替换为统一 id runtime。
+ */
+function createEdgeId(): EdgeId {
+    return `edge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` as EdgeId
+}
+
+/**
+ * 功能：
+ *     提供 UI 操作控制器——三种交互模式的统一编排入口。
  *
  * 规则：
  *     1. 可以读取 ui_store 与 draft_store。
  *     2. 可以调用 graph_store.applyOperation()。
  *     3. 禁止直接修改 GraphData。
  *     4. 禁止操作 Cytoscape 实例。
+ *     5. 所有 GraphData 写入路径必须经过本文件的公开方法。
+ *
+ * 使用：
+ *     const controller = useOperationController()
+ *     controller.enterOperationMode()
+ *     controller.handleNodeClicked({ nodeId: '...' })
  */
 export function useOperationController() {
     const graphStore = useGraphStore()
     const uiStore = useUIStore()
     const draftStore = useDraftStore()
+
+    // ====================================================================
+    // Operation 模式 —— 工具栏切换
+    // ====================================================================
+
+    /**
+     * 功能：
+     *     切换到 Operation 交互模式。
+     *
+     * 规则：
+     *     1. 与 Cognition 模式互斥。
+     *     2. 重置 Cognition 相关状态。
+     */
+    function enterOperationMode(): void {
+        uiStore.setInteractionMode('operation')
+    }
+
+    /**
+     * 功能：
+     *     切换到 Cognition 交互模式。
+     *
+     * 规则：
+     *     1. 与 Operation 模式互斥。
+     *     2. 重置 Operation 相关状态。
+     */
+    function enterCognitionMode(): void {
+        uiStore.setInteractionMode('cognition')
+    }
+
+    /**
+     * 功能：
+     *     选择 Operation 模式下的工具。
+     *
+     * 规则：
+     *     1. null 表示取消选择，回到默认相机模式。
+     *     2. 切换工具时重置上一工具的待定状态。
+     */
+    function selectOperationTool(tool: OperationTool | null): void {
+        uiStore.selectOperationTool(tool)
+    }
+
+    /**
+     * 功能：
+     *     设置 Add 工具下的二级目标（node / edge）。
+     *
+     * 规则：
+     *     1. 切换目标时重置待定添加状态。
+     */
+    function selectAddTarget(target: AddTarget | null): void {
+        uiStore.setAddTarget(target)
+    }
+
+    /**
+     * 功能：
+     *     选择准备添加的节点类型。
+     *
+     * 规则：
+     *     1. 设置后用户下一次点击空白画布进入 DraftNode 流程。
+     */
+    function selectAddNodeKind(kind: KnowledgeNodeKind | null): void {
+        uiStore.selectNodeKind(kind)
+    }
+
+    /**
+     * 功能：
+     *     选择准备添加的边本体类型（实边 / 虚边）。
+     *
+     * 规则：
+     *     1. 修改边类型时重置边方向与起点。
+     */
+    function selectAddEdgeKind(kind: EdgeKind | null): void {
+        uiStore.selectEdgeKind(kind)
+    }
+
+    /**
+     * 功能：
+     *     选择准备添加的边方向（有向 / 无向）。
+     *
+     * 规则：
+     *     1. 修改方向时重置起始节点。
+     */
+    function selectAddEdgeDirection(direction: EdgeDirection | null): void {
+        uiStore.selectEdgeDirection(direction)
+    }
+
+    /**
+     * 功能：
+     *     重置当前 Operation 工具状态，回到默认模式。
+     */
+    function resetOperationTool(): void {
+        uiStore.resetOperationState()
+    }
+
+    // ====================================================================
+    // Cognition 模式（Phase 2 / AI Runtime 实现，当前占位）
+    // ====================================================================
+
+    /**
+     * 功能：
+     *     探索——开始新一轮学习。
+     *
+     * 规则：
+     *     1. Phase 2 GraphEngine + AI Runtime 实现。
+     */
+    function explore(): void {
+        // TODO: Phase 2 — AI Runtime 单轮学习入口
+    }
+
+    /**
+     * 功能：
+     *     发掘——对虚节点或无向虚边开启学习。
+     *
+     * 规则：
+     *     1. Phase 2 GraphEngine + AI Runtime 实现。
+     */
+    function discover(_targetNodeId?: NodeId, _targetEdgeId?: EdgeId): void {
+        // TODO: Phase 2 — AI Runtime 发掘入口
+    }
+
+    /**
+     * 功能：
+     *     解构——单个实节点抽象并建立子图。
+     *
+     * 规则：
+     *     1. Phase 2 GraphEngine 实现。
+     */
+    function deconstruct(_nodeId: NodeId): void {
+        // TODO: Phase 2 — GraphEngine 子图创建
+    }
+
+    /**
+     * 功能：
+     *     归纳——多个节点聚合为抽象节点。
+     *
+     * 规则：
+     *     1. Phase 2 GraphEngine 实现。
+     */
+    function induce(_nodeIds: NodeId[]): void {
+        // TODO: Phase 2 — GraphEngine 归纳操作
+    }
+
+    /**
+     * 功能：
+     *     内化/常识化——转移节点至常识层。
+     *
+     * 规则：
+     *     1. Phase 2 GraphEngine 实现。
+     */
+    function internalize(_nodeIds: NodeId[]): void {
+        // TODO: Phase 2 — GraphEngine 常识层转移
+    }
+
+    // ====================================================================
+    // Arrangement 模式（Phase 2 实现，当前占位）
+    // ====================================================================
+
+    /**
+     * 功能：
+     *     单节点移动。
+     *
+     * 规则：
+     *     1. Phase 2 Arrangement 模式实现。
+     *     2. 当前 Operation 模式不提供单节点 Move（已迁移至 Arrangement）。
+     */
+    function moveNode(_nodeId: NodeId, _position: { x: number; y: number }): void {
+        // TODO: Phase 2 — Arrangement 模式单点移动
+    }
+
+    // ====================================================================
+    // 通用：交互事件处理
+    // ====================================================================
 
     /**
      * 功能：
@@ -111,10 +298,17 @@ export function useOperationController() {
      * 规则：
      *     1. 仅在 Operation / Add / Node / kind 已确定时创建 DraftNode。
      *     2. 不直接创建正式 NodeData。
+     *     3. 在 Delete 模式下，点击空白画布清除待定删除目标。
      */
     function handleCanvasClicked(
         payload: CanvasClickedPayload,
     ): void {
+        // Delete 模式下点击空白画布 → 取消删除目标
+        if (uiStore.interactionMode === 'operation' && uiStore.selectedOperationTool === 'delete') {
+            uiStore.clearPendingDelete()
+            return
+        }
+
         if (uiStore.interactionMode !== 'operation') {
             return
         }
@@ -140,49 +334,77 @@ export function useOperationController() {
 
     /**
      * 功能：
-     *     处理节点点击。
+     *     处理节点点击——根据当前 UI 状态上下文感知分派。
      *
      * 规则：
-     *     1. 当前 MVP 先同步 GraphStore 选中状态。
-     *     2. 后续 NodeWindow 可基于选中节点打开。
+     *     1. 默认模式（无激活工具）→ 打开节点编辑浮空窗。
+     *     2. Add + Edge 模式 → Add Edge 流程（第一次点击选 source，第二次点击创建边）。
+     *     3. Delete 模式 → 删除节点。
+     *     4. Fold 模式 → toggle 依赖折叠/展开。
      */
     function handleNodeClicked(
         payload: NodeClickedPayload,
     ): void {
-        graphStore.selectNode(payload.nodeId)
+        const mode = uiStore.interactionMode
+        const tool = uiStore.selectedOperationTool
+
+        console.log('[handleNodeClicked]', { mode, tool, nodeId: payload.nodeId })
+
+        // 默认行为：打开浮空窗编辑已有节点
+        if (mode !== 'operation' || !tool) {
+            console.log('[handleNodeClicked] → 默认：打开浮空窗')
+            const node = graphStore.currentGraph?.nodes.find(n => n.id === payload.nodeId)
+            if (node) {
+                uiStore.openFloatingWindow(node)
+            }
+            return
+        }
+
+        switch (tool) {
+            case 'add': {
+                handleAddEdgeNodeClick(payload.nodeId)
+                break
+            }
+
+            case 'delete': {
+                console.log('[handleNodeClicked] → delete 分支')
+                handleDeleteNodeClick(payload.nodeId)
+                break
+            }
+
+            case 'fold': {
+                handleFoldToggle(payload.nodeId)
+                break
+            }
+        }
     }
 
     /**
      * 功能：
-     *     处理边点击。
+     *     处理边点击——根据当前 UI 状态上下文感知分派。
      *
      * 规则：
-     *     1. 当前 MVP 先同步 GraphStore 选中状态。
-     *     2. 后续 EdgeWindow 可基于选中边打开。
+     *     1. Delete 模式 → 删除边。
+     *     2. 默认模式 → 打开边编辑浮空窗。
      */
     function handleEdgeClicked(
         payload: EdgeClickedPayload,
     ): void {
-        graphStore.selectEdge(payload.edgeId)
+        if (uiStore.interactionMode === 'operation' && uiStore.selectedOperationTool === 'delete') {
+            handleDeleteEdgeClick(payload.edgeId)
+            return
+        }
+
+        // 默认行为：打开浮空窗编辑已有边
+        const edge = graphStore.currentGraph?.edges.find(e => e.id === payload.edgeId)
+        if (edge) {
+            uiStore.openFloatingWindow(edge)
+        }
     }
 
-    /**
-     * 功能：
-     *     处理节点拖动结束。
-     *
-     * 规则：
-     *     1. 拖动结束后通过 move_node Operation 写回 GraphData。
-     *     2. GraphData.position 是唯一位置事实源。
-     */
-    function handleNodeDragEnded(
-        payload: NodeDragEndedPayload,
-    ): void {
-        graphStore.applyOperation({
-            type: 'move_node',
-            nodeId: payload.nodeId,
-            position: payload.position,
-        })
-    }
+    // ====================================================================
+    // 通用：DraftNode 生命周期
+    // ====================================================================
 
     /**
      * 功能：
@@ -236,11 +458,11 @@ export function useOperationController() {
         }
 
         const node: NodeData = {
+            role: 'knowledge',
             id: createNodeId(),
             graphId: graphStore.currentGraph.id,
             kind: draftNode.kind,
-            form: draftNode.kind === 'real' ? 'normal' : undefined,
-            viewRole: 'normal',
+            form: draftNode.kind === 'real' ? 'atomic' : undefined,
             label,
             summary: draftNode.summary.trim(),
             abstractionLevel: 0,
@@ -263,13 +485,352 @@ export function useOperationController() {
         }
     }
 
+    // ====================================================================
+    // 通用：浮空窗编辑已有节点/边
+    // ====================================================================
+
+    /**
+     * 功能：
+     *     确认已有节点编辑，转换为 update_node Operation。
+     *
+     * 规则：
+     *     1. 浮空窗确认后统一走 update_node operation。
+     *     2. 校验通过后关闭浮空窗。
+     */
+    function confirmExistingNodeEdit(node: NodeData): void {
+        if (!graphStore.currentGraph) {
+            return
+        }
+
+        const result = graphStore.applyOperation({
+            type: 'update_node',
+            node,
+        })
+
+        uiStore.lastOperationValidation = result
+
+        if (result.valid) {
+            uiStore.closeFloatingWindow()
+        }
+    }
+
+    /**
+     * 功能：
+     *     确认已有边编辑，转换为 update_edge Operation。
+     *
+     * 规则：
+     *     1. 浮空窗确认后统一走 update_edge operation。
+     *     2. 校验通过后关闭浮空窗。
+     */
+    function confirmExistingEdgeEdit(edge: EdgeData): void {
+        if (!graphStore.currentGraph) {
+            return
+        }
+
+        const result = graphStore.applyOperation({
+            type: 'update_edge',
+            edge,
+        })
+
+        uiStore.lastOperationValidation = result
+
+        if (result.valid) {
+            uiStore.closeFloatingWindow()
+        }
+    }
+
+    /**
+     * 功能：
+     *     关闭浮空窗并清理校验结果。
+     *
+     * 规则：
+     *     1. 不影响 GraphData。
+     *     2. 不取消 DraftNode。
+     */
+    function closeFloatingWindow(): void {
+        uiStore.closeFloatingWindow()
+    }
+
+    // ====================================================================
+    // 通用：Delete 两步确认流程
+    // ====================================================================
+
+    /**
+     * 功能：
+     *     确认执行待定删除操作。
+     *
+     * 规则：
+     *     1. 必须在存在待定删除目标时调用。
+     *     2. 执行后自动清除待定状态。
+     */
+    function confirmDelete(): void {
+        console.log('[delete] confirmDelete 调用', {
+            pendingDeleteNodeId: uiStore.pendingDeleteNodeId,
+            pendingDeleteEdgeId: uiStore.pendingDeleteEdgeId,
+        })
+
+        if (uiStore.pendingDeleteNodeId) {
+            console.log('[delete] → 执行 executeDeleteNode')
+            executeDeleteNode(uiStore.pendingDeleteNodeId)
+            uiStore.clearPendingDelete()
+        } else if (uiStore.pendingDeleteEdgeId) {
+            console.log('[delete] → 执行 executeDeleteEdge')
+            executeDeleteEdge(uiStore.pendingDeleteEdgeId)
+            uiStore.clearPendingDelete()
+        } else {
+            console.log('[delete] ❌ pendingDelete 为 null，不做任何事')
+        }
+    }
+
+    /**
+     * 功能：
+     *     取消待定删除操作。
+     */
+    function cancelDelete(): void {
+        uiStore.clearPendingDelete()
+    }
+
+    // ====================================================================
+    // 内部 helper
+    // ====================================================================
+
+    /**
+     * 功能：
+     *     处理 Delete 模式下的节点点击——两步确认。
+     *
+     * 规则：
+     *     1. 首次点击：标记为待定删除目标。
+     *     2. 再次点击同一节点：确认删除。
+     *     3. 点击不同节点：切换待定目标到新节点。
+     */
+    function handleDeleteNodeClick(nodeId: NodeId): void {
+        const currentNodeId = uiStore.pendingDeleteNodeId
+
+        console.log('[delete] handleDeleteNodeClick', { nodeId, currentNodeId })
+
+        if (currentNodeId === nodeId) {
+            console.log('[delete] 第二次点击同一节点 → 直接确认删除')
+            executeDeleteNode(nodeId)
+            uiStore.clearPendingDelete()
+            return
+        }
+
+        console.log('[delete] 标记待定删除节点')
+        uiStore.setPendingDeleteNode(nodeId)
+    }
+
+    /**
+     * 功能：
+     *     处理 Delete 模式下的边点击——两步确认。
+     *
+     * 规则：
+     *     1. 首次点击：标记为待定删除目标。
+     *     2. 再次点击同一条边：确认删除。
+     *     3. 点击不同边：切换待定目标到新边。
+     */
+    function handleDeleteEdgeClick(edgeId: EdgeId): void {
+        const currentEdgeId = uiStore.pendingDeleteEdgeId
+
+        console.log('[delete] handleDeleteEdgeClick', { edgeId, currentEdgeId })
+
+        if (currentEdgeId === edgeId) {
+            console.log('[delete] 第二次点击同一条边 → 直接确认删除')
+            executeDeleteEdge(edgeId)
+            uiStore.clearPendingDelete()
+            return
+        }
+
+        console.log('[delete] 标记待定删除边')
+        uiStore.setPendingDeleteEdge(edgeId)
+    }
+
+    /**
+     * 功能：
+     *     执行节点删除。
+     *
+     * 规则：
+     *     1. 执行前关闭可能正在编辑该节点的浮空窗。
+     *     2. 不调用 confirm()——调用方已在确认流程中。
+     */
+    function executeDeleteNode(nodeId: NodeId): void {
+        console.log('[delete] executeDeleteNode', {
+            nodeId,
+            currentGraphExists: !!graphStore.currentGraph,
+            nodeCount: graphStore.currentGraph?.nodes.length,
+        })
+
+        const floatingData = uiStore.floatingWindowData
+        if (floatingData && 'id' in floatingData && floatingData.id === nodeId) {
+            uiStore.closeFloatingWindow()
+        }
+
+        const result = graphStore.applyOperation({
+            type: 'delete_node',
+            nodeId,
+        })
+
+        console.log('[delete] applyOperation 返回', result)
+
+        uiStore.lastOperationValidation = result
+    }
+
+    /**
+     * 功能：
+     *     执行边删除。
+     *
+     * 规则：
+     *     1. 执行前关闭可能正在编辑该边的浮空窗。
+     *     2. 不调用 confirm()——调用方已在确认流程中。
+     */
+    function executeDeleteEdge(edgeId: EdgeId): void {
+        console.log('[delete] executeDeleteEdge', {
+            edgeId,
+            currentGraphExists: !!graphStore.currentGraph,
+            edgeCount: graphStore.currentGraph?.edges.length,
+        })
+
+        const floatingData = uiStore.floatingWindowData
+        if (floatingData && 'id' in floatingData && floatingData.id === edgeId) {
+            uiStore.closeFloatingWindow()
+        }
+
+        const result = graphStore.applyOperation({
+            type: 'delete_edge',
+            edgeId,
+        })
+
+        console.log('[delete] applyOperation 返回', result)
+
+        uiStore.lastOperationValidation = result
+    }
+
+    /**
+     * 功能：
+     *     处理 Add Edge 流程中的节点点击。
+     *
+     * 规则：
+     *     1. 只在 pendingAddTarget === 'edge' 且 kind/direction 已选定时生效。
+     *     2. 第一次点击记录 sourceNodeId。
+     *     3. 第二次点击构造 EdgeData 并提 add_edge Operation。
+     */
+    function handleAddEdgeNodeClick(nodeId: NodeId): void {
+        if (uiStore.pendingAddTarget !== 'edge') {
+            return
+        }
+
+        const edgeKind = uiStore.pendingAddEdge.kind
+        const edgeDirection = uiStore.pendingAddEdge.direction
+
+        if (!edgeKind || !edgeDirection) {
+            return
+        }
+
+        if (!uiStore.pendingAddEdge.sourceNodeId) {
+            // 第一次点击：设置起点
+            uiStore.pendingAddEdge.sourceNodeId = nodeId
+            return
+        }
+
+        // 第二次点击：创建边
+        if (!graphStore.currentGraph) {
+            return
+        }
+
+        const edge: EdgeData = {
+            id: createEdgeId(),
+            graphId: graphStore.currentGraph.id,
+            source: uiStore.pendingAddEdge.sourceNodeId,
+            target: nodeId,
+            kind: edgeKind,
+            direction: edgeDirection,
+            viewRole: 'normal',
+            label: '',
+        }
+
+        const result = graphStore.applyOperation({
+            type: 'add_edge',
+            edge,
+        })
+
+        uiStore.lastOperationValidation = result
+
+        if (result.valid) {
+            uiStore.resetPendingEdge()
+        }
+    }
+
+    /**
+     * 功能：
+     *     处理 Fold/Expand toggle。
+     *
+     * 规则：
+     *     1. 检查目标节点是否已被折叠。
+     *     2. 已折叠 → expand_dependency。
+     *     3. 未折叠 → collapse_dependency。
+     */
+    function handleFoldToggle(nodeId: NodeId): void {
+        const foldedDeps = graphStore.currentGraph?.cognitiveState?.foldedDependencies ?? []
+        const isFolded = foldedDeps.some(f => f.targetNodeId === nodeId)
+
+        if (isFolded) {
+            graphStore.applyOperation({
+                type: 'expand_dependency',
+                targetNodeId: nodeId,
+            })
+        } else {
+            graphStore.applyOperation({
+                type: 'collapse_dependency',
+
+                targetNodeId: nodeId,
+            })
+        }
+    }
+
+    // ====================================================================
+    // 公开 API
+    // ====================================================================
+
     return {
+        // --- Operation 模式 ---
+        enterOperationMode,
+        enterCognitionMode,
+        selectOperationTool,
+        selectAddTarget,
+        selectAddNodeKind,
+        selectAddEdgeKind,
+        selectAddEdgeDirection,
+        resetOperationTool,
+
+        // --- Cognition 模式（占位） ---
+        explore,
+        discover,
+        deconstruct,
+        induce,
+        internalize,
+
+        // --- Arrangement 模式（占位） ---
+        moveNode,
+
+        // --- 交互事件处理 ---
         handleCanvasClicked,
         handleNodeClicked,
         handleEdgeClicked,
-        handleNodeDragEnded,
+
+        // --- DraftNode 生命周期 ---
         updateDraftNode,
         cancelDraftNode,
         confirmDraftNode,
+
+        // --- Delete 两步确认 ---
+        confirmDelete,
+        cancelDelete,
+
+        // --- 浮空窗编辑 ---
+        confirmExistingNodeEdit,
+        confirmExistingEdgeEdit,
+        closeFloatingWindow,
+
+        // --- UI 状态只读访问（供 Toolbar / NodeWindow 读取） ---
+        uiStore,
     }
 }

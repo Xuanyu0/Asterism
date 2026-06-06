@@ -9,9 +9,9 @@ export const mockGraph: GraphData = {
         {
             id: 'node-limit',
             graphId: 'graph-main',
+            role: 'knowledge',
             kind: 'real',
-            form: 'normal',
-            viewRole: 'normal',
+            form: 'atomic',
             label: '极限',
             summary: '函数变化趋势的描述',
             abstractionLevel: 0,
@@ -21,9 +21,9 @@ export const mockGraph: GraphData = {
         {
             id: 'node-derivative',
             graphId: 'graph-main',
+            role: 'knowledge',
             kind: 'real',
-            form: 'normal',
-            viewRole: 'normal',
+            form: 'atomic',
             label: '导数',
             summary: '函数局部变化率',
             abstractionLevel: 0,
@@ -33,8 +33,8 @@ export const mockGraph: GraphData = {
         {
             id: 'node-integral',
             graphId: 'graph-main',
+            role: 'knowledge',
             kind: 'virtual',
-            viewRole: 'normal',
             label: '积分',
             abstractionLevel: 0,
             degree: 1,

@@ -14,7 +14,7 @@
 import type {
     EdgeDirection,
     EdgeKind,
-    NodeKind,
+    KnowledgeNodeKind,
     NodeId,
 } from '@/definitions/types/graph_types'
 
@@ -28,7 +28,7 @@ import type {
  *     3. 关闭浮空窗后自动销毁。
  */
 export interface DraftNode {
-    kind: NodeKind
+    kind: KnowledgeNodeKind
 
     x: number
 

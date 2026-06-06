@@ -9,7 +9,7 @@
  * 2. selectedCognitionAction / selectedOperationTool: 当前选中的操作
  * 3. pendingAddNode / pendingAddEdge: 待定添加状态
  * 4. floatingWindowData: 浮空窗显示的节点/边数据
- * 5. applyFloatingWindowChanges(): 用户确认浮空窗修改，经 graph_store.applyOperation() 执行
+ * 5. lastOperationValidation: 最近一次操作校验结果（由 operation_controller 写入）
  *
  * 外部使用方式：
  * import { useUIStore } from '@/ui/ui_store'
@@ -19,8 +19,7 @@
 
 import { defineStore } from 'pinia'
 
-import type { GraphOperation } from '@/definitions/types/graph_operation_types'
-import type { NodeData, EdgeData } from '@/definitions/types/graph_types'
+import type { NodeData, EdgeData, NodeId, EdgeId } from '@/definitions/types/graph_types'
 import type { ValidationResult } from '@/definitions/types/validation_types'
 
 import type {
@@ -33,12 +32,10 @@ import type {
 } from '@/definitions/types/ui_types'
 
 import type {
-    NodeKind,
+    KnowledgeNodeKind,
     EdgeKind,
     EdgeDirection,
 } from '@/definitions/types/graph_types'
-
-import { useGraphStore } from '@/graph/graph_store'
 
 
 
@@ -61,6 +58,8 @@ export interface UIStoreState {
     pendingAddEdge: PendingAddEdgeState
     floatingWindowData: NodeData | EdgeData | null
     lastOperationValidation: ValidationResult | null
+    pendingDeleteNodeId: NodeId | null
+    pendingDeleteEdgeId: EdgeId | null
 }
 
 
@@ -99,6 +98,8 @@ export const useUIStore = defineStore('ui_store', {
     },
     floatingWindowData: null,
     lastOperationValidation: null,
+    pendingDeleteNodeId: null,
+    pendingDeleteEdgeId: null,
     }),
 
     actions: {
@@ -122,6 +123,9 @@ export const useUIStore = defineStore('ui_store', {
             this.pendingAddEdge.kind = null
             this.pendingAddEdge.direction = null
             this.pendingAddEdge.sourceNodeId = null
+
+            this.pendingDeleteNodeId = null
+            this.pendingDeleteEdgeId = null
         },
 
 
@@ -132,6 +136,17 @@ export const useUIStore = defineStore('ui_store', {
 
         selectOperationTool(tool: OperationTool | null) {
             this.selectedOperationTool = tool
+
+            // 切换工具时清理上一工具可能残留的边起点选择
+            if (tool !== 'add') {
+                this.pendingAddEdge.sourceNodeId = null
+            }
+
+            // 切换工具时清理待定删除目标
+            if (tool !== 'delete') {
+                this.pendingDeleteNodeId = null
+                this.pendingDeleteEdgeId = null
+            }
         },
 
         /**
@@ -173,6 +188,9 @@ export const useUIStore = defineStore('ui_store', {
             this.pendingAddEdge.kind = null
             this.pendingAddEdge.direction = null
             this.pendingAddEdge.sourceNodeId = null
+
+            this.pendingDeleteNodeId = null
+            this.pendingDeleteEdgeId = null
         },
 
 
@@ -187,35 +205,6 @@ export const useUIStore = defineStore('ui_store', {
 
         /**
          * 功能：
-         *     用户在浮空窗修改节点/边后点击确认，经 graph_store.applyOperation() 执行。
-         *
-         * 规则：
-         *     1. 校验和执行全部交给 graph_store.applyOperation()。
-         *     2. 校验通过后自动关闭浮空窗。
-         *     3. 本函数不直接修改 GraphData。
-         *
-         * 使用：
-         *     NodeWindow.vue 中调用。
-         */
-        applyFloatingWindowChanges(operation: GraphOperation) {
-            const graphStore = useGraphStore()
-
-            if (!graphStore.currentGraph) {
-                return
-            }
-
-            const result = graphStore.applyOperation(operation)
-            this.lastOperationValidation = result
-
-            if (result.valid) {
-                this.closeFloatingWindow()
-            }
-
-            return result
-        },
-
-        /**
-         * 功能：
          *     设置当前准备添加的节点类型。
          *
          * 规则：
@@ -223,7 +212,7 @@ export const useUIStore = defineStore('ui_store', {
          *     2. 设置后表示用户已经完成节点类型选择。
          */
         selectNodeKind(
-            kind: NodeKind | null
+            kind: KnowledgeNodeKind | null
         ) {
             this.pendingAddNode.kind = kind
         },
@@ -277,6 +266,40 @@ export const useUIStore = defineStore('ui_store', {
             this.pendingAddEdge.sourceNodeId = null
         },
 
+        /**
+         * 功能：
+         *     标记待定删除的节点。
+         *
+         * 规则：
+         *     1. 与 pendingDeleteEdgeId 互斥。
+         *     2. 供两步删除确认流程使用。
+         */
+        setPendingDeleteNode(nodeId: NodeId) {
+            this.pendingDeleteNodeId = nodeId
+            this.pendingDeleteEdgeId = null
+        },
+
+        /**
+         * 功能：
+         *     标记待定删除的边。
+         *
+         * 规则：
+         *     1. 与 pendingDeleteNodeId 互斥。
+         *     2. 供两步删除确认流程使用。
+         */
+        setPendingDeleteEdge(edgeId: EdgeId) {
+            this.pendingDeleteEdgeId = edgeId
+            this.pendingDeleteNodeId = null
+        },
+
+        /**
+         * 功能：
+         *     清除所有待定删除状态。
+         */
+        clearPendingDelete() {
+            this.pendingDeleteNodeId = null
+            this.pendingDeleteEdgeId = null
+        },
 
 
     },

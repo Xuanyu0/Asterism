@@ -34,9 +34,6 @@
             "id": "src/ui/draft_store.ts"
         },
         {
-            "id": "src/ui/ui_store.ts"
-        },
-        {
             "id": "src/definitions/types/graph_types.ts"
         },
         {
@@ -71,6 +68,9 @@
         },
         {
             "id": "src/mock/golden_graph.ts"
+        },
+        {
+            "id": "src/ui/ui_store.ts"
         },
         {
             "id": "pinia"
@@ -210,10 +210,18 @@
             ]
         },
         {
-            "source": "src/ui/ui_store.ts",
+            "source": "src/definitions/types/graph_types.ts",
+            "target": "src/components/graph/NodeWindow.vue",
+            "imports": [
+                "NodeData",
+                "EdgeData"
+            ]
+        },
+        {
+            "source": "src/ui/operation_controller.ts",
             "target": "src/components/graph/OperationToolbar.vue",
             "imports": [
-                "useUIStore"
+                "useOperationController"
             ]
         },
         {
@@ -608,8 +616,7 @@
             "target": "src/render/cytoscape/use_graph_interaction.ts",
             "imports": [
                 "NodeId",
-                "EdgeId",
-                "NodePosition"
+                "EdgeId"
             ]
         },
         {
@@ -653,11 +660,11 @@
             "source": "src/definitions/types/graph_types.ts",
             "target": "src/ui/operation_controller.ts",
             "imports": [
+                "EdgeData",
                 "NodeData",
                 "NodeId",
                 "EdgeId",
-                "GraphPosition",
-                "NodePosition"
+                "GraphPosition"
             ]
         },
         {
@@ -665,6 +672,29 @@
             "target": "src/ui/operation_controller.ts",
             "imports": [
                 "DraftNode"
+            ]
+        },
+        {
+            "source": "src/definitions/types/ui_types.ts",
+            "target": "src/ui/operation_controller.ts",
+            "imports": [
+                "OperationTool",
+                "AddTarget"
+            ]
+        },
+        {
+            "source": "src/definitions/types/graph_types.ts",
+            "target": "src/ui/operation_controller.ts",
+            "imports": [
+                "EdgeKind",
+                "EdgeDirection"
+            ]
+        },
+        {
+            "source": "src/definitions/types/graph_types.ts",
+            "target": "src/ui/operation_controller.ts",
+            "imports": [
+                "NodeKind"
             ]
         },
         {
@@ -693,13 +723,6 @@
             "target": "src/ui/ui_store.ts",
             "imports": [
                 "defineStore"
-            ]
-        },
-        {
-            "source": "src/definitions/types/graph_operation_types.ts",
-            "target": "src/ui/ui_store.ts",
-            "imports": [
-                "GraphOperation"
             ]
         },
         {
@@ -736,13 +759,6 @@
                 "NodeKind",
                 "EdgeKind",
                 "EdgeDirection"
-            ]
-        },
-        {
-            "source": "src/graph/graph_store.ts",
-            "target": "src/ui/ui_store.ts",
-            "imports": [
-                "useGraphStore"
             ]
         },
         {

@@ -96,7 +96,12 @@ export function shouldPushUndoSnapshot(operation: GraphOperation): boolean {
  *     graph_store.applyOperation() 内部调用。
  */
 export function pushUndoSnapshot(undoStack: GraphData[], graph: GraphData): GraphData[] {
-    const snapshot = structuredClone(graph)
+    // JSON 序列化而非 structuredClone：
+    // graph_store 传入的 currentGraph 是 Pinia reactive proxy，
+    // structuredClone 无法克隆包含内部符号的代理对象（抛出 DataCloneError）。
+    // GraphData 本身仅含 JSON 可序列化字段（经 localStorage 持久化验证），
+    // JSON 往返不会丢失数据。
+    const snapshot: GraphData = JSON.parse(JSON.stringify(graph))
 
     return [...undoStack, snapshot].slice(-MAX_UNDO_STACK_SIZE)
 }
@@ -112,25 +117,68 @@ function privateApplyAddNode(graph: GraphData, operation: Extract<GraphOperation
 }
 
 function privateApplyAddEdge(graph: GraphData, operation: Extract<GraphOperation, { type: 'add_edge' }>): GraphData {
+    const { source, target } = operation.edge
+
     return {
         ...graph,
+        nodes: graph.nodes.map(node => {
+            if (node.id === source || node.id === target) {
+                return { ...node, degree: node.degree + 1 }
+            }
+
+            return node
+        }),
         edges: [...graph.edges, operation.edge],
         updatedAt: new Date().toISOString(),
     }
 }
 
 function privateApplyDeleteNode(graph: GraphData, operation: Extract<GraphOperation, { type: 'delete_node' }>): GraphData {
+    const deletedEdges = graph.edges.filter(
+        edge => edge.source === operation.nodeId || edge.target === operation.nodeId,
+    )
+
+    // 统计每个相邻节点因本次删除失去的边数
+    const degreeLoss = new Map<string, number>()
+    for (const edge of deletedEdges) {
+        if (edge.source !== operation.nodeId) {
+            degreeLoss.set(edge.source, (degreeLoss.get(edge.source) ?? 0) + 1)
+        }
+        if (edge.target !== operation.nodeId) {
+            degreeLoss.set(edge.target, (degreeLoss.get(edge.target) ?? 0) + 1)
+        }
+    }
+
     return cleanGraphAfterDeleteNode({
         ...graph,
-        nodes: graph.nodes.filter(node => node.id !== operation.nodeId),
+        nodes: graph.nodes
+            .filter(node => node.id !== operation.nodeId)
+            .map(node => {
+                const loss = degreeLoss.get(node.id) ?? 0
+
+                if (loss > 0) {
+                    return { ...node, degree: Math.max(0, node.degree - loss) }
+                }
+
+                return node
+            }),
         edges: graph.edges.filter(edge => edge.source !== operation.nodeId && edge.target !== operation.nodeId),
         updatedAt: new Date().toISOString(),
     }, operation.nodeId)
 }
 
 function privateApplyDeleteEdge(graph: GraphData, operation: Extract<GraphOperation, { type: 'delete_edge' }>): GraphData {
+    const deletedEdge = graph.edges.find(edge => edge.id === operation.edgeId)
+
     return {
         ...graph,
+        nodes: graph.nodes.map(node => {
+            if (deletedEdge && (node.id === deletedEdge.source || node.id === deletedEdge.target)) {
+                return { ...node, degree: Math.max(0, node.degree - 1) }
+            }
+
+            return node
+        }),
         edges: graph.edges.filter(edge => edge.id !== operation.edgeId),
         updatedAt: new Date().toISOString(),
     }
