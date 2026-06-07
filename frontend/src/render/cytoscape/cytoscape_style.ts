@@ -22,32 +22,29 @@
  */
 export function createCytoscapeStyle() {
     return [
-        // --- 节点基础 ---
+        // 节点基础
         {
             selector: 'node',
             style: {
-                'background-color': '#666',
+                'background-color': '#f0f0f0',
+                'border-color': '#3d3d3d',
                 'border-width': 2,
                 label: 'data(label)',
             },
         },
-        // 实节点：实线边框
         {
             selector: 'node.node-real',
             style: {
-                'border-color': '#475569',
                 'border-style': 'solid',
             },
         },
-        // 虚节点：虚线边框
         {
             selector: 'node.node-virtual',
             style: {
-                'border-color': '#94a3b8',
                 'border-style': 'dashed',
             },
         },
-        // --- 边基础 ---
+        // 边基础
         {
             selector: 'edge',
             style: {
@@ -56,21 +53,18 @@ export function createCytoscapeStyle() {
                 'curve-style': 'bezier',
             },
         },
-        // 实边：实线
         {
             selector: 'edge.edge-real',
             style: {
                 'line-style': 'solid',
             },
         },
-        // 虚边：虚线
         {
             selector: 'edge.edge-virtual',
             style: {
                 'line-style': 'dashed',
             },
         },
-        // 有向边：箭头
         {
             selector: 'edge.edge-directed',
             style: {
@@ -78,21 +72,20 @@ export function createCytoscapeStyle() {
                 'target-arrow-shape': 'triangle',
             },
         },
-        // 无向边：无箭头
         {
             selector: 'edge.edge-undirected',
             style: {
                 'target-arrow-shape': 'none',
             },
         },
-        // 沟通节点：半透明
+        // 沟通节点
         {
             selector: 'node.ref-communication',
             style: {
                 'opacity': 0.5,
             },
         },
-        // --- 删除目标高亮 ---
+        // 删除目标高亮
         {
             selector: '.delete-target',
             style: {

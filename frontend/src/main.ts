@@ -2,8 +2,8 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
-import { initTestRuntime } from '@/dev/test_runtime'
-import { exposeTestRuntimeToWindow } from './dev/test_runtime'
+import { initTestRuntime, exposeTestRuntimeToWindow } from '@/dev/test_runtime'
+import { registerTestMachine } from '@/dev/test_evaluation_machine'
 
 
 import './assets/main.css'
@@ -16,5 +16,6 @@ initTestRuntime()    // Pinia 挂载后再运行测试
 app.use(router)    // 再挂载路由
 
 exposeTestRuntimeToWindow()    // 暴露开发期测试函数到浏览器控制台
+registerTestMachine()    // 注册自动化验收测试机
 
 app.mount('#app')    // 挂载应用
