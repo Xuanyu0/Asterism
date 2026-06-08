@@ -118,6 +118,8 @@ src/
 - `0ddcbaa` — refactor graph isolate store internals and extract render layer（拆分 graph 内部实现至 utilities/，分离 render/ 渲染层）
 - `8288b26` — cleanup frontend remove unused scaffold files and add coding conventions
 - `3755f74` — refactor-graph-isolate-cytoscape-runtime（已完成 Cytoscape 隔离）
+- `57f5cc6` — refactor graph types add role discriminated union for node identity（NodeRole 第一层判别，Phase 1 类型收口）
+- `f1d9649` — refactor ui interaction add right-extending column toolbar and two-level right-click exit（Phase 1 收尾）
 
 ## 开发策略
 
@@ -125,7 +127,7 @@ src/
 
 ## 开发阶段总览
 
-### Phase 1：前端 Runtime 完成（正在进行）
+### Phase 1：前端 Runtime 完成 ✅
 
 1. **NodeWindow Runtime** — 统一 DraftNode 与 ExistingNode 编辑
 2. **OperationToolbar Runtime** — 完善 Add Edge / Delete / Fold
@@ -246,27 +248,47 @@ export interface XXX { }
 允许：文件头 / 接口 / 函数注释。
 禁止：变量注释、逐行注释、解释代码行为的废话注释。
 
-## 八、状态定义规范
+## 八、跨文件意图注释（禁止内部注释的唯一例外）
+
+如果某段代码的存在是为了解决**外部文件的代码**产生的问题（而非本文件内部的逻辑需要），必须在代码块内用注释注明意图。
+
+```ts
+// 清理 fold 状态中对该节点的引用。
+// delete_node 必须同步折叠状态，否则后续渲染会引用不存在的节点 ID 而报错。
+// 这属于 delete_node 完整语义的一部分，不是副作用。
+```
+
+判断标准：
+
+| 场景 | 加不加 |
+|------|--------|
+| 本文件内 A 函数调 B 函数 | ❌ 不加 |
+| execute.ts 的 delete_node 清理 cognitiveState（跨操作耦合） | ✅ 加 |
+| compose/cognitive 函数内自己校验输入 | ❌ 不加 |
+| execute.ts 更新节点度数（本文件内纯逻辑） | ❌ 不加 |
+
+## 九、状态定义规范
+
 
 状态字段名表达规则，禁用 `a: any` 式定义。
 
-## 九、Store 设计规范
+## 十、Store 设计规范
 
 Store = 状态 + 动作。不负责 UI 渲染 / DOM 操作 / Cytoscape 操作。
 
-## 十、注释层级
+## 十一、注释层级
 
 文件 → 接口 → 函数，三层封顶。禁止更深层注释。
 
-## 十一、空行规范
+## 十二、空行规范
 
 逻辑块之间可空行分隔（如 actions 之间），禁止连续大量空行。
 
-## 十二、命令行规范
+## 十三、命令行规范
 
 命令前写说明注释。
 
-## 十三、Git 提交格式
+## 十四、Git 提交格式
 
 **动词 + 模块 + 目的**（空格分隔）：
 ```
@@ -275,15 +297,15 @@ refactor ui runtime state machine
 fix validator smoke test type guards
 ```
 
-## 十四、回答/协作规范
+## 十五、回答/协作规范
 
 说明为什么做 → 说明设计规则 → 给出代码 → 给出命令。保留原精神，适配 Claude Code 的直接文件操作模式。
 
-## 十五、GraphData 唯一事实源（项目基石）
+## 十六、GraphData 唯一事实源（项目基石）
 
 所有 GraphData 修改必须经过 `graph_store.applyOperation()`。
 
-## 十六、Import 组织规范
+## 十七、Import 组织规范
 
 强制分组 + 空行分隔，顺序如下：
 ```ts
@@ -308,11 +330,11 @@ import NodeWindow from './graph/NodeWindow.vue'
 - `type` import 和普通 import 可以混在同一组
 - 组内按路径字母序
 
-## 十七、Vue 组件命名
+## 十八、Vue 组件命名
 
 `.vue` 文件统一 **PascalCase**（与 Vue 生态一致），`.ts` 业务文件保持 **snake_case**。
 
-## 十八、前端特有机制注释规范
+## 十九、前端特有机制注释规范
 
 **原则**：对于依赖 Vue / TypeScript / 前端框架特有行为（非通用编程范式）的代码，必须在注释中说明机制，帮助熟悉 C++ 但不熟悉前端的开发者理解"魔法"。
 
