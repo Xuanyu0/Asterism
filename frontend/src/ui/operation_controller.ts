@@ -757,7 +757,6 @@ export function useOperationController() {
                 target: nodeId,
                 kind: edgeKind,
                 direction: edgeDirection,
-                viewRole: 'normal',
                 label: '',
             }
 

@@ -198,7 +198,6 @@ function testOperationExecutor(): TestSuite {
             target: 'b' as NodeId,
             kind: 'real',
             direction: 'directed',
-            viewRole: 'normal',
             label: '边',
         }
         const next = applyOperationToGraph(graph, { type: 'add_edge', edge })
@@ -244,7 +243,7 @@ function testOperationExecutor(): TestSuite {
                 id: 'a-b' as EdgeId, graphId: G,
                 source: 'a' as NodeId, target: 'b' as NodeId,
                 kind: 'real', direction: 'directed',
-                viewRole: 'normal', label: '',
+                label: '',
             },
         })
         const next = applyOperationToGraph(withEdge, { type: 'delete_node', nodeId: 'a' as NodeId })
@@ -270,7 +269,7 @@ function testOperationExecutor(): TestSuite {
                 id: 'a-b' as EdgeId, graphId: G,
                 source: 'a' as NodeId, target: 'b' as NodeId,
                 kind: 'real', direction: 'directed',
-                viewRole: 'normal', label: '',
+                label: '',
             },
         })
         const next = applyOperationToGraph(withEdge, { type: 'delete_edge', edgeId: 'a-b' as EdgeId })
@@ -317,7 +316,7 @@ function testOperationExecutor(): TestSuite {
                 id: 'a-b' as EdgeId, graphId: G,
                 source: 'a' as NodeId, target: 'b' as NodeId,
                 kind: 'real', direction: 'directed',
-                viewRole: 'normal', label: '',
+                label: '',
             },
         })
         const updatedEdge: EdgeData = {

@@ -49,7 +49,6 @@ export const mockGraph: GraphData = {
             target: 'node-derivative',
             kind: 'real',
             direction: 'directed',
-            viewRole: 'normal',
             label: '前置',
         },
 
@@ -60,7 +59,6 @@ export const mockGraph: GraphData = {
             target: 'node-integral',
             kind: 'virtual',
             direction: 'undirected',
-            viewRole: 'normal',
             label: '相关',
         },
     ],

@@ -97,7 +97,6 @@ export const goldenGraph: GraphData = {
             target: 'node-2',
             kind: 'real',
             direction: 'directed',
-            viewRole: 'normal',
             label: '有向边1->2',
         },
         // 有向实边
@@ -108,7 +107,6 @@ export const goldenGraph: GraphData = {
             target: 'node-3',
             kind: 'real',
             direction: 'directed',
-            viewRole: 'normal',
             label: '有向边2->3',
         },
         // 无向虚边
@@ -119,10 +117,11 @@ export const goldenGraph: GraphData = {
             target: 'node-6',
             kind: 'virtual',
             direction: 'undirected',
-            viewRole: 'normal',
             label: '虚边4-6',
         },
-        // 沟通边（引用 edge-1-2）
+        // 边连接 communication 节点 node-5 → node-2。
+        // 沟通边的视觉样式（半悬空/淡化）由渲染层根据
+        // 端点节点是否为 communication 节点推导得出。
         {
             id: 'edge-5-2',
             graphId: 'graph-golden',
@@ -130,10 +129,7 @@ export const goldenGraph: GraphData = {
             target: 'node-2',
             kind: 'real',
             direction: 'directed',
-            viewRole: 'communication',
             label: '沟通边5->2',
-            sourceGraphId: 'graph-golden',
-            sourceEdgeId: 'edge-1-2',
         },
     ],
 }

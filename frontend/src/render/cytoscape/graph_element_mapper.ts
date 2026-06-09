@@ -19,7 +19,6 @@ import type {
     EdgeDirection,
     EdgeId,
     EdgeKind,
-    EdgeViewRole,
     GraphData,
     NodeData,
     NodeId,
@@ -64,7 +63,6 @@ export interface CyEdgeData {
     label?: string
     kind: EdgeKind
     direction: EdgeDirection
-    viewRole: EdgeViewRole
 }
 
 /**
@@ -141,10 +139,14 @@ export function getNodeClasses(node: NodeData): string[] {
  *     2. 不修改边数据。
  */
 export function getEdgeClasses(edge: EdgeData): string[] {
+    // 沟通边的视觉样式（一端半悬空/淡化）不由 viewRole 字段驱动，
+    // 而是渲染层根据端点节点类型推导：
+    // 若 edge.source 或 edge.target 对应的节点为 communication 节点，
+    // 渲染层为该边添加 edge-communication-{source,target} class。
+    // 当前此视觉效果尚未实现，后续在渲染层独立处理。
     return [
         `edge-${edge.kind}`,
         `edge-${edge.direction}`,
-        `view-${edge.viewRole}`,
     ].filter((className) => className.length > 0)
 }
 
@@ -213,7 +215,6 @@ function mapEdgeToCyElement(edge: EdgeData): CyEdgeElement {
             label: edge.label,
             kind: edge.kind,
             direction: edge.direction,
-            viewRole: edge.viewRole,
         },
         classes: getEdgeClasses(edge),
     }

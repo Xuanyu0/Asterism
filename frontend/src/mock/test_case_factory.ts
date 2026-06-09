@@ -28,7 +28,6 @@ import type {
     EdgeDirection,
     EdgeId,
     EdgeKind,
-    EdgeViewRole,
     GraphData,
     GraphId,
     GraphKind,
@@ -116,8 +115,9 @@ export function createNode(overrides: {
  *     创建带默认值的合法边。只填传入字段，其余使用默认值。
  *
  * 规则：
- *     1. viewRole 默认 'normal'。
- *     2. label 默认空字符串。
+ *     1. label 默认空字符串。
+ *     2. 沟通边的视觉样式由渲染层根据端点节点类型推导，
+ *        不需要边层面的 viewRole / sourceGraphId / sourceEdgeId 字段。
  */
 export function createEdge(overrides: {
     id: EdgeId
@@ -127,9 +127,6 @@ export function createEdge(overrides: {
     kind: EdgeKind
     direction: EdgeDirection
     label?: string
-    viewRole?: EdgeViewRole
-    sourceGraphId?: GraphId
-    sourceEdgeId?: EdgeId
 }): EdgeData {
     return {
         id: overrides.id,
@@ -138,10 +135,7 @@ export function createEdge(overrides: {
         target: overrides.target,
         kind: overrides.kind,
         direction: overrides.direction,
-        viewRole: overrides.viewRole ?? 'normal',
         label: overrides.label ?? '',
-        sourceGraphId: overrides.sourceGraphId,
-        sourceEdgeId: overrides.sourceEdgeId,
     }
 }
 
@@ -386,10 +380,10 @@ export function createAbstractNodeTestGraph(graphId: GraphId = G): GraphData {
  *
  * 拓扑：
  *     模拟父图中的一个节点被投影到"子图"中的沟通节点：
- *       comm-0 (viewRole='communication', sourceGraphId, sourceNodeId) → real-node
+ *       comm-0 (communication 节点, sourceGraphId, sourceNodeId) → real-node
  *
  * 用途：
- *     测试沟通节点的渲染（半透明）、沟通边的 sourceGraphId/sourceEdgeId
+ *     测试沟通节点的渲染（半透明）、沟通边由端点节点类型推导视觉样式
  */
 export function createCommunicationTestGraph(graphId: GraphId = G): GraphData {
     const parentGraphId = 'graph-parent' as GraphId
@@ -409,6 +403,9 @@ export function createCommunicationTestGraph(graphId: GraphId = G): GraphData {
     ]
 
     const edges: EdgeData[] = [
+        // 边连接 communication 节点 → 实节点。
+        // 沟通边的视觉样式（半悬空/淡化）由渲染层根据
+        // 端点节点是否为 communication 节点推导得出。
         createEdge({
             id: 'comm-edge' as EdgeId,
             graphId,
@@ -416,10 +413,7 @@ export function createCommunicationTestGraph(graphId: GraphId = G): GraphData {
             target: 'comm-real' as NodeId,
             kind: 'real',
             direction: 'directed',
-            viewRole: 'communication',
             label: '沟通边',
-            sourceGraphId: parentGraphId,
-            sourceEdgeId: 'src-edge' as EdgeId,
         }),
     ]
 
@@ -471,14 +465,14 @@ export function createDeleteUndoTestGraph(graphId: GraphId = G): GraphData {
  *       node-2：普通实节点（degree 3，DAG 中枢）
  *       node-3：抽象实节点（abstractionLevel=1, childGraphId）
  *       node-4：虚节点（连接无向虚边到 node-6）
- *       node-5：沟通节点（viewRole='communication'）
+ *       node-5：沟通节点（communication）
  *       node-6：普通实节点
  *
  *     边：
  *       edge-1-2：有向实边 (1→2)
  *       edge-2-3：有向实边 (2→3)
  *       edge-4-6：无向虚边 (4-·-6)
- *       edge-5-2：沟通边 (5→2, viewRole='communication')
+ *       edge-5-2：边连接 communication 节点 (5→2)
  *
  * 用途：
  *     冒烟测试，覆盖所有已实现的节点/边类型和交互操作。
@@ -520,13 +514,11 @@ export function createGoldenTestGraph(graphId: GraphId = 'graph-golden' as Graph
         }),
     ]
 
-    const parentGraphId = 'graph-golden' as GraphId
-
     const edges: EdgeData[] = [
         createEdge({ id: 'edge-1-2' as EdgeId, graphId, source: 'node-1' as NodeId, target: 'node-2' as NodeId, kind: 'real', direction: 'directed', label: '有向边1→2' }),
         createEdge({ id: 'edge-2-3' as EdgeId, graphId, source: 'node-2' as NodeId, target: 'node-3' as NodeId, kind: 'real', direction: 'directed', label: '有向边2→3' }),
         createEdge({ id: 'edge-4-6' as EdgeId, graphId, source: 'node-4' as NodeId, target: 'node-6' as NodeId, kind: 'virtual', direction: 'undirected', label: '虚边4-6' }),
-        createEdge({ id: 'edge-5-2' as EdgeId, graphId, source: 'node-5' as NodeId, target: 'node-2' as NodeId, kind: 'real', direction: 'directed', viewRole: 'communication', label: '沟通边5→2', sourceGraphId: parentGraphId, sourceEdgeId: 'edge-1-2' as EdgeId }),
+        createEdge({ id: 'edge-5-2' as EdgeId, graphId, source: 'node-5' as NodeId, target: 'node-2' as NodeId, kind: 'real', direction: 'directed', label: '沟通边5→2' }),
     ]
 
     return assembleGraph({
@@ -542,12 +534,13 @@ export function createGoldenTestGraph(graphId: GraphId = 'graph-golden' as Graph
 // P2 拓扑生成器（占位） ═══════════════════════════════════════════════
 /**
  * 功能（Phase 2）：
- *     为抽象节点创建子图，自动生成沟通节点与沟通边。
+ *     为抽象节点创建子图，自动生成沟通节点及连接边。
  *
  * 规则：
  *     1. 子图必须关联父图的抽象节点（ownerNodeId）。
- *     2. 自动为子图中引用的父图节点创建沟通节点（viewRole='communication'）。
- *     3. 自动为沟通节点创建沟通边连接子图内部节点。
+ *     2. 自动为子图中引用的父图节点创建沟通节点（communication）。
+ *     3. 自动为沟通节点创建连接边，连接子图内部节点。
+ *        边的视觉样式（半悬空/淡化）由渲染层根据端点节点类型推导。
  *     4. 父图的 parentGraphId 与 ownerNodeId 关联关系由调用方保证。
  */
 export function createSubgraphFromAbstract(
