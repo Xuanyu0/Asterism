@@ -90,7 +90,7 @@ const renderer = useCytoscapeRenderer(cyContainer)
 const operationController = useOperationController()
 
 const containerClasses = computed(() => {
-    const s = operationController.uiStore
+    const s = operationController.ui.state
     return {
         'delete-mode': s.interactionMode === 'operation' && s.selectedOperationTool === 'delete',
         'fold-mode': s.interactionMode === 'operation' && s.selectedOperationTool === 'fold',
@@ -187,7 +187,7 @@ watch(
  *     2. 目标元素可能已被删除（删除确认后清空 pendingDelete），需判空。
  */
 watch(
-    () => operationController.uiStore.pendingDeleteNodeId,
+    () => operationController.ui.state.pendingDeleteNodeId,
     (nodeId, prevNodeId) => {
         const cy = renderer.getInstance()
         if (!cy) {
@@ -217,7 +217,7 @@ watch(
  *     监听待定删除边 ID 变化，施加/清除 Cytoscape 视觉高亮。
  */
 watch(
-    () => operationController.uiStore.pendingDeleteEdgeId,
+    () => operationController.ui.state.pendingDeleteEdgeId,
     (edgeId, prevEdgeId) => {
         const cy = renderer.getInstance()
         if (!cy) {

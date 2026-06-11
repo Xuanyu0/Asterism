@@ -64,13 +64,7 @@
             "id": "src/dev/test_runtime.ts"
         },
         {
-            "id": "src/mock/mockGraph.ts"
-        },
-        {
-            "id": "src/mock/golden_graph.ts"
-        },
-        {
-            "id": "src/ui/ui_store.ts"
+            "id": "src/mock/test_case_factory.ts"
         },
         {
             "id": "pinia"
@@ -94,6 +88,12 @@
             "id": "src/assets/main.css"
         },
         {
+            "id": "src/mock/golden_graph.ts"
+        },
+        {
+            "id": "src/mock/mockGraph.ts"
+        },
+        {
             "id": "cytoscape"
         },
         {
@@ -107,6 +107,9 @@
         },
         {
             "id": "src/views/KnowledgeGraphView.vue"
+        },
+        {
+            "id": "src/ui/ui_store.ts"
         },
         {
             "id": "node:fs"
@@ -134,6 +137,7 @@
             "target": "src/components/KnowledgeGraph.vue",
             "imports": [
                 "ref",
+                "computed",
                 "onMounted",
                 "onBeforeUnmount",
                 "watch"
@@ -218,6 +222,15 @@
             ]
         },
         {
+            "source": "vue",
+            "target": "src/components/graph/OperationToolbar.vue",
+            "imports": [
+                "ref",
+                "computed",
+                "watch"
+            ]
+        },
+        {
             "source": "src/ui/operation_controller.ts",
             "target": "src/components/graph/OperationToolbar.vue",
             "imports": [
@@ -230,7 +243,7 @@
             "imports": [
                 "EdgeDirection",
                 "EdgeKind",
-                "NodeKind",
+                "KnowledgeNodeKind",
                 "NodeId"
             ]
         },
@@ -251,7 +264,7 @@
             "imports": [
                 "EdgeDirection",
                 "EdgeKind",
-                "NodeKind",
+                "KnowledgeNodeKind",
                 "NodeId"
             ]
         },
@@ -364,24 +377,23 @@
             ]
         },
         {
-            "source": "src/mock/mockGraph.ts",
+            "source": "src/ui/operation_controller.ts",
             "target": "src/dev/test_runtime.ts",
             "imports": [
-                "mockGraph"
+                "useOperationController"
             ]
         },
         {
-            "source": "src/mock/golden_graph.ts",
+            "source": "src/mock/test_case_factory.ts",
             "target": "src/dev/test_runtime.ts",
             "imports": [
-                "goldenGraph"
-            ]
-        },
-        {
-            "source": "src/ui/ui_store.ts",
-            "target": "src/dev/test_runtime.ts",
-            "imports": [
-                "useUIStore"
+                "createGoldenTestGraph",
+                "createChainDAG",
+                "createEdgeMatrixGraph",
+                "createVirtualNodeTestGraph",
+                "createAbstractNodeTestGraph",
+                "createCommunicationTestGraph",
+                "createDeleteUndoTestGraph"
             ]
         },
         {
@@ -552,6 +564,41 @@
         },
         {
             "source": "src/definitions/types/graph_types.ts",
+            "target": "src/mock/test_case_factory.ts",
+            "imports": [
+                "EdgeData",
+                "EdgeDirection",
+                "EdgeId",
+                "EdgeKind",
+                "EdgeViewRole",
+                "GraphData",
+                "GraphId",
+                "GraphKind",
+                "KnowledgeNodeKind",
+                "NodeData",
+                "NodeId",
+                "NodePosition",
+                "NodeRole",
+                "RealNodeForm",
+                "ReferenceNodeKind"
+            ]
+        },
+        {
+            "source": "src/definitions/validators/graph_validator.ts",
+            "target": "src/mock/test_case_factory.ts",
+            "imports": [
+                "GraphValidator"
+            ]
+        },
+        {
+            "source": "src/graph/utilities/graph_utils.ts",
+            "target": "src/mock/test_case_factory.ts",
+            "imports": [
+                "normalizeGraph"
+            ]
+        },
+        {
+            "source": "src/definitions/types/graph_types.ts",
             "target": "src/render/cytoscape/graph_element_mapper.ts",
             "imports": [
                 "EdgeData",
@@ -562,9 +609,10 @@
                 "GraphData",
                 "NodeData",
                 "NodeId",
-                "NodeKind",
                 "NodePosition",
-                "NodeViewRole",
+                "NodeRole",
+                "KnowledgeNodeKind",
+                "ReferenceNodeKind",
                 "RealNodeForm"
             ]
         },
@@ -653,7 +701,7 @@
             "source": "src/definitions/types/graph_types.ts",
             "target": "src/ui/draft_store.ts",
             "imports": [
-                "NodeKind"
+                "KnowledgeNodeKind"
             ]
         },
         {
@@ -694,7 +742,7 @@
             "source": "src/definitions/types/graph_types.ts",
             "target": "src/ui/operation_controller.ts",
             "imports": [
-                "NodeKind"
+                "KnowledgeNodeKind"
             ]
         },
         {
@@ -730,7 +778,9 @@
             "target": "src/ui/ui_store.ts",
             "imports": [
                 "NodeData",
-                "EdgeData"
+                "EdgeData",
+                "NodeId",
+                "EdgeId"
             ]
         },
         {
@@ -756,7 +806,7 @@
             "source": "src/definitions/types/graph_types.ts",
             "target": "src/ui/ui_store.ts",
             "imports": [
-                "NodeKind",
+                "KnowledgeNodeKind",
                 "EdgeKind",
                 "EdgeDirection"
             ]

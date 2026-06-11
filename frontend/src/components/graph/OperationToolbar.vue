@@ -104,7 +104,7 @@
 
         <!-- C3: Add 目标列 -->
 
-        <div v-if="!showModeSelector && uiStore.interactionMode === 'operation' && uiStore.selectedOperationTool === 'add'" class="toolbar-column sub-column">
+        <div v-if="!showModeSelector && uiStore.interactionMode === 'operation' && uiStore.selectedOperationTool === 'add'" class="toolbar-column">
             <button
                 :class="{ active: uiStore.pendingAddTarget === 'node' }"
                 @click="controller.selectAddTarget('node')"
@@ -121,7 +121,7 @@
 
         <!-- C4: Node 类型列 -->
 
-        <div v-if="!showModeSelector && uiStore.interactionMode === 'operation' && uiStore.selectedOperationTool === 'add' && uiStore.pendingAddTarget === 'node'" class="toolbar-column sub-column">
+        <div v-if="!showModeSelector && uiStore.interactionMode === 'operation' && uiStore.selectedOperationTool === 'add' && uiStore.pendingAddTarget === 'node'" class="toolbar-column">
             <button
                 :class="{ active: uiStore.pendingAddNode.kind === 'real' }"
                 @click="controller.selectAddNodeKind('real')"
@@ -138,7 +138,7 @@
 
         <!-- C5: Edge 类型列 -->
 
-        <div v-if="!showModeSelector && uiStore.interactionMode === 'operation' && uiStore.selectedOperationTool === 'add' && uiStore.pendingAddTarget === 'edge'" class="toolbar-column sub-column">
+        <div v-if="!showModeSelector && uiStore.interactionMode === 'operation' && uiStore.selectedOperationTool === 'add' && uiStore.pendingAddTarget === 'edge'" class="toolbar-column">
             <button
                 :class="{ active: uiStore.pendingAddEdge.kind === 'real' }"
                 @click="controller.selectAddEdgeKind('real')"
@@ -155,7 +155,7 @@
 
         <!-- C6: Edge 方向列 -->
 
-        <div v-if="!showModeSelector && uiStore.interactionMode === 'operation' && uiStore.selectedOperationTool === 'add' && uiStore.pendingAddTarget === 'edge' && uiStore.pendingAddEdge.kind" class="toolbar-column sub-column">
+        <div v-if="!showModeSelector && uiStore.interactionMode === 'operation' && uiStore.selectedOperationTool === 'add' && uiStore.pendingAddTarget === 'edge' && uiStore.pendingAddEdge.kind" class="toolbar-column">
             <button
                 :class="{ active: uiStore.pendingAddEdge.direction === 'directed' }"
                 @click="controller.selectAddEdgeDirection('directed')"
@@ -200,7 +200,7 @@ import { ref, computed, watch } from 'vue'
 import { useOperationController } from '@/ui/operation_controller'
 
 const controller = useOperationController()
-const uiStore = controller.uiStore
+const uiStore = controller.ui.state
 
 const showModeSelector = ref(false)
 
@@ -293,17 +293,16 @@ function enterArrangementMode(): void {
     border-radius: 50% !important;
     text-align: center !important;
     line-height: 26px;
-    margin-bottom: 8px;
 }
 
-/* --- 子列：下移至与父操作按钮同行，无竖线 --- */
+/* --- 模式按钮与操作按钮之间 3 倍间距 --- */
 
-.sub-column {
-    padding-top: 40px;
-    border-left: none;
+.main-column .mode-btn + * {
+    margin-top: 8px;
 }
 
 /* --- 杂项 --- */
+
 
 .placeholder-text {
     font-size: 12px;

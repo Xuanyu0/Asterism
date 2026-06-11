@@ -2,7 +2,8 @@
 
 ## 项目定位
 
-构建一个长期演化的知识图谱运行时（Knowledge Graph Runtime），而不是 Cytoscape Demo。
+- **Graph Engine 开发目标**：让用户当前的学习 / 认知 / 研究状态可视化、可形式化表达。
+- **Antinomy** 在管理学习者与知识之间的**学习状态**，而不是认知/知识本身。
 
 ## 技术栈
 
@@ -157,6 +158,14 @@ src/
 - 所有原子操作
 - 后端子进程、AI Runtime 可直接调用
 
+**Phase 2 收尾：操作错误感知反馈链路**
+- 当前 `operation_controller` 各操作入口已调用 `applyOperation()` 并拿到 `ValidationResult`，但校验失败时用户无任何视觉反馈。
+- 需补全：在 `NodeWindow.vue`（或 `KnowledgeGraph.vue` 层）读取 `uiStore.lastOperationValidation` 并将 `issue.message` 渲染为可感知的 UI 提示。
+- 当前检查清单：
+  - `handleFoldToggle()` — 完全丢弃返回值，校验失败无反馈 ✅ 需修复
+  - `executeDeleteNode()` / `executeDeleteEdge()` — 未检查 `result.valid` ✅ 需修复
+  - `lastOperationValidation` — 已写入 6 处、已读取 0 处 ✅ 需补全
+
 ### Phase 3：AI Runtime（MVP 后期，排在 Graph Engine 之后）
 
 - Compiler / Translator / Checker / Analyser Agent 信息流连通
@@ -172,7 +181,7 @@ src/
 
 ## 设计文档
 
-- 完整设计文档：`docs/知识图谱设计/`（按主题拆分为 4 份）
+- 完整设计文档：`docs/设计/`（按主题拆分为 4 份）
 
 ---
 

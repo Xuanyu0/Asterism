@@ -108,6 +108,14 @@ export function pushUndoSnapshot(undoStack: GraphData[], graph: GraphData): Grap
 
 // ------------------------------ private section
 
+/**
+ * 功能：
+ *     向当前图添加一个新节点。
+ *
+ * 规则：
+ *     1. 节点直接追加到 nodes 列表末尾。
+ *     2. 不校验节点合法性（统一在 OperationValidator 入口校验）。
+ */
 function privateApplyAddNode(graph: GraphData, operation: Extract<GraphOperation, { type: 'add_node' }>): GraphData {
     return {
         ...graph,
@@ -116,6 +124,14 @@ function privateApplyAddNode(graph: GraphData, operation: Extract<GraphOperation
     }
 }
 
+/**
+ * 功能：
+ *     向当前图添加一条新边。
+ *
+ * 规则：
+ *     1. 同步增加两端节点的 degree 值。
+ *     2. 边直接追加到 edges 列表末尾。
+ */
 function privateApplyAddEdge(graph: GraphData, operation: Extract<GraphOperation, { type: 'add_edge' }>): GraphData {
     const { source, target } = operation.edge
 
@@ -133,12 +149,22 @@ function privateApplyAddEdge(graph: GraphData, operation: Extract<GraphOperation
     }
 }
 
+/**
+ * 功能：
+ *     从当前图删除一个节点。
+ *
+ * 规则：
+ *     1. 同步删除与该节点关联的所有边。
+ *     2. 更新相邻节点的 degree 值（减去失去的边数）。
+ *     3. 清理 cognitiveState 中对该节点的折叠引用。
+ */
 function privateApplyDeleteNode(graph: GraphData, operation: Extract<GraphOperation, { type: 'delete_node' }>): GraphData {
     const deletedEdges = graph.edges.filter(
         edge => edge.source === operation.nodeId || edge.target === operation.nodeId,
     )
 
-    // 统计每个相邻节点因本次删除失去的边数
+    // 统计每个相邻节点因本次删除失去的边数。
+    // delete_node 必须同步更新 degree，否则后续操作（如渲染线宽）会基于错误的度数。
     const degreeLoss = new Map<string, number>()
     for (const edge of deletedEdges) {
         if (edge.source !== operation.nodeId) {
@@ -167,6 +193,13 @@ function privateApplyDeleteNode(graph: GraphData, operation: Extract<GraphOperat
     }, operation.nodeId)
 }
 
+/**
+ * 功能：
+ *     从当前图删除一条边。
+ *
+ * 规则：
+ *     1. 同步降低两端节点的 degree 值。
+ */
 function privateApplyDeleteEdge(graph: GraphData, operation: Extract<GraphOperation, { type: 'delete_edge' }>): GraphData {
     const deletedEdge = graph.edges.find(edge => edge.id === operation.edgeId)
 
@@ -184,6 +217,13 @@ function privateApplyDeleteEdge(graph: GraphData, operation: Extract<GraphOperat
     }
 }
 
+/**
+ * 功能：
+ *     更新一个节点的数据。
+ *
+ * 规则：
+ *     1. 完全替换匹配节点（不是增量合并）。
+ */
 function privateApplyUpdateNode(graph: GraphData, operation: Extract<GraphOperation, { type: 'update_node' }>): GraphData {
     return {
         ...graph,
@@ -192,6 +232,13 @@ function privateApplyUpdateNode(graph: GraphData, operation: Extract<GraphOperat
     }
 }
 
+/**
+ * 功能：
+ *     更新一条边的数据。
+ *
+ * 规则：
+ *     1. 完全替换匹配边（不是增量合并）。
+ */
 function privateApplyUpdateEdge(graph: GraphData, operation: Extract<GraphOperation, { type: 'update_edge' }>): GraphData {
     return {
         ...graph,
@@ -200,6 +247,13 @@ function privateApplyUpdateEdge(graph: GraphData, operation: Extract<GraphOperat
     }
 }
 
+/**
+ * 功能：
+ *     移动一个节点的位置坐标。
+ *
+ * 规则：
+ *     1. 只更新 position 字段，不影响节点其他属性。
+ */
 function privateApplyMoveNode(graph: GraphData, operation: Extract<GraphOperation, { type: 'move_node' }>): GraphData {
     return {
         ...graph,
@@ -211,6 +265,14 @@ function privateApplyMoveNode(graph: GraphData, operation: Extract<GraphOperatio
     }
 }
 
+/**
+ * 功能：
+ *     折叠目标节点的依赖子图。
+ *
+ * 规则：
+ *     1. 仅当存在可折叠的依赖节点时才创建折叠状态。
+ *     2. 折叠状态写入 cognitiveState，随 GraphData 持久化。
+ */
 function privateApplyCollapseDependency(graph: GraphData, operation: Extract<GraphOperation, { type: 'collapse_dependency' }>): GraphData {
     const foldedNodeIds = collectDependencyNodeIds(graph, operation.targetNodeId)
 
@@ -237,6 +299,14 @@ function privateApplyCollapseDependency(graph: GraphData, operation: Extract<Gra
     }
 }
 
+/**
+ * 功能：
+ *     展开目标节点的折叠状态。
+ *
+ * 规则：
+ *     1. 从 cognitiveState 中移除对应的折叠条目。
+ *     2. 不修改 GraphData 的 nodes / edges。
+ */
 function privateApplyExpandDependency(graph: GraphData, operation: Extract<GraphOperation, { type: 'expand_dependency' }>): GraphData {
     const currentCognitiveState = graph.cognitiveState ?? { foldedDependencies: [] }
 

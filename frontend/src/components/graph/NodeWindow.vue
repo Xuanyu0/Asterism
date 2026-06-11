@@ -87,7 +87,7 @@ const controller = useOperationController()
 
 const draftNode = computed(() => draftStore.draftNode)
 
-const floatingData = computed(() => controller.uiStore.floatingWindowData)
+const floatingData = computed(() => controller.ui.state.floatingWindowData)
 
 const isEdge = computed(() => {
     const data = floatingData.value

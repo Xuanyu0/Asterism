@@ -829,7 +829,23 @@ export function useOperationController() {
             confirmExistingNodeEdit,
             confirmExistingEdgeEdit,
             closeFloatingWindow,
-            uiStore,
+
+            /**
+             * 只读 UI 状态通道。包含 uiStore 的全部可读字段。
+             *
+             * 规则：
+             *     1. 组件读取 UI 状态必须通过 `controller.ui.state.xxx`。
+             *     2. 禁止通过本通道执行 uiStore 的写操作（setInteractionMode 等）。
+             *     3. 所有 UI 状态写入必须调用 controller 的公开方法。
+             *
+             * 注意：
+             *     本约束是架构规约而非编译器保护——
+             *     组件层仍可直接 import { useUIStore } 绕过。
+             *     ui.state 是在代码中做视觉提醒，不是安全屏障。
+             */
+            ui: {
+                state: uiStore,
+            },
         }
     // 通用功能 结束 ═════════════════════════════════════════════════
 }
