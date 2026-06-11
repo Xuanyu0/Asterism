@@ -227,6 +227,19 @@ infrastructure/  →  "依赖什么基础设施"   — 跨模块共享的底层�
 3. **类型驱动**：类型定义"有哪些概念"，函数定义"这些概念间可以发生什么变换"
 4. **无兜底目录**：不设 `utilities/` 类杂项目录，每个文件有明确职责归属
 
+### 基础度量：节点大小
+
+引擎中多个模块（Orbit 布局、碰撞检测）需要知道节点的外接圆半径。节点半径不作为独立字段持久化，而是在 GraphData 中作为派生值存储，读取时采用惰性计算确保陈旧值可安全 fallback：
+
+$$r = r_0 \cdot \sqrt{1 + \text{degree}}$$
+
+| 参数 | 含义 |
+|------|------|
+| $r_0$ | 孤立节点（degree = 0）的基准半径 |
+| $r_{\max}$ | 封顶半径，防止特大节点抢占视图 |
+
+边粗细公式不属于引擎职责，由渲染层（Cytoscape style）根据两端节点质量和距离自行计算。
+
 ## 完整目录树
 
 ```
@@ -304,7 +317,7 @@ packages/graph-engine/
 | 文件 | 内容 | 规则 |
 |------|------|------|
 | `graph_data.ts` | `GraphData`, `NodeData` (discriminated union), `EdgeData`, `GraphId`, `NodeId`, `EdgeId`, `GraphPosition`, `GraphKind`, `GraphCognitiveState`。新增 `GraphRegistry` 类型、`SearchResult` 类型、`NodeRadiusMap` 类型、`NodeData.groupId?: string` 预留字段 | 纯类型，零逻辑。从 Phase 1 `graph_types.ts` 直接迁移 + Phase 2 新增 |
-| `operations.ts` | `GraphOperation` 联合类型，9 种具体 Operation 的 interface | 从 Phase 1 `graph_operation_types.ts` 直接迁移 |
+| `operations.ts` | `GraphOperation` 联合类型，11 种具体 Operation 的 interface（含 `add_graph` / `delete_graph`） | 从 Phase 1 `graph_operation_types.ts` 迁移 + Phase 2 新增 `add_graph` / `delete_graph` |
 | `validation.ts` | `ValidationResult`, `ValidationIssue` | 从 Phase 1 `validation_types.ts` 迁移 |
 | `cognitive.ts` | `CognitiveResult`（认知操作返回的操作序列 + 元信息） | Phase 2 新增 |
 
@@ -312,8 +325,8 @@ packages/graph-engine/
 
 | 文件 | 函数签名 | 职责 |
 |------|---------|------|
-| `validate.ts` | `validateOperation(graph: GraphData, op: GraphOperation): ValidationResult` | 单步 Operation 的 Schema + 规则校验。从 Phase 1 `operation_validator.ts` 迁移 |
-| `execute.ts` | `executeOperation(graph: GraphData, op: GraphOperation): GraphData` | 给定合法 Operation，返回新 GraphData，不修改入参。从 Phase 1 `operation_executor.ts` 迁移。`executeDeleteNode` 内联折叠状态清理逻辑（方案 A） |
+| `validate.ts` | `validateOperation(graph: GraphData, op: GraphOperation): ValidationResult` | 单步 Operation 的 Schema + 规则校验。从 Phase 1 `operation_validator.ts` 迁移。`add_graph` / `delete_graph` 新增校验：图 ID 唯一性、递归删除确认等 |
+| `execute.ts` | `executeOperation(graph: GraphData, op: GraphOperation): GraphData` | 给定合法 Operation，返回新 GraphData，不修改入参。从 Phase 1 `operation_executor.ts` 迁移。`executeDeleteNode` 内联折叠状态清理逻辑（方案 A）。`add_graph` / `delete_graph` 在多图上下文（GraphRegistry）中执行 |
 | `apply.ts` | `applyOperation(graph: GraphData, op: GraphOperation): { graph: GraphData, validation: ValidationResult }` | 统一入口：`validate()` → 不通过则直接返回 issues → 通过则 `execute()` |
 | `normalize.ts` | `normalizeGraph(graph: GraphData): GraphData` | 加载数据时补 cognitiveState 等默认值，不修改已有字段。从 Phase 1 `graph_utils.ts` 迁入 |
 | `id.ts` | `generateNodeId(), generateEdgeId(), generateGraphId(): string` | 统一 ID 生成，使用 `crypto.randomUUID()`。从 Phase 1 `id_runtime/generate.ts` 迁入 |
@@ -336,6 +349,8 @@ export function applyOperation(
     return { graph: newGraph, validation }
 }
 ```
+
+> 注：`add_graph` / `delete_graph` 操作涉及多图上下文，需要 `GraphRegistry` 参与执行。认知操作（compose/cognitive/）返回的操作序列中包含上述两种操作时，由编排层在调用 `apply()` 时注入 registry。
 
 ### compose/ — 组合层
 
@@ -446,27 +461,6 @@ Orbit 布局的不重叠条件封死在算法内部实现。算法接收中心�
 **关键原则：Orbit 算法不反向约束节点大小。** 节点大小只由 degree 决定，Orbit 根据已有节点尺寸计算轨道。若 R 不够就扩大，不修改任何节点的 r。
 
 总轨道半径 = 中心节点外接圆半径 + 纯轨道半径 R + 间距缓冲。
-
-### 视觉映射公式
-
-**节点大小**：面积正比于质量（物理隐喻 — 质量越大、面积越大）。
-
-$$r = r_0 \cdot \sqrt{1 + \text{degree}}$$
-
-| 参数 | 含义 |
-|------|------|
-| $r_0$ | 孤立节点（degree = 0）的基准半径 |
-| $r_{\max}$ | 封顶半径，防止特大节点抢占视图 |
-
-**边粗细**：粗细正比于二维引力（物理隐喻 — 二维空间中引力反比于距离）。
-
-$$w \propto \frac{m_1 \cdot m_2}{d}$$
-
-| 参数 | 含义 |
-|------|------|
-| $m = 1 + \text{degree}$ | 节点质量，孤立节点仍有基础质量 1 |
-| $d$ | 两端节点的欧几里得距离 |
-| $w_{\min}$ / $w_{\max}$ | 最细/最粗封顶 |
 
 **引擎 vs UI 的边界**：
 - 引擎负责"给定参数，节点该放在哪里"（纯数学）
@@ -611,6 +605,8 @@ GraphEngine.apply(graph, operation) → { graph, validation }
 | `move_node` | 更新节点位置 |
 | `collapse_dependency` | 依赖折叠（纯视觉，持久化折叠状态） |
 | `expand_dependency` | 依赖展开（移除折叠状态） |
+| `add_graph` | 创建新图（在多图上下文中注册新 GraphData） |
+| `delete_graph` | 删除图（从多图上下文中移除，含递归子图清理） |
 
 ## 层二：认知操作层
 
@@ -847,7 +843,7 @@ Controller 的交互逻辑（模式管理、右键退出、DraftNode 生命周�
 ```
 packages/graph-engine/tests/
 ├── core/
-│   ├── validate.test.ts          # 9 种 Operation 的校验路径
+│   ├── validate.test.ts          # 11 种 Operation 的校验路径
 │   │   ├── add_node 正常/重复ID/超限
 │   │   ├── add_edge 正常/自环/重边/虚节点规则/有向实边成环
 │   │   ├── delete_node 正常/不存在
@@ -856,9 +852,11 @@ packages/graph-engine/tests/
 │   │   ├── update_edge 正常/不存在/自环/重边/成环
 │   │   ├── move_node 正常/不存在/非法坐标
 │   │   ├── collapse_dependency 正常/不存在/无前置依赖/有无向边
-│   │   └── expand_dependency 正常/不存在
+│   │   ├── expand_dependency 正常/不存在
+│   │   ├── add_graph 正常/图ID重复
+│   │   └── delete_graph 正常/不存在/递归子图
 │   │
-│   └── execute.test.ts           # 9 种 Operation 的执行路径
+│   └── execute.test.ts           # 11 种 Operation 的执行路径
 │       ├── add_node → 节点数+1
 │       ├── add_edge → 边数+1，两端节点度数+1
 │       ├── delete_node → 节点+关联边删除，度数修复，折叠状态清理
@@ -867,7 +865,9 @@ packages/graph-engine/tests/
 │       ├── update_edge → 边属性更新
 │       ├── move_node → 位置更新
 │       ├── collapse_dependency → 折叠状态写入
-│       └── expand_dependency → 折叠状态移除
+│       ├── expand_dependency → 折叠状态移除
+│       ├── add_graph → 图数+1，注册至 registry
+│       └── delete_graph → 图数-1，从 registry 移除
 │
 ├── infrastructure/
 │   ├── graph_registry.test.ts    # Map CRUD、多图并存、不存在的 ID 返回 undefined
@@ -977,7 +977,7 @@ pnpm test --coverage     # 覆盖率报告
 
 | # | 任务 | 说明 |
 |---|------|------|
-| 6.1 | `deconstruct.ts` | 解构：原子实节点 → 抽象节点 + 空子图。无跨图依赖，最简认知操作 |
+| 6.1 | `deconstruct.ts` | 解构：原子实节点 → 抽象节点 + 空子图。无跨图依赖，最简认知操作。⚠️ **注意**：解构时原有边的继承规则待定，详见 §十三 A2 |
 | 6.2 | `induce.ts` | 归纳：多节点 → 抽象节点 + 子图 + 沟通节点/边。**Phase 2 最大技术挑战**——涉及父图删除 + 子图创建 + 沟通节点/边创建的三组原子操作协调 |
 | 6.3 | `internalize.ts` | 内化：转移节点至常识层。若为抽象节点，递归转移子图子树。常识化由前端用户确认，引擎只做纯搬运 |
 | 6.4 | `diverge.ts` | 发散：跨图创建启发节点 + 有向虚边。依赖 `search` 做跨图节点查找 |
@@ -999,8 +999,8 @@ pnpm test --coverage     # 覆盖率报告
 
 | # | 任务 |
 |---|------|
-| 8.1 | `core/validate.test.ts` — 9 种 Operation 的校验路径 |
-| 8.2 | `core/execute.test.ts` — 9 种 Operation 的执行路径 |
+| 8.1 | `core/validate.test.ts` — 11 种 Operation 的校验路径 |
+| 8.2 | `core/execute.test.ts` — 11 种 Operation 的执行路径 |
 | 8.3 | `infrastructure/graph_registry.test.ts` — Map CRUD、多图并存 |
 | 8.4 | `infrastructure/search.test.ts` — 匹配、跨图搜索、空结果 |
 | 8.5 | `infrastructure/collision.test.ts` — 无碰撞、有碰撞、推开后验证 |
@@ -1046,7 +1046,7 @@ pnpm test --coverage     # 覆盖率报告
 | 10 | **基础设施先于上层模块** | `infrastructure/`（graph_registry / search / collision / persistence）是 compose 层和 core 层的共享依赖，先于它们实现和测试 |
 | 11 | **无兜底目录** | 不设 `utilities/` 类杂项目录，每个文件有明确职责归属 |
 | 12 | **跨文件意图注释** | 跨操作耦合的代码必须在代码块内注明"为什么这样做"，参见 CLAUDE.md §八 |
-| 13 | **节点面积 ∝ 质量，边粗细 ∝ 引力** | 节点半径 $r = r_0 \cdot \sqrt{1 + \text{degree}}$（面积正比于质量），边粗细 $w \propto (m_1 \cdot m_2) / d$（二维引力反比于距离）。Orbit 不重叠条件封死在算法内部，不反向约束节点大小 |
+| 13 | **节点半径由 degree 决定** | 节点半径 $r = r_0 \cdot \sqrt{1 + \text{degree}}$，惰性存储在 GraphData 中。边粗细由渲染层根据两端质量和距离自行计算，不属于引擎职责 |
 
 ---
 
@@ -1062,3 +1062,23 @@ pnpm test --coverage     # 覆盖率报告
 | **导出最小化** | `index.ts` 只导出外部使用者需要的符号。内部实现函数和 infrastructure 细节不暴露 |
 | **术语统一** | AI 实体统一使用 "Collabrator"，不使用 "Agent" |
 | **依赖方向** | `core/` → `types/`；`validators/` → `types/` + `core/`；`compose/` → `infrastructure/` → `core/` → `types/`。上层依赖下层，同层不互引 |
+
+---
+
+# 十三、待定设计问题
+
+> 以下问题在开发到对应模块时需由产品/设计确认最终方案，**不要在实现时自行决定**。
+
+## A2：原子→抽象转换（解构）时原有边的继承规则
+
+**所在模块**：`compose/cognitive/deconstruct.ts`
+
+**问题描述**：
+原子实节点被解构为抽象节点时，该节点原有的边在转换后应如何处理？有两种候选方案：
+
+| 方案 | 做法 | 优缺点 |
+|------|------|--------|
+| **方案 A — 父图层保留，子图继承** | 父图层的边保持不动；子图内的沟通节点自动继承原节点在父图的边属性（kind/direction），与子图内的其他节点连接 | ✅ 子图内连通性好；✅ 用户从父图看结构不变；⚠️ 跨图边管理变复杂 |
+| **方案 B — 父图层下沉** | 父图层原有边跟随节点语义"沉入"子图；父图层抽象节点仅保留与外部节点的连接，不保留与子图内容的边 | ✅ 子图独立完整；⚠️ 父图层可能丢失连通信息 |
+
+**提醒状态**：⏳ 开发到 Step 6.1 `deconstruct.ts` 时需与我确认最终方案。
