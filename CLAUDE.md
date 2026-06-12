@@ -166,6 +166,33 @@ src/
   - `executeDeleteNode()` / `executeDeleteEdge()` — 未检查 `result.valid` ✅ 需修复
   - `lastOperationValidation` — 已写入 6 处、已读取 0 处 ✅ 需补全
 
+### Phase 3 前置：学习历史回顾机制
+
+在 Phase 3（AI Runtime）启动之前，必须先完成学习历史回顾的功能设计并实现数据层基础。
+
+**目标**：让用户在时间轴上回溯图谱任意时刻的状态，实现"git log 式"的学习历史回顾。
+
+**三层架构（由底向上）：**
+
+```
+数据层（Phase 3 前完成）：
+    - GraphData 全量快照日志：每次操作前保存完整 GraphData 副本
+    - 或 Operation 日志：记录所有操作序列，支持逆向回放
+    - 时间戳索引：已铺垫（graph/节点/边的 updatedAt 已改为 string[]）
+
+中间层（Phase 3 前完成）：
+    - 待定
+
+UI 层（Phase 3 期间完成）：
+    - 待定
+```
+
+**当前已铺垫的数据层**（2026-06-12）：
+- `graph_types.ts`：`GraphData.updatedAt` 已改为 `string[]`，`NodeBase` 和 `EdgeData` 已新增 `createdAt` / `updatedAt`
+- `operation_executor.ts`：9 个操作函数自动在每次变更时追加时间戳
+- 数据基础已就绪，但全量快照或 Operation 日志尚未实现
+
+
 ### Phase 3：AI Runtime（MVP 后期，排在 Graph Engine 之后）
 
 - Compiler / Translator / Checker / Analyser Agent 信息流连通

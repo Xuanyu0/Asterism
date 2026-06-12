@@ -28,7 +28,7 @@ export type EdgeId = string
 export type GraphKind = 'main' | 'subgraph' | 'learningBlock' | 'commonLayer'
 
 export interface GraphData {
-    id: GraphId
+    readonly id: GraphId
     kind: GraphKind
     title: string
     parentGraphId?: GraphId
@@ -36,8 +36,8 @@ export interface GraphData {
     nodes: NodeData[]
     edges: EdgeData[]
     cognitiveState?: GraphCognitiveState
-    createdAt?: string
-    updatedAt?: string
+    readonly createdAt?: string
+    updatedAt?: string[]
 }
 
 export interface GraphCognitiveState {
@@ -91,7 +91,7 @@ export type NodePosition = GraphPosition
  *     都直接支持"展开子图"等操作，不需要先跳转到源节点所在图。
  */
 interface NodeBase {
-    id: NodeId
+    readonly id: NodeId
     graphId: GraphId
     role: NodeRole
     label: string
@@ -99,6 +99,8 @@ interface NodeBase {
     position?: NodePosition
     abstractionLevel: number
     childGraphId?: GraphId
+    createdAt?: string
+    updatedAt?: string[]
 }
 
     // 知识节点───────────────────────────────────────────────
@@ -151,11 +153,13 @@ export type EdgeDirection = 'directed' | 'undirected'
  *     仅因连接了 communication 节点而获得额外的视觉行为。
  */
 export interface EdgeData {
-    id: EdgeId
+    readonly id: EdgeId
     graphId: GraphId
     source: NodeId
     target: NodeId
     kind: EdgeKind
     direction: EdgeDirection
     label?: string
+    createdAt?: string
+    updatedAt?: string[]
 }

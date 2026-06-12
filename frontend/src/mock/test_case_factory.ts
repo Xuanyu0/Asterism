@@ -186,7 +186,7 @@ export function assembleGraph(params: {
         parentGraphId: params.parentGraphId,
         ownerNodeId: params.ownerNodeId,
         createdAt: now,
-        updatedAt: now,
+        updatedAt: [now],
     }
 
     const normalized = normalizeGraph(graph)

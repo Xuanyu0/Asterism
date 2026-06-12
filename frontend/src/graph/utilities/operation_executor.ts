@@ -117,10 +117,12 @@ export function pushUndoSnapshot(undoStack: GraphData[], graph: GraphData): Grap
  *     2. 不校验节点合法性（统一在 OperationValidator 入口校验）。
  */
 function privateApplyAddNode(graph: GraphData, operation: Extract<GraphOperation, { type: 'add_node' }>): GraphData {
+    const now = new Date().toISOString()
+
     return {
         ...graph,
-        nodes: [...graph.nodes, operation.node],
-        updatedAt: new Date().toISOString(),
+        nodes: [...graph.nodes, { ...operation.node, createdAt: now, updatedAt: [now] }],
+        updatedAt: [...(graph.updatedAt ?? []), now],
     }
 }
 
@@ -134,6 +136,7 @@ function privateApplyAddNode(graph: GraphData, operation: Extract<GraphOperation
  */
 function privateApplyAddEdge(graph: GraphData, operation: Extract<GraphOperation, { type: 'add_edge' }>): GraphData {
     const { source, target } = operation.edge
+    const now = new Date().toISOString()
 
     return {
         ...graph,
@@ -144,8 +147,8 @@ function privateApplyAddEdge(graph: GraphData, operation: Extract<GraphOperation
 
             return node
         }),
-        edges: [...graph.edges, operation.edge],
-        updatedAt: new Date().toISOString(),
+        edges: [...graph.edges, { ...operation.edge, createdAt: now, updatedAt: [now] }],
+        updatedAt: [...(graph.updatedAt ?? []), now],
     }
 }
 
@@ -175,6 +178,8 @@ function privateApplyDeleteNode(graph: GraphData, operation: Extract<GraphOperat
         }
     }
 
+    const now = new Date().toISOString()
+
     return cleanGraphAfterDeleteNode({
         ...graph,
         nodes: graph.nodes
@@ -189,7 +194,7 @@ function privateApplyDeleteNode(graph: GraphData, operation: Extract<GraphOperat
                 return node
             }),
         edges: graph.edges.filter(edge => edge.source !== operation.nodeId && edge.target !== operation.nodeId),
-        updatedAt: new Date().toISOString(),
+        updatedAt: [...(graph.updatedAt ?? []), now],
     }, operation.nodeId)
 }
 
@@ -202,6 +207,7 @@ function privateApplyDeleteNode(graph: GraphData, operation: Extract<GraphOperat
  */
 function privateApplyDeleteEdge(graph: GraphData, operation: Extract<GraphOperation, { type: 'delete_edge' }>): GraphData {
     const deletedEdge = graph.edges.find(edge => edge.id === operation.edgeId)
+    const now = new Date().toISOString()
 
     return {
         ...graph,
@@ -213,7 +219,7 @@ function privateApplyDeleteEdge(graph: GraphData, operation: Extract<GraphOperat
             return node
         }),
         edges: graph.edges.filter(edge => edge.id !== operation.edgeId),
-        updatedAt: new Date().toISOString(),
+        updatedAt: [...(graph.updatedAt ?? []), now],
     }
 }
 
@@ -225,10 +231,16 @@ function privateApplyDeleteEdge(graph: GraphData, operation: Extract<GraphOperat
  *     1. 完全替换匹配节点（不是增量合并）。
  */
 function privateApplyUpdateNode(graph: GraphData, operation: Extract<GraphOperation, { type: 'update_node' }>): GraphData {
+    const now = new Date().toISOString()
+
     return {
         ...graph,
-        nodes: graph.nodes.map(node => node.id === operation.node.id ? operation.node : node),
-        updatedAt: new Date().toISOString(),
+        nodes: graph.nodes.map(node =>
+            node.id === operation.node.id
+                ? { ...operation.node, updatedAt: [...(node.updatedAt ?? []), now] }
+                : node,
+        ),
+        updatedAt: [...(graph.updatedAt ?? []), now],
     }
 }
 
@@ -240,10 +252,16 @@ function privateApplyUpdateNode(graph: GraphData, operation: Extract<GraphOperat
  *     1. 完全替换匹配边（不是增量合并）。
  */
 function privateApplyUpdateEdge(graph: GraphData, operation: Extract<GraphOperation, { type: 'update_edge' }>): GraphData {
+    const now = new Date().toISOString()
+
     return {
         ...graph,
-        edges: graph.edges.map(edge => edge.id === operation.edge.id ? operation.edge : edge),
-        updatedAt: new Date().toISOString(),
+        edges: graph.edges.map(edge =>
+            edge.id === operation.edge.id
+                ? { ...operation.edge, updatedAt: [...(edge.updatedAt ?? []), now] }
+                : edge,
+        ),
+        updatedAt: [...(graph.updatedAt ?? []), now],
     }
 }
 
@@ -255,13 +273,16 @@ function privateApplyUpdateEdge(graph: GraphData, operation: Extract<GraphOperat
  *     1. 只更新 position 字段，不影响节点其他属性。
  */
 function privateApplyMoveNode(graph: GraphData, operation: Extract<GraphOperation, { type: 'move_node' }>): GraphData {
+    const now = new Date().toISOString()
+
     return {
         ...graph,
         nodes: graph.nodes.map(node => node.id === operation.nodeId ? {
             ...node,
             position: operation.position,
+            updatedAt: [...(node.updatedAt ?? []), now],
         } : node),
-        updatedAt: new Date().toISOString(),
+        updatedAt: [...(graph.updatedAt ?? []), now],
     }
 }
 
@@ -280,6 +301,7 @@ function privateApplyCollapseDependency(graph: GraphData, operation: Extract<Gra
         return graph
     }
 
+    const now = new Date().toISOString()
     const currentCognitiveState = graph.cognitiveState ?? { foldedDependencies: [] }
     const otherFoldedDependencies = currentCognitiveState.foldedDependencies.filter(item => item.targetNodeId !== operation.targetNodeId)
 
@@ -295,7 +317,7 @@ function privateApplyCollapseDependency(graph: GraphData, operation: Extract<Gra
                 },
             ],
         },
-        updatedAt: new Date().toISOString(),
+        updatedAt: [...(graph.updatedAt ?? []), now],
     }
 }
 
@@ -309,6 +331,7 @@ function privateApplyCollapseDependency(graph: GraphData, operation: Extract<Gra
  */
 function privateApplyExpandDependency(graph: GraphData, operation: Extract<GraphOperation, { type: 'expand_dependency' }>): GraphData {
     const currentCognitiveState = graph.cognitiveState ?? { foldedDependencies: [] }
+    const now = new Date().toISOString()
 
     return {
         ...graph,
@@ -316,6 +339,6 @@ function privateApplyExpandDependency(graph: GraphData, operation: Extract<Graph
             ...currentCognitiveState,
             foldedDependencies: currentCognitiveState.foldedDependencies.filter(item => item.targetNodeId !== operation.targetNodeId),
         },
-        updatedAt: new Date().toISOString(),
+        updatedAt: [...(graph.updatedAt ?? []), now],
     }
 }
