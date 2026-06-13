@@ -1,5 +1,5 @@
 /**
- * graph_types.ts
+ * graph_data.ts
  *
  * 功能：
  *     定义 GraphData 全部数据结构类型。
@@ -90,7 +90,7 @@ export type NodePosition = GraphPosition
  *     保证交互层透明——用户在任何地方看到引用节点，
  *     都直接支持"展开子图"等操作，不需要先跳转到源节点所在图。
  */
-interface NodeBase {
+export interface NodeBase {
     readonly id: NodeId
     graphId: GraphId
     role: NodeRole
@@ -99,6 +99,7 @@ interface NodeBase {
     position?: NodePosition
     abstractionLevel: number
     childGraphId?: GraphId
+    groupId?: string
     createdAt?: string
     updatedAt?: string[]
 }
@@ -163,3 +164,18 @@ export interface EdgeData {
     createdAt?: string
     updatedAt?: string[]
 }
+
+// Phase 2 additions═══════════════════════════════════════════
+
+/** 多图上下文。Map<GraphId, GraphData> 的类型别名。 */
+export type GraphRegistry = Map<GraphId, GraphData>
+
+/** 跨图节点搜索结果。 */
+export interface SearchResult {
+    graphId: GraphId
+    nodeId: NodeId
+    node: NodeData
+}
+
+/** 节点半径映射，碰撞检测用。 */
+export type NodeRadiusMap = Map<NodeId, number>

@@ -19,7 +19,7 @@
  *         deleteGraph(graphId)
  */
 
-import type { GraphData, GraphId } from '@/definitions/types/graph_types'
+import type { GraphData, GraphId } from '@my-project/graph-engine'
 
 const GRAPH_STORAGE_PREFIX = 'graph'
 

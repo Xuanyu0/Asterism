@@ -18,7 +18,7 @@
 
 import { defineStore } from 'pinia'
 import type { DraftEdge, DraftNode } from '@/definitions/types/draft_types'
-import type { KnowledgeNodeKind } from '@/definitions/types/graph_types'
+import type { KnowledgeNodeKind } from '@my-project/graph-engine'
 
 /**
  * 功能：

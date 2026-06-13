@@ -14,7 +14,8 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@my-project/graph-engine': fileURLToPath(new URL('../packages/graph-engine/src', import.meta.url)),
     },
   },
 })

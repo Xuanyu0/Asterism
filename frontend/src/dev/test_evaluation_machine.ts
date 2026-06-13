@@ -21,9 +21,9 @@
  *     main.ts 中调用 registerTestMachine() → 浏览器控制台输入 window.runAllTests()
  */
 
-import type { EdgeData, EdgeId, GraphData, GraphId, NodeData, NodeId } from '@/definitions/types/graph_types'
-import type { GraphOperation } from '@/definitions/types/graph_operation_types'
-import type { ValidationResult } from '@/definitions/types/validation_types'
+import type { EdgeData, EdgeId, GraphData, GraphId, NodeData, NodeId } from '@my-project/graph-engine'
+import type { GraphOperation } from '@my-project/graph-engine'
+import type { ValidationResult } from '@my-project/graph-engine'
 
 import { GraphValidator } from '@/definitions/validators/graph_validator'
 import { OperationValidator } from '@/definitions/validators/operation_validator'

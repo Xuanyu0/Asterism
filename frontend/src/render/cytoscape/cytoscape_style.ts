@@ -26,7 +26,7 @@ export function createCytoscapeStyle() {
         {
             selector: 'node',
             style: {
-                'background-color': '#f0f0f0',
+                'background-color': `#f0f0f0`,
                 'border-color': '#3d3d3d',
                 'border-width': 2,
                 label: 'data(label)',

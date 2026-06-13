@@ -19,8 +19,8 @@
 
 import { defineStore } from 'pinia'
 
-import type { NodeData, EdgeData, NodeId, EdgeId } from '@/definitions/types/graph_types'
-import type { ValidationResult } from '@/definitions/types/validation_types'
+import type { NodeData, EdgeData, NodeId, EdgeId } from '@my-project/graph-engine'
+import type { ValidationResult } from '@my-project/graph-engine'
 
 import type {
     InteractionMode,
@@ -35,7 +35,7 @@ import type {
     KnowledgeNodeKind,
     EdgeKind,
     EdgeDirection,
-} from '@/definitions/types/graph_types'
+} from '@my-project/graph-engine'
 
 
 

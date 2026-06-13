@@ -16,7 +16,7 @@ import type {
     EdgeKind,
     KnowledgeNodeKind,
     NodeId,
-} from '@/definitions/types/graph_types'
+} from '@my-project/graph-engine'
 
 /**
  * 功能：

@@ -9,7 +9,7 @@
  * graphStore.setCurrentGraph(goldenGraph)
  */
 
-import type { GraphData, NodeData, EdgeData } from '@/definitions/types/graph_types'
+import type { GraphData, NodeData, EdgeData } from '@my-project/graph-engine'
 
 export const goldenGraph: GraphData = {
     id: 'graph-golden',

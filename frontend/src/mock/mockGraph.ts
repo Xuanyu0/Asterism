@@ -1,4 +1,4 @@
-import type { GraphData } from '@/definitions/types/graph_types' // 导入 GraphData 类型
+import type { GraphData } from '@my-project/graph-engine' // 导入 GraphData 类型
 
 export const mockGraph: GraphData = {
     id: 'graph-main', // 主图 ID

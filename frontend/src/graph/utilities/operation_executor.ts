@@ -15,8 +15,8 @@
  * import { applyOperationToGraph } from '@/graph/operation_executor'
  */
 
-import type { GraphData } from '@/definitions/types/graph_types'
-import type { GraphOperation } from '@/definitions/types/graph_operation_types'
+import type { GraphData } from '@my-project/graph-engine'
+import type { GraphOperation } from '@my-project/graph-engine'
 import { cleanGraphAfterDeleteNode, collectDependencyNodeIds } from '@/graph/utilities/graph_utils'
 
 

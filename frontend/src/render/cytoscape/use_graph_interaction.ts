@@ -12,7 +12,7 @@
  */
 
 import type { Core, EventObject } from 'cytoscape'
-import type { NodeId, EdgeId } from '@/definitions/types/graph_types'
+import type { NodeId, EdgeId } from '@my-project/graph-engine'
 
 /**
  * 功能：

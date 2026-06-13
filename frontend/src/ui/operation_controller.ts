@@ -30,11 +30,11 @@ import type {
     NodeId,
     EdgeId,
     GraphPosition
-} from '@/definitions/types/graph_types'
+} from '@my-project/graph-engine'
 import type { DraftNode } from '@/definitions/types/draft_types'
 import type { OperationTool, AddTarget } from '@/definitions/types/ui_types'
-import type { EdgeKind, EdgeDirection } from '@/definitions/types/graph_types'
-import type { KnowledgeNodeKind } from '@/definitions/types/graph_types'
+import type { EdgeKind, EdgeDirection } from '@my-project/graph-engine'
+import type { KnowledgeNodeKind } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { useUIStore } from '@/ui/ui_store'

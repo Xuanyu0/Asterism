@@ -80,7 +80,7 @@
 import { computed } from 'vue'
 import { useDraftStore } from '@/ui/draft_store'
 import { useOperationController } from '@/ui/operation_controller'
-import type { NodeData, EdgeData } from '@/definitions/types/graph_types'
+import type { NodeData, EdgeData } from '@my-project/graph-engine'
 
 const draftStore = useDraftStore()
 const controller = useOperationController()

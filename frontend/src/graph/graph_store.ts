@@ -20,10 +20,10 @@
 
 import { defineStore } from 'pinia'
 
-import type { EdgeId, GraphData, GraphId, NodeId } from '@/definitions/types/graph_types'
-import type { GraphOperation } from '@/definitions/types/graph_operation_types'
+import type { EdgeId, GraphData, GraphId, NodeId } from '@my-project/graph-engine'
+import type { GraphOperation } from '@my-project/graph-engine'
 import { OperationValidator } from '@/definitions/validators/operation_validator'
-import type { ValidationResult } from '@/definitions/types/validation_types'
+import type { ValidationResult } from '@my-project/graph-engine'
 
 import { saveGraph, loadGraph, deleteGraph } from '@/graph/utilities/graph_persistence'
 import { applyOperationToGraph, pushUndoSnapshot, shouldPushUndoSnapshot } from '@/graph/utilities/operation_executor'

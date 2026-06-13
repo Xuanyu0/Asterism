@@ -9,8 +9,8 @@
  * const result = GraphValidator.validateGraph(graphData)
  */
 
-import type { GraphData, NodeData, EdgeData } from '@/definitions/types/graph_types'
-import type { ValidationIssue, ValidationResult } from '@/definitions/types/validation_types'
+import type { GraphData, NodeData, EdgeData } from '@my-project/graph-engine'
+import type { ValidationIssue, ValidationResult } from '@my-project/graph-engine'
 import * as RuleCheckers from '@/definitions/validators/rule_checkers'
 import { DEFAULT_GRAPH_RULES } from '@/definitions/rules/graph_rules'
 

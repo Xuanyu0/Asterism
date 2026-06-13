@@ -13,7 +13,7 @@
  * import { normalizeGraph } from '@/graph/graph_utils'
  */
 
-import type { GraphData, NodeId } from '@/definitions/types/graph_types'
+import type { GraphData, NodeId } from '@my-project/graph-engine'
 
 /**
  * 功能：

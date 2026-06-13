@@ -26,7 +26,7 @@ import type {
     EdgeKind,
     KnowledgeNodeKind,
     NodeId,
-} from '@/definitions/types/graph_types'
+} from '@my-project/graph-engine'
 
 export type InteractionMode = 'cognition' | 'operation' | 'arrangement' | null
 // 当前主交互模式。null 表示未激活任何模式（默认状态）。

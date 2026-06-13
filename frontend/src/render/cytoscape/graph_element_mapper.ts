@@ -27,7 +27,7 @@ import type {
     KnowledgeNodeKind,
     ReferenceNodeKind,
     RealNodeForm,
-} from '@/definitions/types/graph_types'
+} from '@my-project/graph-engine'
 
 /**
  * 功能：

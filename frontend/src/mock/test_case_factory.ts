@@ -38,7 +38,7 @@ import type {
     NodeRole,
     RealNodeForm,
     ReferenceNodeKind,
-} from '@/definitions/types/graph_types'
+} from '@my-project/graph-engine'
 
 import {
     GraphValidator,
