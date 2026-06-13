@@ -19,7 +19,6 @@ export interface GraphRules {
     nodeSoftLimit: number
     nodeWarningLimit: number
     nodeHardLimit: number
-    referenceNodeHardLimit: number
 }
 
 export const DEFAULT_GRAPH_RULES: GraphRules = {
@@ -29,6 +28,4 @@ export const DEFAULT_GRAPH_RULES: GraphRules = {
     nodeSoftLimit: 50,
     nodeWarningLimit: 100,
     nodeHardLimit: 150,
-    // 引用节点数量限制 R1 待定，暂与普通节点同值
-    referenceNodeHardLimit: 150,
 }

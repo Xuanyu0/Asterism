@@ -131,6 +131,7 @@ export interface ReferenceNodeData extends NodeBase {
     referenceKind: ReferenceNodeKind
     sourceGraphId: GraphId
     sourceNodeId: NodeId
+    contextSummary?: string
 }
 
     // 联合类型───────────────────────────────────────────────

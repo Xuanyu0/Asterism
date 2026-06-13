@@ -38,15 +38,30 @@ export function validateNodeLabel(node: NodeData): ValidationIssue[] {
 }
 
 export function validateNodeSummary(node: NodeData): ValidationIssue[] {
-    if (node.role !== 'knowledge') return []
-    if ((node.summary ?? '').length <= DEFAULT_GRAPH_RULES.summaryMaxLength) return []
-    return [{
-        level: 'error',
-        code: 'NODE_SUMMARY_TOO_LONG',
-        message: `节点摘要不能超过 ${DEFAULT_GRAPH_RULES.summaryMaxLength} 字。`,
-        targetType: 'node',
-        targetId: node.id,
-    }]
+    if (node.role === 'knowledge') {
+        if ((node.summary ?? '').length <= DEFAULT_GRAPH_RULES.summaryMaxLength) return []
+        return [{
+            level: 'error',
+            code: 'NODE_SUMMARY_TOO_LONG',
+            message: `节点摘要不能超过 ${DEFAULT_GRAPH_RULES.summaryMaxLength} 字。`,
+            targetType: 'node',
+            targetId: node.id,
+        }]
+    }
+
+    // 启发节点的 contextSummary 长度校验
+    if (node.role === 'reference' && node.referenceKind === 'heuristic') {
+        if ((node.contextSummary ?? '').length <= DEFAULT_GRAPH_RULES.summaryMaxLength) return []
+        return [{
+            level: 'error',
+            code: 'NODE_SUMMARY_TOO_LONG',
+            message: `上下文摘要不能超过 ${DEFAULT_GRAPH_RULES.summaryMaxLength} 字。`,
+            targetType: 'node',
+            targetId: node.id,
+        }]
+    }
+
+    return []
 }
 
 export function validateEdgeLabel(edge: EdgeData): ValidationIssue[] {
