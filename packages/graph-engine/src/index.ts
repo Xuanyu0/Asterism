@@ -43,11 +43,6 @@ export type {
 } from './types/graph_data'
 
 export type {
-    ExploreOperation,
-    DiscoverOperation,
-    DeconstructOperation,
-    InduceOperation,
-    InternalizeOperation,
     AddNodeOperation,
     AddEdgeOperation,
     DeleteNodeOperation,
@@ -59,11 +54,19 @@ export type {
     ExpandDependencyOperation,
     AddGraphOperation,
     DeleteGraphOperation,
-    CognitionOperation,
-    DataOperation,
-    CognitiveViewOperation,
+    AtomicOperation,
     GraphOperation,
-} from './types/operations'
+} from './types/atomic_operations'
+
+export type {
+    ExploreOperation,
+    DiscoverOperation,
+    DeconstructOperation,
+    InduceOperation,
+    InternalizeOperation,
+    CognitiveOperation,
+    CognitiveResult,
+} from './types/cognitive_operations'
 
 export type {
     ValidationLevel,
@@ -72,12 +75,10 @@ export type {
     ValidationResult,
 } from './types/validation'
 
-export type { CognitiveResult } from './types/cognitive'
-
 export type {
     OperationLogEntry,
     OperationLog,
-    ReflogEntry,
+    State,
 } from './types/operation_log'
 
 // Core functions

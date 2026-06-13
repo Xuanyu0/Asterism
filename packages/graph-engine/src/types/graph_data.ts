@@ -37,7 +37,7 @@ export interface GraphData {
     edges: EdgeData[]
     cognitiveState?: GraphCognitiveState
     readonly createdAt?: string
-    updatedAt?: string[]
+    updatedAt?: string
 }
 
 export interface GraphCognitiveState {
@@ -101,7 +101,7 @@ export interface NodeBase {
     childGraphId?: GraphId
     groupId?: string
     createdAt?: string
-    updatedAt?: string[]
+    updatedAt?: string
 }
 
     // 知识节点───────────────────────────────────────────────
@@ -162,7 +162,7 @@ export interface EdgeData {
     direction: EdgeDirection
     label?: string
     createdAt?: string
-    updatedAt?: string[]
+    updatedAt?: string
 }
 
 // Phase 2 additions═══════════════════════════════════════════

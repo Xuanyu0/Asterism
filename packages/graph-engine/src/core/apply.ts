@@ -14,7 +14,7 @@
  */
 
 import type { GraphData } from '../types/graph_data'
-import type { GraphOperation } from '../types/operations'
+import type { GraphOperation } from '../types/atomic_operations'
 import type { ValidationResult } from '../types/validation'
 import { validateOperation } from './validate'
 import { executeOperation } from './execute'

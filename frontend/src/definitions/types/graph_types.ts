@@ -37,7 +37,7 @@ export interface GraphData {
     edges: EdgeData[]
     cognitiveState?: GraphCognitiveState
     readonly createdAt?: string
-    updatedAt?: string[]
+    updatedAt?: string
 }
 
 export interface GraphCognitiveState {
@@ -100,7 +100,7 @@ interface NodeBase {
     abstractionLevel: number
     childGraphId?: GraphId
     createdAt?: string
-    updatedAt?: string[]
+    updatedAt?: string
 }
 
     // 知识节点───────────────────────────────────────────────
@@ -161,5 +161,5 @@ export interface EdgeData {
     direction: EdgeDirection
     label?: string
     createdAt?: string
-    updatedAt?: string[]
+    updatedAt?: string
 }

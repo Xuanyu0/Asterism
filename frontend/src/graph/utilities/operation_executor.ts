@@ -121,8 +121,8 @@ function privateApplyAddNode(graph: GraphData, operation: Extract<GraphOperation
 
     return {
         ...graph,
-        nodes: [...graph.nodes, { ...operation.node, createdAt: now, updatedAt: [now] }],
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        nodes: [...graph.nodes, { ...operation.node, createdAt: now, updatedAt: now }],
+        updatedAt: now,
     }
 }
 
@@ -147,8 +147,8 @@ function privateApplyAddEdge(graph: GraphData, operation: Extract<GraphOperation
 
             return node
         }),
-        edges: [...graph.edges, { ...operation.edge, createdAt: now, updatedAt: [now] }],
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        edges: [...graph.edges, { ...operation.edge, createdAt: now, updatedAt: now }],
+        updatedAt: now,
     }
 }
 
@@ -194,7 +194,7 @@ function privateApplyDeleteNode(graph: GraphData, operation: Extract<GraphOperat
                 return node
             }),
         edges: graph.edges.filter(edge => edge.source !== operation.nodeId && edge.target !== operation.nodeId),
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        updatedAt: now,
     }, operation.nodeId)
 }
 
@@ -219,7 +219,7 @@ function privateApplyDeleteEdge(graph: GraphData, operation: Extract<GraphOperat
             return node
         }),
         edges: graph.edges.filter(edge => edge.id !== operation.edgeId),
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        updatedAt: now,
     }
 }
 
@@ -237,10 +237,10 @@ function privateApplyUpdateNode(graph: GraphData, operation: Extract<GraphOperat
         ...graph,
         nodes: graph.nodes.map(node =>
             node.id === operation.node.id
-                ? { ...operation.node, updatedAt: [...(node.updatedAt ?? []), now] }
+                ? { ...operation.node, updatedAt: now }
                 : node,
         ),
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        updatedAt: now,
     }
 }
 
@@ -258,10 +258,10 @@ function privateApplyUpdateEdge(graph: GraphData, operation: Extract<GraphOperat
         ...graph,
         edges: graph.edges.map(edge =>
             edge.id === operation.edge.id
-                ? { ...operation.edge, updatedAt: [...(edge.updatedAt ?? []), now] }
+                ? { ...operation.edge, updatedAt: now }
                 : edge,
         ),
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        updatedAt: now,
     }
 }
 
@@ -280,9 +280,9 @@ function privateApplyMoveNode(graph: GraphData, operation: Extract<GraphOperatio
         nodes: graph.nodes.map(node => node.id === operation.nodeId ? {
             ...node,
             position: operation.position,
-            updatedAt: [...(node.updatedAt ?? []), now],
+            updatedAt: now,
         } : node),
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        updatedAt: now,
     }
 }
 
@@ -317,7 +317,7 @@ function privateApplyCollapseDependency(graph: GraphData, operation: Extract<Gra
                 },
             ],
         },
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        updatedAt: now,
     }
 }
 
@@ -339,6 +339,6 @@ function privateApplyExpandDependency(graph: GraphData, operation: Extract<Graph
             ...currentCognitiveState,
             foldedDependencies: currentCognitiveState.foldedDependencies.filter(item => item.targetNodeId !== operation.targetNodeId),
         },
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        updatedAt: now,
     }
 }

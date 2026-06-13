@@ -32,7 +32,7 @@ import type {
     ExpandDependencyOperation,
     AddGraphOperation,
     DeleteGraphOperation,
-} from '../types/operations'
+} from '../types/atomic_operations'
 
 /**
  * 功能：

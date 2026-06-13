@@ -17,7 +17,7 @@
  */
 
 import type { GraphData } from '../types/graph_data'
-import type { GraphOperation } from '../types/operations'
+import type { GraphOperation } from '../types/atomic_operations'
 import { executeOperation } from './execute'
 
 /**

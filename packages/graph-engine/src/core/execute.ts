@@ -20,7 +20,7 @@
  */
 
 import type { GraphData, NodeId } from '../types/graph_data'
-import type { GraphOperation } from '../types/operations'
+import type { GraphOperation } from '../types/atomic_operations'
 
 /**
  * 功能：
@@ -150,8 +150,8 @@ function executeAddNode(graph: GraphData, operation: { type: 'add_node'; node: G
 
     return {
         ...graph,
-        nodes: [...graph.nodes, { ...operation.node, createdAt: now, updatedAt: [now] }],
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        nodes: [...graph.nodes, { ...operation.node, createdAt: now, updatedAt: now }],
+        updatedAt: now,
     }
 }
 
@@ -168,8 +168,8 @@ function executeAddEdge(graph: GraphData, operation: { type: 'add_edge'; edge: G
 
             return node
         }),
-        edges: [...graph.edges, { ...operation.edge, createdAt: now, updatedAt: [now] }],
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        edges: [...graph.edges, { ...operation.edge, createdAt: now, updatedAt: now }],
+        updatedAt: now,
     }
 }
 
@@ -206,7 +206,7 @@ function executeDeleteNode(graph: GraphData, operation: { type: 'delete_node'; n
                 return node
             }),
         edges: graph.edges.filter(edge => edge.source !== operation.nodeId && edge.target !== operation.nodeId),
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        updatedAt: now,
     }, operation.nodeId)
 }
 
@@ -224,7 +224,7 @@ function executeDeleteEdge(graph: GraphData, operation: { type: 'delete_edge'; e
             return node
         }),
         edges: graph.edges.filter(edge => edge.id !== operation.edgeId),
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        updatedAt: now,
     }
 }
 
@@ -235,10 +235,10 @@ function executeUpdateNode(graph: GraphData, operation: { type: 'update_node'; n
         ...graph,
         nodes: graph.nodes.map(node =>
             node.id === operation.node.id
-                ? { ...operation.node, updatedAt: [...(node.updatedAt ?? []), now] }
+                ? { ...operation.node, updatedAt: now }
                 : node,
         ),
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        updatedAt: now,
     }
 }
 
@@ -249,10 +249,10 @@ function executeUpdateEdge(graph: GraphData, operation: { type: 'update_edge'; e
         ...graph,
         edges: graph.edges.map(edge =>
             edge.id === operation.edge.id
-                ? { ...operation.edge, updatedAt: [...(edge.updatedAt ?? []), now] }
+                ? { ...operation.edge, updatedAt: now }
                 : edge,
         ),
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        updatedAt: now,
     }
 }
 
@@ -264,9 +264,9 @@ function executeMoveNode(graph: GraphData, operation: { type: 'move_node'; nodeI
         nodes: graph.nodes.map(node => node.id === operation.nodeId ? {
             ...node,
             position: operation.position,
-            updatedAt: [...(node.updatedAt ?? []), now],
+            updatedAt: now,
         } : node),
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        updatedAt: now,
     }
 }
 
@@ -293,7 +293,7 @@ function executeCollapseDependency(graph: GraphData, operation: { type: 'collaps
                 },
             ],
         },
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        updatedAt: now,
     }
 }
 
@@ -307,6 +307,6 @@ function executeExpandDependency(graph: GraphData, operation: { type: 'expand_de
             ...currentCognitiveState,
             foldedDependencies: currentCognitiveState.foldedDependencies.filter(item => item.targetNodeId !== operation.targetNodeId),
         },
-        updatedAt: [...(graph.updatedAt ?? []), now],
+        updatedAt: now,
     }
 }

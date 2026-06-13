@@ -172,32 +172,43 @@ src/
 
 **目标**：让用户在时间轴上回溯图谱任意时刻的状态，实现"git log 式"的学习历史回顾。
 
-**三层架构（由底向上）：**
+**两层模型（已实现数据层，Phase 2）：**
 
 ```
-数据层（Phase 3 前完成）：
-    - GraphData 全量快照日志：每次操作前保存完整 GraphData 副本
-    - 或 Operation 日志：记录所有操作序列，支持逆向回放
-    - 时间戳索引：已铺垫（graph/节点/边的 updatedAt 已改为 string[]）
+操作树（细粒度，自动记录）：
+    - OperationLog = { entries: OperationLogEntry[], cursor: number }
+    - 树结构：每个 entry 的 parentIndex 指向父节点。parentIndex = -1 = 基线 G₀
+    - 驱动临时撤销：Ctrl+Z = cursor 沿 parentIndex 链上溯。Ctrl+Y = 子节点选择（≥2 子时弹出分支选择）
+    - 新操作挂在当前 cursor 下，旧分支保留在 entries 中
 
-中间层（Phase 3 前完成）：
-    - 待定
+状态标签（粗粒度，用户显式提交）：
+    - State = { cursor: number, summary: string, timestamp: string }
+    - 不存储 GraphData 副本，指向操作树中的某个 entry
+    - 恢复 State = cursor 跳到 state.cursor，沿 parentIndex 链回放
+    - summary 限制不超过 50 个中文字符
+
+中间层（Phase 2 完成）：
+    - core/reversal.ts：逆操作构造器。createReversal(graph, op) → GraphOperation[]
+    - core/replay.ts：操作序列回放。replayGraph(base, ops) → GraphData
 
 UI 层（Phase 3 期间完成）：
-    - 待定
+    - 左下角 ← → 按钮（Undo/Redo）
+    - 历史时间轴视图（State 列表）
+    - 分支选择 UI（Redo 时多子节点）
 ```
-
-**当前已铺垫的数据层**（2026-06-12）：
-- `graph_types.ts`：`GraphData.updatedAt` 已改为 `string[]`，`NodeBase` 和 `EdgeData` 已新增 `createdAt` / `updatedAt`
-- `operation_executor.ts`：9 个操作函数自动在每次变更时追加时间戳
-- 数据基础已就绪，但全量快照或 Operation 日志尚未实现
-
 
 ### Phase 3：AI Runtime（MVP 后期，排在 Graph Engine 之后）
 
 - Compiler / Translator / Checker / Analyser Agent 信息流连通
 - 要求 Graph Engine 作为底层基础
 - 存储格式从 JSON 切换为 JSONB
+
+**Phase 3 前置待决策：批量原子操作（`applyBatch`）**
+
+- 问题：AI Collabrator 生成的 `Graph Patch Plan` 是一组语义关联的操作序列，需作为整体事务执行。若逐条 `apply()`，中间失败会导致 GraphData 处于半成品状态，与 AI 意图的认知语义完整性冲突。
+- 设想的 `applyBatch(graph, ops[])` 行为：引擎内部逐条 validate → 全通过后逐条 execute。任一失败则整批丢弃，入参 graph 原封不动。中间状态不暴露给调用方。
+- `applyBatch` 不影响当前 Phase 2 的单步 `apply()`，是新增独立函数。
+- 当前约定：暂不实现，待 Phase 3 AI 接入前决策。`apply()` 接口在 Phase 3 不需改动。
 
 ### MVP 阶段暂不启动
 

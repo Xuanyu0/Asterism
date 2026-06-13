@@ -19,7 +19,7 @@
  */
 
 import type { GraphData, NodeData, EdgeData, NodeId } from '../types/graph_data'
-import type { GraphOperation } from '../types/operations'
+import type { GraphOperation } from '../types/atomic_operations'
 import type { ValidationIssue, ValidationResult } from '../types/validation'
 import { collectDependencyNodeIds } from './execute'
 import { DEFAULT_GRAPH_RULES } from './checkers/rules'
