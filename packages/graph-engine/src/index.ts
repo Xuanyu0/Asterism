@@ -79,3 +79,12 @@ export type {
     OperationLog,
     ReflogEntry,
 } from './types/operation_log'
+
+// Core functions
+export { executeOperation, collectDependencyNodeIds } from './core/execute'
+export { validateOperation } from './core/validate'
+export { applyOperation } from './core/apply'
+export { normalizeGraph } from './core/normalize'
+export { generateNodeId, generateEdgeId, generateGraphId } from './core/id'
+export { createReversal } from './core/reversal'
+export { replayGraph, replayToStep } from './core/replay'
