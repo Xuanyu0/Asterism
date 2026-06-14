@@ -162,17 +162,17 @@ export function assembleGraph(params: {
     ownerNodeId?: NodeId
 }): GraphData {
     const degreeMap = new Map<NodeId, number>()
-    for (const n of params.nodes) {
-        degreeMap.set(n.id, 0)
+    for (const node of params.nodes) {
+        degreeMap.set(node.id, 0)
     }
     for (const e of params.edges) {
         degreeMap.set(e.source, (degreeMap.get(e.source) ?? 0) + 1)
         degreeMap.set(e.target, (degreeMap.get(e.target) ?? 0) + 1)
     }
 
-    const nodesWithDegree: NodeData[] = params.nodes.map(n => ({
-        ...n,
-        degree: degreeMap.get(n.id) ?? 0,
+    const nodesWithDegree: NodeData[] = params.nodes.map(node => ({
+        ...node,
+        degree: degreeMap.get(node.id) ?? 0,
     }))
 
     const now = new Date().toISOString()

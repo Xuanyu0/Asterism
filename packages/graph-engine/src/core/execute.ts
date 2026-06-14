@@ -140,8 +140,8 @@ function executeDeleteNode(graph: GraphData, operation: { type: 'delete_node'; n
     // 删除知识节点时，同图内所有指向它的引用节点同步移除。
     const cascadedReferenceNodeIds = new Set(
         graph.nodes
-            .filter(n => n.role === 'reference' && n.sourceNodeId === operation.nodeId && n.sourceGraphId === graph.id)
-            .map(n => n.id),
+            .filter(node => node.role === 'reference' && node.sourceNodeId === operation.nodeId && node.sourceGraphId === graph.id)
+            .map(node => node.id),
     )
 
     for (const refNodeId of cascadedReferenceNodeIds) {
@@ -216,22 +216,22 @@ function executeDeleteEdge(graph: GraphData, operation: { type: 'delete_edge'; e
     // 端点穿透：对称于 add_edge 
     if (deletedEdge) {
         for (const endpointId of [deletedEdge.source, deletedEdge.target]) {
-            const endpointNode = nodes.find(n => n.id === endpointId)
+            const endpointNode = nodes.find(node => node.id === endpointId)
 
             if (endpointNode?.role === 'reference' && endpointNode.sourceGraphId === graph.id) {
-                nodes = nodes.map(n => {
-                    if (n.id === endpointNode.sourceNodeId) {
-                        return { ...n, degree: Math.max(0, n.degree - 1) }
+                nodes = nodes.map(node => {
+                    if (node.id === endpointNode.sourceNodeId) {
+                        return { ...node, degree: Math.max(0, node.degree - 1) }
                     }
 
-                    return n
+                    return node
                 })
                 nodes = syncReferenceNodeDegree(nodes, graph.id, endpointNode.sourceNodeId)
             }
         }
 
         for (const endpointId of [deletedEdge.source, deletedEdge.target]) {
-            const endpointNode = nodes.find(n => n.id === endpointId)
+            const endpointNode = nodes.find(node => node.id === endpointId)
 
             if (endpointNode?.role === 'knowledge') {
                 nodes = syncReferenceNodeDegree(nodes, graph.id, endpointId)

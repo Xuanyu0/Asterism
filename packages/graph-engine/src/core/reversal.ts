@@ -111,7 +111,7 @@ function createReversalForAddGraph(operation: AddGraphOperation): GraphOperation
 // delete — 需要从 graph 中捕获被删对象的完整快照
 
 function createReversalForDeleteNode(graph: GraphData, operation: DeleteNodeOperation): GraphOperation[] {
-    const deletedNode = graph.nodes.find(n => n.id === operation.nodeId)
+    const deletedNode = graph.nodes.find(node => node.id === operation.nodeId)
 
     if (!deletedNode) {
         return []
@@ -174,7 +174,7 @@ function createReversalForDeleteGraph(graph: GraphData, operation: DeleteGraphOp
 // update — 需要从 graph 中捕获修改前的完整对象
 
 function createReversalForUpdateNode(graph: GraphData, operation: UpdateNodeOperation): GraphOperation[] {
-    const oldNode = graph.nodes.find(n => n.id === operation.node.id)
+    const oldNode = graph.nodes.find(node => node.id === operation.node.id)
 
     if (!oldNode) {
         return []
@@ -206,16 +206,16 @@ function createReversalForUpdateEdge(graph: GraphData, operation: UpdateEdgeOper
 // move — 从 graph 中捕获旧位置
 
 function createReversalForMoveNode(graph: GraphData, operation: MoveNodeOperation): GraphOperation[] {
-    const node = graph.nodes.find(n => n.id === operation.nodeId)
+    const current = graph.nodes.find(node => node.id === operation.nodeId)
 
-    if (!node || !node.position) {
+    if (!current || !current.position) {
         return []
     }
 
     const inverse: MoveNodeOperation = {
         type: 'move_node',
         nodeId: operation.nodeId,
-        position: { x: node.position.x, y: node.position.y },
+        position: { x: current.position.x, y: current.position.y },
     }
 
     return [inverse]

@@ -414,7 +414,7 @@ export function useOperationController() {
             const tool = uiStore.selectedOperationTool
 
             if (mode !== 'operation' || !tool) {
-                const node = graphStore.currentGraph?.nodes.find(n => n.id === payload.nodeId)
+                const node = graphStore.currentGraph?.nodes.find(node => n.id === payload.nodeId)
                 if (node) {
                     uiStore.openFloatingWindow(node)
                 }

@@ -231,6 +231,20 @@ UI 层（Phase 3 期间完成）：
 
 核心：**注释解释规则，代码表达实现。**
 
+### 变量命名规则
+
+参数/回调中遍历节点使用 `node`，禁止使用 `n` 作为节点变量的简写。
+
+```ts
+// ❌ 禁止
+graph.nodes.map(n => n.id)
+graph.nodes.filter(n => n.role === 'knowledge')
+
+// ✅ 使用全称
+graph.nodes.map(node => node.id)
+graph.nodes.filter(node => node.role === 'knowledge')
+```
+
 ## 二、文件命名（snake_case）
 
 所有 `.ts` 文件统一 `snake_case`：
@@ -337,7 +351,8 @@ Store = 状态 + 动作。不负责 UI 渲染 / DOM 操作 / Cytoscape 操作。
 
 ## 十四、Git 提交格式
 
-**动词 + 模块 + 目的**（空格分隔）：
+**全英文**。格式：**动词 + 模块 + 目的**（空格分隔）：
+
 ```
 add graph persistence runtime
 refactor ui runtime state machine

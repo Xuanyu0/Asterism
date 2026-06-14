@@ -107,9 +107,9 @@ export function validateGraph(graph: GraphData): ValidationResult {
  */
 function validateReferenceNodeConsistency(graph: GraphData): ValidationIssue[] {
     const issues: ValidationIssue[] = []
-    const nodeIdSet = new Set(graph.nodes.map(n => n.id))
+    const nodeIdSet = new Set(graph.nodes.map(node => node.id))
 
-    const referenceNodes = graph.nodes.filter(n => n.role === 'reference')
+    const referenceNodes = graph.nodes.filter(node => node.role === 'reference')
 
     for (const refNode of referenceNodes) {
         // 同图内引用一致性：检测是否指向自身的 graphId 但源节点不存在

@@ -182,7 +182,7 @@ function testOperationExecutor(): TestSuite {
         results.push({
             name: 'add_node 新节点存在且数据完整',
             passed: (() => {
-                const found = next.nodes.find(n => n.id === 'c')
+                const found = next.nodes.find(node => n.id === 'c')
                 return !!found && found.label === '节点C' && found.position?.x === 600
             })(),
         })
@@ -210,11 +210,11 @@ function testOperationExecutor(): TestSuite {
         results.push({
             name: 'add_edge 两端 degree +1',
             passed: (() => {
-                const a = next.nodes.find(n => n.id === 'a')
-                const b = next.nodes.find(n => n.id === 'b')
+                const a = next.nodes.find(node => n.id === 'a')
+                const b = next.nodes.find(node => n.id === 'b')
                 return a!.degree === 1 && b!.degree === 1
             })(),
-            detail: `a.degree=${next.nodes.find(n => n.id === 'a')!.degree}, b.degree=${next.nodes.find(n => n.id === 'b')!.degree}`,
+            detail: `a.degree=${next.nodes.find(node => n.id === 'a')!.degree}, b.degree=${next.nodes.find(node => n.id === 'b')!.degree}`,
         })
     }
 
@@ -230,7 +230,7 @@ function testOperationExecutor(): TestSuite {
         })
         results.push({
             name: 'delete_node 被删节点不存在于结果中',
-            passed: !next.nodes.find(n => n.id === 'a'),
+            passed: !next.nodes.find(node => n.id === 'a'),
         })
     }
 
@@ -255,8 +255,8 @@ function testOperationExecutor(): TestSuite {
         })
         results.push({
             name: 'delete_node 相邻节点 degree 减少',
-            passed: next.nodes.find(n => n.id === 'b')!.degree === 0,
-            detail: `b.degree=${next.nodes.find(n => n.id === 'b')!.degree}`,
+            passed: next.nodes.find(node => n.id === 'b')!.degree === 0,
+            detail: `b.degree=${next.nodes.find(node => n.id === 'b')!.degree}`,
         })
     }
 
@@ -281,25 +281,25 @@ function testOperationExecutor(): TestSuite {
         })
         results.push({
             name: 'delete_edge 两端 degree -1',
-            passed: next.nodes.find(n => n.id === 'a')!.degree === 0
-                && next.nodes.find(n => n.id === 'b')!.degree === 0,
+            passed: next.nodes.find(node => n.id === 'a')!.degree === 0
+                && next.nodes.find(node => n.id === 'b')!.degree === 0,
         })
     }
 
     // --- update_node ---
     {
         const graph = makeTwoNodeGraph()
-        const originalA = graph.nodes.find(n => n.id === 'a')!
+        const originalA = graph.nodes.find(node => n.id === 'a')!
         const updatedA = { ...originalA, label: '改过标签', summary: '新摘要' } as NodeData
         const next = applyOperationToGraph(graph, { type: 'update_node', node: updatedA })
 
         results.push({
             name: 'update_node 标签更新',
-            passed: next.nodes.find(n => n.id === 'a')!.label === '改过标签',
+            passed: next.nodes.find(node => n.id === 'a')!.label === '改过标签',
         })
         results.push({
             name: 'update_node 摘要更新',
-            passed: (next.nodes.find(n => n.id === 'a') as Extract<NodeData, { role: 'knowledge' }>).summary === '新摘要',
+            passed: (next.nodes.find(node => n.id === 'a') as Extract<NodeData, { role: 'knowledge' }>).summary === '新摘要',
         })
         results.push({
             name: 'update_node 节点数不变',
@@ -343,7 +343,7 @@ function testOperationExecutor(): TestSuite {
         results.push({
             name: 'move_node 位置更新',
             passed: (() => {
-                const pos = next.nodes.find(n => n.id === 'a')!.position!
+                const pos = next.nodes.find(node => n.id === 'a')!.position!
                 return pos.x === 999 && pos.y === 888
             })(),
         })
@@ -813,7 +813,7 @@ function testGraphStoreIntegration(): TestSuite {
         })
         results.push({
             name: 'undoDelete 恢复被删节点',
-            passed: !!store.currentGraph?.nodes.find(n => n.id === 'a'),
+            passed: !!store.currentGraph?.nodes.find(node => n.id === 'a'),
         })
     }
 
