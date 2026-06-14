@@ -279,6 +279,11 @@ export function constrainPosition(
  *     第 1 层：对阻塞节点做切向绕行（左绕 / 右绕），递归检测绕行路径段。
  *     绕不过 → 返回 { ok: false }。
  *
+ * 已知限制：
+ *     单切点绕行不能处理"障碍物正心居中"——绕行后第二段路径可能再次穿过
+ *     同一障碍物的影区，导致绕行失败。此时返回 { ok: false }。解决方案是
+ *     双切点（entry + exit）绕行，留待后续。
+ *
  * 使用：
  *     const result = computePath("n1", {x:0,y:0}, {x:100,y:0}, graph.nodes, radiusMap)
  *     if (result.ok) { // waypoints in result.waypoints
@@ -476,3 +481,35 @@ export function untangleCluster(
 
     return { adjusted: positions, didResolve }
 }
+
+// ═══════════════════════════════════════════
+// 未来改进：势场梯度路径规划
+
+/**
+ * 当前 computePath 使用几何 DFS（射线检测 + 切向绕行），已知限制：障碍物正心居中时绕行失败。
+ *
+ * 替代方案：势场梯度法（Potential Field Gradient Descent）。
+ *
+ * 原理：
+ *     目标坐标作为"目标方向源"——每一步沿"指向目标的方向 + 远离障碍物表面的方向"的加权和前进。
+ *     障碍物表面法向反推强度与距离平方成反比，天然绕开。
+ *
+ * 签不变：
+ *     computePath(nodeId, from, to, allNodes, radiusMap) → { waypoints[], ok }
+ *
+ * 优势：
+ *     - 正心居中障碍物自动绕开，不返回 unreachable
+ *     - 路径点密集 → 前端样条插值后天然光滑
+ *     - 不需要递归，不区分"单障碍/多障碍"
+ *
+ * 代价：
+ *     - 三个硬编码参数（k_att / k_rep / η 步长），调参
+ *     - 数学固有缺陷：极少数几何构型下梯度为零（局部最小值），仍需返回 unreachable
+ *
+ * 改造成本：
+ *     - 替换 computePath / computePathRecursive 两个函数，约 80 行
+ *     - constrainPosition / untangleCluster 不变
+ *     - 不影响调用方
+ *
+ * 不在此次版本实现。所有几何交互对接完毕后再评估是否切换。
+ */
