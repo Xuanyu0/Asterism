@@ -165,9 +165,9 @@ export function assembleGraph(params: {
     for (const node of params.nodes) {
         degreeMap.set(node.id, 0)
     }
-    for (const e of params.edges) {
-        degreeMap.set(e.source, (degreeMap.get(e.source) ?? 0) + 1)
-        degreeMap.set(e.target, (degreeMap.get(e.target) ?? 0) + 1)
+    for (const edge of params.edges) {
+        degreeMap.set(edge.source, (degreeMap.get(edge.source) ?? 0) + 1)
+        degreeMap.set(edge.target, (degreeMap.get(edge.target) ?? 0) + 1)
     }
 
     const nodesWithDegree: NodeData[] = params.nodes.map(node => ({

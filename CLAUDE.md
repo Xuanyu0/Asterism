@@ -233,16 +233,18 @@ UI 层（Phase 3 期间完成）：
 
 ### 变量命名规则
 
-参数/回调中遍历节点使用 `node`，禁止使用 `n` 作为节点变量的简写。
+遍历节点使用 `node`，遍历边使用 `edge`，禁止单字母简写。
 
 ```ts
 // ❌ 禁止
-graph.nodes.map(n => n.id)
 graph.nodes.filter(n => n.role === 'knowledge')
+graph.edges.find(e => e.id === targetId)
+for (const e of params.edges) { degreeMap.set(e.source, ...) }
 
 // ✅ 使用全称
-graph.nodes.map(node => node.id)
 graph.nodes.filter(node => node.role === 'knowledge')
+graph.edges.find(edge => edge.id === targetId)
+for (const edge of params.edges) { degreeMap.set(edge.source, ...) }
 ```
 
 ## 二、文件命名（snake_case）

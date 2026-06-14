@@ -455,7 +455,7 @@ export function useOperationController() {
                 return
             }
 
-            const edge = graphStore.currentGraph?.edges.find(e => e.id === payload.edgeId)
+            const edge = graphStore.currentGraph?.edges.find(potentialEdge => potentialEdge.id === payload.edgeId)
             if (edge) {
                 uiStore.openFloatingWindow(edge)
             }

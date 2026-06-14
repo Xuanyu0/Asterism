@@ -327,7 +327,7 @@ function testOperationExecutor(): TestSuite {
 
         results.push({
             name: 'update_edge 标签更新',
-            passed: next.edges.find(e => e.id === 'a-b')!.label === '新边标签',
+            passed: next.edges.find(edge => edge.id === 'a-b')!.label === '新边标签',
         })
     }
 

@@ -144,7 +144,7 @@ function createReversalForDeleteNode(graph: GraphData, operation: DeleteNodeOper
 }
 
 function createReversalForDeleteEdge(graph: GraphData, operation: DeleteEdgeOperation): GraphOperation[] {
-    const deletedEdge = graph.edges.find(e => e.id === operation.edgeId)
+    const deletedEdge = graph.edges.find(edge => edge.id === operation.edgeId)
 
     if (!deletedEdge) {
         return []
@@ -189,7 +189,7 @@ function createReversalForUpdateNode(graph: GraphData, operation: UpdateNodeOper
 }
 
 function createReversalForUpdateEdge(graph: GraphData, operation: UpdateEdgeOperation): GraphOperation[] {
-    const oldEdge = graph.edges.find(e => e.id === operation.edge.id)
+    const oldEdge = graph.edges.find(edge => edge.id === operation.edge.id)
 
     if (!oldEdge) {
         return []

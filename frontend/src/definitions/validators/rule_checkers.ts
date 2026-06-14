@@ -104,9 +104,9 @@ export function validateVirtualNodeEdgeRule(graph: GraphData, edge: EdgeData): V
     }
 
     const countVirtualNeighbors = (nodeId: string) => {
-        const related = graph.edges.filter(e => e.source === nodeId || e.target === nodeId)
-        return related.reduce((sum, e) => {
-            const otherId = e.source === nodeId ? e.target : e.source
+        const related = graph.edges.filter(edge => edge.source === nodeId || edge.target === nodeId)
+        return related.reduce((sum, edge) => {
+            const otherId = edge.source === nodeId ? edge.target : edge.source
             const otherNode = nodeMap.get(otherId)
             return sum + ((otherNode?.role === 'knowledge' && otherNode.kind === 'virtual') ? 1 : 0)
         }, 0)
