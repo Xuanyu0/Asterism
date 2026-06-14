@@ -199,15 +199,18 @@ function computeTangentPoints(from: NodePosition, circle: Circle): [NodePosition
         return null
     }
 
+    // 直角三角形：from→center 为斜边 d，center→切点为直角边 r
+    // 切点处的角度 θ = asin(r/d)，切点距 from = d · cos(θ) = sqrt(d² − r²)
     const dirToCenter = normalize(sub(circle.center, from))
-    const angle = Math.acos(circle.radius / d)
+    const angle = Math.asin(circle.radius / d)
+    const tangentDist = d * Math.cos(angle) // = sqrt(d² − r²)
 
     const tangentDir1 = rotate(dirToCenter, angle)
     const tangentDir2 = rotate(dirToCenter, -angle)
 
     return [
-        add(from, scale(tangentDir1, d * Math.cos(angle))),
-        add(from, scale(tangentDir2, d * Math.cos(angle))),
+        add(from, scale(tangentDir1, tangentDist)),
+        add(from, scale(tangentDir2, tangentDist)),
     ]
 }
 

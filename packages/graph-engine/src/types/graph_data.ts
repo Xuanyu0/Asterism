@@ -96,6 +96,7 @@ export interface NodeBase {
     role: NodeRole
     label: string
     degree: number
+    radius?: number
     position?: NodePosition
     abstractionLevel: number
     childGraphId?: GraphId
