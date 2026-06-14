@@ -458,3 +458,28 @@ import NodeWindow from './graph/NodeWindow.vue'
  *     App.vue 直接挂载本组件。
  */
 ```
+
+## 二十、单次调用函数直接内联
+
+纯函数辅助逻辑如果只被一个函数调用（且不 export），**不单独拆函数**，直接在调用处写代码加功能注释。
+
+```ts
+// ❌ 不单独拆函数
+function fooHelper(x: T): U { ... }
+function foo(): void { barHelper(x) }
+
+// ✅ 直接内联
+function foo(): void {
+    // 辅助逻辑：描述做了什么
+    const result = doSomething(x)
+}
+```
+
+判断标准：
+
+| 场景 | 拆不拆 |
+|------|--------|
+| 纯函数辅助逻辑，只调 1 次 | ❌ 内联加注释 |
+| 纯函数辅助逻辑，被 ≥2 个函数调用 | ✅ 拆为 helpers |
+| export 为公开 API | ✅ 独立函数及文档注释 |
+| 函数体过长（>30 行）混在一起不利于阅读 | ✅ 拆为语义块 |

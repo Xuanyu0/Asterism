@@ -21,7 +21,7 @@
 import type { GraphData, NodeData, EdgeData, NodeId } from '../types/graph_data'
 import type { GraphOperation } from '../types/atomic_operations'
 import type { ValidationIssue, ValidationResult } from '../types/validation'
-import { collectDependencyNodeIds } from './execute'
+import { collectDependencyNodeIds } from './traversal'
 import { DEFAULT_GRAPH_RULES } from './checkers/rules'
 import * as RuleCheckers from './checkers/rule_checkers'
 

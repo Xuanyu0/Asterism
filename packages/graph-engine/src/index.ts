@@ -82,7 +82,8 @@ export type {
 } from './types/operation_log'
 
 // Core functions
-export { executeOperation, collectDependencyNodeIds } from './core/execute'
+export { executeOperation } from './core/execute'
+export { collectDependencyNodeIds } from './core/traversal'
 export { validateOperation } from './core/validate'
 export { applyOperation } from './core/apply'
 export { normalizeGraph } from './core/normalize'

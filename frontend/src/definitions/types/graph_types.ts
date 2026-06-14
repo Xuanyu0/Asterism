@@ -59,10 +59,10 @@ export interface FoldedDependencyState {
  *
  * 规则：
  *     - 'knowledge'：知识本体属于当前图，修改仅影响当前图。
- *     - 'reference'：原知识节点在其他图中的投影。修改穿透到源节点
+ *     - 'reference'：源知识节点在其他图中的投影。修改穿透到源节点
  *       （C++ 引用语义：T& r = a，用户交互层不暴露"解引用"）。
  *       sourceGraphId / sourceNodeId 仅用于 operation_executor 内部穿透
- *       和用户主动"定位原节点"。
+ *       和用户主动"定位源节点"。
  */
 export type NodeRole = 'knowledge' | 'reference'
 
@@ -123,7 +123,7 @@ export interface KnowledgeNodeData extends NodeBase {
  *     1. 修改同时作用于源节点（C++ 引用语义）。
  *     2. label / abstractionLevel / childGraphId 在创建时从源节点复制。
  *     3. sourceGraphId / sourceNodeId 是实现引用语义的底层指针，
- *        仅在 operation_executor 内部穿透和用户"定位原节点"时使用。
+ *        仅在 operation_executor 内部穿透和用户"定位源节点"时使用。
  */
 export interface ReferenceNodeData extends NodeBase {
     role: 'reference'

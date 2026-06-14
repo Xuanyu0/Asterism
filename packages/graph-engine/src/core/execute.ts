@@ -6,24 +6,25 @@
  *
  * 总体结构：
  *     1. executeOperation — Operation router，按 type 分派
- *     2. cleanGraphAfterDeleteNode — 删除节点后清理失效的折叠状态
- *     3. collectDependencyNodeIds — 从目标节点反向搜索有向实边前置依赖
- *     4. 各 executeXxx — 11 种 Operation 具体执行函数
+ *     2. 各 executeXxx — 11 种 Operation 具体执行函数
  *
  * 规则：
  *     1. 本模块不负责校验。
  *     2. 所有操作返回新的 GraphData，不修改传入 GraphData。
  *     3. 所有变更操作会写入 timestamp。
  *     4. 引用节点穿透（update_node）与级联删除（delete_node）在本模块内实现。
- *     5. 引用节点度数跟随原节点。有向虚边对度数的影响同时作用于原节点与引用节点。
+ *     5. 引用节点度数跟随源节点。有向虚边对度数的影响同时作用于源节点与引用节点。
  *        跨图场景（Phase 3）依赖 GraphRegistry（Step 5）。
+ *     6. 度数同步委托给 sync.ts。图遍历委托给 traversal.ts。
  *
  * 外部如何使用：
- *     import { executeOperation, collectDependencyNodeIds } from '@my-project/graph-engine'
+ *     import { executeOperation } from '@my-project/graph-engine'
  */
 
-import type { GraphData, NodeData, NodeId } from '../types/graph_data'
+import type { GraphData, NodeId } from '../types/graph_data'
 import type { GraphOperation } from '../types/atomic_operations'
+import { syncReferenceNodeDegree } from './sync'
+import { collectDependencyNodeIds } from './traversal'
 
 export function executeOperation(graph: GraphData, operation: GraphOperation): GraphData {
     switch (operation.type) {
@@ -63,82 +64,6 @@ export function executeOperation(graph: GraphData, operation: GraphOperation): G
     }
 }
 
-/**
- * 功能：
- *     从目标节点沿有向实边反向搜索所有前置依赖节点。
- */
-export function collectDependencyNodeIds(graph: GraphData, targetNodeId: NodeId): NodeId[] {
-    const visitedNodeIds = new Set<NodeId>()
-    const stack: NodeId[] = [targetNodeId]
-
-    while (stack.length > 0) {
-        const currentNodeId = stack.pop()
-
-        if (!currentNodeId) {
-            continue
-        }
-
-        const incomingDependencyEdges = graph.edges.filter(edge =>
-            edge.target === currentNodeId &&
-            edge.kind === 'real' &&
-            edge.direction === 'directed',
-        )
-
-        for (const edge of incomingDependencyEdges) {
-            if (!visitedNodeIds.has(edge.source)) {
-                visitedNodeIds.add(edge.source)
-                stack.push(edge.source)
-            }
-        }
-    }
-
-    visitedNodeIds.delete(targetNodeId)
-
-    return Array.from(visitedNodeIds)
-}
-
-// ------------------------------ helpers -------------------------------------
-
-/**
- * 功能：
- *     度数变更后，将 source 节点的度数同步到同图内所有指向它的引用节点。
- *
- * 规则：
- *     引用节点的度数跟随原节点，不独立计算。
- *     跨图引用节点（sourceGraphId !== 本图 id）由 Phase 3 GraphRegistry 处理。
- */
-function syncReferenceNodeDegree(nodes: NodeData[], graphId: string, sourceNodeId: NodeId): NodeData[] {
-    const sourceNode = nodes.find(n => n.id === sourceNodeId)
-
-    if (!sourceNode || sourceNode.role !== 'knowledge') return nodes
-
-    return nodes.map(n => {
-        if (n.role === 'reference' && n.sourceGraphId === graphId && n.sourceNodeId === sourceNodeId) {
-            return { ...n, degree: sourceNode.degree }
-        }
-
-        return n
-    })
-}
-
-function cleanGraphAfterDeleteNode(graph: GraphData, deletedNodeId: NodeId): GraphData {
-    const currentCognitiveState = graph.cognitiveState ?? { foldedDependencies: [] }
-
-    return {
-        ...graph,
-        cognitiveState: {
-            ...currentCognitiveState,
-            foldedDependencies: currentCognitiveState.foldedDependencies
-                .filter(item => item.targetNodeId !== deletedNodeId)
-                .map(item => ({
-                    ...item,
-                    foldedNodeIds: item.foldedNodeIds.filter(nodeId => nodeId !== deletedNodeId),
-                }))
-                .filter(item => item.foldedNodeIds.length > 0),
-        },
-    }
-}
-
 // ------------------------------ add / delete / update / move / fold / expand -----------------------------------------
 
 function executeAddNode(graph: GraphData, operation: { type: 'add_node'; node: GraphData['nodes'][number] }): GraphData {
@@ -154,8 +79,6 @@ function executeAddNode(graph: GraphData, operation: { type: 'add_node'; node: G
 function executeAddEdge(graph: GraphData, operation: { type: 'add_edge'; edge: GraphData['edges'][number] }): GraphData {
     const now = new Date().toISOString()
 
-    // 有向虚边对度数的影响同时作用于原节点与引用节点。
-    // 若边的端点是引用节点，degree 变更穿透到原节点，再同步回所有引用节点。
     let nodes = graph.nodes.map(node => {
         if (node.id === operation.edge.source || node.id === operation.edge.target) {
             return { ...node, degree: node.degree + 1 }
@@ -164,26 +87,26 @@ function executeAddEdge(graph: GraphData, operation: { type: 'add_edge'; edge: G
         return node
     })
 
-    // 端点穿透：若 source 或 target 是引用节点，原节点也加 degree
+    // 端点穿透：若 source 或 target 是引用节点，源节点也加 degree
     for (const endpointId of [operation.edge.source, operation.edge.target]) {
-        const endpointNode = nodes.find(n => n.id === endpointId)
+        const endpointNode = nodes.find(node => node.id === endpointId)
 
         if (endpointNode?.role === 'reference' && endpointNode.sourceGraphId === graph.id) {
-            nodes = nodes.map(n => {
-                if (n.id === endpointNode.sourceNodeId) {
-                    return { ...n, degree: n.degree + 1 }
+            nodes = nodes.map(node => {
+                if (node.id === endpointNode.sourceNodeId) {
+                    return { ...node, degree: node.degree + 1 }
                 }
 
-                return n
+                return node
             })
             // 源节点 degree 变更后，同步给所有同图引用节点
             nodes = syncReferenceNodeDegree(nodes, graph.id, endpointNode.sourceNodeId)
         }
     }
 
-// 若加边直接连到知识节点，该知识节点的引用节点也同步
+    // 若加边直接连到知识节点，该知识节点的引用节点也同步
     for (const endpointId of [operation.edge.source, operation.edge.target]) {
-        const endpointNode = nodes.find(n => n.id === endpointId)
+        const endpointNode = nodes.find(node => node.id === endpointId)
 
         if (endpointNode?.role === 'knowledge') {
             nodes = syncReferenceNodeDegree(nodes, graph.id, endpointId)
@@ -255,8 +178,24 @@ function executeDeleteNode(graph: GraphData, operation: { type: 'delete_node'; n
         updatedAt: now,
     }
 
+    // 清理折叠状态中对被删节点的引用。
+    // 移除以被删节点为折叠目标的项，从剩余项的 foldedNodeIds 中移除被删节点，整项清空时移除。
     for (const deletedId of allDeletedNodeIds) {
-        result = cleanGraphAfterDeleteNode(result, deletedId)
+        const cognitiveState = result.cognitiveState ?? { foldedDependencies: [] }
+
+        result = {
+            ...result,
+            cognitiveState: {
+                ...cognitiveState,
+                foldedDependencies: cognitiveState.foldedDependencies
+                    .filter(item => item.targetNodeId !== deletedId)
+                    .map(item => ({
+                        ...item,
+                        foldedNodeIds: item.foldedNodeIds.filter(nodeId => nodeId !== deletedId),
+                    }))
+                    .filter(item => item.foldedNodeIds.length > 0),
+            },
+        }
     }
 
     return result
@@ -274,7 +213,7 @@ function executeDeleteEdge(graph: GraphData, operation: { type: 'delete_edge'; e
         return node
     })
 
-    // 端点穿透：同 add_edge 方向
+    // 端点穿透：对称于 add_edge 
     if (deletedEdge) {
         for (const endpointId of [deletedEdge.source, deletedEdge.target]) {
             const endpointNode = nodes.find(n => n.id === endpointId)
@@ -326,10 +265,10 @@ function executeUpdateNode(graph: GraphData, operation: { type: 'update_node'; n
     })
 
     // 引用节点穿透：label 同步到源节点。
-    // 启发节点的 contextSummary 独立修改，不穿孔。
+    // 启发节点的 contextSummary 独立修改，不穿透。
     if (operation.node.role === 'reference' && operation.node.sourceGraphId === graph.id) {
         const refNode = operation.node
-        const sourceNodeIdx = nodes.findIndex(n => n.id === refNode.sourceNodeId)
+        const sourceNodeIdx = nodes.findIndex(node => node.id === refNode.sourceNodeId)
 
         if (sourceNodeIdx >= 0 && nodes[sourceNodeIdx]) {
             nodes[sourceNodeIdx] = {
