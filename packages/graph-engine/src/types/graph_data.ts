@@ -51,7 +51,7 @@ export interface FoldedDependencyState {
 
 // Node════════════════════════════════════════════════════════
 
-    // 两级判别───────────────────────────────────────────────
+// 两级判别───────────────────────────────────────────────
 
 /**
  * 功能：
@@ -76,7 +76,7 @@ export type RealNodeForm = 'atomic' | 'abstract'
 
 export type ReferenceNodeKind = 'communication' | 'heuristic'
 
-    // 通用属性───────────────────────────────────────────────
+// 通用属性───────────────────────────────────────────────
 
 export type NodePosition = GraphPosition
 
@@ -104,7 +104,7 @@ export interface NodeBase {
     updatedAt?: string
 }
 
-    // 知识节点───────────────────────────────────────────────
+// 知识节点───────────────────────────────────────────────
 
 export interface KnowledgeNodeData extends NodeBase {
     role: 'knowledge'
@@ -114,7 +114,7 @@ export interface KnowledgeNodeData extends NodeBase {
     noteLink?: string
 }
 
-    // 引用节点───────────────────────────────────────────────
+// 引用节点───────────────────────────────────────────────
 
 /**
  * 功能：
@@ -134,7 +134,7 @@ export interface ReferenceNodeData extends NodeBase {
     contextSummary?: string
 }
 
-    // 联合类型───────────────────────────────────────────────
+// 联合类型───────────────────────────────────────────────
 
 export type NodeData = KnowledgeNodeData | ReferenceNodeData
 
@@ -166,17 +166,28 @@ export interface EdgeData {
     updatedAt?: string
 }
 
-// Phase 2 additions═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+// Phase 2 additions
 
 /** 多图上下文。Map<GraphId, GraphData> 的类型别名。 */
 export type GraphRegistry = Map<GraphId, GraphData>
 
 /** 跨图节点搜索结果。 */
 export interface SearchResult {
+    /** 节点所在图 ID。 */
     graphId: GraphId
+    /** 节点 ID。 */
     nodeId: NodeId
+    /** 节点完整数据。 */
     node: NodeData
+    /** 从根图到该节点所在图的 ID 路径（含 graphId），通过注册表 parentGraphId 回溯得到。 */
+    graphPath: GraphId[]
 }
 
-/** 节点半径映射，碰撞检测用。 */
+/**
+ * 节点半径特例覆盖。
+ *
+ * 碰撞检测默认按 r = r₀ · √(1 + degree) 计算半径。
+ * 此 Map 中注册的节点使用指定半径，覆盖公式计算结果。
+ */
 export type NodeRadiusMap = Map<NodeId, number>

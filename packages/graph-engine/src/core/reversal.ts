@@ -18,7 +18,7 @@
  *     Pinia store 在 apply() 前调用 createReversal，将逆操作序列写入 OperationLogEntry。
  */
 
-import type { GraphData, NodeId, EdgeId, NodeData, EdgeData, GraphPosition } from '../types/graph_data'
+import type { GraphData, NodeData, EdgeData } from '../types/graph_data'
 import type {
     GraphOperation,
     AddNodeOperation,

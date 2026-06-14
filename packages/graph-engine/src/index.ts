@@ -91,3 +91,20 @@ export { generateNodeId, generateEdgeId, generateGraphId } from './core/id'
 export { createReversal } from './core/reversal'
 export { replayGraph, replayToStep } from './core/replay'
 export { validateGraph } from './core/checkers/graph_validator'
+
+// Infrastructure
+export {
+    createRegistry,
+    registerGraph,
+    getGraph,
+    hasGraph,
+    unregisterGraph,
+    listGraphs,
+    searchNodes,
+    constrainPosition,
+    computePath,
+    untangleCluster,
+} from './infrastructure'
+
+// SPI (Service Provider Interface) types
+export type { PersistenceAdapter } from './spi/persistence'
