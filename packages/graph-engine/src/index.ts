@@ -102,8 +102,7 @@ export {
     listGraphs,
     searchNodes,
     constrainPosition,
-    computePath,
-    untangleCluster,
+    hasCollisionAt,
 } from './infrastructure'
 
 // SPI (Service Provider Interface) types

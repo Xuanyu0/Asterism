@@ -16,8 +16,4 @@ export {
 
 export { searchNodes } from './search'
 
-export {
-    constrainPosition,
-    computePath,
-    untangleCluster,
-} from './collision'
+export { constrainPosition, hasCollisionAt } from './collision'
