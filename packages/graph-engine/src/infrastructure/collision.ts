@@ -11,18 +11,11 @@
  *
  * 规则：
  *     1. 所有节点视为外接圆。正多边形与圆形统一用外接圆半径。
- *     2. 半径公式：r = r₀ · √(1 + degree)，上限 r_max。
- *     3. 虚节点不参与碰撞检测（r₀ 固定，不被阻挡也不阻挡他人）。
- *     4. NodeRadiusMap 为特例覆盖，缺失时按公式计算。
- *     5. 本模块不绕、不解绕。constrainPosition 仅做单点法向推开，不迭代。
+ *     2. 半径公式：r = r₀ · √(1 + degree)。
+ *     3. NodeRadiusMap 为特例覆盖，缺失时按公式计算。
+ *     4. 设计原则：本模块不负责具体的移动决策。constrainPosition 仅做单点法向推开，不迭代。
  *
  * 概念：
- *     - 实体化（Move 操作拖拽时）：有碰撞体积。前端每帧调 constrainPosition，
- *       引擎返回沿障碍物表面推开后的合法位置，前端渲染到该位置，视觉上
- *       "贴着表面滑动"。其他节点不动——仅被拖拽节点被推。
- *     - 虚化（Arrangement 布局时）：无碰撞体积。布局前先展示草稿预览，前端
- *       对草稿中每个目标位置调 hasCollisionAt。任何碰撞则确认按钮不可用，
- *       用户需手动腾出空间后重试。
  *     - 所有非拖拽节点都是刚体，位置固定。
  *
  * 外部如何使用：
@@ -30,18 +23,15 @@
  */
 
 import type { NodeData, NodeId, NodePosition, NodeRadiusMap } from '../types/graph_data'
-import { DEFAULT_GRAPH_RULES } from '../core/checkers/rules'
+import { DEFAULT_LAYOUT_RULES } from '../core/rules'
 
 // ═══════════ 常量 ═══════════
 
 /** 基准外接圆半径 r₀。 */
-const R0 = DEFAULT_GRAPH_RULES.r0
+const R0 = DEFAULT_LAYOUT_RULES.r0
 
-/** 半径上限 r_max。 */
-const R_MAX = DEFAULT_GRAPH_RULES.rMax
-
-/** 最小间隙，防止节点恰好接触。 */
-const EPSILON = 2
+/** 碰撞间隙。 */
+const GAP = DEFAULT_LAYOUT_RULES.collisionGap
 
 // ═══════════ 内部：几何 ═══════════
 
@@ -73,14 +63,46 @@ function distance(a: NodePosition, b: NodePosition): number {
     return length(sub(a, b))
 }
 
-// ═══════════ 内部：节点辅助 ═══════════
-
-function isVirtual(node: NodeData): boolean {
-    return node.role === 'knowledge' && node.kind === 'virtual'
+function squaredDistance(a: NodePosition, b: NodePosition): number {
+    const dx = a.x - b.x
+    const dy = a.y - b.y
+    return dx * dx + dy * dy
 }
+
+// ═══════════ 内部：节点辅助 ═══════════
 
 function hasPosition(node: NodeData): node is NodeData & { position: NodePosition } {
     return node.position !== undefined
+}
+
+interface CollisionTarget {
+    node: NodeData
+    radius: number
+}
+
+function getTarget(
+    nodeId: NodeId,
+    allNodes: NodeData[],
+    radiusMap: NodeRadiusMap,
+): CollisionTarget | undefined {
+    const node = allNodes.find(node => node.id === nodeId)
+    if (!node) return undefined
+
+    return {
+        node,
+        radius: getRadius(node, radiusMap),
+    }
+}
+
+function* getObstacleNodes(
+    nodeId: NodeId,
+    allNodes: NodeData[],
+): Generator<NodeData & { position: NodePosition }> {
+    for (const node of allNodes) {
+        if (node.id === nodeId) continue
+        if (!hasPosition(node)) continue
+        yield node
+    }
 }
 
 function getRadius(node: NodeData, radiusMap: NodeRadiusMap): number {
@@ -88,70 +110,19 @@ function getRadius(node: NodeData, radiusMap: NodeRadiusMap): number {
 
     if (custom !== undefined) return custom
 
-    if (isVirtual(node)) return R0
-
-    return Math.min(R_MAX, R0 * Math.sqrt(1 + node.degree))
+    return R0 * Math.sqrt(1 + node.degree)
 }
 
 // ═══════════ 公开 API ═══════════
 
-/**
- * 功能：
- *     拖拽时的单点碰撞校正。desired 无重叠则原样返回。
- *     有重叠则沿碰撞法向推至障碍物表面 + ε。
- *
- * 规则：
- *     1. 仅推开被拖拽节点自身。其他节点不动。
- *     2. 多重阻塞时沿叠加法向合成推开。
- *     3. 虚节点不参与检测，不被阻挡也不阻挡他人。
- */
-export function constrainPosition(
-    nodeId: NodeId,
-    desired: NodePosition,
-    allNodes: NodeData[],
-    radiusMap: NodeRadiusMap,
-): { position: NodePosition; adjusted: boolean } {
-    const targetNode = allNodes.find(node => node.id === nodeId)
-
-    if (!targetNode) return { position: desired, adjusted: false }
-
-    const targetRadius = getRadius(targetNode, radiusMap)
-    let adjustedPosition = { x: desired.x, y: desired.y }
-    let adjusted = false
-
-    for (const other of allNodes) {
-        if (other.id === nodeId) continue
-        if (isVirtual(other)) continue
-        if (!hasPosition(other)) continue
-
-        const otherRadius = getRadius(other, radiusMap)
-        const minDist = targetRadius + otherRadius
-
-        const d = distance(adjustedPosition, other.position)
-
-        if (d >= minDist) continue
-
-        // 碰撞：沿法向推到表面 + ε
-        const overlap = minDist - d
-        const normal = d > 0
-            ? normalize(sub(adjustedPosition, other.position))
-            : { x: 1, y: 0 }
-
-        adjustedPosition = add(adjustedPosition, scale(normal, overlap + EPSILON))
-        adjusted = true
-    }
-
-    return { position: adjustedPosition, adjusted }
-}
 
 /**
  * 功能：
  *     判断节点放置在目标位置是否会与其他节点发生碰撞。
  *
  * 规则：
- *     1. 虚节点不参与检测。
- *     2. 自身节点排除在检测之外。
- *     3. 缺失坐标的节点被跳过。
+ *     1. 自身节点排除在检测之外。
+ *     2. 缺失坐标的节点被跳过。
  */
 export function hasCollisionAt(
     nodeId: NodeId,
@@ -159,23 +130,59 @@ export function hasCollisionAt(
     allNodes: NodeData[],
     radiusMap: NodeRadiusMap,
 ): boolean {
-    const targetNode = allNodes.find(node => node.id === nodeId)
-    if (!targetNode) return false
+    const target = getTarget(nodeId, allNodes, radiusMap)
+    if (!target) return false
 
-    const targetRadius = getRadius(targetNode, radiusMap)
-
-    for (const other of allNodes) {
-        if (other.id === nodeId) continue
-        if (isVirtual(other)) continue
-        if (!hasPosition(other)) continue
-
+    for (const other of getObstacleNodes(nodeId, allNodes)) {
         const otherRadius = getRadius(other, radiusMap)
-        const minDist = targetRadius + otherRadius
+        const minDist = target.radius + otherRadius
 
-        if (distance(position, other.position) < minDist) {
+        if (squaredDistance(position, other.position) < minDist * minDist) {
             return true
         }
     }
 
     return false
+}
+
+/**
+ * 功能：
+ *     拖拽时的单点碰撞校正。desired 无重叠则原样返回。
+ *     有重叠则沿碰撞法向推至障碍物表面 + GAP。
+ *
+ * 规则：
+ *     1. 仅推开被拖拽节点自身。其他节点不动。
+ *     2. 多重阻塞时按节点遍历顺序逐个沿法向推开。
+ */
+export function constrainPosition(
+    nodeId: NodeId,
+    desired: NodePosition,
+    allNodes: NodeData[],
+    radiusMap: NodeRadiusMap,
+): { position: NodePosition; adjusted: boolean } {
+    const target = getTarget(nodeId, allNodes, radiusMap)
+    if (!target) return { position: desired, adjusted: false }
+
+    let adjustedPosition = { x: desired.x, y: desired.y }
+    let adjusted = false
+
+    for (const other of getObstacleNodes(nodeId, allNodes)) {
+        const otherRadius = getRadius(other, radiusMap)
+        const minDist = target.radius + otherRadius
+
+        const d = distance(adjustedPosition, other.position)
+
+        if (d >= minDist) continue
+
+        // 碰撞：沿法向推到表面 + GAP
+        const overlap = minDist - d
+        const normal = d > 0
+            ? normalize(sub(adjustedPosition, other.position))
+            : { x: 1, y: 0 }
+
+        adjustedPosition = add(adjustedPosition, scale(normal, overlap + GAP))
+        adjusted = true
+    }
+
+    return { position: adjustedPosition, adjusted }
 }

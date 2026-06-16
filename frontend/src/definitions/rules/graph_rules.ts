@@ -23,7 +23,7 @@ export interface GraphRules {
 }
 
 export const DEFAULT_GRAPH_RULES: GraphRules = {
-    nodeLabelMaxLength: 20,    // 节点标签不超过 20 个中文字符
+    nodeLabelMaxLength: 8,    // 节点标签不超过 8 个中文字符
     edgeLabelMaxLength: 10,    // 边标签不超过 10 个中文字符
     summaryMaxLength: 80,    // 摘要不超过 80 字
     nodeSoftLimit: 50,    // 超过 50 个节点建议抽象

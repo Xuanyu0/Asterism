@@ -42,6 +42,10 @@ export type {
     NodeRadiusMap,
 } from './types/graph_data'
 
+export type { LayoutRules, NodeRules } from './core/rules'
+
+export type { TierAssignment } from './infrastructure/placement'
+
 export type {
     AddNodeOperation,
     AddEdgeOperation,
@@ -81,6 +85,9 @@ export type {
     State,
 } from './types/operation_log'
 
+// Rules
+export { DEFAULT_LAYOUT_RULES, DEFAULT_NODE_RULES } from './core/rules'
+
 // Core functions
 export { executeOperation } from './core/execute'
 export { collectDependencyNodeIds } from './core/traversal'
@@ -103,6 +110,12 @@ export {
     searchNodes,
     constrainPosition,
     hasCollisionAt,
+    positionOnCircle,
+    snapOrbit,
+    distributeOnTiers,
+    distributeOnLine,
+    scatterInCircle,
+    computeTierSpacing,
 } from './infrastructure'
 
 // SPI (Service Provider Interface) types

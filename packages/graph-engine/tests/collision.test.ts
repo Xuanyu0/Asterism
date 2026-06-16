@@ -25,19 +25,6 @@ function kn(id: string, p: { x: number; y: number }, degree = 0): NodeData {
     }
 }
 
-function vn(id: string, p: { x: number; y: number }): NodeData {
-    return {
-        id,
-        graphId: 'test',
-        role: 'knowledge',
-        kind: 'virtual',
-        label: id,
-        degree: 0,
-        position: p,
-        abstractionLevel: 0,
-    }
-}
-
 const emptyMap: NodeRadiusMap = new Map()
 
 // ═══════════ constrainPosition ═══════════
@@ -55,22 +42,15 @@ describe('constrainPosition', () => {
     it('pushes away from overlapping node', () => {
         const nodes = [
             kn('a', pos(0, 0)),
-            kn('b', pos(20, 0)), // r₀=28, overlap ~36px
+            kn('b', pos(20, 0)), // default radius 56, overlap 92px
         ]
 
         const result = constrainPosition('a', pos(0, 0), nodes, emptyMap)
 
+        // 被推到障碍物 b 的左侧 — x 应小于 -r₀
         expect(result.adjusted).toBe(true)
-        expect(result.position.x).toBeLessThan(-28)
+        expect(result.position.x).toBeLessThan(-56)
         expect(result.position.y).toBe(0)
-    })
-
-    it('skips virtual nodes', () => {
-        const nodes = [kn('a', pos(0, 0)), vn('v', pos(20, 0))]
-
-        const result = constrainPosition('a', pos(0, 0), nodes, emptyMap)
-
-        expect(result.adjusted).toBe(false)
     })
 
     it('returns unchanged for unknown node id', () => {
@@ -105,12 +85,6 @@ describe('hasCollisionAt', () => {
         const nodes = [kn('a', pos(0, 0)), kn('b', pos(30, 0))]
 
         expect(hasCollisionAt('a', pos(0, 0), nodes, emptyMap)).toBe(true)
-    })
-
-    it('skips virtual nodes', () => {
-        const nodes = [kn('a', pos(0, 0)), vn('v', pos(20, 0))]
-
-        expect(hasCollisionAt('a', pos(20, 0), nodes, emptyMap)).toBe(false)
     })
 
     it('returns false for unknown node id', () => {

@@ -11,6 +11,9 @@
  */
 
 
+import { DEFAULT_NODE_RULES } from '@my-project/graph-engine'
+
+
 /**
  * 功能：
  *     创建 Cytoscape 样式配置。
@@ -26,6 +29,9 @@ export function createCytoscapeStyle() {
         {
             selector: 'node',
             style: {
+                'width': DEFAULT_NODE_RULES.nodeDiameter,
+                'height': DEFAULT_NODE_RULES.nodeDiameter,
+                'font-size': `${DEFAULT_NODE_RULES.fontSize}px`,
                 'background-color': `#f0f0f0`,
                 'border-color': '#3d3d3d',
                 'border-width': 2,

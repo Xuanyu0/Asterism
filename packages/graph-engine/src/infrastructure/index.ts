@@ -17,3 +17,12 @@ export {
 export { searchNodes } from './search'
 
 export { constrainPosition, hasCollisionAt } from './collision'
+
+export {
+    positionOnCircle,
+    snapOrbit,
+    distributeOnTiers,
+    distributeOnLine,
+    scatterInCircle,
+    computeTierSpacing,
+} from './placement'
