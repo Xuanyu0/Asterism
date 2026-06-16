@@ -24,6 +24,7 @@
 
 import type { NodeData, NodeId, NodePosition, NodeRadiusMap } from '../types/graph_data'
 import { DEFAULT_LAYOUT_RULES } from '../core/rules'
+import { sub, add, scale, normalize, distance, squaredDistance } from './geometry'
 
 // ═══════════ 常量 ═══════════
 
@@ -32,42 +33,6 @@ const R0 = DEFAULT_LAYOUT_RULES.r0
 
 /** 碰撞间隙。 */
 const GAP = DEFAULT_LAYOUT_RULES.collisionGap
-
-// ═══════════ 内部：几何 ═══════════
-
-function sub(a: NodePosition, b: NodePosition): NodePosition {
-    return { x: a.x - b.x, y: a.y - b.y }
-}
-
-function add(a: NodePosition, b: NodePosition): NodePosition {
-    return { x: a.x + b.x, y: a.y + b.y }
-}
-
-function scale(v: NodePosition, s: number): NodePosition {
-    return { x: v.x * s, y: v.y * s }
-}
-
-function length(v: NodePosition): number {
-    return Math.sqrt(v.x * v.x + v.y * v.y)
-}
-
-function normalize(v: NodePosition): NodePosition {
-    const len = length(v)
-
-    if (len < 1e-8) return { x: 1, y: 0 }
-
-    return { x: v.x / len, y: v.y / len }
-}
-
-function distance(a: NodePosition, b: NodePosition): number {
-    return length(sub(a, b))
-}
-
-function squaredDistance(a: NodePosition, b: NodePosition): number {
-    const dx = a.x - b.x
-    const dy = a.y - b.y
-    return dx * dx + dy * dy
-}
 
 // ═══════════ 内部：节点辅助 ═══════════
 

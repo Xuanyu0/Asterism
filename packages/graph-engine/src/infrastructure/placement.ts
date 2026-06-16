@@ -34,17 +34,12 @@
 
 import { DEFAULT_LAYOUT_RULES } from '../core/rules'
 import type { NodeId, NodePosition } from '../types/graph_data'
+import { length } from './geometry'
 
 // ═══════════ 常量 ═══════════
 
 /** 基准外接圆半径。层级间距以此为缩放因子，保证层间可容纳一个孤立节点。 */
 const R0 = DEFAULT_LAYOUT_RULES.r0
-
-// ═══════════ 内部：几何 ═══════════
-
-function length(v: NodePosition): number {
-    return Math.sqrt(v.x * v.x + v.y * v.y)
-}
 
 // ═══════════ 公开 API ═══════════
 
