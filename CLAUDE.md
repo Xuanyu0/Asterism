@@ -1,4 +1,4 @@
-# my-first-project — Knowledge Graph Runtime
+# Asterism
 
 ## 项目定位
 
