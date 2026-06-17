@@ -48,14 +48,14 @@ interface CollisionTarget {
 function getTarget(
     nodeId: NodeId,
     allNodes: NodeData[],
-    radiusMap: NodeRadiusMap,
+    nodeRadiusOverrides: NodeRadiusMap,
 ): CollisionTarget | undefined {
     const node = allNodes.find(node => node.id === nodeId)
     if (!node) return undefined
 
     return {
         node,
-        radius: getRadius(node, radiusMap),
+        radius: getRadius(node, nodeRadiusOverrides),
     }
 }
 
@@ -70,8 +70,8 @@ function* getObstacleNodes(
     }
 }
 
-function getRadius(node: NodeData, radiusMap: NodeRadiusMap): number {
-    const custom = radiusMap.get(node.id)
+function getRadius(node: NodeData, nodeRadiusOverrides: NodeRadiusMap): number {
+    const custom = nodeRadiusOverrides.get(node.id)
 
     if (custom !== undefined) return custom
 
@@ -83,23 +83,33 @@ function getRadius(node: NodeData, radiusMap: NodeRadiusMap): number {
 
 /**
  * 功能：
+ *
  *     判断节点放置在目标位置是否会与其他节点发生碰撞。
  *
  * 规则：
+ *
  *     1. 自身节点排除在检测之外。
  *     2. 缺失坐标的节点被跳过。
+ *
+ * 参数：
+ *
+ *     nodeId               — 待检测的节点 ID
+ *     position             — 待检测的目标位置
+ *     allNodes             — 当前图中所有节点（含待检测节点自身，内部自动排除）
+ *     nodeRadiusOverrides  — 节点半径覆盖表。键 = 节点 ID，值 = 自定义外接圆半径。
+ *                             缺失的节点按公式 r = r₀·√(1 + degree) 计算
  */
 export function hasCollisionAt(
     nodeId: NodeId,
     position: NodePosition,
     allNodes: NodeData[],
-    radiusMap: NodeRadiusMap,
+    nodeRadiusOverrides: NodeRadiusMap,
 ): boolean {
-    const target = getTarget(nodeId, allNodes, radiusMap)
+    const target = getTarget(nodeId, allNodes, nodeRadiusOverrides)
     if (!target) return false
 
     for (const other of getObstacleNodes(nodeId, allNodes)) {
-        const otherRadius = getRadius(other, radiusMap)
+        const otherRadius = getRadius(other, nodeRadiusOverrides)
         const minDist = target.radius + otherRadius
 
         if (squaredDistance(position, other.position) < minDist * minDist) {
@@ -112,27 +122,37 @@ export function hasCollisionAt(
 
 /**
  * 功能：
- *     拖拽时的单点碰撞校正。desired 无重叠则原样返回。
- *     有重叠则沿碰撞法向推至障碍物表面 + GAP。
+ * 
+ *     拖拽时的单点碰撞校正。若 desiredPosition 无重叠则原样返回。
+ *     有重叠则沿碰撞法向推至障碍物表面 + 碰撞间隙。
  *
  * 规则：
+ * 
  *     1. 仅推开被拖拽节点自身。其他节点不动。
  *     2. 多重阻塞时按节点遍历顺序逐个沿法向推开。
+ *
+ * 参数：
+ * 
+ *     nodeId               — 被拖拽的节点 ID
+ *     desiredPosition      — 该节点被拖拽到的期望位置
+ *     allNodes             — 当前图中所有节点（含被拖拽节点自身，内部自动排除）
+ *     nodeRadiusOverrides  — 节点半径覆盖表。键 = 节点 ID，值 = 自定义外接圆半径。
+ *                             缺失的节点按公式 r = r₀·√(1 + degree) 计算
  */
 export function constrainPosition(
     nodeId: NodeId,
-    desired: NodePosition,
+    desiredPosition: NodePosition,
     allNodes: NodeData[],
-    radiusMap: NodeRadiusMap,
+    nodeRadiusOverrides: NodeRadiusMap,
 ): { position: NodePosition; adjusted: boolean } {
-    const target = getTarget(nodeId, allNodes, radiusMap)
-    if (!target) return { position: desired, adjusted: false }
+    const target = getTarget(nodeId, allNodes, nodeRadiusOverrides)
+    if (!target) return { position: desiredPosition, adjusted: false }
 
-    let adjustedPosition = { x: desired.x, y: desired.y }
+    let adjustedPosition = { x: desiredPosition.x, y: desiredPosition.y }
     let adjusted = false
 
     for (const other of getObstacleNodes(nodeId, allNodes)) {
-        const otherRadius = getRadius(other, radiusMap)
+        const otherRadius = getRadius(other, nodeRadiusOverrides)
         const minDist = target.radius + otherRadius
 
         const d = distance(adjustedPosition, other.position)

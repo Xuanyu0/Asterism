@@ -3,7 +3,7 @@
 ## 项目定位
 
 - **Graph Engine 开发目标**：让用户当前的学习 / 认知 / 研究状态可视化、可形式化表达。
-- **Antinomy** 在管理学习者与知识之间的**学习状态**，而不是认知/知识本身。
+- **Asterism** 在管理学习者与知识之间的**学习状态**，而不是认知/知识本身。
 
 ## 技术栈
 
@@ -70,49 +70,6 @@ Cytoscape Renderer (use_cytoscape_renderer.ts)
 - 禁止 cy 保存业务状态
 - 数据流只能是 GraphData → Cytoscape，不允许反向
 - 反向必须经过：Interaction → Controller → GraphStore
-
-## 目录结构
-
-```
-src/
-├── components/
-│   ├── KnowledgeGraph.vue          # 组合层（挂载渲染器+交互+子组件）
-│   └── graph/
-│       ├── NodeWindow.vue          # 节点浮空窗
-│       └── OperationToolbar.vue    # 操作工具栏
-├── definitions/
-│   ├── rules/graph_rules.ts
-│   ├── types/                      # graph_types, ui_types, draft_types, ai_types 等
-│   └── validators/                 # operation_validator, graph_validator, rule_checkers
-├── graph/                          # 数据层（GraphData SSOT）
-│   ├── graph_store.ts              # Pinia Store：对外唯一入口
-│   └── utilities/                  # 内部实现
-│       ├── graph_persistence.ts    # localStorage 持久化
-│       ├── operation_executor.ts   # Operation 执行器（纯函数）
-│       └── graph_utils.ts          # 图工具函数（纯函数）
-├── render/                         # 渲染层（Cytoscape 适配）
-│   └── cytoscape/
-│       ├── graph_element_mapper.ts # GraphData → CyElements 投影
-│       ├── cytoscape_style.ts      # Cytoscape 样式
-│       ├── use_cytoscape_renderer.ts # Cytoscape 生命周期 (mount/sync/destroy)
-│       └── use_graph_interaction.ts  # 交互事件 → 语义事件
-├── ui/                             # UI 意图层
-│   ├── ui_store.ts                 # Pinia Store：UI 意图
-│   ├── draft_store.ts              # Pinia Store：草稿
-│   └── operation_controller.ts     # UI Runtime 编排器
-├── router/index.ts                 # 路由（当前仅 / → KnowledgeGraphView）
-├── views/KnowledgeGraphView.vue
-├── mock/                           # Mock 数据
-└── dev/test_runtime.ts             # 开发期测试工具
-```
-
-## 当前已支持的 Operation
-
-- add_node / add_edge
-- delete_node / delete_edge（支持 Ctrl+Z 撤销，undoStack 最多 20）
-- update_node / update_edge
-- move_node（拖动结束后写回位置）
-- collapse_dependency / expand_dependency（认知状态，纯视觉折叠）
 
 ## 重要 Commit
 
@@ -258,7 +215,7 @@ Vue 组件文件例外：统一 **PascalCase**（Vue 生态约定）：
 
 ## 三、缩进规范
 
-**4 空格**。禁止 Tab，禁止 2 空格。`.editorconfig`、ESLint、Prettier 已统一配置。
+**4 空格**。禁止 Tab，禁止 2 空格。
 
 ## 四、文件头注释
 
@@ -282,13 +239,17 @@ Vue 组件文件例外：统一 **PascalCase**（Vue 生态约定）：
 ```ts
 /**
  * 功能：
+ *
  *     ...
  *
  * 规则：
+ *
  *     ...
  */
 export interface XXX { }
 ```
+
+规则与函数注释相同：小节标题后空一行，再写内容。无 `参数：` 段。
 
 ## 六、函数注释
 
@@ -301,15 +262,25 @@ export interface XXX { }
  * 规则：
  *     ...
  *
+ * 参数：
+ *
+ *     paramName — 是什么 / 从哪来 / 特殊规则
+ *
  * 使用：
  *     ...
  */
 ```
 
+规则：
+1. JSDoc 本质是 markdown。各小节标题（`功能：` / `规则：` / `参数：` / `使用：`）后必须空一行，再写内容。
+   空行 = markdown 段落分隔。不加空行则 LSP hover 浮空窗会把标题和后续内容挤成同一段，不换行显示。
+2. 参数说明格式：`参数名 — 一句话说清语义。键 = 键语义，值 = 值语义`。每参数一行。
+3. 无参数的函数省略 `参数：` 段。
+
 ## 七、禁止内部注释
 
 允许：文件头 / 接口 / 函数注释。
-禁止：变量注释、逐行注释、解释代码行为的废话注释。
+禁止：逐行注释、解释显然的代码行为的废话注释。
 
 ## 八、跨文件意图注释（禁止内部注释的唯一例外）
 
