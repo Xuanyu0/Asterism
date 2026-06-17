@@ -23,6 +23,12 @@ export function createRegistry(): GraphRegistry {
     return new Map()
 }
 
+/**
+ * 功能：
+ *
+ *     注册（或覆盖）一个图谱。
+ *     若 graphId 已存在则静默替换旧数据——调用方如需保护旧数据请先调 hasGraph。
+ */
 export function registerGraph(registry: GraphRegistry, graph: GraphData): void {
     registry.set(graph.id, graph)
 }

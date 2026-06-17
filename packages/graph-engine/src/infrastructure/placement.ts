@@ -2,22 +2,26 @@
  * placement.ts
  *
  * 功能：
+ *
  *     布局草稿位置计算。全部纯几何计算，不持有状态，不判定碰撞。
  *
  * 总体结构：
+ *
  *     1. positionOnCircle    — 给定半径和角度，返回圆上坐标
  *     2. snapOrbit           — 给定中心和光标，吸附至最近层级轨道
  *     3. distributeOnTiers   — 自动挡均分环绕，内部保证不碰撞
- *     4. distributeOnLine     — 沿射线等距排列
+ *     4. distributeOnLine    — 沿射线等距排列
  *     5. scatterInCircle     — 圆内随机位置
  *     6. computeTierSpacing  — 层级间距
  *
  * 与 collision.ts 的关系：
+ *
  *     - placement.ts 负责"草稿位置应该在哪"（位置生成）
  *     - collision.ts 负责"这个位置能不能放"（碰撞判定）
  *     - 调用方先调 placement 生成候选位置，再调 collision 判定
  *
  * 概念（层级）：
+ *
  *     - 层级是离散的轨道半径档位。层级 n 的轨道半径 = (n+1) · D₀。
  *     - D₀ = centerRadius + maxSatelliteRadius + r₀。
  *     - 约束 A（中心 ↔ 层级 0）：由 D₀ 定义保证。
@@ -26,6 +30,7 @@
  *     - 层级概念类比 2D 玻尔模型：轨道半径 r ∝ n（等间距），而非 3D 的 r ∝ n²。
  *
  * 外部如何使用：
+ *
  *     import {
  *         positionOnCircle, snapOrbit, distributeOnTiers,
  *         distributeOnLine, scatterInCircle, computeTierSpacing,
@@ -45,10 +50,30 @@ const R0 = DEFAULT_LAYOUT_RULES.r0
 
 /**
  * 功能：
+ *
+ *     层级分配描述。tier 从 0 开始——tier 0 轨道半径 = D₀，tier 1 = 2·D₀，依此类推。
+ *     nodeIds 为该层级上的节点 ID 集合，每层至少一个节点。
+ */
+export interface TierAssignment {
+    tier: number
+    nodeIds: NodeId[]
+}
+
+
+/**
+ * 功能：
+ *
  *     给定圆心、半径和角度，返回圆上坐标。
  *
  * 规则：
+ *
  *     纯几何计算。不判定碰撞。
+ *
+ * 参数：
+ *
+ *     center — 圆心坐标
+ *     radius — 轨道半径（到圆心的距离）
+ *     angle  — 弧度角，x 轴正方向为 0，逆时针为正
  */
 export function positionOnCircle(
     center: NodePosition,
@@ -63,15 +88,84 @@ export function positionOnCircle(
 
 /**
  * 功能：
+ *
+ *     计算层级间距 D₀。
+ *
+ * 规则：
+ *
+ *     D₀ = centerRadius + maxSatelliteRadius + r₀。
+ *     satelliteRadii 为空时默认取 r₀。
+ *
+ * 参数：
+ *
+ *     centerRadius   — 中心节点的外接圆半径
+ *     satelliteRadii — 所有卫星节点的外接圆半径列表。为空时 maxSatelliteRadius 默认为 r₀
+ *
+ * 使用：
+ *
+ *     Path 布局和手动 Orbit 调用方用此值作为相邻节点 / 层级间距离。
+ */
+export function computeTierSpacing(
+    centerRadius: number,
+    satelliteRadii: number[],
+): number {
+    const maxSatR = satelliteRadii.length > 0
+        ? Math.max(...satelliteRadii)
+        : DEFAULT_LAYOUT_RULES.r0
+
+    return centerRadius + maxSatR + R0
+}
+
+/**
+ * 功能：
+ *
+ *     在圆内随机生成一个位置。
+ *
+ * 规则：
+ *
+ *     1. 均匀分布（半径用 √random 避免中心聚集）。
+ *     2. 不判定碰撞——调用方循环调用此函数并用 hasCollisionAt 判定。
+ *     3. 非确定性：每次调用使用 Math.random()，同一输入返回不同位置。
+ *        这是设计意图——自动找空位失败时靠重试随机偏移。测试可 mock Math.random。
+ *
+ * 参数：
+ *
+ *     center    — 圆心的坐标
+ *     maxRadius — 圆的半径。生成位置保证在圆内（含边界）
+ *
+ * 使用：
+ *
+ *     内化操作用（单节点找空位），Cloud 布局循环调用。
+ */
+export function scatterInCircle(center: NodePosition, maxRadius: number): NodePosition {
+    const r = maxRadius * Math.sqrt(Math.random())
+    const angle = Math.random() * 2 * Math.PI
+
+    return positionOnCircle(center, r, angle)
+}
+
+
+/**
+ * 功能：
+ *
  *     Adjust Orbit 草稿吸附。给定中心和光标位置，同时确定角度和层级，
  *     返回吸附后的轨道位置。
  *
  * 规则：
+ *
  *     1. 角度从光标位置直接推导。
  *     2. 层级取最近轨道：tier = argmin_n |distance − (n+1)·D₀|。
  *     3. 不判定碰撞。
  *
+ * 参数：
+ *
+ *     center    — 中心节点坐标
+ *     cursor    — 当前光标/鼠标位置
+ *     D0        — 层级间距（由 computeTierSpacing 计算）
+ *     tierCount — 候选层级数量（调用方根据场景提供：拖拽时按光标可及范围算；手动挡按用户分配的最大层级 + 1）
+ *
  * 使用：
+ *
  *     UI 每帧调此函数，将鼠标实时吸附到离散层级轨道上。
  */
 export function snapOrbit(
@@ -105,31 +199,33 @@ export function snapOrbit(
     }
 }
 
-/**
- * 功能：
- *     层级分配描述。
- *
- * 规则：
- *     1. tier 从 0 开始。tier 0 轨道半径 = D₀，tier 1 = 2·D₀，依此类推。
- *     2. nodeIds 为该层级上的节点集合，每层至少一个节点。
- */
-export interface TierAssignment {
-    tier: number
-    nodeIds: NodeId[]
-}
 
 /**
  * 功能：
+ *
  *     自动挡层级环绕布局。给定中心、卫星和层级分配，内部计算轨道半径
  *     并均分圆周，保证不碰撞。
  *
+ *     每次调用从零计算——此函数不记录历史。事后添加更大节点并重新调用会导致
+ *     D₀ 变大、所有层级外移、全部卫星位置改变。这是设计意图而非 bug：
+ *     Orbit 是一次性布局操作，不是持续绑定的约束系统。
+ *
  * 规则：
+ *
  *     1. D₀ = centerRadius + maxSatelliteRadius + r₀（约束 A + B）。
- *     2. 各层弦距自动满足 ≥ 2r（约束 C）——若不足则扩展 D₀。
+ *     2. 各层弦距自动满足 ≥ 2·tierMaxRadius + r₀（约束 C）——若不足则扩展 D₀。
  *     3. 层内 N 个节点均分圆周（N = 1 时取 startAngle）。
  *     4. 不判定碰撞（层级间距已保证）。
  *
+ * 参数：
+ *
+ *     center      — 中心节点。id / position / radius。虚中心时 radius = 0
+ *     satellites  — 卫星节点列表。仅需 id 和 radius，位置由函数计算
+ *     tiers       — 层级分配。每个 tier 包含该层上的节点 ID 列表
+ *     startAngle  — 起始角度（弧度），默认 0。用于手动指定第一个卫星的朝向
+ *
  * 使用：
+ *
  *     归纳操作用：centerRadius = 0（虚中心），沟通节点作为卫星均匀环绕。
  */
 export function distributeOnTiers(
@@ -185,15 +281,24 @@ export function distributeOnTiers(
 
 /**
  * 功能：
+ *
  *     沿射线等距排列。给定原点、方向和间距，返回 count 个等距位置。
  *
  * 规则：
+ *
  *     1. 第 i 个位置距离原点 = (i+1) · spacing。
  *     2. 纯几何，不判定碰撞。
  *
+ * 参数：
+ *
+ *     origin    — 射线起点坐标（轴心节点位置）
+ *     direction — 射线方向角（弧度），x 轴正方向为 0，逆时针为正
+ *     count     — 路径上的节点数
+ *     spacing   — 相邻节点间距（通常用 computeTierSpacing 计算结果）
+ *
  * 使用：
- *     Path 布局：axis 为轴心节点左上角，direction 为用户拖拽角度，
- *     spacing 为层级间距，count 为路径节点数。
+ *
+ *     Path 布局：direction 为用户拖拽角度，spacing 为层级间距，count 为路径节点数。
  */
 export function distributeOnLine(
     origin: NodePosition,
@@ -210,42 +315,5 @@ export function distributeOnLine(
     return result
 }
 
-/**
- * 功能：
- *     在圆内随机生成一个位置。
- *
- * 规则：
- *     1. 均匀分布（半径用 √random 避免中心聚集）。
- *     2. 不判定碰撞——调用方循环调用此函数并用 hasCollisionAt 判定。
- *
- * 使用：
- *     内化操作用（单节点找空位），Cloud 布局循环调用。
- */
-export function scatterInCircle(center: NodePosition, maxRadius: number): NodePosition {
-    const r = maxRadius * Math.sqrt(Math.random())
-    const angle = Math.random() * 2 * Math.PI
 
-    return positionOnCircle(center, r, angle)
-}
 
-/**
- * 功能：
- *     计算层级间距 D₀。
- *
- * 规则：
- *     D₀ = centerRadius + maxSatelliteRadius + r₀。
- *     satelliteRadii 为空时默认取 r₀。
- *
- * 使用：
- *     Path 布局和手动 Orbit 调用方用此值作为相邻节点 / 层级间距离。
- */
-export function computeTierSpacing(
-    centerRadius: number,
-    satelliteRadii: number[],
-): number {
-    const maxSatR = satelliteRadii.length > 0
-        ? Math.max(...satelliteRadii)
-        : DEFAULT_LAYOUT_RULES.r0
-
-    return centerRadius + maxSatR + R0
-}

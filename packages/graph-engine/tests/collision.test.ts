@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { constrainPosition, hasCollisionAt } from '../src/infrastructure/collision'
+import { constrainPosition, hasCollisionAt, hasCollisionInDrafts } from '../src/infrastructure/collision'
 import type { NodeData, NodeRadiusMap } from '../src/types/graph_data'
 
 function pos(x: number, y: number) {
@@ -104,5 +104,108 @@ describe('hasCollisionAt', () => {
         const nodes = [kn('a', pos(0, 0))]
 
         expect(hasCollisionAt('a', pos(100, 0), nodes, emptyMap)).toBe(false)
+    })
+})
+
+// ═══════════ hasCollisionInDrafts ═══════════
+
+describe('hasCollisionInDrafts', () => {
+    it('returns false for empty drafts', () => {
+        expect(hasCollisionInDrafts([], [], emptyMap)).toBe(false)
+    })
+
+    it('returns false for single draft with no other nodes', () => {
+        expect(hasCollisionInDrafts(
+            [{ nodeId: 'a', position: pos(50, 0) }],
+            [],
+            emptyMap,
+        )).toBe(false)
+    })
+
+    it('detects collision between two drafts', () => {
+        const drafts = [
+            { nodeId: 'a', position: pos(0, 0) },
+            { nodeId: 'b', position: pos(30, 0) },
+        ]
+        // r₀ = 56, minDist = 112, d = 30 → 碰撞
+        expect(hasCollisionInDrafts(
+            drafts, [], emptyMap,
+        )).toBe(true)
+    })
+
+    it('returns false when drafts are far apart', () => {
+        const drafts = [
+            { nodeId: 'a', position: pos(0, 0) },
+            { nodeId: 'b', position: pos(200, 0) },
+        ]
+        expect(hasCollisionInDrafts(
+            drafts, [], emptyMap,
+        )).toBe(false)
+    })
+
+    it('detects draft vs existing node collision', () => {
+        const nodes = [kn('b', pos(50, 0))]
+        const drafts = [{ nodeId: 'a', position: pos(60, 0) }]
+        // r₀ = 56 两边，minDist = 112, d = 10 → 碰撞
+        expect(hasCollisionInDrafts(
+            drafts, nodes, emptyMap,
+        )).toBe(true)
+    })
+
+    it('excludes draft nodeId when checking vs existing nodes', () => {
+        // node 'a' 在 GraphData 中已存在，位置 pos(0,0)
+        // 草稿将其移至 pos(100,0)。node 'b' 在 pos(500,0) 很远。
+        // 排除自身后应无碰撞。
+        const nodes = [kn('a', pos(0, 0)), kn('b', pos(500, 0))]
+        const drafts = [{ nodeId: 'a', position: pos(100, 0) }]
+        expect(hasCollisionInDrafts(
+            drafts, nodes, emptyMap,
+        )).toBe(false)
+    })
+
+    it('detects draft-vs-draft collision regardless of allNodes', () => {
+        // 两个草稿互碰，即使它们在 allNodes 中已有位置（应排除自身）
+        const nodes = [kn('a', pos(0, 0)), kn('b', pos(200, 0))]
+        const drafts = [
+            { nodeId: 'a', position: pos(0, 0) },
+            { nodeId: 'b', position: pos(10, 0) },  // d=10, minDist=112 → 碰撞
+        ]
+        expect(hasCollisionInDrafts(
+            drafts, nodes, emptyMap,
+        )).toBe(true)
+    })
+
+    it('uses existing node radius from GraphData when available', () => {
+        // node 'a' 有 degree 导致更大半径，草稿应使用其已有半径
+        const nodes = [kn('a', pos(0, 0), /* degree = */ 3)]
+        const drafts = [
+            { nodeId: 'a', position: pos(100, 0) },
+            { nodeId: 'b', position: pos(50, 0) },  // 半径回退为 R0=56
+        ]
+        // a 的 r = 56·√4 = 112, b 的 r = 56, minDist = 168, d = 50 → 碰撞
+        expect(hasCollisionInDrafts(
+            drafts, nodes, emptyMap,
+        )).toBe(true)
+    })
+
+    it('respects nodeRadiusOverrides', () => {
+        const drafts = [
+            { nodeId: 'a', position: pos(0, 0) },
+            { nodeId: 'b', position: pos(15, 0) },
+        ]
+        // r=10 覆盖，minDist=20, d=15 → 碰撞
+        const map: NodeRadiusMap = new Map([['a', 10], ['b', 10]])
+        expect(hasCollisionInDrafts(
+            drafts, [], map,
+        )).toBe(true)
+
+        // r=10, d=25 → 无碰撞
+        const drafts2 = [
+            { nodeId: 'a', position: pos(0, 0) },
+            { nodeId: 'b', position: pos(25, 0) },
+        ]
+        expect(hasCollisionInDrafts(
+            drafts2, [], map,
+        )).toBe(false)
     })
 })

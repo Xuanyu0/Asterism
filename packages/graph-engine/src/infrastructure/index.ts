@@ -16,7 +16,7 @@ export {
 
 export { searchNodes } from './search'
 
-export { constrainPosition, hasCollisionAt } from './collision'
+export { constrainPosition, hasCollisionAt, hasCollisionInDrafts } from './collision'
 
 export {
     positionOnCircle,

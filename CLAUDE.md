@@ -282,6 +282,25 @@ export interface XXX { }
 允许：文件头 / 接口 / 函数注释。
 禁止：逐行注释、解释显然的代码行为的废话注释。
 
+**例外**：以下两种情况允许行末简要注释：
+
+1. **前端特有语法**（供 C++ 背景开发者理解）。如 `function*`、`yield`、`Proxy` 等 C++ 无直接对应的语法。
+   格式：代码后同一行 `// [语法名]：[一句话解释]`。
+2. **非直觉实现**。代码逻辑正确但为什么这样写不是一眼能看懂的。
+
+```ts
+// ✅ 允许：解释 TS 特有语法
+function* getObstacleNodes(...): Generator<...> {  // Generator：惰性迭代器，C++20 std::generator 等价
+    yield node  // yield：暂停并返回值，C++ co_yield 等价
+}
+
+// ✅ 允许：解释非直觉实现
+return R0 * Math.sqrt(1 + node.degree)  // √(1+d) 保证 degree=0 时半径不为 0
+
+// ❌ 禁止：解释显然行为
+const node = allNodes.find(node => node.id === nodeId)  // 查找节点 ← 废话
+```
+
 ## 八、跨文件意图注释（禁止内部注释的唯一例外）
 
 如果某段代码的存在是为了解决**外部文件的代码**产生的问题（而非本文件内部的逻辑需要），必须在代码块内用注释注明意图。
