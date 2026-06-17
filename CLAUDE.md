@@ -290,7 +290,7 @@ export interface XXX { }
 
 ```ts
 // ✅ 允许：解释 TS 特有语法
-function* getObstacleNodes(...): Generator<...> {  // Generator：惰性迭代器，C++20 std::generator 等价
+function* iterateNodes(...): Generator<...> {  // Generator：惰性迭代器，C++20 std::generator 等价
     yield node  // yield：暂停并返回值，C++ co_yield 等价
 }
 

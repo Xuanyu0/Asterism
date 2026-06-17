@@ -1,11 +1,11 @@
 /**
  * collision.test.ts
  *
- * 测试 constrainPosition 和 hasCollisionAt。
+ * 测试 hasCollisionAt 和 hasCollisionInDrafts。
  */
 
 import { describe, it, expect } from 'vitest'
-import { constrainPosition, hasCollisionAt, hasCollisionInDrafts } from '../src/infrastructure/collision'
+import { hasCollisionAt, hasCollisionInDrafts } from '../src/infrastructure/collision'
 import type { NodeData, NodeRadiusMap } from '../src/types/graph_data'
 
 function pos(x: number, y: number) {
@@ -26,51 +26,6 @@ function kn(id: string, p: { x: number; y: number }, degree = 0): NodeData {
 }
 
 const emptyMap: NodeRadiusMap = new Map()
-
-// ═══════════ constrainPosition ═══════════
-
-describe('constrainPosition', () => {
-    it('returns desired unchanged when no collision', () => {
-        const nodes = [kn('a', pos(0, 0)), kn('b', pos(200, 0))]
-
-        const result = constrainPosition('a', pos(50, 0), nodes, emptyMap)
-
-        expect(result.adjusted).toBe(false)
-        expect(result.position).toEqual(pos(50, 0))
-    })
-
-    it('pushes away from overlapping node', () => {
-        const nodes = [
-            kn('a', pos(0, 0)),
-            kn('b', pos(20, 0)), // default radius 56, overlap 92px
-        ]
-
-        const result = constrainPosition('a', pos(0, 0), nodes, emptyMap)
-
-        // 被推到障碍物 b 的左侧 — x 应小于 -r₀
-        expect(result.adjusted).toBe(true)
-        expect(result.position.x).toBeLessThan(-56)
-        expect(result.position.y).toBe(0)
-    })
-
-    it('returns unchanged for unknown node id', () => {
-        const result = constrainPosition('missing', pos(0, 0), [], emptyMap)
-
-        expect(result.adjusted).toBe(false)
-    })
-
-    it('uses NodeRadiusMap override', () => {
-        const nodes = [kn('a', pos(0, 0)), kn('b', pos(30, 0))]
-
-        const map: NodeRadiusMap = new Map([['a', 12], ['b', 12]])
-        // r=12 each, minDist=24, d=30 → no collision
-        expect(constrainPosition('a', pos(0, 0), nodes, map).adjusted).toBe(false)
-
-        // from at position(15,0) → d=15, minDist=24 → overlap
-        const collision = constrainPosition('a', pos(15, 0), nodes, map)
-        expect(collision.adjusted).toBe(true)
-    })
-})
 
 // ═══════════ hasCollisionAt ═══════════
 

@@ -108,7 +108,7 @@ export {
     unregisterGraph,
     listGraphs,
     searchNodes,
-    constrainPosition,
+    hasCollisionInDrafts,
     hasCollisionAt,
     positionOnCircle,
     snapOrbit,

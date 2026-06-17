@@ -5,41 +5,29 @@
  *     节点碰撞检测。全部纯几何计算，不持有状态，不引用 DOM。
  *
  * 总体结构：
- *     1. constrainPosition — 拖拽时单点碰撞校正（沿法向推开至表面）
- *     2. hasCollisionAt — 布局草稿准入判断（布尔查询）
+ *     1. hasCollisionAt — 单点碰撞准入判断（布尔查询）
+ *     2. hasCollisionInDrafts — 批量草稿碰撞检测
  *     3. 内部：半径计算、距离计算、几何辅助
  *
  * 规则：
  *     1. 所有节点视为外接圆。正多边形与圆形统一用外接圆半径。
  *     2. 半径公式：r = r₀ · √(1 + degree)。
  *     3. NodeRadiusMap 为特例覆盖，缺失时按公式计算。
- *     4. 设计原则：本模块不负责具体的移动决策。constrainPosition 仅做单点法向推开，不迭代。
- *
- * 概念：
- *     - 所有非拖拽节点都是刚体，位置固定。
  *
  * 外部如何使用：
- *     import { constrainPosition, hasCollisionAt } from '@my-project/graph-engine'
+ *     import { hasCollisionAt, hasCollisionInDrafts } from '@my-project/graph-engine'
  */
 
 import type { NodeData, NodeId, NodePosition, NodeRadiusMap } from '../types/graph_data'
 import { DEFAULT_LAYOUT_RULES } from '../core/rules'
-import { sub, add, scale, normalize, distance, squaredDistance } from './geometry'
+import { squaredDistance } from './geometry'
 
 // ═══════════ 常量 ═══════════
 
 /** 基准外接圆半径 r₀。 */
 const R0 = DEFAULT_LAYOUT_RULES.r0
 
-/** 碰撞间隙。 */
-const GAP = DEFAULT_LAYOUT_RULES.collisionGap
-
 // ═══════════ 内部：节点辅助 ═══════════
-//
-// 已知冗余：hasCollisionAt 内联了排除循环（自身 + extraExcludedIds + 无坐标跳过），
-// 与 getObstacleNodes 的排除逻辑（自身 + 无坐标）有重叠但语义不同。
-// 不提取共享——hasCollisionAt 需要 extraExcludedIds（Set 形排除），
-// constrainPosition 是热路径，无需为此承担 Set 分配开销。
 
 function hasPosition(node: NodeData): node is NodeData & { position: NodePosition } {
     return node.position !== undefined
@@ -73,35 +61,6 @@ function getTarget(
     return {
         node,
         radius: getRadius(node, nodeRadiusOverrides),
-    }
-}
-
-/**
- * 功能：
- *
- *     惰性迭代 allNodes，逐个产出有坐标且非自身的节点作为障碍物候选。
- *     不分配中间数组——调用方通过 for-of 逐个消费，提前 break 时后续节点不会被遍历。
- *
- * 语法（供 C++ 背景参考）：
- *
- *     function* — 声明 Generator 函数。调用时返回 Generator 对象，不立即执行函数体。
- *                 C++ 类比：C++20 std::generator。
- *     yield     — 暂停当前函数，把值返回给调用方。调用方下次调 .next() 时从 yield 后继续。
- *                 C++ 类比：co_yield。
- *
- * 参数：
- *
- *     nodeId    — 待排除的节点 ID（自身不参与碰撞检测）
- *     allNodes  — 所有节点（含位置缺失的节点，内部自动跳过）
- */
-function* getObstacleNodes(  // Generator：惰性迭代器，C++20 std::generator 等价
-    nodeId: NodeId,
-    allNodes: NodeData[],
-): Generator<NodeData & { position: NodePosition }> {
-    for (const node of allNodes) {
-        if (node.id === nodeId) continue
-        if (!hasPosition(node)) continue
-        yield node  // yield：暂停并返回值，C++ co_yield 等价
     }
 }
 
@@ -177,58 +136,6 @@ export function hasCollisionAt(
     }
 
     return false
-}
-
-/**
- * 功能：
- * 
- *     拖拽时的单点碰撞校正。若 desiredPosition 无重叠则原样返回。
- *     有重叠则沿碰撞法向推至障碍物表面 + 碰撞间隙。
- *
- * 规则：
- * 
- *     1. 仅推开被拖拽节点自身。其他节点不动。
- *     2. 多重阻塞时按节点遍历顺序逐个沿法向推开。
- *
- * 参数：
- * 
- *     nodeId               — 被拖拽的节点 ID
- *     desiredPosition      — 该节点被拖拽到的期望位置
- *     allNodes             — 当前图中所有节点（含被拖拽节点自身，内部自动排除）
- *     nodeRadiusOverrides  — 节点半径覆盖表。键 = 节点 ID，值 = 自定义外接圆半径。
- *                             缺失的节点按公式 r = r₀·√(1 + degree) 计算
- */
-export function constrainPosition(
-    nodeId: NodeId,
-    desiredPosition: NodePosition,
-    allNodes: NodeData[],
-    nodeRadiusOverrides: NodeRadiusMap,
-): { position: NodePosition; adjusted: boolean } {
-    const target = getTarget(nodeId, allNodes, nodeRadiusOverrides)
-    if (!target) return { position: desiredPosition, adjusted: false }
-
-    let adjustedPosition = { x: desiredPosition.x, y: desiredPosition.y }
-    let adjusted = false
-
-    for (const other of getObstacleNodes(nodeId, allNodes)) {
-        const otherRadius = getRadius(other, nodeRadiusOverrides)
-        const minDist = target.radius + otherRadius
-
-        const d = distance(adjustedPosition, other.position)
-
-        if (d >= minDist) continue
-
-        // 碰撞：沿法向推到表面 + GAP
-        const overlap = minDist - d
-        const normal = d > 0
-            ? normalize(sub(adjustedPosition, other.position))
-            : { x: 1, y: 0 }
-
-        adjustedPosition = add(adjustedPosition, scale(normal, overlap + GAP))
-        adjusted = true
-    }
-
-    return { position: adjustedPosition, adjusted }
 }
 
 /**
