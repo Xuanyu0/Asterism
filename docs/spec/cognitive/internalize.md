@@ -29,8 +29,10 @@
 | 条件 | 校验方式 | 错误消息 |
 |------|---------|---------|
 | `nodeIds` 非空 | `nodeIds.length >= 1` | `内化操作至少需要一个节点。` |
-| 所有目标节点存在于各自的源图中 | 逐个在 `parentGraph` 或其子图中查找——若节点不在 `parentGraph` 中，通过 `childGraphId` 链向下搜索 | `节点 ${nodeId} 在当前图谱及其子图中均不存在。` |
-| 所有目标节点 `role === 'knowledge'` | 逐个 `node.role` 检查 | `节点 ${nodeId} 不是知识节点，不能内化。` |
+| 至少存在一个知识节点 | 遍历 `nodeIds`，在 `parentGraph` 或其子图中查找，跳过引用节点。全为引用节点 → error | `所有目标节点均为引用节点，不存在可内化的知识节点。引用节点已在原图中自动删除。` |
+| 目标知识节点存在于对应图中 | 逐个查找 | `节点 ${nodeId} 在当前图谱及其子图中均不存在。` |
+
+**引用节点自动删除**：`nodeIds` 中的引用节点（`role === 'reference'`）在原图中直接删除，不转移至常识层。引用节点是外部知识的投影，不是可内化的知识实体。此行为不是 error——引擎静默处理，不阻塞确认。
 
 ### 语义预检 warning
 
@@ -44,8 +46,7 @@
 
 ## 返回值
 
-- **drafts 数量**：等于 `nodeIds.length`。每条 `DraftPosition`，不做碰撞检测——常识层无边，没有"侵犯已有节点空间"的语义风险。drafts 仅用于前端预览节点在常识层中的位置。
-- **Draft 扩展字段**：无。
+- **drafts**：不返回。常识层无边，自动尝试放置，无需位置预览。
 - **issues 典型清单**：见上方语义预检 + 原子操作校验的错误/警告消息。
 
 ## 后置影响（图结构变化）
@@ -66,6 +67,9 @@
    - `delete_node` — 从父图中删除该抽象节点。
    - 子图本身**不删除**——仅清空其节点和边。子图 ID 保留，用户后续可重新往里添加内容。
 
+3. **若为引用节点（`role === 'reference'`）**：
+   - `delete_node` — 从原图直接删除。不创建常识层副本。引用节点是外部知识的投影，不是可内化的实体。
+
 ### 常识层（`commonLayer`）
 
 - `add_node`（× N）— 每个被内化的节点（含抽象节点的子图内知识节点）在常识层中创建副本。`graphId` 改为常识层 ID，`position` 由 `scatterInCircle` 在常识层中随机找空位。其他字段（`label` / `degree` / `abstractionLevel`）保留原值。
@@ -84,24 +88,20 @@
 顺序：先删边，再删节点，最后在常识层建新节点。边必须在节点删除前清理完毕（外键约束）。
 
 ```
-事务 1（父图，对每个被内化的原子节点）：
-    1. delete_edge   edgeId = <连接到 node 的所有边的 ID>
-    2. delete_node   nodeId = <node.id>
+事务 1（父图） — applyBatch(parentGraph, parentOps, registry)：
+    引用节点：  delete_node（直接删除，不转移）
+    知识节点：  delete_edge（所有连接边）→ delete_node
 
-事务 2（父图，对每个被内化的抽象节点）：
-    1. delete_edge   edgeId = <父图中连接到该抽象节点的所有边的 ID>
+事务 2（子图，如有抽象节点） — applyBatch(childGraph, childOps, registry)：
+    普通边：    delete_edge（子图内全删）
+    沟通节点：  delete_node
+    子图内知识节点：  delete_node（节点本身，常识层重建）
 
-事务 3（子图，对每个抽象节点的子图——递归）：
-    1. delete_edge   edgeId = <子图内所有普通边的 ID>
-    2. delete_node   nodeId = <子图内所有沟通节点的 ID>
-
-事务 4（常识层）：
-    1. add_node      node = <内化节点，graphId = 常识层ID，position = scatterInCircle产出>
-    ...
-    N. add_node      node = <第N个内化节点>
+事务 3（常识层） — applyBatch(commonLayer, commonOps, registry)：
+    知识节点：  add_node（graphId = 常识层ID，position = scatterInCircle，degree = 0）
 ```
 
-> **跨图事务协调**：与 induce 相同——`internalize()` 持有 registry，依次对父图、子图、常识层调 `applyBatch`。由于是删除操作（不可逆的影响大），调用方应在调 `internalize()` 前保存 undo snapshot。
+> **跨图事务协调**：internalize() 依次调三次 `applyBatch`。子图 ops 独立于父图——按图分组保证 `delete_edge` 的 source/target 存在于对应图中。
 
 ## 事务语义
 
@@ -116,29 +116,30 @@
 
 ### 常识层中的节点
 
-使用 `scatterInCircle` 在常识层内随机寻找不碰撞的位置：
+节点逐个放置。使用 `scatterInCircle` 随机散布，半径逐步递增，保证永不失败：
 
 ```ts
+const placedDrafts: { nodeId: NodeId; position: NodePosition }[] = []
+
 for (const node of internalizedNodes) {
-    let position: NodePosition
-    let attempts = 0
-    do {
-        position = scatterInCircle(
-            { x: 0, y: 0 },           // 常识层以原点为中心
-            MAX_SCATTER_RADIUS,       // 最大散布半径
-        )
-        attempts++
-    } while (
-        hasCollisionAt(node.id, position, commonLayer.nodes, nodeRadiusOverrides) &&
-        attempts < MAX_ATTEMPTS
-    )
-    drafts.push({ nodeId: node.id, position })
+    let radius = R0
+
+    while (true) {
+        const position = scatterInCircle({ x: 0, y: 0 }, radius)
+        // 检测是否与常识层已有节点 + 同批已放置节点碰撞
+        if (!hasCollisionAt(node.id, position, commonLayer.nodes, nodeRadiusOverrides)
+            && !hasCollisionInDrafts([{ nodeId: node.id, position }], placedDrafts, nodeRadiusOverrides)) {
+            placedDrafts.push({ nodeId: node.id, position })
+            break
+        }
+        radius += R0
+    }
 }
 ```
 
-- 常识层无边，节点之间没有语义上的位置关系——随机散布不破坏任何拓扑信息。
-- `scatterInCircle` 用 `√random` 保证均匀分布，避免中心聚集。
-- 若 `MAX_ATTEMPTS` 次仍未找到空位，返回 error issue。
+- 无重试上限——每次碰撞将散布半径扩大 R0，迟早找到空位。
+- 同时检测与常识层已有节点和同批已放置节点的碰撞。
+- 常识层无边，随机位置不破坏任何拓扑信息。
 
 ### 子图内保留的节点
 

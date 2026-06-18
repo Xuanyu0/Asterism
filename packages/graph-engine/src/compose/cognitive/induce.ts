@@ -107,11 +107,12 @@ export function induce(params: InduceParams): {
 
     if (selectedNodes.length !== nodeIds.length) {
         const foundIds = new Set(selectedNodes.map(node => node.id))
-        const missingId = nodeIds.find(id => !foundIds.has(id))!
-        issues.push({
-            message: `节点 ${missingId} 在当前图谱中不存在。`,
-            severity: 'error',
-        })
+        for (const missingId of nodeIds.filter(id => !foundIds.has(id))) {
+            issues.push({
+                message: `节点 ${missingId} 在当前图谱中不存在。`,
+                severity: 'error',
+            })
+        }
         return { operations: { child: [], parent: [] }, childGraphData: null!, issues }
     }
 

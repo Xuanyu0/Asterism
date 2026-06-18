@@ -130,6 +130,7 @@ export {
     deconstruct,
     diverge,
     induce,
+    internalize,
 } from './compose'
 export type {
     DraftPosition,
@@ -144,6 +145,7 @@ export type {
     DeconstructParams,
     DivergeParams,
     InduceParams,
+    InternalizeParams,
 } from './compose'
 
 // SPI (Service Provider Interface) types
