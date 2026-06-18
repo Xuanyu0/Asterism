@@ -28,7 +28,7 @@
  */
 
 import type { NodeId, NodePosition, NodeData, NodeRadiusMap } from '../../types/graph_data'
-import type { ComposeResult, DraftPosition } from '../types'
+import type { ComposeIssue, ComposeResult, DraftPosition } from '../types'
 import { positionOnCircle, snapOrbit } from '../../infrastructure/placement'
 import { hasCollisionAt } from '../../infrastructure/collision'
 
@@ -68,7 +68,7 @@ export function adjustDistance(params: {
 
     const draft: DraftPosition = { nodeId, position }
 
-    const issues = blocked
+    const issues: ComposeIssue[] = blocked
         ? [{
             message: `节点 ${nodeId} 在目标位置与已有节点碰撞，无法放置。`,
             severity: 'error' as const,
@@ -139,7 +139,7 @@ export function adjustOrbit(params: {
         angle: snapped.angle,
     }
 
-    const issues = blocked
+    const issues: ComposeIssue[] = blocked
         ? [{
             message: `节点 ${nodeId} 在吸附位置（层级 ${snapped.tier}）与已有节点碰撞，无法放置。`,
             severity: 'error' as const,

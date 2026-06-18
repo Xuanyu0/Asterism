@@ -97,6 +97,7 @@ export { normalizeGraph } from './core/normalize'
 export { generateNodeId, generateEdgeId, generateGraphId } from './core/id'
 export { createReversal } from './core/reversal'
 export { replayGraph, replayToStep } from './core/replay'
+export { syncReferenceNodeDegree } from './core/sync'
 export { validateGraph } from './core/checkers/graph_validator'
 
 // Infrastructure
@@ -117,6 +118,32 @@ export {
     scatterInCircle,
     computeTierSpacing,
 } from './infrastructure'
+
+// Compose
+export {
+    applyBatch,
+    moveNode,
+    adjustDistance,
+    adjustOrbit,
+    orbit,
+    pathLayout,
+    deconstruct,
+    diverge,
+} from './compose'
+export type {
+    DraftPosition,
+    ComposeIssue,
+    ComposeResult,
+    BatchOptions,
+    PerOpResult,
+    BatchResult,
+    DraftOrbitPosition,
+    OrbitParams,
+    PathParams,
+    DeconstructParams,
+    DeconstructResult,
+    DivergeParams,
+} from './compose'
 
 // SPI (Service Provider Interface) types
 export type { PersistenceAdapter } from './spi/persistence'

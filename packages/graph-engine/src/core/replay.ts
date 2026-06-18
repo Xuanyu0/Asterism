@@ -47,3 +47,4 @@ export function replayToStep(baseGraph: GraphData, operations: GraphOperation[],
 
     return operations.slice(0, clampedStep).reduce((graph, op) => executeOperation(graph, op), baseGraph)
 }
+

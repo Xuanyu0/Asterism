@@ -301,7 +301,7 @@ return R0 * Math.sqrt(1 + node.degree)  // √(1+d) 保证 degree=0 时半径不
 const node = allNodes.find(node => node.id === nodeId)  // 查找节点 ← 废话
 ```
 
-## 八、跨文件意图注释（禁止内部注释的唯一例外）
+## 八、跨文件意图注释
 
 如果某段代码的存在是为了解决**外部文件的代码**产生的问题（而非本文件内部的逻辑需要），必须在代码块内用注释注明意图。
 
@@ -329,13 +329,9 @@ const node = allNodes.find(node => node.id === nodeId)  // 查找节点 ← 废�
 
 Store = 状态 + 动作。不负责 UI 渲染 / DOM 操作 / Cytoscape 操作。
 
-## 十一、注释层级
-
-文件 → 接口 → 函数，三层封顶。禁止更深层注释。
-
 ## 十二、空行规范
 
-逻辑块之间可空行分隔（如 actions 之间），禁止连续大量空行。
+逻辑块之间可空行分隔，禁止连续大量空行。
 
 ## 十三、命令行规范
 
@@ -400,35 +396,12 @@ import NodeWindow from './graph/NodeWindow.vue'
  *       C++ 类比：对应的 C++ 概念。
 ```
 
-**适用范围**（非完整列表，视需要添加）：
-
-| 机制 | 触发条件 |
-|------|---------|
-| Vue 响应式 | `ref()`, `computed()`, `watch()` |
-| Vue 生命周期 | `onMounted()`, `onBeforeUnmount()` |
-| Pinia | `defineStore()` + `useXxxStore()` |
-| 编译时语法糖 | `<script setup>`, `<style scoped>`, template `ref` |
-| 模板绑定 | 复杂的 `v-if`/`v-for`/动态绑定链条 |
-
 **规则**：
 1. 只解释 **"为什么会这样"**，不解释"这行代码在干什么"（不违反第七条）
 2. 优先用 **C++ 类比**降低认知负担
 3. 只标记**非直觉的框架行为**，通用 TypeScript/JS 语法不解释
 4. 简单模板语法（如单个 `@click`）不需要注释，复杂的响应式链条才需要
 
-**评判标准**：
-
-| 场景 | 加不加 |
-|------|--------|
-| `ref()` 模板引用自动绑定 DOM | ✅ 加 |
-| `computed()` 缓存计算与自动失效 | ✅ 加 |
-| `watch()` 深层监听与自动依赖追踪 | ✅ 加 |
-| `defineStore` 的 `state` 是工厂函数 | ✅ 加 |
-| `<script setup>` 编译期行为 | ✅ 加 |
-| `<style scoped>` 自动作用域隔离 | ✅ 加 |
-| `v-if="x"` 条件渲染 | ❌ 不加 |
-| `@click="fn"` 事件绑定 | ❌ 不加 |
-| `import { fn } from 'vue'` | ❌ 不加 |
 
 ### 示例：KnowledgeGraph.vue 文件头
 

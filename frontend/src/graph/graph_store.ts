@@ -20,12 +20,13 @@
 
 import { defineStore } from 'pinia'
 
-import type { EdgeId, GraphData, GraphId, NodeId } from '@my-project/graph-engine'
+import type { EdgeId, GraphData, GraphId, GraphRegistry, NodeId } from '@my-project/graph-engine'
 import type { GraphOperation } from '@my-project/graph-engine'
+import { createRegistry, registerGraph, unregisterGraph, getGraph, hasGraph } from '@my-project/graph-engine'
 import { OperationValidator } from '@/definitions/validators/operation_validator'
 import type { ValidationResult } from '@my-project/graph-engine'
 
-import { saveGraph, loadGraph, deleteGraph } from '@/graph/utilities/graph_persistence'
+import { saveGraph, loadGraph, deleteGraph, listSavedGraphIds } from '@/graph/utilities/graph_persistence'
 import { applyOperationToGraph, pushUndoSnapshot, shouldPushUndoSnapshot } from '@/graph/utilities/operation_executor'
 import { normalizeGraph } from '@/graph/utilities/graph_utils'
 
@@ -47,6 +48,7 @@ export interface GraphStoreState {
     lastValidationResult: ValidationResult | null    // 最近一次操作校验结果
     undoStack: GraphData[]    // 删除操作撤销栈，刷新网页后自然清空
     lastSaveTime: number | null    // 最近一次成功保存当前图谱的时间戳
+    registry: GraphRegistry    // 多图注册表，由 localStorage 中全部已保存 GraphData 重建的运行时索引
 }
 
 /**
@@ -78,6 +80,7 @@ export const useGraphStore = defineStore('graph_store', {
         lastValidationResult: null,    // 初始没有校验结果
         undoStack: [],    // 初始没有可撤销状态
         lastSaveTime: null as number | null,
+        registry: createRegistry(),    // 空注册表，由 initRegistry 填充
     }),
 
     actions: {
@@ -109,6 +112,7 @@ export const useGraphStore = defineStore('graph_store', {
             }
 
             saveGraph(this.currentGraph)
+            registerGraph(this.registry, this.currentGraph)
 
             this.lastSaveTime = Date.now()
         },
@@ -135,6 +139,7 @@ export const useGraphStore = defineStore('graph_store', {
             }
 
             this.currentGraph = graph
+            registerGraph(this.registry, graph)
             this.selectedNodeId = null
             this.selectedEdgeId = null
             this.undoStack = []
@@ -156,6 +161,7 @@ export const useGraphStore = defineStore('graph_store', {
          */
         deleteSavedGraph(graphId: GraphId): void {
             deleteGraph(graphId)
+            unregisterGraph(this.registry, graphId)
         },
 
         /**
@@ -212,6 +218,74 @@ export const useGraphStore = defineStore('graph_store', {
             this.selectedEdgeId = null
 
             return true
+        },
+
+        /**
+         * 功能：
+         *
+         *     扫描 localStorage 中全部已保存图谱，重建多图注册表。
+         *
+         * 规则：
+         *
+         *     1. 应用启动时调用一次。
+         *     2. 当前已加载的 currentGraph 也会被注册（若已通过 setCurrentGraph 设置）。
+         *     3. 注册表中的 GraphData 对象与 currentGraph 可能指向同一引用（同图时）。
+         *
+         * 使用：
+         *
+         *     graph_store 首次创建后，由 setCurrentGraph 或 KnowledgeGraph.vue onMounted 触发。
+         */
+        initRegistry(): void {
+            const savedIds = listSavedGraphIds()
+
+            for (const graphId of savedIds) {
+                if (hasGraph(this.registry, graphId)) continue
+
+                const graph = loadGraph(graphId)
+
+                if (graph) {
+                    registerGraph(this.registry, graph)
+                }
+            }
+
+            // 当前已加载的图可能尚未持久化（例如 mock 数据），也注册进去
+            if (this.currentGraph && !hasGraph(this.registry, this.currentGraph.id)) {
+                registerGraph(this.registry, this.currentGraph)
+            }
+        },
+
+        /**
+         * 功能：
+         *
+         *     按 ID 从多图注册表中查找图。
+         *
+         * 使用：
+         *
+         *     认知操作（diverge、induce）等跨图场景前，前端通过此函数获取目标图。
+         */
+        getGraphById(graphId: GraphId): GraphData | undefined {
+            return getGraph(this.registry, graphId)
+        },
+
+        /**
+         * 功能：
+         *
+         *     将新图注册到多图注册表并持久化。
+         *
+         * 规则：
+         *
+         *     1. 认知操作创建新子图后调用。
+         *     2. 同时写入 localStorage（saveGraph）和 Registry（registerGraph）。
+         *     3. 若 graphId 已在 Registry 中则覆盖——调用方负责唯一性。
+         *
+         * 使用：
+         *
+         *     deconstruct / induce 在 applyBatch 执行后，由 operation_controller 调此函数
+         *     将新建子图写入 Registry。
+         */
+        registerNewGraph(graph: GraphData): void {
+            saveGraph(graph)
+            registerGraph(this.registry, graph)
         },
 
         /**

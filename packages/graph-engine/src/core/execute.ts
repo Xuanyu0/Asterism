@@ -2,20 +2,23 @@
  * execute.ts
  *
  * 功能：
+ *
  *     将 GraphOperation 转换为新的 GraphData。所有函数为纯函数，不修改入参。
  *
  * 总体结构：
+ *
  *     1. executeOperation — Operation router，按 type 分派
- *     2. 各 executeXxx — 11 种 Operation 具体执行函数
+ *     2. 各 executeXxx — 9 种 Operation 具体执行函数
  *
  * 规则：
+ *
  *     1. 本模块不负责校验。
  *     2. 所有操作返回新的 GraphData，不修改传入 GraphData。
  *     3. 所有变更操作会写入 timestamp。
- *     4. 引用节点穿透（update_node）与级联删除（delete_node）在本模块内实现。
- *     5. 引用节点度数跟随源节点。有向虚边对度数的影响同时作用于源节点与引用节点。
- *        跨图场景（Phase 3）依赖 GraphRegistry（Step 5）。
- *     6. 度数同步委托给 sync.ts。图遍历委托给 traversal.ts。
+ *     4. 单图纯函数——签名 (graph, op) → graph。
+ *        跨图 degree 同步不由本层负责——启发边的镜像操作和对端图 add_edge
+ *        共同完成，沟通节点的 degree 由 syncReferenceNodeDegree 覆写为源节点度数。
+ *     5. 度数同步委托给 sync.ts。图遍历委托给 traversal.ts。
  *
  * 外部如何使用：
  *     import { executeOperation } from '@my-project/graph-engine'
@@ -55,10 +58,6 @@ export function executeOperation(graph: GraphData, operation: GraphOperation): G
         case 'expand_dependency':
             return executeExpandDependency(graph, operation)
 
-        case 'add_graph':
-        case 'delete_graph':
-            return graph
-
         default:
             return graph
     }
@@ -87,7 +86,7 @@ function executeAddEdge(graph: GraphData, operation: { type: 'add_edge'; edge: G
         return node
     })
 
-    // 端点穿透：若 source 或 target 是引用节点，源节点也加 degree
+    // 同图穿透：若 source 或 target 是引用节点（源节点在本图），源节点也加 degree
     for (const endpointId of [operation.edge.source, operation.edge.target]) {
         const endpointNode = nodes.find(node => node.id === endpointId)
 
@@ -104,7 +103,7 @@ function executeAddEdge(graph: GraphData, operation: { type: 'add_edge'; edge: G
         }
     }
 
-    // 若加边直接连到知识节点，该知识节点的引用节点也同步
+    // 同图同步：若加边直接连到知识节点，该知识节点的同图引用节点也同步
     for (const endpointId of [operation.edge.source, operation.edge.target]) {
         const endpointNode = nodes.find(node => node.id === endpointId)
 
@@ -213,7 +212,7 @@ function executeDeleteEdge(graph: GraphData, operation: { type: 'delete_edge'; e
         return node
     })
 
-    // 端点穿透：对称于 add_edge 
+    // 同图穿透：对称于 add_edge
     if (deletedEdge) {
         for (const endpointId of [deletedEdge.source, deletedEdge.target]) {
             const endpointNode = nodes.find(node => node.id === endpointId)

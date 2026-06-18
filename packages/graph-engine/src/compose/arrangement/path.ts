@@ -29,7 +29,7 @@
  */
 
 import type { EdgeData, NodeData, NodeId, NodePosition, NodeRadiusMap } from '../../types/graph_data'
-import type { ComposeResult, DraftPosition } from '../types'
+import type { ComposeIssue, ComposeResult, DraftPosition } from '../types'
 import { distributeOnLine } from '../../infrastructure/placement'
 import { hasCollisionInDrafts } from '../../infrastructure/collision'
 
@@ -80,7 +80,7 @@ export interface PathParams {
 export function pathLayout(params: PathParams): ComposeResult<DraftPosition> {
     const { axis, pathNodes, direction, spacing, allNodes, allEdges, nodeRadiusOverrides } = params
 
-    const issues: { message: string; severity: 'error' | 'warning' }[] = []
+    const issues: ComposeIssue[] = []
 
     // ── 校验：每个路径节点必须通过有向实边连接轴心 ──
     for (const pn of pathNodes) {

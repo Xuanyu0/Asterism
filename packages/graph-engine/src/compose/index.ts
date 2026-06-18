@@ -19,3 +19,9 @@ export { orbit } from './arrangement/orbit'
 export type { OrbitParams } from './arrangement/orbit'
 export { pathLayout } from './arrangement/path'
 export type { PathParams } from './arrangement/path'
+
+// cognitive
+export { deconstruct } from './cognitive/deconstruct'
+export type { DeconstructParams, DeconstructResult } from './cognitive/deconstruct'
+export { diverge } from './cognitive/diverge'
+export type { DivergeParams } from './cognitive/diverge'

@@ -14,7 +14,7 @@
  *
  *     1. 参与节点必须通过实边（有向或无向）与中心节点连接，禁止虚边。
  *        校验失败 → issues 含 error。
- *     2. 内部调 distributeOnTiers（位置计算）+ hasCollisionInDrafts（批量碰撞）。
+ *     2. 内部调 computeTierSpacing（层级间距）+ snapOrbit（逐节点吸附）+ hasCollisionInDrafts（碰撞检测）。
  *     3. 纯函数——不持有状态，不写入 GraphData。
  *
  * 外部如何使用：
@@ -24,15 +24,14 @@
  *     const result = orbit({
  *         center: { id, position, radius },
  *         satellites: [{ id, radius }, ...],
- *         tiers: [{ tier: 0, nodeIds: ['b', 'c'] }],
+ *         tierCount: 3,
  *         allNodes, allEdges, nodeRadiusOverrides,
  *     })
  */
 
 import type { EdgeData, NodeData, NodeId, NodePosition, NodeRadiusMap } from '../../types/graph_data'
-import type { ComposeResult, DraftPosition } from '../types'
-import type { TierAssignment } from '../../infrastructure/placement'
-import { distributeOnTiers } from '../../infrastructure/placement'
+import type { ComposeIssue, ComposeResult, DraftPosition } from '../types'
+import { computeTierSpacing, snapOrbit } from '../../infrastructure/placement'
 import { hasCollisionInDrafts } from '../../infrastructure/collision'
 
 // ═══════════ 参数类型 ═══════════
@@ -44,21 +43,18 @@ import { hasCollisionInDrafts } from '../../infrastructure/collision'
  *
  * 规则：
  *
- *     satellites 仅需 id 和 radius——位置由引擎计算。
- *     tiers 由调用方管理（前端 UI 或自动分配逻辑），引擎不负责层级分配策略。
+ *     satellites 仅需 id 和 radius——当前位置从 allNodes 读取，吸附后位置由引擎计算。
+ *     tierCount 控制可选层级数量，引擎根据距离自动分配层级。
  */
 export interface OrbitParams {
     /** 中心节点。 */
     center: { id: NodeId; position: NodePosition; radius: number }
 
-    /** 卫星节点列表。仅需 id 和 radius，位置由引擎计算。 */
+    /** 卫星节点列表。仅需 id 和 radius，当前位置从 allNodes 读取，吸附后位置由引擎计算。 */
     satellites: { id: NodeId; radius: number }[]
 
-    /** 层级分配。哪个节点在哪层。调用方负责分配策略（如初始均分到 tier 0）。 */
-    tiers: TierAssignment[]
-
-    /** 起始角度（弧度），默认 0。 */
-    startAngle?: number
+    /** 候选层级数量。每个卫星根据当前位置吸附到最近层级。 */
+    tierCount: number
 
     /** 当前 GraphData 节点快照。 */
     allNodes: NodeData[]
@@ -81,10 +77,9 @@ export interface OrbitParams {
  *
  *     1. 边校验：每个卫星必须通过实边（有向或无向）与中心节点连接。
  *        虚边或无边 → issue error。
- *     2. 位置计算：调 distributeOnTiers 均分圆周。层级间距 D₀ 由 distributeOnTiers
- *        内部根据 centerRadius + maxSatelliteRadius + r₀ 计算。
+ *     2. 位置计算：调 computeTierSpacing 计算层级间距 D₀，
+ *        再对每个卫星调 snapOrbit 吸附至最近层级轨道，保留当前角度。
  *     3. 碰撞检测：调 hasCollisionInDrafts，同时检查草稿互碰和草稿 vs 已有节点。
- *     4. 不在 tiers 中的卫星 → issue error（"未被分配层级"）。
  *
  * 参数：
  *
@@ -94,19 +89,18 @@ export function orbit(params: OrbitParams): ComposeResult<DraftPosition> {
     const {
         center,
         satellites,
-        tiers,
-        startAngle = 0,
+        tierCount,
         allNodes,
         allEdges,
         nodeRadiusOverrides,
     } = params
 
-    const issues: { message: string; severity: 'error' | 'warning' }[] = []
+    const issues: ComposeIssue[] = []
 
     // ── 校验：每个卫星必须通过实边连接中心 ──
     for (const satellite of satellites) {
         const hasRealEdge = allEdges.some(
-            edge =>
+            edge => 
                 edge.kind === 'real' &&
                 ((edge.source === center.id && edge.target === satellite.id) ||
                  (edge.source === satellite.id && edge.target === center.id)),
@@ -120,19 +114,25 @@ export function orbit(params: OrbitParams): ComposeResult<DraftPosition> {
         }
     }
 
-    // ── 校验：tiers 覆盖了所有卫星 ──
-    const assignedIds = new Set(tiers.flatMap(t => t.nodeIds))
+    // ── D₀ 计算 ──
+    const D0 = computeTierSpacing(center.radius, satellites.map(satellite => satellite.radius))
+
+    // ── 位置计算：逐节点吸附至最近层级轨道，保留当前角度 ──
+    const nodePosMap = new Map(allNodes.map(node => [node.id, node.position]))
+    const drafts: DraftPosition[] = []
+
     for (const satellite of satellites) {
-        if (!assignedIds.has(satellite.id)) {
+        const currentPos = nodePosMap.get(satellite.id)
+        if (!currentPos) {
             issues.push({
-                message: `节点 ${satellite.id} 未被分配到任何层级。`,
+                message: `节点 ${satellite.id} 在当前图谱中不存在。`,
                 severity: 'error',
             })
+            continue
         }
+        const snapped = snapOrbit(center.position, currentPos, D0, tierCount)
+        drafts.push({ nodeId: satellite.id, position: snapped.position })
     }
-
-    // ── 位置计算 ──
-    const drafts: DraftPosition[] = distributeOnTiers(center, satellites, tiers, startAngle)
 
     // ── 碰撞检测 ──
     const blocked = hasCollisionInDrafts(drafts, allNodes, nodeRadiusOverrides)

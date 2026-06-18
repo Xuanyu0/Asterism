@@ -110,3 +110,36 @@ export function deleteGraph(graphId: GraphId): void {
 
     localStorage.removeItem(storageKey)
 }
+
+/**
+ * 功能：
+ *
+ *     扫描 localStorage 中所有已保存图谱的 GraphId 列表。
+ *
+ * 规则：
+ *
+ *     1. 只返回 key 前缀匹配 `GRAPH_STORAGE_PREFIX` 的条目。
+ *     2. 不反序列化 GraphData——调用方按需逐条 loadGraph。
+ *     3. 返回的 ID 列表无序。
+ *
+ * 使用：
+ *
+ *     const ids = listSavedGraphIds()
+ *     for (const id of ids) {
+ *         const graph = loadGraph(id)
+ *         registerGraph(registry, graph)
+ *     }
+ */
+export function listSavedGraphIds(): GraphId[] {
+    const ids: GraphId[] = []
+    const prefix = `${GRAPH_STORAGE_PREFIX}:`
+
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith(prefix)) {
+            ids.push(key.slice(prefix.length))
+        }
+    }
+
+    return ids
+}
