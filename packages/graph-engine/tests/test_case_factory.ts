@@ -37,10 +37,10 @@ import type {
     NodeRole,
     RealNodeForm,
     ReferenceNodeKind,
-} from '../types/graph_data'
+} from '../src/types/graph_data'
 
-import { normalizeGraph } from '../core/normalize'
-import { validateGraph } from '../core/checkers/graph_validator'
+import { normalizeGraph } from '../src/core/normalize'
+import { validateGraph } from '../src/core/checkers/graph_validator'
 
 // ═══════════ 类型工具 ═══════════
 
@@ -458,7 +458,7 @@ export function createInduceWithHeuristicInputGraph(graphId: GraphId = 'graph-in
 
     const edges: EdgeData[] = [
         createEdge({ id: 'ih-AX' as EdgeId, graphId, source: a.id, target: x.id, kind: 'real', direction: 'undirected' }),
-        createEdge({ id: 'ih-HX' as EdgeId, graphId, source: h.id, target: x.id, kind: 'real', direction: 'undirected' }),
+        createEdge({ id: 'ih-HX' as EdgeId, graphId, source: h.id, target: x.id, kind: 'virtual', direction: 'directed' }),
     ]
 
     return assembleGraph({
