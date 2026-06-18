@@ -2,105 +2,233 @@
  * index.ts
  *
  * 功能：
+ *
  *     GraphEngine 公开 API 入口。所有外部消费者通过此文件导入。
  *
- * 规则：
- *     - 只导出外部使用者需要的类型和函数
- *     - 内部实现细节（core/ 内部函数、checkers/ 原子函数）不从此文件暴露
- *     - Phase 2：类型导出 + 核心函数导出
- *     - Phase 3：AI Collabrator 消费接口不变
+ * 导出分 6 类：
  *
- * 外部使用方式：
- *     import type { GraphData, NodeData, GraphOperation, ValidationResult } from '@my-project/graph-engine'
- *     import { GraphEngine } from '@my-project/graph-engine'
+ *     - apply           — 前端 graph_store 单步提交
+ *     - applyBatch      — 前端 operation_controller 批量事务
+ *     - replay          — 前端操作日志 历史回溯
+ *     - reversal        — 前端 graph_store undo
+ *     - compose         — 前端 operation_controller 编排操作
+ *     - infrastructure  — 前端 graph_store 初始化、Registry 管理、ID 生成、校验
+ *
+ * 规则：
+ *
+ *     - execute / validate / sync / checkers / collision / placement / geometry 不导出
+ *     - compose 函数只产出 operations，不执行——执行统一经 apply / applyBatch
+ *
+ * 外部如何使用：
+ *
+ *     import type { GraphData, NodeData } from '@my-project/graph-engine'
+ *     import { applyOperation, applyBatch, searchNodes } from '@my-project/graph-engine'
  */
 
-// Types
+// ═══════════ Types ═══════════
+
+/** 消费者：全部前端模块（类型注解、接口契约）。 */
 export type {
-    GraphPosition,
-    GraphId,
-    NodeId,
-    EdgeId,
-    GraphKind,
-    GraphData,
-    GraphCognitiveState,
-    FoldedDependencyState,
-    NodeRole,
-    KnowledgeNodeKind,
-    RealNodeForm,
-    ReferenceNodeKind,
-    NodePosition,
-    NodeBase,
-    KnowledgeNodeData,
-    ReferenceNodeData,
-    NodeData,
-    EdgeKind,
-    EdgeDirection,
-    EdgeData,
-    GraphRegistry,
-    SearchResult,
-    NodeRadiusMap,
+    GraphPosition, GraphId, NodeId, EdgeId, GraphKind,
+    GraphData, GraphCognitiveState, FoldedDependencyState,
+    NodeRole, KnowledgeNodeKind, RealNodeForm, ReferenceNodeKind,
+    NodePosition, NodeBase, KnowledgeNodeData, ReferenceNodeData, NodeData,
+    EdgeKind, EdgeDirection, EdgeData,
+    GraphRegistry, SearchResult, NodeRadiusMap,
 } from './types/graph_data'
 
+/** 消费者：引擎内部 & 前端渲染层。 */
 export type { LayoutRules, NodeRules } from './core/rules'
 
-export type { TierAssignment } from './infrastructure/placement'
-
+/** 消费者：graph_store.applyOperation / operation_controller / 操作日志。 */
 export type {
-    AddNodeOperation,
-    AddEdgeOperation,
-    DeleteNodeOperation,
-    DeleteEdgeOperation,
-    UpdateNodeOperation,
-    UpdateEdgeOperation,
-    MoveNodeOperation,
-    CollapseDependencyOperation,
-    ExpandDependencyOperation,
-    AddGraphOperation,
-    DeleteGraphOperation,
-    AtomicOperation,
-    GraphOperation,
+    AddNodeOperation, AddEdgeOperation, DeleteNodeOperation, DeleteEdgeOperation,
+    UpdateNodeOperation, UpdateEdgeOperation, MoveNodeOperation,
+    CollapseDependencyOperation, ExpandDependencyOperation,
+    AddGraphOperation, DeleteGraphOperation,
+    AtomicOperation, GraphOperation,
 } from './types/atomic_operations'
 
+/** 消费者：operation_controller（Cognition 模式类型标签）。 */
 export type {
-    ExploreOperation,
-    DiscoverOperation,
-    DeconstructOperation,
-    InduceOperation,
-    InternalizeOperation,
-    CognitiveOperation,
-    CognitiveResult,
+    ExploreOperation, DiscoverOperation,
+    DeconstructOperation, InduceOperation, InternalizeOperation,
+    CognitiveOperation, CognitiveResult,
 } from './types/cognitive_operations'
 
+/** 消费者：graph_store（校验返回值）。 */
 export type {
-    ValidationLevel,
-    ValidationTargetType,
-    ValidationIssue,
-    ValidationResult,
+    ValidationLevel, ValidationTargetType,
+    ValidationIssue, ValidationResult,
 } from './types/validation'
 
-export type {
-    OperationLogEntry,
-    OperationLog,
-    State,
-} from './types/operation_log'
+/** 消费者：graph_store（操作日志 & undo/redo）。 */
+export type { OperationLogEntry, OperationLog, State } from './types/operation_log'
 
-// Rules
-export { DEFAULT_LAYOUT_RULES, DEFAULT_NODE_RULES } from './core/rules'
+/** 消费者：graph_persistence.ts（localStorage 实现 SPI 契约）。Phase 3 扩展点。 */
+export type { PersistenceAdapter } from './spi/persistence'
 
-// Core functions
-export { executeOperation } from './core/execute'
-export { collectDependencyNodeIds } from './core/traversal'
-export { validateOperation } from './core/validate'
+// ═══════════════════════════════════════════════════════════════════
+// apply — 单步提交
+//
+// 消费者：
+//     graph_store.applyOperation — 单步操作统一入口。
+//     Phase 3 AI Runtime — 逐条提交 Graph Patch Plan 中的原子操作。
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * 功能：
+ *
+ *     单步操作执行。先 validate，通过后 execute。
+ *
+ * 消费者：
+ *
+ *     graph_store.applyOperation
+ *
+ * 使用：
+ *
+ *     const { graph, validation } = applyOperation(currentGraph, operation)
+ */
 export { applyOperation } from './core/apply'
-export { normalizeGraph } from './core/normalize'
-export { generateNodeId, generateEdgeId, generateGraphId } from './core/id'
-export { createReversal } from './core/reversal'
-export { replayGraph, replayToStep } from './core/replay'
-export { syncReferenceNodeDegree } from './core/sync'
-export { validateGraph } from './core/checkers/graph_validator'
 
-// Infrastructure
+// ═══════════════════════════════════════════════════════════════════
+// applyBatch — 批量事务
+//
+// 消费者：
+//     operation_controller — compose 函数产出 operations 后，
+//     由 operation_controller 调 applyBatch 统一提交。
+//     Phase 3 AI Runtime — 批量提交操作序列。
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * 功能：
+ *
+ *     批量事务执行。逐条 validate → 全通过后逐条 execute。
+ *     任一失败则整批丢弃。
+ *
+ * 消费者：
+ *
+ *     operation_controller（arrangement / cognition 模式确认提交）
+ *
+ * 使用：
+ *
+ *     const result = applyBatch(parentGraph, operations, registry)
+ *     if (!result.validation.valid) { ... }  // 按钮灰掉
+ */
+export { applyBatch } from './compose/pipeline'
+export type { BatchOptions, PerOpResult, BatchResult } from './compose/pipeline'
+
+// ═══════════════════════════════════════════════════════════════════
+// replay — 历史回溯
+//
+// 消费者：
+//     graph_store 操作日志 — 从基线图 + 操作序列重建任意历史状态。
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * 功能：
+ *
+ *     操作序列回放。给定基线 GraphData + 操作序列，重建历史状态。
+ *
+ * 消费者：
+ *
+ *     graph_store（操作日志历史回溯）
+ *
+ * 使用：
+ *
+ *     const state = replayGraph(baseGraph, operations)
+ *     const state = replayToStep(baseGraph, operations, step)
+ */
+export { replayGraph, replayToStep } from './core/replay'
+
+// ═══════════════════════════════════════════════════════════════════
+// reversal — undo
+//
+// 消费者：
+//     graph_store — apply 前捕获逆操作，undo 时执行逆操作序列。
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * 功能：
+ *
+ *     逆操作构造器。在 execute 前调用，捕获操作对象完整前状态，返回逆操作序列。
+ *
+ * 消费者：
+ *
+ *     graph_store（undo/redo）
+ *
+ * 使用：
+ *
+ *     const reversals = createReversal(graph, operation)
+ *     // 执行后追加到 OperationLog
+ */
+export { createReversal } from './core/reversal'
+
+// ═══════════════════════════════════════════════════════════════════
+// compose — 编排操作
+//
+// 消费者：
+//     operation_controller — arrangement 和 cognition 两种模式下的编排逻辑。
+//     compose 函数只产出 { operations, issues, drafts }，不执行。
+//     执行统一经 apply / applyBatch。
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * 功能：
+ *
+ *     布局与认知编排操作。产出 operations 序列、issues 校验列表和位置草稿。
+ *
+ * 消费者：
+ *
+ *     operation_controller
+ *
+ * 规则：
+ *
+ *     编排函数纯函数——不持有状态，不写入 graph_store，不直接调 applyBatch。
+ *     调用方根据 issues 控制确认按钮，确认后拿 operations 调 applyBatch 提交。
+ *
+ * 使用：
+ *
+ *     const result = orbit(params)           // arrangement
+ *     const result = deconstruct(params)     // cognitive
+ *     // 前端预览 result.drafts，根据 result.issues 亮/灰按钮
+ *     // 用户确认 → applyBatch(graph, result.operations, registry)
+ */
+export {
+    // arrangement
+    moveNode, adjustDistance, adjustOrbit, orbit, pathLayout,
+    // cognitive
+    deconstruct, diverge, induce, internalize,
+} from './compose'
+export type {
+    DraftPosition, ComposeIssue, ComposeResult,
+    DraftOrbitPosition, OrbitParams, PathParams,
+    DeconstructParams, DivergeParams, InduceParams, InternalizeParams,
+} from './compose'
+
+// ═══════════════════════════════════════════════════════════════════
+// infrastructure — 初始化、注册表管理、ID 生成、校验、常量
+//
+// 消费者：
+//     graph_store — 启动时重建 Registry、导航时查询子图、创建新图时注册。
+//     前端搜索浮空窗 — diverge 前置跨图搜索。
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * 功能：
+ *
+ *     多图注册表管理函数。
+ *
+ * 消费者：
+ *
+ *     graph_store（initRegistry / registerNewGraph / getGraphById / deleteSavedGraph）
+ *
+ * 使用：
+ *
+ *     const registry = createRegistry()
+ *     registerGraph(registry, graph)
+ *     const found = getGraph(registry, graphId)
+ */
 export {
     createRegistry,
     registerGraph,
@@ -108,45 +236,84 @@ export {
     hasGraph,
     unregisterGraph,
     listGraphs,
-    searchNodes,
-    hasCollisionInDrafts,
-    hasCollisionAt,
-    positionOnCircle,
-    snapOrbit,
-    distributeOnTiers,
-    distributeOnLine,
-    scatterInCircle,
-    computeTierSpacing,
 } from './infrastructure'
 
-// Compose
-export {
-    applyBatch,
-    moveNode,
-    adjustDistance,
-    adjustOrbit,
-    orbit,
-    pathLayout,
-    deconstruct,
-    diverge,
-    induce,
-    internalize,
-} from './compose'
-export type {
-    DraftPosition,
-    ComposeIssue,
-    ComposeResult,
-    BatchOptions,
-    PerOpResult,
-    BatchResult,
-    DraftOrbitPosition,
-    OrbitParams,
-    PathParams,
-    DeconstructParams,
-    DivergeParams,
-    InduceParams,
-    InternalizeParams,
-} from './compose'
+/**
+ * 功能：
+ *
+ *     跨图节点搜索。label 子串匹配。
+ *
+ * 消费者：
+ *
+ *     前端搜索浮空窗（diverge 操作前置搜索）。
+ *
+ * 使用：
+ *
+ *     const results = searchNodes('相对论', registry)
+ *     const results = searchNodes('相对论', registry, graphId)  // 限定图
+ */
+export { searchNodes } from './infrastructure'
 
-// SPI (Service Provider Interface) types
-export type { PersistenceAdapter } from './spi/persistence'
+/**
+ * 功能：
+ *
+ *     补全 GraphData 认知状态默认值。
+ *
+ * 消费者：
+ *
+ *     graph_store.setCurrentGraph
+ *
+ * 使用：
+ *
+ *     const normalized = normalizeGraph(loadedGraph)
+ */
+export { normalizeGraph } from './core/normalize'
+
+/**
+ * 功能：
+ *
+ *     全图 schema 校验。加载图时检查完整性。
+ *
+ * 消费者：
+ *
+ *     graph_store（加载图时校验）、test_case_factory
+ *
+ * 使用：
+ *
+ *     const result = validateGraph(graph)
+ *     if (!result.valid) { ... }  // 拒绝加载
+ */
+export { validateGraph } from './core/checkers/graph_validator'
+
+/**
+ * 功能：
+ *
+ *     统一 ID 生成。使用 crypto.randomUUID()。
+ *
+ * 消费者：
+ *
+ *     compose 层（deconstruct / induce / diverge 创建新节点/边/图时）
+ *
+ * 使用：
+ *
+ *     const nodeId = generateNodeId()
+ *     const edgeId = generateEdgeId()
+ *     const graphId = generateGraphId()
+ */
+export { generateNodeId, generateEdgeId, generateGraphId } from './core/id'
+
+/**
+ * 功能：
+ *
+ *     引擎默认规则常量。布局半径、度数计算、标签长度等。
+ *
+ * 消费者：
+ *
+ *     引擎内部 & 前端渲染层（节点外接圆半径公式 r = r₀ · √(1+degree)）。
+ *
+ * 使用：
+ *
+ *     import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
+ *     const radius = DEFAULT_LAYOUT_RULES.r0 * Math.sqrt(1 + node.degree)
+ */
+export { DEFAULT_LAYOUT_RULES, DEFAULT_NODE_RULES } from './core/rules'
