@@ -45,12 +45,9 @@ deconstruct 的前置条件分两层：
 
 ## 返回值
 
-- **drafts 数量**：0。deconstruct 不产生位置草稿——抽象节点继承原位置，沟通节点在空子图中初始聚集在原点附近。无位置预览需求，前端确认按钮不依赖碰撞检测。
-- **Draft 扩展字段**：无。不返回 `ComposeResult` 的 drafts 字段（空数组）。
+- **drafts 数量**：0。deconstruct 不产生位置草稿。
+- **Draft 扩展字段**：无。
 - **issues 典型清单**：见上方"前置条件"中的四条 error 消息。
-- **新增返回字段 `childGraph`**：compose 层直接构造的完整子图对象（含沟通节点）。前端 `operation_controller` 在 `applyBatch` 父图操作后，调 `graphStore.registerNewGraph(childGraph)` 将子图持久化并注册到 Registry。
-
-> **设计理由**：`executeOperation` 签名是 `(graph, op) → graph`——单图进，单图出。创建新图不是对已有图的变换，无法通过此接口表达。子图由 compose 层直接构造，经 `registerNewGraph` 写入持久化。
 
 ## 后置影响（图结构变化）
 
@@ -75,11 +72,7 @@ deconstruct 的前置条件分两层：
 
 ## applyBatch 得到的原子操作序列
 
-父图侧仅一条 `update_node`：
-
-```
-applyBatch(parentGraph, [update_node])
-```
+两条操作，同属一个事务：
 
 ```
 1. update_node
@@ -88,50 +81,45 @@ applyBatch(parentGraph, [update_node])
        form: 'abstract',
        childGraphId: <新子图 ID>,
    }
+
+2. add_graph
+   graph = {
+       id: <新生成的子图 ID>,
+       kind: 'subgraph',
+       title: <目标节点的 label>,
+       parentGraphId: <父图 ID>,
+       ownerNodeId: <目标节点 nodeId>,
+       nodes: [
+           // 每个邻居一个沟通节点（直接构造）
+           { id: <新生成 ID>, graphId: <子图 ID>,
+             role: 'reference', referenceKind: 'communication',
+             label: neighbor.label,
+             sourceGraphId: <父图 ID>, sourceNodeId: neighbor.id,
+             position: { x: 0, y: 0 }, abstractionLevel: 0, degree: 0 },
+           ...
+       ],
+       edges: [],
+   }
 ```
 
-子图不经过 `applyBatch`——`executeOperation` 的签名是 `(graph, op) → graph`，单图进单图出。创建新图不是单图变换，不能由此接口表达。子图由 compose 层在内部直接构造完整对象，交给 `registerNewGraph` 写入持久化和 Registry。
-
-compose 层内部构造的子图对象：
-
-```
-childGraph: {
-    id: <新生成的子图 ID>,
-    kind: 'subgraph',
-    title: <目标节点的 label>,
-    parentGraphId: <父图 ID>,
-    ownerNodeId: <目标节点 nodeId>,
-    nodes: [
-        // 每个邻居一个沟通节点（直接构造，不走 add_node）
-        { id: <新生成 ID>, graphId: <子图 ID>,
-          role: 'reference', referenceKind: 'communication',
-          label: neighbor.label,
-          sourceGraphId: <父图 ID>, sourceNodeId: neighbor.id,
-          position: { x: 0, y: 0 }, abstractionLevel: 0, degree: 0 },
-        ...
-    ],
-    edges: [],
-}
-```
+`add_graph` 在 execute 层调用 `registerGraph(registry, operation.graph)` 将子图写入多图注册表。
 
 **执行流程**：
 
 ```
-deconstruct() 返回 { operations, issues, childGraph }
+deconstruct() 返回 { operations, issues }
     ↓
-operation_controller:
-    1. applyBatch(parentGraph, operations)         ← 父图 update_node
-    2. graphStore.registerNewGraph(childGraph)     ← 子图持久化 + 注册
+applyBatch(parentGraph, operations, registry)    ← update_node + add_graph 一条龙
 ```
 
 ## 事务语义
 
 | | |
 |---|---|
-| 原子性边界 | 一条 `update_node` + `registerNewGraph`：父图 `applyBatch` 失败 → 子图不写入。子图写入失败 → 父图不回滚，但此场景概率极低（`registerNewGraph` 无校验，仅 `saveGraph` + `registerGraph`） |
-| dryRun 行为 | 逐条 validate 父图 ops，全通过后跳过 execute |
+| 原子性边界 | `update_node` + `add_graph` 同属一个事务。validate-all-first：全部通过后才执行，任一失败整批丢弃 |
+| dryRun 行为 | 逐条 validate，全通过后跳过 execute |
 | 幂等性 | 否。`form === 'abstract'` 的节点不可再次解构 |
-| 可逆性 | 是。`createReversal` 逆操作：删除子图（`delete_graph` + `unregisterGraph`）、回退 `form` 为 `'atomic'`、清除 `childGraphId`
+| 可逆性 | 是。`createReversal` 逆操作：`delete_graph`、回退 `form` 为 `'atomic'`、清除 `childGraphId`
 
 ## 位置安排策略
 

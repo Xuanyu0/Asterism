@@ -8,28 +8,29 @@
  * 总体结构：
  *
  *     1. executeOperation — Operation router，按 type 分派
- *     2. 各 executeXxx — 9 种 Operation 具体执行函数
+ *     2. 各 executeXxx — 11 种 Operation 具体执行函数
  *
  * 规则：
  *
  *     1. 本模块不负责校验。
  *     2. 所有操作返回新的 GraphData，不修改传入 GraphData。
  *     3. 所有变更操作会写入 timestamp。
- *     4. 单图纯函数——签名 (graph, op) → graph。
- *        跨图 degree 同步不由本层负责——启发边的镜像操作和对端图 add_edge
- *        共同完成，沟通节点的 degree 由 syncReferenceNodeDegree 覆写为源节点度数。
+ *     4. 签名 (graph, op, registry?) → graph。
+ *        add_graph / delete_graph 通过 registry 修改多图集合（add_graph 注册新图，
+ *        delete_graph 注销图）。其余 9 种操作不依赖 registry。
  *     5. 度数同步委托给 sync.ts。图遍历委托给 traversal.ts。
  *
  * 外部如何使用：
  *     import { executeOperation } from '@my-project/graph-engine'
  */
 
-import type { GraphData, NodeId } from '../types/graph_data'
+import type { GraphData, GraphRegistry, NodeId } from '../types/graph_data'
 import type { GraphOperation } from '../types/atomic_operations'
 import { syncReferenceNodeDegree } from './sync'
 import { collectDependencyNodeIds } from './traversal'
+import { registerGraph, unregisterGraph } from '../infrastructure/graph_registry'
 
-export function executeOperation(graph: GraphData, operation: GraphOperation): GraphData {
+export function executeOperation(graph: GraphData, operation: GraphOperation, registry?: GraphRegistry): GraphData {
     switch (operation.type) {
         case 'add_node':
             return executeAddNode(graph, operation)
@@ -57,6 +58,12 @@ export function executeOperation(graph: GraphData, operation: GraphOperation): G
 
         case 'expand_dependency':
             return executeExpandDependency(graph, operation)
+
+        case 'add_graph':
+            return executeAddGraph(graph, operation, registry)
+
+        case 'delete_graph':
+            return executeDeleteGraph(graph, operation, registry)
 
         default:
             return graph
@@ -352,4 +359,44 @@ function executeExpandDependency(graph: GraphData, operation: { type: 'expand_de
         },
         updatedAt: now,
     }
+}
+
+// ═══════════ Graph lifecycle operations ═══════════
+
+/**
+ * 功能：
+ *
+ *     将新图注册到多图集合。当前图本身不变——变更发生在 registry 中。
+ *
+ * 规则：
+ *
+ *     只在 registry 存在时执行。无 registry 时静默跳过（纯单图场景）。
+ */
+function executeAddGraph(
+    graph: GraphData,
+    operation: { type: 'add_graph'; graph: GraphData },
+    registry?: GraphRegistry,
+): GraphData {
+    if (registry) {
+        registerGraph(registry, operation.graph)
+    }
+
+    return graph
+}
+
+/**
+ * 功能：
+ *
+ *     从多图集合中注销一张图。当前图本身不变。
+ */
+function executeDeleteGraph(
+    graph: GraphData,
+    operation: { type: 'delete_graph'; graphId: string },
+    registry?: GraphRegistry,
+): GraphData {
+    if (registry) {
+        unregisterGraph(registry, operation.graphId)
+    }
+
+    return graph
 }

@@ -4,7 +4,7 @@
 
 | 参数 | 类型 | 来源 |
 |------|------|------|
-| `nodeIds` | `NodeId[]` | 前端用户框选的知识节点列表（≥2 个） |
+| `nodeIds` | `NodeId[]` | 前端用户框选的节点列表（≥2 个）。知识节点（atomic/abstract/virtual）和启发引用节点均可参与。沟通节点除外 |
 | `parentGraph` | `GraphData` | graph_store 当前快照（被选节点所在的父图） |
 | `registry` | `GraphRegistry` | 多图注册表，用于注册新建子图 |
 | `nodeRadiusOverrides` | `NodeRadiusMap` | 前端预计算的半径覆盖表，用于 `distributeOnTiers` 和碰撞检测 |
@@ -18,7 +18,7 @@
 |---|---|
 | 调用方 | 前端 `operation_controller`（Cognition 模式） |
 | 频率 | 一次性——用户框选多个节点后执行"归纳"命令时调用 |
-| 前置要求 | `nodeIds.length >= 2`。所有目标节点 `role === 'knowledge'`。同一 `parentGraph` 内 |
+| 前置要求 | `nodeIds.length >= 2`。目标节点不能是沟通节点（`referenceKind === 'communication'`）。知识节点和启发引用节点均可参与。同一 `parentGraph` 内 |
 
 **Phase 2 最大技术挑战**——三组原子操作跨两层（父图删除 + 子图创建 + 沟通节点创建）必须作为单一事务执行。任一环节失败则全部丢弃。
 
@@ -30,7 +30,7 @@
 |------|---------|---------|
 | `nodeIds` 长度 ≥ 2 | `nodeIds.length >= 2` | `归纳操作至少需要两个节点。` |
 | 所有目标节点存在于 `parentGraph` | 逐个 `parentGraph.nodes.find()` | `节点 ${nodeId} 在当前图谱中不存在。` |
-| 所有目标节点 `role === 'knowledge'` | 逐个 `node.role` 检查 | `节点 ${nodeId} 不是知识节点，不能参与归纳。` |
+| 目标节点不能是沟通节点（`referenceKind === 'communication'`） | 逐个检查 `node.role === 'reference' && node.referenceKind === 'communication'` | `节点 ${nodeId} 是沟通节点，不能参与归纳。沟通节点是父图邻居在子图中的透明投影，不应被二次归纳。` |
 | 不存在重边冲突 | 对每个未选邻居——若被选节点集中有多条边指向同一未选节点，检查这些边在归纳后的新拓扑中是否产生重边。当前策略：禁止（一票否决） | `节点 ${selectedA.id} 和 ${selectedB.id} 归纳后将对 ${neighbor.id} 产生重边，当前不支持此拓扑。` |
 
 ### 重边冲突详解
@@ -68,11 +68,9 @@
 
 ## 返回值
 
-- **drafts 数量**：等于沟通节点数（每个外部未选邻居对应一个沟通节点）。每条 `DraftPosition`。前端用 drafts 渲染预览，判断按钮状态。
-- **Draft 扩展字段**：无（沟通节点的位置信息已在 `DraftPosition.position` 中，无需额外 tier/angle 信息——与 `orbit` 一致）。
+- **drafts**：不返回。归纳的沟通节点在子图内，用户当前视图为父图，无可预览的位置草稿。
+- **childGraphData**：compose 层构造的完整子图对象（含被选节点 + 沟通节点 + 边）。调用方在 `applyBatch` 子图 ops 后将其作为初始 graph 传入。
 - **issues 典型清单**：见上方语义预检 + 原子操作校验的错误消息。
-
-> **注意**：抽象节点自身的位置由形心计算得出，不属于"草稿"——它是确定的，直接出现在 `operations` 的 `add_node` 中。只有沟通节点的位置（`distributeOnTiers` 产出）是草稿，因为它们的环绕布局可能因碰撞而需要调整。
 
 ## 后置影响（图结构变化）
 
@@ -100,33 +98,27 @@
 
 ## applyBatch 得到的原子操作序列
 
-跨两层（父图 + 子图）的三组操作，全部属于同一事务。`applyBatch` 按 `registry` 中的图 ID 分别对父子两图各调一次：
+执行顺序：**先子图，后父图**。子图先落位被选节点和沟通节点，碰撞检测在子图内完成（对象只有被选节点，不涉及父图）。父图再做删除和重建。
 
 ```
-事务 1（父图）：
-    1. add_graph   graph = <新子图>
-                    ↓ 以下操作都依赖子图 ID 存在
-    2. add_node    node = <抽象节点, childGraphId = 新子图ID, position = 形心>
-    3. delete_node nodeId = <被选节点[0]>    ← 顺序无依赖，可并行
-    ...
-    2+N. delete_node nodeId = <被选节点[N-1]>
-    2+N+1. add_edge edge = <抽象节点 → 未选邻居[0]>
-    ...
-    2+N+M. add_edge edge = <抽象节点 → 未选邻居[M-1]>
+事务 1（子图） — applyBatch(newChildGraph, [...], registry)：
+    1. add_graph   graph = <空子图>
+    2. add_node (×N)  被选节点移入子图，position 不变
+                    ↓ 至此子图只有被选节点，collision context 清晰
+    3. add_node (×K)  沟通节点，distributeOnTiers 算位置
+                      + hasCollisionInDrafts 检测是否碰被选节点
+                      碰 → 调整 D₀ / tier 重排，不碰 → 写入
+    4. add_edge (×L)  被选节点 → 沟通节点（原外部边的子图投影）
 
-事务 2（子图）：
-    1. add_node    node = <被选节点[0], graphId = 子图ID>    ← 移入子图，position 不变
-    ...
-    N. add_node    node = <被选节点[N-1], graphId = 子图ID>
-    N+1. add_node  node = <沟通节点[0], graphId = 子图ID>    ← 沟通节点放置在 distributeOnTiers 算出的位置
-    ...
-    N+K. add_node  node = <沟通节点[K-1]>
-    N+K+1. add_edge  edge = <被选节点 → 沟通节点>            ← 原外部边的子图投影
-    ...
-    N+K+L. add_edge edge = <...>
+事务 2（父图） — applyBatch(parentGraph, [...], registry)：
+    1. add_node    node = <抽象节点, childGraphId = 子图ID, position = 形心>
+    2. delete_node (×N)  被选节点从父图删除
+    3. add_edge (×M)  抽象节点 → 未选邻居
 ```
 
-> **跨图事务协调**：引擎层 `induce()` 持有 `GraphRegistry`，事务 1 和事务 2 的 `applyBatch` 都在 `induce()` 内部依次调用。若事务 2 失败，事务 1 的结果不回滚——这是当前单图 `applyBatch` 签名的已知限制。调用方应在调 `induce()` 前保存 undo snapshot。
+> **碰撞检测**：沟通节点的位置在子图内计算——`distributeOnTiers` 以形心为虚中心（centerRadius=0）、被选节点为卫星，均分圆周。`hasCollisionInDrafts` 检测沟通节点草稿是否与被选节点草稿互碰。碰撞时调整 D₀ 或增开新层级重排，最多重试 N 次。全失败则报 error。
+>
+> **跨图事务协调**：induce() 依次调两次 `applyBatch`。validate-all-first 策略下，两批操作的校验在 execute 之前全部完成。若子图执行成功、父图执行失败，子图已创建的节点不回滚，调用方应在调 induce() 前保存 undo snapshot。
 
 ## 事务语义
 
@@ -149,23 +141,27 @@
 }
 ```
 
-抽象节点创建在选择集的几何中心，视觉上坐落在被归纳集群的中点上。
+形心是首选项。但被选节点删除后，父图中剩余节点可能恰好落在形心位置。
 
-### 沟通节点（父图 + 子图两侧）
+**迭代策略**：
+1. 以形心为初始候选位置。
+2. `hasCollisionAt` 检测抽象节点是否与父图剩余节点碰撞。
+3. 碰撞时 `scatterInCircle(形心, R0)` 随机散布重试，最多 N 次。全失败则报 error。
 
-父图中的沟通节点布局：
+### 沟通节点（子图内）
+
+沟通节点均分圆周，轨道半径包裹所有被选节点：
 
 ```ts
-const center = { position: 形心, radius: 0 }  // 虚中心 centerRadius = 0
-const tiers = [{ tier: 0, nodeIds: [所有沟通节点的 ID] }]  // 初始全在层级 0
-const drafts = distributeOnTiers(center, communicationNodeSpecs, tiers, startAngle)
+// distributeOnTiers 内部 D0 = centerRadius + maxSatR + R0
+// 将 centerRadius 设为 maxSelectedDist 即得 idealOrbitRadius
+const vCenter = { position: centroid, radius: maxSelectedDist }
+const satelliteSpecs = neighbors.map((n, i) => ({ id: commNodeIds[i], radius: R0 }))
+const tiers = [{ tier: 0, nodeIds: commNodeIds }]
+const positions = distributeOnTiers(vCenter, satelliteSpecs, tiers, 0)
 ```
 
-- 虚中心 `centerRadius = 0` — 抽象节点的外接圆在父图中仍需占地，但沟通节点环绕的中心点不占物理空间。
-- `distributeOnTiers` 内部自动处理层级间距和碰撞。
-- 沟通节点最终位置落定后写入 `add_node.position`。
-
-子图中的沟通节点位置与父图中对应的沟通节点位置保持一致——它们是对偶关系。实现方式：子图 `add_node` 直接复用父图沟通节点的 `position`。
+位置落定后写入子图 `add_node.position`。
 
 ### 被选节点（迁入子图）
 
@@ -173,15 +169,38 @@ const drafts = distributeOnTiers(center, communicationNodeSpecs, tiers, startAng
 
 ### 碰撞检测
 
-`hasCollisionInDrafts` 检测父图中沟通节点草稿 vs 已有节点 + 草稿互碰。子图为空（只有被迁入节点和沟通节点），不存在碰撞风险——子图侧跳过碰撞检测。
+在子图内完成。此时子图只有被选节点（已通过 `add_node` 迁入），collision context 干净。
+
+**1. 计算理想轨道半径**：
+
+```ts
+// 被选节点中离形心最远的距离（节点外接圆边缘）
+const maxNodeDist = max(
+    selectedNodes.map(node =>
+        distance(node.position, centroid) + nodeRadius(node)
+    )
+)
+// 理想轨道半径 = 包裹所有被选节点 + 沟通节点最大半径 + 间隙 R0
+const idealOrbitRadius = maxNodeDist + maxCommRadius + R0
+const D0 = idealOrbitRadius  // 层级间距即理想轨道半径（初始全在 tier 0）
+```
+
+**2. 生成草稿 + 碰撞检测**：
+
+1. `positionOnCircle` 以形心为中心、`idealOrbitRadius` 为半径均分圆周。
+2. `hasCollisionInDrafts` 检测沟通节点草稿是否与被选节点重叠。
+3. 碰撞时 `orbitRadius += R0` 重试——轨道半径逐步外扩。最多重试 N 次。
+4. 全失败则报 error，整批丢弃。
+
+父图侧：抽象节点以形心为起点，`hasCollisionAt` 检测是否碰剩余节点。碰撞则 `scatterInCircle(形心, R0)` 随机散布重试。
 
 ## 残留问题
 
-| # | 问题 | 当前 spec 取 | 状态 |
-|---|------|------------|------|
-| Q16 | 被选节点之间的内部边跟随下沉到子图还是留在父图？ | spec 取"跟随下沉"——内部边随节点一起移入子图，父图中不保留 | ⏳ 待确认 |
-| Q17 | 抽象节点在父图中是否直接参与边结构（与子图内的沟通节点是否有边）？ | spec 取"是"——抽象节点通过沟通节点间接连接外部邻居。父图中是 `抽象节点 → 沟通节点` + `沟通节点 → 未选邻居`；子图中是 `被选节点 → 沟通节点` | ⏳ 待确认 |
-| Q18 | 被选节点移入子图后，父图是否保留其旧位置的占位符？ | spec 取"否"——旧位置不留痕。抽象节点取代了它们的位置（形心） | ⏳ 待确认 |
+| # | 问题 | 状态 |
+|---|------|------|
+| Q16 | 被选节点之间的内部边跟随下沉到子图还是留在父图？ | ✅ 已确认：跟随下沉 |
+| Q17 | 抽象节点在父图中如何与未选邻居连接？ | ✅ 已确认：直接连接，不经过沟通节点。沟通节点只存在于子图内 |
+| Q18 | 被选节点移入子图后旧位置如何处理？ | ✅ 已确认：旧位置不留痕，抽象节点取代了它们的位置 |
 
 ---
 
@@ -196,10 +215,7 @@ const drafts = distributeOnTiers(center, communicationNodeSpecs, tiers, startAng
          ──── [未选Y] ─────        ← Y 同时连接 A 和 C
 
 归纳后（父图）：
-    [未选X] ───────────────────── [未选Y]
-       ↑                             ↑
-       │                             │
-    [沟通X'] ── [抽象Z(形心)] ── [沟通Y']
+    [未选X] ── [抽象Z(形心)] ── [未选Y]
 
 归纳后（子图, ownerNodeId = Z.id）：
     [沟通X'] ── [被选A] ── [被选B] ── [被选C] ── [沟通Y']
@@ -212,4 +228,4 @@ const drafts = distributeOnTiers(center, communicationNodeSpecs, tiers, startAng
 - 未选 X 同时连接了 A 和 B → 共享一个沟通节点 `沟通X'`（外部边共享）。
 - 未选 Y 同时连接了 A 和 C → 共享一个沟通节点 `沟通Y'`。
 - 被选节点之间的内部边（A-B, B-C, A-C）保留在子图。
-- 父图中 `抽象Z` 通过沟通节点间接与未选节点关联。
+- 父图中 `抽象Z` 直接连接未选邻居，沟通节点只在子图内。

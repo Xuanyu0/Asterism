@@ -22,6 +22,8 @@ export type { PathParams } from './arrangement/path'
 
 // cognitive
 export { deconstruct } from './cognitive/deconstruct'
-export type { DeconstructParams, DeconstructResult } from './cognitive/deconstruct'
+export type { DeconstructParams } from './cognitive/deconstruct'
 export { diverge } from './cognitive/diverge'
 export type { DivergeParams } from './cognitive/diverge'
+export { induce } from './cognitive/induce'
+export type { InduceParams } from './cognitive/induce'

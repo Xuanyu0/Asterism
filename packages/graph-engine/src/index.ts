@@ -129,6 +129,7 @@ export {
     pathLayout,
     deconstruct,
     diverge,
+    induce,
 } from './compose'
 export type {
     DraftPosition,
@@ -141,8 +142,8 @@ export type {
     OrbitParams,
     PathParams,
     DeconstructParams,
-    DeconstructResult,
     DivergeParams,
+    InduceParams,
 } from './compose'
 
 // SPI (Service Provider Interface) types

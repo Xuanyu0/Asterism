@@ -62,19 +62,19 @@ export interface ComposeIssue {
  *
  * 规则：
  *
- *     1. drafts — 渲染层预览用位置草稿。不进入 GraphData。
+ *     1. drafts — 渲染层预览用位置草稿。不进入 GraphData。可选——无位置预览需求的操作（如 deconstruct、induce）可省略。
  *     2. issues — 控制前端确认按钮状态。含 error 时按钮灰掉。
  *     3. operations — 确认后提交的操作序列。前端调 applyBatch 执行。
  *
  *     典型消费流程：
  *         const result = composeFn(params)
- *         前端渲染 result.drafts 预览
+ *         若 result.drafts 存在，前端渲染预览
  *         若 result.issues 无 error → 确认按钮可用
  *         用户确认 → applyBatch(graph, result.operations)
  */
 export interface ComposeResult<Draft extends DraftPosition = DraftPosition> {
-    /** 渲染层预览用位置草稿。确认前仅存在于 DOM，不进入 GraphData。 */
-    drafts: Draft[]
+    /** 渲染层预览用位置草稿。确认前仅存在于 DOM，不进入 GraphData。可选。 */
+    drafts?: Draft[]
 
     /** 操作问题列表。含 error 时确认按钮灰掉。 */
     issues: ComposeIssue[]
