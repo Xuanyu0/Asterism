@@ -123,7 +123,7 @@ Cytoscape Renderer (use_cytoscape_renderer.ts)
 - 操作回放：replayGraph / replayToStep
 - 前端已切到引擎全部 API，冗余代码已清理
 
-**Phase 2a 完成标志**（详见 `docs/P2开发文档/步骤规划.md`）：
+**Phase 2a 完成标志**（详见 `docs/P2开发文档/P2a步骤规划.md`）：
 
 | Step | 内容 | 可验证标志 |
 |------|------|----------|
@@ -136,19 +136,37 @@ Cytoscape Renderer (use_cytoscape_renderer.ts)
 
 ---
 
-### Phase 2b：功能收尾（操作日志 + 回溯 UI + 错误反馈）
+### Phase 2b：功能收尾 → MVP 交付
 
-以下任务 Phase 2a 未完成，延后至 Phase 2b：
+GE 的全部功能在前端完全落地，使 Cognition（除 explore / unearth）和 Arrangement 全部操作可用。
 
-| 任务 | 说明 |
-|------|------|
-| 操作日志 + undo | `undoStack` 升级为 `OperationLog`（树形操作树），undo 沿 parentIndex 回溯。redo 延后（多分支选择 UI） |
-| 回溯按钮（←） | 左下角 undo 按钮，cursor 边界灰掉 |
-| 错误反馈链路 | `lastOperationValidation` 已写入多处但 0 读取，需在 NodeWindow / KnowledgeGraph 中补全 |
-| 多选 UI | induce / internalize 需多选节点的 UI |
-| 跨图搜索 UI | diverge 需搜索浮空窗选择跨图节点 |
-| Cloud Layout | 约束布局算法（Phase 2b 延后） |
-| Arrangement 草稿预览 UI | 确认前展示草稿位置，碰撞判定灰/亮确认按钮 |
+**目标**：用户可以实质性地使用 Asterism 进行学习，完整支持图谱本地持久化和操作回溯。
+
+| 分类 | 任务 | 说明 |
+|------|------|------|
+| **Cognition** | induce / internalize 多选 UI | 用户在画布上框选或多个节点 → 执行归纳或内化 |
+| | diverge 跨图搜索 UI | 搜索浮空窗选择跨图节点 → 创建启发节点 + 有向虚边 |
+| | deconstruct 入口完善 | 已完成链路，确保 edge case 覆盖 |
+| **Arrangement** | moveNode 拖拽移动 | 画布上拖拽节点 → 引擎碰撞检测 → 确认写入 |
+| | orbit 环绕布局 | 选择中心 + 环绕节点 → 预览 → 确认写入 |
+| | path 路径布局 | 选择轴心 + 路径节点 → 预览 → 确认写入 |
+| | adjust distance / orbit | 连续调整节点位置，实时碰撞预览 |
+| **数据完整性** | 哨兵加载 | 启动时自动加载上次使用的图或新建空图，保证画布非空 |
+| | 图谱保存/加载 UI | saveCurrentGraph / loadGraphToCurrent 端到端链路 |
+| **操作回溯** | 操作日志 + undo | `undoStack` 升级为 `OperationLog`（树形操作树） |
+| | 回溯按钮（←） | 左下角 undo 按钮，cursor 边界灰掉。redo 延后 |
+| **错误反馈** | lastOperationValidation 读取端 | NodeWindow / KnowledgeGraph 中渲染 error message |
+
+**Phase 2b 完成标志 = MVP 交付**：
+
+1. 用户可添加/删除节点和边（常驻操作栏 8 按钮）
+2. 用户可折叠/展开依赖
+3. 用户可执行解构、归纳、内化、发散（deconstruct / induce / internalize / diverge）
+4. 用户可拖拽移动节点、使用环绕/路径布局
+5. 用户可 undo 操作
+6. 图谱完整持久化至 localStorage，刷新后恢复
+7. 操作失败时用户可见错误提示
+8. explore / unearth 保持 TODO（Phase 4 AI Runtime）
 
 ---
 
