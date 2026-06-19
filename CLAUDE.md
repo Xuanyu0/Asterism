@@ -361,15 +361,25 @@ Store = 状态 + 动作。不负责 UI 渲染 / DOM 操作 / Cytoscape 操作。
 
 ## 十四、Git 提交格式
 
-**全英文**。
-格式：**动词 + 模块 + 目的**（空格分隔）
-**风格**：列表罗列改动的每一项：
+**全英文**。第一行为摘要行（`动词 + 模块 + 目的`），后续逐条罗列改动文件和目的：
 
 ```
-add graph persistence runtime
-refactor ui runtime state machine
-fix validator smoke test type guards
+define Phase 2b MVP scope with completion criteria and detailed task list
+
+- Add MVP completion criteria: 8 verifiable end-to-end behaviors
+- Expand cognition tasks: induce/internalize multi-select UI, diverge cross-graph search
+- Add arrangement tasks: moveNode, orbit, path, adjust with collision preview
+- Add data integrity tasks: sentinel loading, save/load graph UI, localStorage persistence
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
 ```
+
+规则：
+
+1. 摘要行：一句话说清做了什么
+2. 空一行后列表罗列改动项，每项 `- 动词 文件名或模块：具体改动描述`
+3. 改动项按模块分组，同模块相邻
+4. 末尾附 `Co-Authored-By` 行
 
 ## 十五、回答/协作规范
 
