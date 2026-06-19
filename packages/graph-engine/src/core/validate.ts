@@ -296,7 +296,7 @@ function hasUndirectedEdgeInsideNodeSet(graph: GraphData, nodeIds: NodeId[]): bo
  *
  * 规则：
  *     1. 只校验当前操作，不修改 GraphData。
- *     2. 认知演化操作（explore / discover / deconstruct / induce / internalize）
+ *     2. 认知演化操作（explore / unearth / deconstruct / induce / internalize）
  *        暂不在 MVP 阶段做数据校验，默认合法。
  *
  * 使用：

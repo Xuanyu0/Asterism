@@ -10,7 +10,7 @@
  *
  * 规则：
  *     - 原子操作由 execute.ts / validate.ts / reversal.ts / replay.ts 处理
- *     - 认知操作（explore / discover / deconstruct / induce / internalize）不属于此层
+ *     - 认知操作（explore / unearth / deconstruct / induce / internalize）不属于此层
  *     - CognitiveView 合并进原子层（collapse_dependency / expand_dependency 直接修改 cognitiveState）
  *
  * 外部使用方式：

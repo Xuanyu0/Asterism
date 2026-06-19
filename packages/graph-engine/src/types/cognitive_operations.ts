@@ -24,8 +24,8 @@ export interface ExploreOperation {
     type: 'explore'
 }
 
-export interface DiscoverOperation {
-    type: 'discover'
+export interface UnearthOperation {
+    type: 'unearth'
     targetNodeId?: NodeId
     targetEdgeId?: EdgeId
 }
@@ -47,7 +47,7 @@ export interface InternalizeOperation {
 
 export type CognitiveOperation =
     | ExploreOperation
-    | DiscoverOperation
+    | UnearthOperation
     | DeconstructOperation
     | InduceOperation
     | InternalizeOperation

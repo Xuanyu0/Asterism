@@ -58,7 +58,7 @@ export interface BaseInteractionState {
  */
 export type CognitionAction =
     | 'explore'    // 探索
-    | 'discover'    // 发掘
+    | 'unearth'    // 发掘
     | 'deconstruct'    // 解构
     | 'induce'    // 归纳
     | 'internalize'    // 内化 / 常识化

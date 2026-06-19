@@ -40,8 +40,8 @@
                 <button @click="controller.explore()">
                     Explore
                 </button>
-                <button @click="controller.discover()">
-                    Discover
+                <button @click="controller.unearth()">
+                    Unearth
                 </button>
                 <button @click="controller.deconstruct('')">
                     Deconstruct

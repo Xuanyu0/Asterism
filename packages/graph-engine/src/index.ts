@@ -55,7 +55,7 @@ export type {
 
 /** 消费者：operation_controller（Cognition 模式类型标签）。 */
 export type {
-    ExploreOperation, DiscoverOperation,
+    ExploreOperation, UnearthOperation,
     DeconstructOperation, InduceOperation, InternalizeOperation,
     CognitiveOperation, CognitiveResult,
 } from './types/cognitive_operations'
