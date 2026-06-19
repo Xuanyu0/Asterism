@@ -46,8 +46,10 @@
 Cytoscape 交互适配层 (use_graph_interaction.ts)
     ↓ 语义事件 (CanvasClicked, NodeClicked, EdgeClicked, NodeDragEnded)
     ↓
-UI Runtime 编排层 (operation_controller.ts)
-    ↓ GraphOperation
+UI 适配层 (operation_controller.ts)  ← 模式/工具状态 + 事件路由
+    ↓ 委托图操作
+图操作翻译层 (graph_operations.ts)  ← 认知编排 + add/delete/fold/update
+    ↓ GraphOperation / applyBatch
 Graph Runtime (graph_store.ts) ← 唯一事实源
     ↓ watch(currentGraph)
 渲染投影层 (graph_element_mapper.ts)
@@ -81,7 +83,7 @@ Cytoscape Renderer (use_cytoscape_renderer.ts)
 
 ## 开发策略
 
-**Graph Engine 是整个项目的底层核心系统**，最终必须作为独立、框架无关的模块实现。当前前端的 `graph_store.ts` + `operation_executor.ts` 是其雏形，后续将抽离为独立引擎。
+**Graph Engine 是整个项目的底层核心系统**，已作为独立、框架无关的 `@my-project/graph-engine` 包实现。前端通过 `graph_store.ts` + `graph_operations.ts` 调用引擎 API。
 
 ## 开发阶段总览
 
@@ -107,72 +109,74 @@ Cytoscape Renderer (use_cytoscape_renderer.ts)
 
 **定性标准**：从 UI 事件到 GraphData 变更，中间每一条路径都经过单向数据流的完整链路，不存在任何短路。
 
-### Phase 2：Graph Engine（架构核心层）
+### Phase 2a：Graph Engine（架构核心层） ✅
 
-将 `operation_executor.ts` / `graph_persistence.ts` / `graph_utils.ts` 抽离为独立模块：
+将 `operation_executor.ts` / `operation_validator.ts` / `graph_utils.ts` 等前端职责聚合代码下沉为独立引擎包 `@my-project/graph-engine`：
+
 - 框架无关（不依赖 Pinia / Vue）
-- 多图谱生命周期管理
-- 所有原子操作
-- 后端子进程、AI Runtime 可直接调用
+- 单步操作（11 种原子操作）：apply + validate + execute + createReversal
+- 批量事务：applyBatch（validate-all-first → execute-all 或整批丢弃）
+- 认知编排：deconstruct / induce / internalize / diverge（compose/cognitive/）
+- 布局编排：move / adjust / orbit / path（compose/arrangement/）
+- 基础设施：多图注册表（GraphRegistry）、碰撞检测、位置放置、跨图搜索、ID 生成
+- 操作日志类型层：OperationLog / OperationLogEntry / State（树形操作树，支持 undo）
+- 操作回放：replayGraph / replayToStep
+- 前端已切到引擎全部 API，冗余代码已清理
 
-**Phase 2 收尾：操作错误感知反馈链路**
-- 当前 `operation_controller` 各操作入口已调用 `applyOperation()` 并拿到 `ValidationResult`，但校验失败时用户无任何视觉反馈。
-- 需补全：在 `NodeWindow.vue`（或 `KnowledgeGraph.vue` 层）读取 `uiStore.lastOperationValidation` 并将 `issue.message` 渲染为可感知的 UI 提示。
-- 当前检查清单：
-  - `handleFoldToggle()` — 完全丢弃返回值，校验失败无反馈 ✅ 需修复
-  - `executeDeleteNode()` / `executeDeleteEdge()` — 未检查 `result.valid` ✅ 需修复
-  - `lastOperationValidation` — 已写入 6 处、已读取 0 处 ✅ 需补全
+**Phase 2a 完成标志**（详见 `docs/P2开发文档/步骤规划.md`）：
 
-### Phase 3 前置：学习历史回顾机制
+| Step | 内容 | 可验证标志 |
+|------|------|----------|
+| 1-8 | 引擎骨架 → 认知操作层 | 20 测试文件 119 测试全部通过 |
+| 9 | 测试覆盖 | 19 个子任务全部有测试文件 |
+| 10 | 公开 API 收口 | 按 6 类组织 index.ts，26 处消费者标注，不导出内部模块 |
+| 11 | 前端适配 | graph_store 切 engine apply，import 全部指向 @my-project/graph-engine，删除 9 个重复文件，交互模式去 Operation 化，常驻操作栏 |
 
-在 Phase 3（AI Runtime）启动之前，必须先完成学习历史回顾的功能设计并实现数据层基础。
+**Phase 2a 定性标准**：引擎作为独立的 `@my-project/graph-engine` 包运行，框架无关，20 文件 119 测试。前端仅通过 graph_store + graph_operations 两个文件调引擎，所有 import 指向引擎包。
 
-**目标**：让用户在时间轴上回溯图谱任意时刻的状态，实现"git log 式"的学习历史回顾。
+---
 
-**两层模型（已实现数据层，Phase 2）：**
+### Phase 2b：功能收尾（操作日志 + 回溯 UI + 错误反馈）
 
-```
-操作树（细粒度，自动记录）：
-    - OperationLog = { entries: OperationLogEntry[], cursor: number }
-    - 树结构：每个 entry 的 parentIndex 指向父节点。parentIndex = -1 = 基线 G₀
-    - 驱动临时撤销：Ctrl+Z = cursor 沿 parentIndex 链上溯。Ctrl+Y = 子节点选择（≥2 子时弹出分支选择）
-    - 新操作挂在当前 cursor 下，旧分支保留在 entries 中
+以下任务 Phase 2a 未完成，延后至 Phase 2b：
 
-状态标签（粗粒度，用户显式提交）：
-    - State = { cursor: number, summary: string, timestamp: string }
-    - 不存储 GraphData 副本，指向操作树中的某个 entry
-    - 恢复 State = cursor 跳到 state.cursor，沿 parentIndex 链回放
-    - summary 限制不超过 50 个中文字符
+| 任务 | 说明 |
+|------|------|
+| 操作日志 + undo | `undoStack` 升级为 `OperationLog`（树形操作树），undo 沿 parentIndex 回溯。redo 延后（多分支选择 UI） |
+| 回溯按钮（←） | 左下角 undo 按钮，cursor 边界灰掉 |
+| 错误反馈链路 | `lastOperationValidation` 已写入多处但 0 读取，需在 NodeWindow / KnowledgeGraph 中补全 |
+| 多选 UI | induce / internalize 需多选节点的 UI |
+| 跨图搜索 UI | diverge 需搜索浮空窗选择跨图节点 |
+| Cloud Layout | 约束布局算法（Phase 2b 延后） |
+| Arrangement 草稿预览 UI | 确认前展示草稿位置，碰撞判定灰/亮确认按钮 |
 
-中间层（Phase 2 完成）：
-    - core/reversal.ts：逆操作构造器。createReversal(graph, op) → GraphOperation[]
-    - core/replay.ts：操作序列回放。replayGraph(base, ops) → GraphData
+---
 
-UI 层（Phase 3 期间完成）：
-    - 左下角 ← → 按钮（Undo/Redo）
-    - 历史时间轴视图（State 列表）
-    - 分支选择 UI（Redo 时多子节点）
-```
+### Phase 3：功能与 UI 界面迭代优化
 
-### Phase 3：AI Runtime（MVP 后期，排在 Graph Engine 之后）
+- 导航卡片（Dock / Expand / Hidden 三态）
+- Overlay 视图 Button（沉浸浏览、Notebook 视图、未掌握视图、知识群聚焦视图）
+- 笔记库（图谱节点 ↔ 笔记联动）
+- 交互模式按钮图标替换（C = 放大镜，A = 星系）
+- 按钮视觉动效（半透明浮空、离开 3s 淡化、滑动弹出 300ms）
+- 学习历史回顾 UI（时间轴视图、State 列表、分支选择）
+
+---
+
+### Phase 4：AI Runtime
 
 - Compiler / Translator / Checker / Analyser Agent 信息流连通
 - 要求 Graph Engine 作为底层基础
 - 存储格式从 JSON 切换为 JSONB
+- 批量原子操作 `applyBatch` 已就绪（Phase 2a 已实现）
 
-**Phase 3 前置待决策：批量原子操作（`applyBatch`）**
-
-- 问题：AI Collabrator 生成的 `Graph Patch Plan` 是一组语义关联的操作序列，需作为整体事务执行。若逐条 `apply()`，中间失败会导致 GraphData 处于半成品状态，与 AI 意图的认知语义完整性冲突。
-- 设想的 `applyBatch(graph, ops[])` 行为：引擎内部逐条 validate → 全通过后逐条 execute。任一失败则整批丢弃，入参 graph 原封不动。中间状态不暴露给调用方。
-- `applyBatch` 不影响当前 Phase 2 的单步 `apply()`，是新增独立函数。
-- 当前约定：暂不实现，待 Phase 3 AI 接入前决策。`apply()` 接口在 Phase 3 不需改动。
+---
 
 ### MVP 阶段暂不启动
 
 - FastAPI 后端
 - Supabase 集成
 - Auto Save / IndexedDB
-- 导航卡片、笔记库等高级 UI
 
 ## 设计文档
 
@@ -339,7 +343,9 @@ Store = 状态 + 动作。不负责 UI 渲染 / DOM 操作 / Cytoscape 操作。
 
 ## 十四、Git 提交格式
 
-**全英文**。格式：**动词 + 模块 + 目的**（空格分隔）：
+**全英文**。
+格式：**动词 + 模块 + 目的**（空格分隔）
+**风格**：列表罗列改动的每一项：
 
 ```
 add graph persistence runtime
