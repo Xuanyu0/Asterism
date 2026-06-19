@@ -1,173 +1,82 @@
 <template>
-    <div class="operation-toolbar">
-        <!-- 主列：模式按钮 + 当前模式的一级操作 -->
+    <!-- 常驻操作栏（顶部中央） -->
+    <div class="standing-toolbar">
+        <button
+            v-for="btn in standingButtons"
+            v-bind:key="btn.tool"
+            v-bind:class="{ active: activeToolId === btn.tool }"
+            v-bind:title="btn.label"
+            v-on:click="activateTool(btn)"
+        >
+            {{ btn.icon }}
+        </button>
 
+        <!-- 删除待定提示 -->
+        <template v-if="activeToolId === 'delete' && (uiStore.pendingDeleteNodeId || uiStore.pendingDeleteEdgeId)">
+            <span class="delete-confirm-hint">再次点击目标确认删除，或：</span>
+            <button class="confirm-delete-btn" v-on:click="controller.confirmDelete()">
+                确认
+            </button>
+            <button class="cancel-delete-btn" v-on:click="controller.cancelDelete()">
+                取消
+            </button>
+        </template>
+    </div>
+
+    <!-- 模式按钮 + 子操作（左上角） -->
+    <div class="mode-toolbar">
         <div class="toolbar-column main-column">
             <button
                 class="mode-btn"
-                :class="{ active: showModeSelector }"
-                @click="handleModeButtonClick"
+                v-on:click="toggleModeSelector"
             >
                 {{ modeButtonLabel }}
             </button>
 
-            <!-- C1: 模式选择列（替换操作区域） -->
-
+            <!-- 模式选择子列表 -->
             <template v-if="showModeSelector">
                 <button
-                    :class="{ active: uiStore.interactionMode === 'cognition' }"
-                    @click="enterCognitionMode"
+                    v-bind:class="{ active: uiStore.interactionMode === 'cognition' }"
+                    v-on:click="setMode('cognition')"
                 >
                     Cognition
                 </button>
                 <button
-                    :class="{ active: uiStore.interactionMode === 'operation' }"
-                    @click="enterOperationMode"
-                >
-                    Operation
-                </button>
-                <button
-                    :class="{ active: uiStore.interactionMode === 'arrangement' }"
-                    @click="enterArrangementMode"
+                    v-bind:class="{ active: uiStore.interactionMode === 'arrangement' }"
+                    v-on:click="setMode('arrangement')"
                 >
                     Arrangement
                 </button>
             </template>
 
-            <!-- C7: Cognition 操作 -->
-
-            <template v-else-if="uiStore.interactionMode === 'cognition'">
-                <button @click="controller.explore()">
+            <!-- Cognition 子操作 -->
+            <template v-if="!showModeSelector && uiStore.interactionMode === 'cognition'">
+                <button v-on:click="controller.explore()">
                     Explore
                 </button>
-                <button @click="controller.unearth()">
+                <button v-on:click="controller.unearth()">
                     Unearth
                 </button>
-                <button @click="controller.deconstruct('')">
+                <button
+                    v-bind:class="{ active: uiStore.selectedCognitionAction === 'deconstruct' }"
+                    v-on:click="controller.selectCognitionAction(
+                        uiStore.selectedCognitionAction === 'deconstruct' ? null : 'deconstruct'
+                    )"
+                >
                     Deconstruct
                 </button>
-                <button @click="controller.induce([])">
+                <button v-on:click="controller.induce([])">
                     Induce
                 </button>
-                <button @click="controller.internalize([])">
+                <button v-on:click="controller.internalize([])">
                     Internalize
                 </button>
             </template>
 
-            <!-- C8: Arrangement 占位 -->
-
-            <div v-else-if="uiStore.interactionMode === 'arrangement'">
+            <!-- Arrangement 占位 -->
+            <div v-if="!showModeSelector && uiStore.interactionMode === 'arrangement'">
                 <span class="placeholder-text">Arrangement — Phase 2</span>
             </div>
-
-            <!-- C2: Operation 一级操作 -->
-
-            <template v-else-if="uiStore.interactionMode === 'operation'">
-                <button
-                    :class="{ active: uiStore.selectedOperationTool === 'add' }"
-                    @click="controller.selectOperationTool('add')"
-                >
-                    Add
-                </button>
-                <button
-                    :class="{ active: uiStore.selectedOperationTool === 'delete' }"
-                    @click="controller.selectOperationTool('delete')"
-                >
-                    Delete
-                </button>
-                <button
-                    :class="{ active: uiStore.selectedOperationTool === 'fold' }"
-                    @click="controller.selectOperationTool('fold')"
-                >
-                    Fold
-                </button>
-
-                <!-- C9: Delete 两步确认面板 -->
-
-                <template v-if="uiStore.selectedOperationTool === 'delete' && (uiStore.pendingDeleteNodeId || uiStore.pendingDeleteEdgeId)">
-                    <span class="delete-confirm-hint">再次点击确认删除，或：</span>
-                    <button
-                        class="confirm-delete-btn"
-                        @click="controller.confirmDelete()"
-                    >
-                        确认
-                    </button>
-                    <button
-                        class="cancel-delete-btn"
-                        @click="controller.cancelDelete()"
-                    >
-                        取消
-                    </button>
-                </template>
-            </template>
-        </div>
-
-        <!-- C3: Add 目标列 -->
-
-        <div v-if="!showModeSelector && uiStore.interactionMode === 'operation' && uiStore.selectedOperationTool === 'add'" class="toolbar-column">
-            <button
-                :class="{ active: uiStore.pendingAddTarget === 'node' }"
-                @click="controller.selectAddTarget('node')"
-            >
-                Node
-            </button>
-            <button
-                :class="{ active: uiStore.pendingAddTarget === 'edge' }"
-                @click="controller.selectAddTarget('edge')"
-            >
-                Edge
-            </button>
-        </div>
-
-        <!-- C4: Node 类型列 -->
-
-        <div v-if="!showModeSelector && uiStore.interactionMode === 'operation' && uiStore.selectedOperationTool === 'add' && uiStore.pendingAddTarget === 'node'" class="toolbar-column">
-            <button
-                :class="{ active: uiStore.pendingAddNode.kind === 'real' }"
-                @click="controller.selectAddNodeKind('real')"
-            >
-                Real
-            </button>
-            <button
-                :class="{ active: uiStore.pendingAddNode.kind === 'virtual' }"
-                @click="controller.selectAddNodeKind('virtual')"
-            >
-                Virtual
-            </button>
-        </div>
-
-        <!-- C5: Edge 类型列 -->
-
-        <div v-if="!showModeSelector && uiStore.interactionMode === 'operation' && uiStore.selectedOperationTool === 'add' && uiStore.pendingAddTarget === 'edge'" class="toolbar-column">
-            <button
-                :class="{ active: uiStore.pendingAddEdge.kind === 'real' }"
-                @click="controller.selectAddEdgeKind('real')"
-            >
-                Real Edge
-            </button>
-            <button
-                :class="{ active: uiStore.pendingAddEdge.kind === 'virtual' }"
-                @click="controller.selectAddEdgeKind('virtual')"
-            >
-                Virtual Edge
-            </button>
-        </div>
-
-        <!-- C6: Edge 方向列 -->
-
-        <div v-if="!showModeSelector && uiStore.interactionMode === 'operation' && uiStore.selectedOperationTool === 'add' && uiStore.pendingAddTarget === 'edge' && uiStore.pendingAddEdge.kind" class="toolbar-column">
-            <button
-                :class="{ active: uiStore.pendingAddEdge.direction === 'directed' }"
-                @click="controller.selectAddEdgeDirection('directed')"
-            >
-                Directed
-            </button>
-            <button
-                :class="{ active: uiStore.pendingAddEdge.direction === 'undirected' }"
-                @click="controller.selectAddEdgeDirection('undirected')"
-            >
-                Undirected
-            </button>
         </div>
     </div>
 </template>
@@ -175,12 +84,13 @@
 <script setup lang="ts">
 /**
  * 功能：
- *     提供知识图谱操作工具栏组件——逐层右延列式布局。
+ *
+ *     提供知识图谱操作界面——顶部常驻操作栏 + 左上角模式工具栏。
  *
  * 总体结构：
- *     1. 主列：模式按钮 [>] + 当前模式的一级操作（同一列内垂直排列）
- *     2. 子列：有子级的操作向右延展新列（C3–C6）
- *     3. [>] 与操作按钮之间约 3 倍操作按钮间距
+ *
+ *     1. 常驻操作栏（顶部中央）——8 个按钮，直接激活对应工具
+ *     2. 模式工具栏（左上角）——模式切换按钮 + 子操作列表
  *
  * 前端机制（Vue 3 框架行为）：
  *     - computed：Vue 响应式计算属性。依赖的值变化时自动重新计算，且有缓存。
@@ -189,10 +99,8 @@
  *     - watch：响应式观察者。interactionMode 变化时自动关闭模式选择列。
  *       C++ 类比：Observer + 自动依赖追踪 + 自动注册/注销。
  *
- *     - Pinia store 响应式：模板中直接访问 uiStore.xxx 自动建立依赖追踪。
- *       C++ 类比：Observer 模式，但框架自动管理订阅/取消订阅。
- *
  * 外部如何使用：
+ *
  *     KnowledgeGraph.vue 挂载本组件。
  */
 
@@ -204,12 +112,36 @@ const uiStore = controller.ui.state
 
 const showModeSelector = ref(false)
 
+/**
+ * 功能：
+ *
+ *     由 pending 状态反推当前激活的常驻按钮 ID，用于高亮。
+ */
+const activeToolId = computed(() => {
+    if (uiStore.selectedOperationTool === 'delete') return 'delete'
+    if (uiStore.selectedOperationTool === 'fold') return 'fold'
+    if (uiStore.selectedOperationTool === 'add') {
+        if (uiStore.pendingAddTarget === 'node') {
+            if (uiStore.pendingAddNode.kind === 'real') return 'add-real-node'
+            if (uiStore.pendingAddNode.kind === 'virtual') return 'add-virtual-node'
+        }
+        if (uiStore.pendingAddTarget === 'edge') {
+            const k = uiStore.pendingAddEdge.kind
+            const d = uiStore.pendingAddEdge.direction
+            if (k === 'real' && d === 'directed') return 'add-real-directed'
+            if (k === 'real' && d === 'undirected') return 'add-real-undirected'
+            if (k === 'virtual' && d === 'directed') return 'add-virtual-directed'
+            if (k === 'virtual' && d === 'undirected') return 'add-virtual-undirected'
+        }
+    }
+    return null
+})
+
 const modeButtonLabel = computed(() => {
     switch (uiStore.interactionMode) {
-        case 'operation': return 'O'
         case 'cognition': return 'C'
         case 'arrangement': return 'A'
-        default: return '>'
+        default: return 'C'
     }
 })
 
@@ -217,25 +149,138 @@ watch(() => uiStore.interactionMode, () => {
     showModeSelector.value = false
 })
 
-function handleModeButtonClick(): void {
+function toggleModeSelector(): void {
     showModeSelector.value = !showModeSelector.value
 }
 
-function enterOperationMode(): void {
-    controller.enterOperationMode()
+function setMode(mode: 'cognition' | 'arrangement'): void {
+    if (mode === 'cognition') controller.enterCognitionMode()
+    else controller.enterArrangementMode()
+    showModeSelector.value = false
 }
 
-function enterCognitionMode(): void {
-    controller.enterCognitionMode()
-}
+// 常驻操作栏按钮定义
+const standingButtons = [
+    // 节点组
+    { tool: 'add-real-node' as const, icon: '+ 实○', label: '添加实节点' },
+    { tool: 'add-virtual-node' as const, icon: '+ 虚○', label: '添加虚节点' },
+    // 边组
+    { tool: 'add-real-directed' as const, icon: '+ 实→', label: '添加有向实边' },
+    { tool: 'add-real-undirected' as const, icon: '+ 实—', label: '添加无向实边' },
+    { tool: 'add-virtual-directed' as const, icon: '+ 虚→', label: '添加有向虚边' },
+    { tool: 'add-virtual-undirected' as const, icon: '+ 虚—', label: '添加无向虚边' },
+    // 工具组
+    { tool: 'delete' as const, icon: ' x ', label: '删除' },
+    { tool: 'fold' as const, icon: '∨', label: '折叠' },
+]
 
-function enterArrangementMode(): void {
-    controller.enterArrangementMode()
+function activateTool(btn: (typeof standingButtons)[number]): void {
+    switch (btn.tool) {
+        case 'add-real-node':
+            controller.selectOperationTool('add')
+            controller.selectAddTarget('node')
+            controller.selectAddNodeKind('real')
+            break
+        case 'add-virtual-node':
+            controller.selectOperationTool('add')
+            controller.selectAddTarget('node')
+            controller.selectAddNodeKind('virtual')
+            break
+        case 'add-real-directed':
+            controller.selectOperationTool('add')
+            controller.selectAddTarget('edge')
+            controller.selectAddEdgeKind('real')
+            controller.selectAddEdgeDirection('directed')
+            break
+        case 'add-real-undirected':
+            controller.selectOperationTool('add')
+            controller.selectAddTarget('edge')
+            controller.selectAddEdgeKind('real')
+            controller.selectAddEdgeDirection('undirected')
+            break
+        case 'add-virtual-directed':
+            controller.selectOperationTool('add')
+            controller.selectAddTarget('edge')
+            controller.selectAddEdgeKind('virtual')
+            controller.selectAddEdgeDirection('directed')
+            break
+        case 'add-virtual-undirected':
+            controller.selectOperationTool('add')
+            controller.selectAddTarget('edge')
+            controller.selectAddEdgeKind('virtual')
+            controller.selectAddEdgeDirection('undirected')
+            break
+        case 'delete':
+            controller.selectOperationTool('delete')
+            break
+        case 'fold':
+            controller.selectOperationTool('fold')
+            break
+    }
 }
 </script>
 
 <style scoped>
-.operation-toolbar {
+/* ── 常驻操作栏（顶部中央）── */
+
+.standing-toolbar {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    z-index: 999;
+}
+
+.standing-toolbar button {
+    padding: 3px 8px;
+    border: 1px solid #cbd5e1;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.standing-toolbar button:hover {
+    background: #f1f5f9;
+}
+
+.standing-toolbar button.active {
+    background: #bfdbfe;
+    border-color: #3b82f6;
+}
+
+/* 组间间距（第3个=边组起点，第7个=工具组起点） */
+.standing-toolbar > button:nth-child(3),
+.standing-toolbar > button:nth-child(7) {
+    margin-left: 8px;
+}
+
+.delete-confirm-hint {
+    font-size: 12px;
+    color: #ef4444;
+    padding: 0 4px;
+    white-space: nowrap;
+}
+
+.confirm-delete-btn {
+    background: #ef4444 !important;
+    color: white !important;
+    border-color: #dc2626 !important;
+}
+
+.cancel-delete-btn {
+    color: #6b7280;
+}
+
+/* ── 模式工具栏（左上角）── */
+
+.mode-toolbar {
     position: absolute;
     top: 20px;
     left: 8px;
@@ -282,7 +327,10 @@ function enterArrangementMode(): void {
     border-color: #3b82f6;
 }
 
-/* --- 模式按钮：圆形，稍小 --- */
+.toolbar-column button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
 
 .mode-btn {
     font-weight: bold;
@@ -295,36 +343,10 @@ function enterArrangementMode(): void {
     line-height: 26px;
 }
 
-/* --- 模式按钮与操作按钮之间 3 倍间距 --- */
-
-.main-column .mode-btn + * {
-    margin-top: 8px;
-}
-
-/* --- 杂项 --- */
-
-
 .placeholder-text {
     font-size: 12px;
     color: #94a3b8;
     padding: 4px 8px;
     white-space: nowrap;
-}
-
-.delete-confirm-hint {
-    font-size: 12px;
-    color: #ef4444;
-    padding: 4px 6px;
-    white-space: nowrap;
-}
-
-.confirm-delete-btn {
-    background: #ef4444 !important;
-    color: white !important;
-    border-color: #dc2626 !important;
-}
-
-.cancel-delete-btn {
-    color: #6b7280;
 }
 </style>

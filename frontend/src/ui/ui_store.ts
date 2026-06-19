@@ -14,7 +14,7 @@
  * 外部使用方式：
  * import { useUIStore } from '@/ui/ui_store'
  * const uiStore = useUIStore()
- * uiStore.setInteractionMode('operation')
+ * uiStore.setInteractionMode('cognition')
  */
 
 import { defineStore } from 'pinia'
@@ -80,11 +80,11 @@ export interface UIStoreState {
  * 使用：
  *     import { useUIStore } from '@/ui/ui_store'
  *     const uiStore = useUIStore()
- *     uiStore.setInteractionMode('operation')
+ *     uiStore.setInteractionMode('cognition')
  */
 export const useUIStore = defineStore('ui_store', {
     state: (): UIStoreState => ({
-    interactionMode: null,
+    interactionMode: 'cognition',  // 默认为 cognition 模式
     selectedCognitionAction: null,
     selectedOperationTool: null,
     pendingAddTarget: null,
@@ -108,7 +108,7 @@ export const useUIStore = defineStore('ui_store', {
          *     切换当前主交互模式。
          *
          * 规则：
-         *     1. cognition 与 operation 互斥。
+         *     1. cognition 与 arrangement 互斥。
          *     2. 切换模式时重置当前操作状态。
          */
         setInteractionMode(mode: InteractionMode) {
@@ -303,17 +303,18 @@ export const useUIStore = defineStore('ui_store', {
 
         /**
          * 功能：
-         *     退出当前模式，回到无模式默认状态。
+         *
+         *     退出当前模式，回到默认模式（cognition）。
          *
          * 规则：
+         *
          *     1. 重置所有工具和子选择状态。
-         *     2. 将 interactionMode 置为 null。
-         *     3. 用于右键两级退出的第二层。
+         *     2. 将 interactionMode 重置为 'cognition'。
          */
         exitMode() {
             this.resetOperationState()
             this.selectedCognitionAction = null
-            this.interactionMode = null
+            this.interactionMode = 'cognition'
         },
 
 

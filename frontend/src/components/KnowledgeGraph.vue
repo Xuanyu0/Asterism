@@ -1,5 +1,5 @@
 <template>
-    <div class="relative h-screen w-screen bg-slate-50" @contextmenu.prevent>
+    <div class="relative h-screen w-screen bg-slate-50" v-on:contextmenu.prevent>
         <!--
             功能：
                 Cytoscape 真正挂载的 DOM 容器。
@@ -12,8 +12,8 @@
         <div
             ref="cyContainer"
             class="h-full w-full"
-            :class="containerClasses"
-            @contextmenu.prevent
+            v-bind:class="containerClasses"
+            v-on:contextmenu.prevent
         ></div>
 
         <!--
@@ -89,22 +89,40 @@ const graphStore = useGraphStore()
 const renderer = useCytoscapeRenderer(cyContainer)
 const operationController = useOperationController()
 
+/**
+ * 功能：
+ *
+ *     根据当前激活工具决定画布光标样式。
+ *
+ * 规则：
+ *
+ *     常驻操作栏按钮激活工具时内部进入 Operation 模式。
+ *     三种模式下工具均有效——光标样式不依赖 interactionMode。
+ */
 const containerClasses = computed(() => {
     const s = operationController.ui.state
-    return {
-        'delete-mode': s.interactionMode === 'operation' && s.selectedOperationTool === 'delete',
-        'fold-mode': s.interactionMode === 'operation' && s.selectedOperationTool === 'fold',
-        'add-node-ready': s.interactionMode === 'operation'
-            && s.selectedOperationTool === 'add'
-            && s.pendingAddTarget === 'node'
-            && s.pendingAddNode.kind !== null,
-        'add-edge-ready': s.interactionMode === 'operation'
-            && s.selectedOperationTool === 'add'
-            && s.pendingAddTarget === 'edge'
-            && s.pendingAddEdge.kind !== null
-            && s.pendingAddEdge.direction !== null
-            && s.pendingAddEdge.sourceNodeId !== null,
+
+    // 删除模式：pointer 光标 + 待定目标高亮
+    if (s.selectedOperationTool === 'delete') {
+        return { 'cursor-pointer': true }
     }
+
+    // 折叠模式：pointer 光标
+    if (s.selectedOperationTool === 'fold') {
+        return { 'cursor-pointer': true }
+    }
+
+    // 添加节点：crosshair 光标
+    if (s.selectedOperationTool === 'add' && s.pendingAddTarget === 'node' && s.pendingAddNode.kind !== null) {
+        return { 'cursor-crosshair': true }
+    }
+
+    // 添加边：cell 光标
+    if (s.selectedOperationTool === 'add' && s.pendingAddTarget === 'edge' && s.pendingAddEdge.kind !== null && s.pendingAddEdge.direction !== null && s.pendingAddEdge.sourceNodeId !== null) {
+        return { 'cursor-cell': true }
+    }
+
+    return {}
 })
 
 onMounted(() => {
@@ -247,19 +265,15 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.delete-mode {
+.cursor-pointer {
     cursor: pointer;
 }
 
-.fold-mode {
-    cursor: pointer;
-}
-
-.add-node-ready {
+.cursor-crosshair {
     cursor: crosshair;
 }
 
-.add-edge-ready {
+.cursor-cell {
     cursor: cell;
 }
 </style>

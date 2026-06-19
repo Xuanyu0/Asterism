@@ -463,3 +463,19 @@ function foo(): void {
 | 纯函数辅助逻辑，被 ≥2 个函数调用 | ✅ 拆为 helpers |
 | export 为公开 API | ✅ 独立函数及文档注释 |
 | 函数体过长（>30 行）混在一起不利于阅读 | ✅ 拆为语义块 |
+
+## 二十一、Vue 模板语法规范
+
+**禁止缩写**。Vue 模板中所有指令必须使用完整形式，不准使用缩写：
+
+| 缩写 | 禁止 | 必须 |
+|------|------|------|
+| `@click` | ❌ | `v-on:click` |
+| `@input` | ❌ | `v-on:input` |
+| `@contextmenu.prevent` | ❌ | `v-on:contextmenu.prevent` |
+| `:key` | ❌ | `v-bind:key` |
+| `:class` | ❌ | `v-bind:class` |
+| `:title` | ❌ | `v-bind:title` |
+| `:value` | ❌ | `v-bind:value` |
+
+原因：缩写形式是 Vue 特有的语法糖，对 C++ 背景开发者不透明——`:` 和 `@` 在 HTML 中无对应语义。完整形式直接表达意图：`v-on:` = "绑定事件"，`v-bind:` = "绑定属性"。

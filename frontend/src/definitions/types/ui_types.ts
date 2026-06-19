@@ -28,7 +28,7 @@ import type {
     NodeId,
 } from '@my-project/graph-engine'
 
-export type InteractionMode = 'cognition' | 'operation' | 'arrangement' | null
+export type InteractionMode = 'cognition' | 'arrangement' | null
 // 当前主交互模式。null 表示未激活任何模式（默认状态）。
 // arrangement 为 Phase 2 占位。
 

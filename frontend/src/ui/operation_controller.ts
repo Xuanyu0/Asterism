@@ -10,7 +10,7 @@
  *
  *     1. 语义事件 Payload 定义
  *     2. useOperationController()：
- *        - 模式切换  — enterOperationMode / enterCognitionMode / enterArrangementMode / exitMode
+ *        - 模式切换  — enterCognitionMode / enterArrangementMode
  *        - 工具选择  — selectOperationTool / selectAddTarget / selectAddNodeKind 等
  *        - 右键退出  — handleRightClick
  *        - 事件分派  — handleCanvasClicked / handleNodeClicked / handleEdgeClicked
@@ -116,10 +116,6 @@ export function useOperationController() {
 
     // ── 模式入口 ──
 
-    function enterOperationMode(): void {
-        uiStore.setInteractionMode('operation')
-    }
-
     function enterCognitionMode(): void {
         uiStore.setInteractionMode('cognition')
     }
@@ -154,8 +150,10 @@ export function useOperationController() {
         uiStore.resetOperationState()
     }
 
-    function exitMode(): void {
-        uiStore.exitMode()
+    // ── 认知操作选择 ──
+
+    function selectCognitionAction(action: 'deconstruct' | null): void {
+        uiStore.selectCognitionAction(action)
     }
 
     // ── 右键 ──
@@ -167,37 +165,23 @@ export function useOperationController() {
      *
      * 规则：
      *
-     *     两级退出：
-     *     1. 有激活工具 → 清工具，保留模式（第一层）。
-     *     2. 无激活工具 → 退出模式（第二层）。
+     *     仅取消当前所选操作、放弃所有草稿编辑。不改变交互模式。
      */
     function handleRightClick(): void {
-        const mode = uiStore.interactionMode
-
-        if (mode === null) {
-            return
+        // 清工具
+        if (uiStore.selectedOperationTool !== null) {
+            uiStore.resetOperationState()
         }
 
-        if (mode === 'operation') {
-            if (uiStore.selectedOperationTool !== null) {
-                uiStore.resetOperationState()
-                return
-            }
-            uiStore.exitMode()
-            return
-        }
+        // 清待定状态
+        uiStore.clearPendingDelete()
 
-        if (mode === 'cognition') {
-            if (uiStore.selectedCognitionAction !== null) {
-                uiStore.selectCognitionAction(null)
-                return
-            }
-            uiStore.exitMode()
-            return
-        }
+        // 清草稿
+        draftStore.clearDraftNode()
 
-        if (mode === 'arrangement') {
-            uiStore.exitMode()
+        // 清认知操作选中
+        if (uiStore.selectedCognitionAction !== null) {
+            uiStore.selectCognitionAction(null)
         }
     }
 
@@ -206,84 +190,82 @@ export function useOperationController() {
     /**
      * 功能：
      *
-     *     处理画布点击——根据当前 UI 状态路由到对应操作。
+     *     处理画布点击——根据当前激活工具路由到对应操作。
      *
      * 规则：
      *
-     *     1. 仅在 Operation / Add / Node / kind 已确定时创建 DraftNode。
-     *     2. 在 Delete 模式下，点击空白画布清除待定删除目标。
+     *     1. 添加节点工具 + kind 已确定 → 创建 DraftNode。
+     *     2. 删除工具 → 清除待定删除目标。
+     *     3. 其他工具或无工具 → 忽略。
      */
     function handleCanvasClicked(
         payload: CanvasClickedPayload,
     ): void {
-        if (uiStore.interactionMode === 'operation' && uiStore.selectedOperationTool === 'delete') {
+        // 删除模式：点击空白取消待定
+        if (uiStore.selectedOperationTool === 'delete') {
             uiStore.clearPendingDelete()
             return
         }
 
-        if (uiStore.interactionMode !== 'operation') {
-            return
+        // 添加节点模式：创建 DraftNode
+        if (uiStore.selectedOperationTool === 'add'
+            && uiStore.pendingAddTarget === 'node'
+            && uiStore.pendingAddNode.kind
+        ) {
+            draftStore.createDraftNode(
+                uiStore.pendingAddNode.kind,
+                payload.x,
+                payload.y,
+            )
         }
-
-        if (uiStore.selectedOperationTool !== 'add') {
-            return
-        }
-
-        if (uiStore.pendingAddTarget !== 'node') {
-            return
-        }
-
-        if (!uiStore.pendingAddNode.kind) {
-            return
-        }
-
-        draftStore.createDraftNode(
-            uiStore.pendingAddNode.kind,
-            payload.x,
-            payload.y,
-        )
     }
 
     /**
      * 功能：
      *
-     *     处理节点点击——根据当前 UI 状态上下文感知分派。
+     *     处理节点点击——根据当前激活工具或认知操作分派，无工具时打开浮空窗。
      *
      * 规则：
      *
-     *     1. 默认模式（无激活工具）→ 打开节点编辑浮空窗。
-     *     2. Add + Edge 模式 → 委托 ops.targetNodeForEdge。
-     *     3. Delete 模式 → 委托 ops.targetNodeForDelete。
-     *     4. Fold 模式 → 委托 ops.toggleFold。
+     *     1. 认知操作优先：deconstruct → 执行解构并清除选中。
+     *     2. Add 工具 → 委托 ops.targetNodeForEdge（添加边流程）。
+     *     3. Delete 工具 → 委托 ops.targetNodeForDelete（删除两步确认）。
+     *     4. Fold 工具 → 委托 ops.toggleFold。
+     *     5. 无激活工具 → 打开节点编辑浮空窗。
      */
     function handleNodeClicked(
         payload: NodeClickedPayload,
     ): void {
-        const mode = uiStore.interactionMode
-        const tool = uiStore.selectedOperationTool
-
-        if (mode !== 'operation' || !tool) {
-            const node = graphStore.currentGraph?.nodes.find(node => node.id === payload.nodeId)
-            if (node) {
-                uiStore.openFloatingWindow(node)
-            }
+        // 认知操作优先——用户先点了工具栏的 Deconstruct，再点击节点
+        if (uiStore.selectedCognitionAction === 'deconstruct') {
+            ops.deconstruct(payload.nodeId)
+            uiStore.selectCognitionAction(null)
             return
         }
+
+        const tool = uiStore.selectedOperationTool
 
         switch (tool) {
             case 'add': {
                 ops.targetNodeForEdge(payload.nodeId)
-                break
+                return
             }
 
             case 'delete': {
                 ops.targetNodeForDelete(payload.nodeId)
-                break
+                return
             }
 
             case 'fold': {
                 ops.toggleFold(payload.nodeId)
-                break
+                return
+            }
+
+            default: {
+                const node = graphStore.currentGraph?.nodes.find(node => node.id === payload.nodeId)
+                if (node) {
+                    uiStore.openFloatingWindow(node)
+                }
             }
         }
     }
@@ -291,17 +273,17 @@ export function useOperationController() {
     /**
      * 功能：
      *
-     *     处理边点击——根据当前 UI 状态上下文感知分派。
+     *     处理边点击——根据当前激活工具分派，无工具时打开浮空窗。
      *
      * 规则：
      *
-     *     1. Delete 模式 → 委托 ops.targetEdgeForDelete。
-     *     2. 默认模式 → 打开边编辑浮空窗。
+     *     1. Delete 工具 → 委托 ops.targetEdgeForDelete（删除两步确认）。
+     *     2. 其他或无工具 → 打开边编辑浮空窗。
      */
     function handleEdgeClicked(
         payload: EdgeClickedPayload,
     ): void {
-        if (uiStore.interactionMode === 'operation' && uiStore.selectedOperationTool === 'delete') {
+        if (uiStore.selectedOperationTool === 'delete') {
             ops.targetEdgeForDelete(payload.edgeId)
             return
         }
@@ -316,7 +298,6 @@ export function useOperationController() {
 
     return {
         // 模式入口
-        enterOperationMode,
         enterCognitionMode,
         enterArrangementMode,
         // 工具选择
@@ -326,7 +307,7 @@ export function useOperationController() {
         selectAddEdgeKind,
         selectAddEdgeDirection,
         resetOperationTool,
-        exitMode,
+        selectCognitionAction,
         // 右键
         handleRightClick,
         // 认知操作

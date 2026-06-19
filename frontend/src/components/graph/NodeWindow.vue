@@ -7,23 +7,23 @@
         <h3>Draft Node</h3>
 
         <input
-            :value="draftNode.label"
+            v-bind:value="draftNode.label"
             placeholder="Label"
-            @input="handleDraftLabelInput"
+            v-on:input="handleDraftLabelInput"
         />
 
         <textarea
-            :value="draftNode.summary"
+            v-bind:value="draftNode.summary"
             placeholder="Summary"
-            @input="handleDraftSummaryInput"
+            v-on:input="handleDraftSummaryInput"
         />
 
         <div class="button-row">
-            <button @click="controller.confirmDraftNode">
+            <button v-on:click="controller.confirmDraftNode">
                 Confirm
             </button>
 
-            <button @click="controller.cancelDraftNode">
+            <button v-on:click="controller.cancelDraftNode">
                 Cancel
             </button>
         </div>
@@ -37,17 +37,17 @@
         <h3>{{ isEdge ? 'Edit Edge' : 'Edit Node' }}</h3>
 
         <input
-            :value="floatingData.label ?? ''"
+            v-bind:value="floatingData.label ?? ''"
             placeholder="Label"
-            @input="handleFloatingLabelInput"
+            v-on:input="handleFloatingLabelInput"
         />
 
         <div class="button-row">
-            <button @click="handleFloatingConfirm">
+            <button v-on:click="handleFloatingConfirm">
                 Confirm
             </button>
 
-            <button @click="controller.closeFloatingWindow">
+            <button v-on:click="controller.closeFloatingWindow">
                 Cancel
             </button>
         </div>
