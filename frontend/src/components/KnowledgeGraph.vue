@@ -108,6 +108,7 @@ const containerClasses = computed(() => {
 })
 
 onMounted(() => {
+    graphStore.initRegistry()
     renderer.mount()
 
     if (graphStore.currentGraph) {

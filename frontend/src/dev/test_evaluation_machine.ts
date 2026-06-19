@@ -7,7 +7,7 @@
  *
  * 总体结构：
  *     1. 测试数据完整性 — 所有工厂函数产出合法 GraphData
- *     2. 图操作执行器 — applyOperationToGraph 纯函数正确性
+ *     2. 图操作执行器 — applyOperationToGraph_DEPRECATED 纯函数正确性
  *     3. 折叠/展开 — cognitiveState 正确性
  *     4. 操作校验器 — OperationValidator 规则拦截
  *     5. 撤销栈 — pushUndoSnapshot / undoDelete
@@ -25,13 +25,14 @@ import type { EdgeData, EdgeId, GraphData, GraphId, NodeData, NodeId } from '@my
 import type { GraphOperation } from '@my-project/graph-engine'
 import type { ValidationResult } from '@my-project/graph-engine'
 
-import { GraphValidator } from '@/definitions/validators/graph_validator'
-import { OperationValidator } from '@/definitions/validators/operation_validator'
+import { validateGraph } from '@my-project/graph-engine'
+import { applyOperation } from '@my-project/graph-engine'
 
-import { applyOperationToGraph, pushUndoSnapshot, shouldPushUndoSnapshot } from '@/graph/utilities/operation_executor'
+import { pushUndoSnapshot, shouldPushUndoSnapshot } from '@/graph/graph_store'
 import { saveGraph, loadGraph, deleteGraph } from '@/graph/utilities/graph_persistence'
 
 import { useGraphStore } from '@/graph/graph_store'
+import type { GraphRegistry } from '@my-project/graph-engine'
 
 import {
     createGoldenTestGraph,
@@ -68,6 +69,14 @@ interface TestSuite {
 // ═══════════════════════════════════════════════════════════════════
 
 const G = 'test-eval' as GraphId
+
+/**
+ * 引擎 applyOperation 的测试兼容包装器。
+ * 引擎返回 { graph, validation }，旧测试代码期望直接返回 GraphData。
+ */
+function applyOp(graph: GraphData, op: GraphOperation): GraphData {
+    return applyOperation(graph, op).graph
+}
 
 function suite(name: string, tests: TestResult[]): TestSuite {
     return {
@@ -139,7 +148,7 @@ function testFactoryDataIntegrity(): TestSuite {
     ]
 
     for (const [name, factory] of factories) {
-        const result = GraphValidator.validateGraph(factory())
+        const result = validateGraph(factory())
         results.push({
             name,
             passed: result.valid,
@@ -172,7 +181,7 @@ function testOperationExecutor(): TestSuite {
             degree: 0,
             position: { x: 600, y: 0 },
         }
-        const next = applyOperationToGraph(graph, { type: 'add_node', node: newNode })
+        const next = applyOp(graph, { type: 'add_node', node: newNode })
 
         results.push({
             name: 'add_node 节点数 +1',
@@ -200,7 +209,7 @@ function testOperationExecutor(): TestSuite {
             direction: 'directed',
             label: '边',
         }
-        const next = applyOperationToGraph(graph, { type: 'add_edge', edge })
+        const next = applyOp(graph, { type: 'add_edge', edge })
 
         results.push({
             name: 'add_edge 边数 +1',
@@ -221,7 +230,7 @@ function testOperationExecutor(): TestSuite {
     // --- delete_node ---
     {
         const graph = makeTwoNodeGraph()
-        const next = applyOperationToGraph(graph, { type: 'delete_node', nodeId: 'a' as NodeId })
+        const next = applyOp(graph, { type: 'delete_node', nodeId: 'a' as NodeId })
 
         results.push({
             name: 'delete_node 节点数 -1',
@@ -237,7 +246,7 @@ function testOperationExecutor(): TestSuite {
     // --- delete_node cascade edges ---
     {
         const graph = makeTwoNodeGraph()
-        const withEdge = applyOperationToGraph(graph, {
+        const withEdge = applyOp(graph, {
             type: 'add_edge',
             edge: {
                 id: 'a-b' as EdgeId, graphId: G,
@@ -246,7 +255,7 @@ function testOperationExecutor(): TestSuite {
                 label: '',
             },
         })
-        const next = applyOperationToGraph(withEdge, { type: 'delete_node', nodeId: 'a' as NodeId })
+        const next = applyOp(withEdge, { type: 'delete_node', nodeId: 'a' as NodeId })
 
         results.push({
             name: 'delete_node 级联删除关联边',
@@ -263,7 +272,7 @@ function testOperationExecutor(): TestSuite {
     // --- delete_edge ---
     {
         const graph = makeTwoNodeGraph()
-        const withEdge = applyOperationToGraph(graph, {
+        const withEdge = applyOp(graph, {
             type: 'add_edge',
             edge: {
                 id: 'a-b' as EdgeId, graphId: G,
@@ -272,7 +281,7 @@ function testOperationExecutor(): TestSuite {
                 label: '',
             },
         })
-        const next = applyOperationToGraph(withEdge, { type: 'delete_edge', edgeId: 'a-b' as EdgeId })
+        const next = applyOp(withEdge, { type: 'delete_edge', edgeId: 'a-b' as EdgeId })
 
         results.push({
             name: 'delete_edge 边数 -1',
@@ -291,7 +300,7 @@ function testOperationExecutor(): TestSuite {
         const graph = makeTwoNodeGraph()
         const originalA = graph.nodes.find(node => n.id === 'a')!
         const updatedA = { ...originalA, label: '改过标签', summary: '新摘要' } as NodeData
-        const next = applyOperationToGraph(graph, { type: 'update_node', node: updatedA })
+        const next = applyOp(graph, { type: 'update_node', node: updatedA })
 
         results.push({
             name: 'update_node 标签更新',
@@ -310,7 +319,7 @@ function testOperationExecutor(): TestSuite {
     // --- update_edge ---
     {
         const graph = makeTwoNodeGraph()
-        const withEdge = applyOperationToGraph(graph, {
+        const withEdge = applyOp(graph, {
             type: 'add_edge',
             edge: {
                 id: 'a-b' as EdgeId, graphId: G,
@@ -323,7 +332,7 @@ function testOperationExecutor(): TestSuite {
             ...withEdge.edges[0]!,
             label: '新边标签',
         }
-        const next = applyOperationToGraph(withEdge, { type: 'update_edge', edge: updatedEdge })
+        const next = applyOp(withEdge, { type: 'update_edge', edge: updatedEdge })
 
         results.push({
             name: 'update_edge 标签更新',
@@ -334,7 +343,7 @@ function testOperationExecutor(): TestSuite {
     // --- move_node ---
     {
         const graph = makeTwoNodeGraph()
-        const next = applyOperationToGraph(graph, {
+        const next = applyOp(graph, {
             type: 'move_node',
             nodeId: 'a' as NodeId,
             position: { x: 999, y: 888 },
@@ -353,9 +362,9 @@ function testOperationExecutor(): TestSuite {
     {
         const graph = makeTwoNodeGraph()
         const snapshot = graph.nodes.length
-        applyOperationToGraph(graph, { type: 'delete_node', nodeId: 'a' as NodeId })
+applyOp(graph, { type: 'delete_node', nodeId: 'a' as NodeId })
         results.push({
-            name: 'applyOperationToGraph 不修改入参 GraphData',
+            name: 'applyOperationToGraph_DEPRECATED 不修改入参 GraphData',
             passed: graph.nodes.length === snapshot,
             detail: `期望 ${snapshot}, 实际 ${graph.nodes.length}`,
         })
@@ -374,7 +383,7 @@ function testFoldExpand(): TestSuite {
     // --- collapse ---
     {
         const dag3 = createChainDAG(3, G)
-        const next = applyOperationToGraph(dag3, {
+        const next = applyOp(dag3, {
             type: 'collapse_dependency',
             targetNodeId: 'chain-2' as NodeId,
         })
@@ -404,11 +413,11 @@ function testFoldExpand(): TestSuite {
     // --- expand ---
     {
         const dag3 = createChainDAG(3, G)
-        const collapsed = applyOperationToGraph(dag3, {
+        const collapsed = applyOp(dag3, {
             type: 'collapse_dependency',
             targetNodeId: 'chain-2' as NodeId,
         })
-        const expanded = applyOperationToGraph(collapsed, {
+        const expanded = applyOp(collapsed, {
             type: 'expand_dependency',
             targetNodeId: 'chain-2' as NodeId,
         })
@@ -424,7 +433,7 @@ function testFoldExpand(): TestSuite {
     // --- fold on node with no deps ---
     {
         const dag3 = createChainDAG(3, G)
-        const next = applyOperationToGraph(dag3, {
+        const next = applyOp(dag3, {
             type: 'collapse_dependency',
             targetNodeId: 'chain-0' as NodeId,
         })
@@ -446,7 +455,7 @@ function testOperationValidator(): TestSuite {
     const results: TestResult[] = []
 
     function expectValid(label: string, graph: GraphData, op: GraphOperation): TestResult {
-        const r = OperationValidator.validateOperation(graph, op)
+        const r = applyOp(graph, op).validation
         return {
             name: label,
             passed: r.valid,
@@ -455,7 +464,7 @@ function testOperationValidator(): TestSuite {
     }
 
     function expectInvalid(label: string, graph: GraphData, op: GraphOperation): TestResult {
-        const r = OperationValidator.validateOperation(graph, op)
+        const r = applyOp(graph, op).validation
         return {
             name: label,
             passed: !r.valid,

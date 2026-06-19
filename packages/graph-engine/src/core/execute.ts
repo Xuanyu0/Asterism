@@ -24,7 +24,8 @@
  *     import { executeOperation } from '@my-project/graph-engine'
  */
 
-import type { GraphData, GraphRegistry, NodeId } from '../types/graph_data'
+import type { GraphData, NodeId } from '../types/graph_data'
+import type { GraphRegistry } from '../types/infrastructure_types'
 import type { GraphOperation } from '../types/atomic_operations'
 import { syncReferenceNodeDegree } from './sync'
 import { collectDependencyNodeIds } from './traversal'

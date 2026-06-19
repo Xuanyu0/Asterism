@@ -29,7 +29,8 @@
  *     })
  */
 
-import type { EdgeData, NodeData, NodeId, NodePosition, NodeRadiusMap } from '../../types/graph_data'
+import type { EdgeData, NodeData, NodeId, NodePosition } from '../../types/graph_data'
+import type { NodeRadiusMap } from '../../types/infrastructure_types'
 import type { ComposeIssue, ComposeResult, DraftPosition } from '../types'
 import { computeTierSpacing, snapOrbit } from '../../infrastructure/placement'
 import { hasCollisionInDrafts } from '../../infrastructure/collision'

@@ -31,7 +31,8 @@
  *     if (no errors) applyBatch(graph, result.operations)
  */
 
-import type { NodeId, NodePosition, NodeData, NodeRadiusMap } from '../../types/graph_data'
+import type { NodeId, NodePosition, NodeData } from '../../types/graph_data'
+import type { NodeRadiusMap } from '../../types/infrastructure_types'
 import type { ComposeResult } from '../types'
 import type { DraftPosition } from '../types'
 import { hasCollisionAt } from '../../infrastructure/collision'

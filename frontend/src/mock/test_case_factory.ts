@@ -24,8 +24,8 @@ import type {
     ReferenceNodeKind,
 } from '@my-project/graph-engine'
 
-import { GraphValidator } from '@/definitions/validators/graph_validator'
-import { normalizeGraph } from '@/graph/utilities/graph_utils'
+import { validateGraph } from '@my-project/graph-engine'
+import { normalizeGraph } from '@my-project/graph-engine'
 
 // ═══════════ 原子构建 ═══════════
 
@@ -223,7 +223,7 @@ export function createCommonLayerGraph(graphId: GraphId = 'graph-common' as Grap
 
 // 内部自检
 function validateOrThrow(graph: GraphData): void {
-    const result = GraphValidator.validateGraph(graph)
+    const result = validateGraph(graph)
     if (!result.valid) {
         const details = result.issues.map(i => `  [${i.level}] ${i.code}: ${i.message} (target: ${i.targetType} ${i.targetId ?? ''})`).join('\n')
         throw new Error(`test_case_factory: 生成的 GraphData 未通过 schema 校验。\n${details}`)

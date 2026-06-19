@@ -34,8 +34,12 @@ export type {
     NodeRole, KnowledgeNodeKind, RealNodeForm, ReferenceNodeKind,
     NodePosition, NodeBase, KnowledgeNodeData, ReferenceNodeData, NodeData,
     EdgeKind, EdgeDirection, EdgeData,
-    GraphRegistry, SearchResult, NodeRadiusMap,
 } from './types/graph_data'
+
+/** 消费者：前端 graph_store / operation_controller、引擎 compose 层。 */
+export type {
+    GraphRegistry, SearchResult, NodeRadiusMap,
+} from './types/infrastructure_types'
 
 /** 消费者：引擎内部 & 前端渲染层。 */
 export type { LayoutRules, NodeRules } from './core/rules'

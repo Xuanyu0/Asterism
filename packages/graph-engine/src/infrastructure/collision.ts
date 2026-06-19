@@ -18,7 +18,8 @@
  *     import { hasCollisionAt, hasCollisionInDrafts } from '@my-project/graph-engine'
  */
 
-import type { NodeData, NodeId, NodePosition, NodeRadiusMap } from '../types/graph_data'
+import type { NodeData, NodeId, NodePosition } from '../types/graph_data'
+import type { NodeRadiusMap } from '../types/infrastructure_types'
 import { DEFAULT_LAYOUT_RULES } from '../core/rules'
 import { squaredDistance } from './geometry'
 

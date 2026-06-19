@@ -27,7 +27,8 @@
  *     const result = adjustOrbit({ nodeId, center, cursor, D0, tierCount, allNodes, nodeRadiusOverrides })
  */
 
-import type { NodeId, NodePosition, NodeData, NodeRadiusMap } from '../../types/graph_data'
+import type { NodeId, NodePosition, NodeData } from '../../types/graph_data'
+import type { NodeRadiusMap } from '../../types/infrastructure_types'
 import type { ComposeIssue, ComposeResult, DraftPosition } from '../types'
 import { positionOnCircle, snapOrbit } from '../../infrastructure/placement'
 import { hasCollisionAt } from '../../infrastructure/collision'

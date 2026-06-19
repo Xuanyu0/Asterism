@@ -8,17 +8,16 @@
  *     2. ID 生成 helper
  *     3. useOperationController()：
  *        - Operation 模式：工具栏切换、Add/Delete/Fold 流程
- *        - Cognition 模式（占位）：explore / discover / deconstruct / induce / internalize
- *        - Arrangement 模式（占位）：move / adjust / 布局操作
+ *        - Cognition 模式：调 GraphEngine compose 函数，applyBatch 提交
+ *        - Arrangement 模式：调 GraphEngine compose 函数（moveNode 等）
  *        - 通用：交互事件处理（handleCanvasClicked / handleNodeClicked / handleEdgeClicked）
  *        - 通用：DraftNode 生命周期
  *        - 通用：浮空窗编辑已有节点/边
  *
  * GraphEngine 铺垫：
- *     本文件是 Phase 2 GraphEngine 的前端适配层雏形。
- *     当前 operation_executor / operation_validator / graph_utils 已是纯函数/静态类，
- *     不依赖 Vue/Pinia。Phase 2 只需将 graph_store + 纯函数层 + 类型抽离为独立引擎，
- *     本 controller 退化为薄适配层。
+ *     本文件是 GraphEngine 的前端适配层。
+ *     Step 11 完成后，operation_executor / operation_validator / graph_utils 职责已下沉至引擎。
+ *     本 controller 退化为薄适配层——调引擎 compose 函数产出 operations，再经 applyBatch 提交。
  *
  * 外部如何使用：
  *     KnowledgeGraph.vue、NodeWindow.vue、OperationToolbar.vue 调用本文件。
@@ -29,7 +28,9 @@ import type {
     NodeData,
     NodeId,
     EdgeId,
-    GraphPosition
+    GraphPosition,
+    GraphData,
+    NodeRadiusMap,
 } from '@my-project/graph-engine'
 import type { DraftNode } from '@/definitions/types/draft_types'
 import type { OperationTool, AddTarget } from '@/definitions/types/ui_types'
@@ -39,6 +40,18 @@ import type { KnowledgeNodeKind } from '@my-project/graph-engine'
 import { useGraphStore } from '@/graph/graph_store'
 import { useUIStore } from '@/ui/ui_store'
 import { useDraftStore } from '@/ui/draft_store'
+
+import { generateNodeId, generateEdgeId } from '@my-project/graph-engine'
+import { applyBatch } from '@my-project/graph-engine'
+import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
+
+// compose — arrangement
+import { moveNode } from '@my-project/graph-engine'
+// compose — cognitive
+import { deconstruct as composeDeconstruct } from '@my-project/graph-engine'
+import { induce as composeInduce } from '@my-project/graph-engine'
+import { internalize as composeInternalize } from '@my-project/graph-engine'
+
 
 // 语义事件 Payload 定义 ══════════════════════════════════════════
 
@@ -80,33 +93,7 @@ export interface EdgeClickedPayload {
 
 // 语义事件 Payload 结束 ══════════════════════════════════════════
 
-// ID 生成 helper ══════════════════════════════════════════════════
-
-/**
- * 功能：
- *     创建节点 id。
- *
- * 规则：
- *     1. MVP 阶段使用前端临时 id。
- *     2. 后续可替换为统一 id runtime。
- */
-function createNodeId(): NodeId {
-    return `node-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` as NodeId
-}
-
-/**
- * 功能：
- *     创建边 id。
- *
- * 规则：
- *     1. MVP 阶段使用前端临时 id。
- *     2. 后续可替换为统一 id runtime。
- */
-function createEdgeId(): EdgeId {
-    return `edge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` as EdgeId
-}
-
-// ID 生成 helper 结束 ══════════════════════════════════════════════
+// ID 生成：已迁移至引擎 generateNodeId / generateEdgeId（crypto.randomUUID）。
 
 /**
  * 功能：
@@ -284,16 +271,16 @@ export function useOperationController() {
         // 右键退出 结束 ────────────────────────────────────────
     // Operation 结束 ═══════════════════════════════════════════════
 
-    // Cognition 模式（Phase 2 占位） ═══════════════════════════════
+    // Cognition 模式 ═══════════════════════════════════════════════
         /**
          * 功能：
          *     探索——开始新一轮学习。
          *
          * 规则：
-         *     1. Phase 2 GraphEngine + AI Runtime 实现。
+         *     1. Phase 3 AI Runtime 实现。引擎暂无对应 compose 函数。
          */
         function explore(): void {
-            // TODO: Phase 2 — AI Runtime 单轮学习入口
+            // TODO: Phase 3 — AI Runtime 单轮学习入口
         }
 
         /**
@@ -301,57 +288,277 @@ export function useOperationController() {
          *     发掘——对虚节点或无向虚边开启学习。
          *
          * 规则：
-         *     1. Phase 2 GraphEngine + AI Runtime 实现。
+         *     1. Phase 3 AI Runtime 实现。引擎暂无对应 compose 函数。
          */
         function discover(_targetNodeId?: NodeId, _targetEdgeId?: EdgeId): void {
-            // TODO: Phase 2 — AI Runtime 发掘入口
+            // TODO: Phase 3 — AI Runtime 发掘入口
         }
 
         /**
          * 功能：
-         *     解构——单个实节点抽象并建立子图。
+         *     解构——单个原子实节点转换为抽象节点 + 空子图 + 沟通节点。
          *
          * 规则：
-         *     1. Phase 2 GraphEngine 实现。
+         *     1. 委托引擎 composeDeconstruct 产出 operations。
+         *     2. applyBatch 统一提交。
+         *     3. 若创建了新子图，注册到 Registry 并持久化。
          */
-        function deconstruct(_nodeId: NodeId): void {
-            // TODO: Phase 2 — GraphEngine 子图创建
+        function deconstruct(nodeId: NodeId): void {
+            if (!graphStore.currentGraph || !nodeId) {
+                return
+            }
+
+            const result = composeDeconstruct({
+                nodeId,
+                parentGraph: graphStore.currentGraph,
+            })
+
+            if (result.issues.some(issue => issue.severity === 'error')) {
+                uiStore.lastOperationValidation = {
+                    valid: false,
+                    issues: result.issues.map(issue => ({
+                        level: issue.severity,
+                        code: 'COMPOSE_ISSUE',
+                        message: issue.message,
+                        targetType: 'node' as const,
+                        targetId: nodeId,
+                    })),
+                }
+
+                return
+            }
+
+            const batchResult = applyBatch(graphStore.currentGraph, result.operations, graphStore.registry)
+            uiStore.lastOperationValidation = batchResult.validation
+
+            if (batchResult.validation.valid) {
+                graphStore.currentGraph = batchResult.graph
+
+                // 解构创建的子图已通过 add_graph 操作注册到 Registry。
+                // 将新子图持久化到 localStorage。
+                for (const op of result.operations) {
+                    if (op.type === 'add_graph') {
+                        graphStore.registerNewGraph(op.graph)
+                    }
+                }
+            }
         }
 
         /**
          * 功能：
-         *     归纳——多个节点聚合为抽象节点。
+         *     归纳——多个节点聚合为抽象节点 + 子图 + 沟通节点。
          *
          * 规则：
-         *     1. Phase 2 GraphEngine 实现。
+         *     1. 委托引擎 composeInduce 产出跨图 operations。
+         *     2. applyBatch 逐图提交。
+         *     3. 归纳创建的子图注册并持久化。
          */
-        function induce(_nodeIds: NodeId[]): void {
-            // TODO: Phase 2 — GraphEngine 归纳操作
+        function induce(nodeIds: NodeId[]): void {
+            if (!graphStore.currentGraph || nodeIds.length < 2) {
+                return
+            }
+
+            const result = composeInduce({
+                nodeIds,
+                parentGraph: graphStore.currentGraph,
+                registry: graphStore.registry,
+                nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.currentGraph),
+                allEdges: graphStore.currentGraph.edges,
+            })
+
+            if (result.issues.some(issue => issue.severity === 'error')) {
+                uiStore.lastOperationValidation = {
+                    valid: false,
+                    issues: result.issues.map(issue => ({
+                        level: issue.severity,
+                        code: 'COMPOSE_ISSUE',
+                        message: issue.message,
+                        targetType: 'graph' as const,
+                    })),
+                }
+
+                return
+            }
+
+            // 父图操作
+            if (result.operations.parent.length > 0) {
+                const parentBatch = applyBatch(graphStore.currentGraph, result.operations.parent, graphStore.registry)
+                uiStore.lastOperationValidation = parentBatch.validation
+
+                if (!parentBatch.validation.valid) {
+                    return
+                }
+
+                graphStore.currentGraph = parentBatch.graph
+            }
+
+            // 子图操作
+            if (result.operations.child.length > 0) {
+                const { childGraphData } = result as { childGraphData?: GraphData }
+
+                if (childGraphData) {
+                    const childBatch = applyBatch(childGraphData, result.operations.child, graphStore.registry)
+
+                    if (childBatch.validation.valid) {
+                        graphStore.registerNewGraph(childBatch.graph)
+                    }
+                }
+            }
         }
 
         /**
          * 功能：
-         *     内化/常识化——转移节点至常识层。
+         *     内化——将知识节点从工作区转移至常识层。
          *
          * 规则：
-         *     1. Phase 2 GraphEngine 实现。
+         *     1. 委托引擎 composeInternalize 产出跨图 operations。
+         *     2. applyBatch 逐图提交。
          */
-        function internalize(_nodeIds: NodeId[]): void {
-            // TODO: Phase 2 — GraphEngine 常识层转移
+        function internalize(nodeIds: NodeId[]): void {
+            if (!graphStore.currentGraph || nodeIds.length === 0) {
+                return
+            }
+
+            // 获取常识层图——查找 kind='commonLayer' 的图
+            const commonLayer = findCommonLayer(graphStore.registry)
+
+            if (!commonLayer) {
+                uiStore.lastOperationValidation = {
+                    valid: false,
+                    issues: [{
+                        level: 'error',
+                        code: 'COMMON_LAYER_NOT_FOUND',
+                        message: '未找到常识层图谱，无法执行内化操作。',
+                        targetType: 'graph',
+                    }],
+                }
+
+                return
+            }
+
+            const result = composeInternalize({
+                nodeIds,
+                parentGraph: graphStore.currentGraph,
+                commonLayer,
+                registry: graphStore.registry,
+                nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.currentGraph),
+            })
+
+            if (result.issues.some(issue => issue.severity === 'error')) {
+                uiStore.lastOperationValidation = {
+                    valid: false,
+                    issues: result.issues.map(issue => ({
+                        level: issue.severity,
+                        code: 'COMPOSE_ISSUE',
+                        message: issue.message,
+                        targetType: 'graph' as const,
+                    })),
+                }
+
+                return
+            }
+
+            // 父图操作
+            if (result.operations.parent.length > 0) {
+                const parentBatch = applyBatch(graphStore.currentGraph, result.operations.parent, graphStore.registry)
+
+                if (!parentBatch.validation.valid) {
+                    uiStore.lastOperationValidation = parentBatch.validation
+
+                    return
+                }
+
+                graphStore.currentGraph = parentBatch.graph
+            }
+
+            // 常识层操作
+            if (result.operations.commonLayer.length > 0) {
+                const clBatch = applyBatch(commonLayer, result.operations.commonLayer, graphStore.registry)
+
+                if (clBatch.validation.valid) {
+                    graphStore.registerNewGraph(clBatch.graph)
+                }
+            }
+
+            uiStore.lastOperationValidation = { valid: true, issues: [] }
+        }
+
+        /**
+         * 功能：
+         *     在 Registry 中查找常识层图。
+         */
+        function findCommonLayer(registry: import('@my-project/graph-engine').GraphRegistry): GraphData | undefined {
+            for (const [, graph] of registry) {
+                if (graph.kind === 'commonLayer') {
+                    return graph
+                }
+            }
+
+            return undefined
         }
     // Cognition 结束 ═══════════════════════════════════════════════
 
-    // Arrangement 模式（Phase 2 占位） ═════════════════════════════
+    // Arrangement 模式 ═════════════════════════════════════════════
         /**
          * 功能：
-         *     单节点移动。
+         *     单节点移动。委托引擎 moveNode compose 函数做碰撞检测并产出 operations。
          *
          * 规则：
-         *     1. Phase 2 Arrangement 模式实现。
-         *     2. 当前 Operation 模式不提供单节点 Move（已迁移至 Arrangement）。
+         *     1. 引擎 moveNode 纯函数——返回 { drafts, issues, operations }。
+         *     2. 碰撞检测在引擎侧完成，前端根据 issues 判断是否可提交。
+         *     3. 当前直接执行——草稿预览 UI 在 Phase 2b 实现。
          */
-        function moveNode(_nodeId: NodeId, _position: { x: number; y: number }): void {
-            // TODO: Phase 2 — Arrangement 模式单点移动
+        function handleMoveNode(nodeId: NodeId, position: { x: number; y: number }): void {
+            if (!graphStore.currentGraph) {
+                return
+            }
+
+            const result = moveNode({
+                nodeId,
+                desiredPosition: position,
+                allNodes: graphStore.currentGraph.nodes,
+                nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.currentGraph),
+            })
+
+            if (result.issues.some(issue => issue.severity === 'error')) {
+                uiStore.lastOperationValidation = {
+                    valid: false,
+                    issues: result.issues.map(issue => ({
+                        level: issue.severity,
+                        code: 'COMPOSE_ISSUE',
+                        message: issue.message,
+                        targetType: 'node' as const,
+                        targetId: nodeId,
+                    })),
+                }
+
+                return
+            }
+
+            // 直接提交——跳过草稿预览（Phase 2b）
+            const batchResult = applyBatch(graphStore.currentGraph, result.operations, graphStore.registry)
+            uiStore.lastOperationValidation = batchResult.validation
+
+            if (batchResult.validation.valid) {
+                graphStore.currentGraph = batchResult.graph
+            }
+        }
+
+        /**
+         * 功能：
+         *     计算当前图全部节点的外接圆半径。
+         *
+         * 规则：
+         *     半径公式 r = r₀ · √(1 + degree)。
+         */
+        function computeNodeRadiusOverrides(graph: GraphData): NodeRadiusMap {
+            const map: NodeRadiusMap = new Map()
+
+            for (const node of graph.nodes) {
+                map.set(node.id, DEFAULT_LAYOUT_RULES.r0 * Math.sqrt(1 + node.degree))
+            }
+
+            return map
         }
     // Arrangement 结束 ═════════════════════════════════════════════
 
@@ -414,7 +621,7 @@ export function useOperationController() {
             const tool = uiStore.selectedOperationTool
 
             if (mode !== 'operation' || !tool) {
-                const node = graphStore.currentGraph?.nodes.find(node => n.id === payload.nodeId)
+                const node = graphStore.currentGraph?.nodes.find(node => node.id === payload.nodeId)
                 if (node) {
                     uiStore.openFloatingWindow(node)
                 }
@@ -515,7 +722,7 @@ export function useOperationController() {
 
             const node: NodeData = {
                 role: 'knowledge',
-                id: createNodeId(),
+                id: generateNodeId(),
                 graphId: graphStore.currentGraph.id,
                 kind: draftNode.kind,
                 form: draftNode.kind === 'real' ? 'atomic' : undefined,
@@ -751,7 +958,7 @@ export function useOperationController() {
             }
 
             const edge: EdgeData = {
-                id: createEdgeId(),
+                id: generateEdgeId(),
                 graphId: graphStore.currentGraph.id,
                 source: uiStore.pendingAddEdge.sourceNodeId,
                 target: nodeId,
@@ -816,7 +1023,7 @@ export function useOperationController() {
             deconstruct,
             induce,
             internalize,
-            moveNode,
+            handleMoveNode,
             handleCanvasClicked,
             handleNodeClicked,
             handleEdgeClicked,

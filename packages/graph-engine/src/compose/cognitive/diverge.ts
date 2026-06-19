@@ -30,7 +30,8 @@
  *     // result.operations.peer     → applyBatch(peerGraph, result.operations.peer)
  */
 
-import type { EdgeData, GraphData, GraphRegistry, NodeId, NodePosition, NodeRadiusMap } from '../../types/graph_data'
+import type { EdgeData, GraphData, NodeId, NodePosition } from '../../types/graph_data'
+import type { GraphRegistry, NodeRadiusMap } from '../../types/infrastructure_types'
 import type { ComposeIssue, DraftPosition } from '../types'
 import type { GraphOperation } from '../../types/atomic_operations'
 import { generateNodeId, generateEdgeId } from '../../core/id'

@@ -21,7 +21,8 @@
  *     import { searchNodes } from '@my-project/graph-engine'
  */
 
-import type { GraphData, GraphId, GraphRegistry, SearchResult } from '../types/graph_data'
+import type { GraphData, GraphId } from '../types/graph_data'
+import type { GraphRegistry, SearchResult } from '../types/infrastructure_types'
 import { getGraph } from './graph_registry'
 
 /**

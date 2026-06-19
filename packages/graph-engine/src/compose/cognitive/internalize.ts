@@ -28,7 +28,8 @@
  *     // applyBatch(commonLayer, result.operations.commonLayer, registry)
  */
 
-import type { GraphData, GraphRegistry, NodeId, NodePosition, NodeRadiusMap } from '../../types/graph_data'
+import type { GraphData, NodeId, NodePosition } from '../../types/graph_data'
+import type { GraphRegistry, NodeRadiusMap } from '../../types/infrastructure_types'
 import type { ComposeIssue } from '../types'
 import type { GraphOperation } from '../../types/atomic_operations'
 import { generateNodeId } from '../../core/id'

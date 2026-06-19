@@ -17,7 +17,8 @@
  *     import { createRegistry, registerGraph, getGraph } from '@my-project/graph-engine'
  */
 
-import type { GraphData, GraphId, GraphRegistry } from '../types/graph_data'
+import type { GraphData, GraphId } from '../types/graph_data'
+import type { GraphRegistry } from '../types/infrastructure_types'
 
 export function createRegistry(): GraphRegistry {
     return new Map()

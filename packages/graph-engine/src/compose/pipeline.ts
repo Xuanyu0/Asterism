@@ -38,7 +38,8 @@
  *     // graph 已更新
  */
 
-import type { GraphData, GraphRegistry } from '../types/graph_data'
+import type { GraphData } from '../types/graph_data'
+import type { GraphRegistry } from '../types/infrastructure_types'
 import type { GraphOperation } from '../types/atomic_operations'
 import type { ValidationResult } from '../types/validation'
 import { validateOperation } from '../core/validate'
