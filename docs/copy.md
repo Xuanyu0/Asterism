@@ -1,19 +1,19 @@
+对。删掉 rMax 后，这个约束自动成立：
 
+中心节点连接所有卫星 → degree_center ≥ N（卫星数量）
+→ center_r ≥ r₀ · √(1 + N)
+→ center_r ≥ max_sat_r  ← 几乎总是成立
 
+于是约束关系坍缩了：
 
+$$
+\underbrace{\text{center_r} + \text{max_sat_r}}{\text{约束 A：中心 ↔ 层级 0}} ;\geq; \underbrace{2 \cdot \text{max_sat_r}}{\text{约束 B：层级间}} \quad (\text{因为 center_r ≥ max_sat_r})
+$$
 
+约束 A 永远支配约束 B。四个方向简化为一个：
 
+D₀ = centerRadius + maxSatelliteRadius + COLLISION_GAP
 
+大节点在中心、小节点在轨道——自然保证了所有层级间距和层内间距。没有需要用户权衡的参数，定。
 
-    operation: GraphOperation,      // 正向操作
-    reversalData: ReversalData      // 逆转所需的前状态快照
-}
-
-撤销第 $k$ 步：用 reversalData 构造逆操作，执行 apply(G_k, op^{-1})，不需要从 $G_0$ 重放。撤销是 $O(1)$ 的。
-
-回退到任意历史点：从最近的基线快照重放到目标步数。
-
-这和 Phase 1 的 undoStack 在概念上一致——都是保存操作前的状态来支持 Ctrl+Z。区别是这里把逆转数据作为操作日志的固有部分持久化，而不是存在前端 store 的临时数组里。
-
----
-你的方向我完全同意。需要我后续补到开发指南时，尽管说。
+这就是方向 D 的证明：不是"选 D"，而是删掉 rMax 之后 D 是唯一成立的解。架构约束决定了几

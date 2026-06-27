@@ -75,11 +75,35 @@ Cytoscape Renderer (use_cytoscape_renderer.ts)
 
 ## 重要 Commit
 
-- `0ddcbaa` — refactor graph isolate store internals and extract render layer（拆分 graph 内部实现至 utilities/，分离 render/ 渲染层）
-- `8288b26` — cleanup frontend remove unused scaffold files and add coding conventions
+### Phase 1
+
 - `3755f74` — refactor-graph-isolate-cytoscape-runtime（已完成 Cytoscape 隔离）
 - `57f5cc6` — refactor graph types add role discriminated union for node identity（NodeRole 第一层判别，Phase 1 类型收口）
+- `0ddcbaa` — refactor graph isolate store internals and extract render layer（拆分 graph 内部实现至 utilities/，分离 render/ 渲染层）
 - `f1d9649` — refactor ui interaction add right-extending column toolbar and two-level right-click exit（Phase 1 收尾）
+- `8288b26` — cleanup frontend remove unused scaffold files and add coding conventions
+
+### Phase 2a
+
+- `e845905` — add compose base layer with ComposeResult types and applyBatch pipeline（Step 6）
+- `810bd5e` — implement Step 7 arrangement compose layer（Step 7：move / adjust / orbit / path）
+- `d7159fd` — implement step 8 deconstruct and diverge with spec-driven compose layer（Step 8 起步）
+- `29a3880` — implement induce compose function with add_graph in execute pipeline（Step 8 核心——最大认知操作）
+- `c250b77` — implement internalize compose function with child graph cleanup and scatter placement（Step 8 收尾）
+- `ab736ec` — implement step 9 test coverage — 20 test files, 119 passing tests（Step 9）
+- `a919a91` — complete step 10 api export reorganization with consumer annotations（Step 10）
+- `58b34c3` — refactor frontend switch to engine api and cleanup duplicate code（Step 11：切 engine apply，删 9 个重复文件）
+- `2aac5d7` — split operation controller extract graph operations layer（Step 11：UI 层拆分）
+
+## 项目规模（Phase 2a 完成时）
+
+| 区域 | 文件数 | 总行数 | 有效代码 | 注释+空行 | 说明 |
+|------|:-----:|:-----:|:------:|:--------:|------|
+| Engine 核心（`packages/graph-engine/src/`） | 39 | 5,492 | ~2,748 | ~2,744 | 类型、执行器、校验器、编排、基础设施 |
+| Engine 测试（`packages/graph-engine/tests/`） | 21 | 2,373 | ~1,773 | ~600 | 20 测试文件 119 用例 |
+| 前端（`frontend/src/`） | 24 | 5,664 | ~3,106 | ~2,558 | 3 store + 2 运行时 + 3 渲染 + 3 Vue 组件 |
+| 设计文档（`docs/`） | 25 | 4,381 | — | — | 设计、spec、开发文档 |
+| **合计** | **109** | **17,910** | **~7,627** | **~5,902** | + 4,381 文档 |
 
 ## 开发策略
 
@@ -513,3 +537,109 @@ function foo(): void {
 | `:value` | ❌ | `v-bind:value` |
 
 原因：缩写形式是 Vue 特有的语法糖，对 C++ 背景开发者不透明——`:` 和 `@` 在 HTML 中无对应语义。完整形式直接表达意图：`v-on:` = "绑定事件"，`v-bind:` = "绑定属性"。
+
+## 二十二、设计决策权限
+
+| 行为 | 允许 | 禁止 |
+|------|------|------|
+| 在对话中提供设计建议、架构方案 | ✅ | |
+| 将自发的设计决策写入文档文件（`docs/` 下的任何 `.md`） | | ❌ |
+| 经用户明确许可后修改文档 | ✅ | |
+| 修改代码（`.ts` / `.vue` 等源文件） | ✅ 按现有规范执行 | |
+
+规则：
+
+1. **文档修改必须由用户明确许可后执行。** 文档 = `docs/` 目录下所有 `.md` 文件 + `CLAUDE.md` + 项目根目录 `.md`。
+2. **不允许主动提出"要不要我把这个写进文档"。** 只在用户问到时回答"需要的话可以"。
+3. **代码按现有规范自由修改**，无需额外确认。
+4. 此规则旨在确保用户（而非 AI）是设计文档的唯一作者——AI 的产出进入对话和代码，不进设计文档。
+
+## 二十三、设计文档层级与冲突处理
+
+`docs/` 下三个子目录存在严格的权威层级：
+
+```
+    设计/          ← 最高权威。用户亲身书写，表达用户的核心意志和设计意图
+    ↓ 主导
+    开发文档/      ← 次高权威。开发指南和步骤规划，服务于实现层
+    ↓ 主导
+    spec/          ← 参考级。技术规格说明，由开发过程派生
+```
+
+| 层级 | 目录 | 权威 | 内容性质 |
+|------|------|------|---------|
+| L1 | `docs/设计/` | **最高** | 用户亲手书写的设计定义、交互规则、视觉规范。最直接反映用户意志。 |
+| L2 | `docs/开发文档/` | 次高 | 开发指南、步骤规划、架构决策。服务于实现，不可违背 L1。 |
+| L3 | `docs/spec/` | 参考 | 技术规格说明，由开发过程派生，可随实现演进。 |
+
+**冲突处理规则**：
+
+1. 出现设计冲突时，**优先参考上级文档**。L1 > L2 > L3。
+2. 当开发文档中的技术决策与设计文档的意图矛盾时，以设计文档为准。
+3. 当 spec 中的实现细节与开发文档矛盾时，以开发文档为准。
+4. 若上级文档未覆盖某话题，下级文档的结论为有效默认值。
+
+## 二十四、文档检索规范
+
+### 两种检索机制
+
+| 机制 | 触发方式 | 适用场景 |
+|------|---------|---------|
+| **注意力** | 默认开启，无需显式调用 | 当前上下文已有的内容、近期讨论过的规则 |
+| **grep（Bash 工具）** | 显式执行 shell 命令 | 跨文件定位、精确匹配、存在性确认 |
+
+注意力 + grep 协同使用：注意力判断"该不该搜"，grep 执行"精确搜"。
+
+### grep 调用范式
+
+#### 调用前（必须）
+
+1. **先加载术语映射表**（`docs/设计/术语映射表.md`）—— 确保中文设计术语能正确映射到英文代码标识符。
+2. **汇报目标**——每次 grep 前，向用户明确说明：期望通过本次 grep 理解什么内容，或达成什么目标。
+
+```
+格式示例：
+"我先 grep 确认下：induce 操作从 UI 按钮到 engine 的调用链是否完整。
+ 搜索词：induce / composeInduce / internalize / composerInternalize，
+ 目标：确认数据流是否端到端连通。"
+```
+
+#### 搜索路径优先级
+
+对于功能设计类问题，按权威层级依次检索：
+
+```
+docs/设计/        ← 第一优先。未命中才往下走
+    ↓
+docs/开发文档/    ← 第二优先
+    ↓
+docs/spec/        ← 最后检索
+```
+
+即：先 grep `docs/设计/`，无结果则 grep `docs/开发文档/`，再无则 grep `docs/spec/`。
+
+#### 调用后
+
+若同一目录下 grep 结果**物理分散但逻辑连贯**（同一设计概念的定义散落在文档的不同章节），应提醒用户：
+
+> "XX 概念在 `docs/设计/01-核心定义.md` 的第 20 行、第 150 行、第 300 行分别出现，内容在逻辑上是一个整体，建议整合到一个连续段落。"
+
+### 必须 grep 的场景（不自检，直接触发）
+
+| 场景 | 说明 |
+|------|------|
+| **功能设计查证** | 当前上下文中不存在的设计概念、不确定的规则约束 |
+| **跨文件连通性验证** | 某个函数/类型/变量"在哪里被调用""是否被读取""是否被导出" |
+| **存在性确认** | 某个标识符/功能/组件是否存在 |
+| **改动影响面评估** | 修改前查所有调用方 |
+| **术语映射** | 用户说的中文术语和代码中的英文标识符之间的对应 |
+| **冲突裁决** | 需要同时查 L1/L2/L3 对同一概念的表述时 |
+
+### 不需要 grep 的场景（靠注意力，不额外调用）
+
+| 场景 | 原因 |
+|------|------|
+| 已知文件路径和行号（如前面子代理已探明） | 直接 Read |
+| 文件 < 100 行 | 全量 Read 成本更低 |
+| 单点修改（改一个已知函数内部逻辑） | 无跨文件影响 |
+| 用户明确指定"看看 XX 文件" | 直接 Read |
