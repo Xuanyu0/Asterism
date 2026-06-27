@@ -13,8 +13,9 @@
  * 规则：
  *
  *     1. 本模块不负责校验。
- *     2. 所有操作返回新的 GraphData，不修改传入 GraphData。
- *     3. 所有变更操作会写入 timestamp。
+ *     2. 除 add_graph / delete_graph 外，所有操作返回新的 GraphData，不修改传入 GraphData。
+ *        add_graph / delete_graph 操作的是 registry（多图注册表），当前图不变。
+ *     3. 所有图内变更操作会写入 timestamp。
  *     4. 签名 (graph, op, registry?) → graph。
  *        add_graph / delete_graph 通过 registry 修改多图集合（add_graph 注册新图，
  *        delete_graph 注销图）。其余 9 种操作不依赖 registry。
@@ -33,6 +34,7 @@ import { registerGraph, unregisterGraph } from '../infrastructure/graph_registry
 
 export function executeOperation(graph: GraphData, operation: GraphOperation, registry?: GraphRegistry): GraphData {
     switch (operation.type) {
+        // ── 图内变更：修改当前图中的节点/边，返回新的 GraphData ──
         case 'add_node':
             return executeAddNode(graph, operation)
 
@@ -54,12 +56,14 @@ export function executeOperation(graph: GraphData, operation: GraphOperation, re
         case 'move_node':
             return executeMoveNode(graph, operation)
 
+        // ── 认知状态变更：修改折叠/展开状态，返回新的 GraphData ──
         case 'collapse_dependency':
             return executeCollapseDependency(graph, operation)
 
         case 'expand_dependency':
             return executeExpandDependency(graph, operation)
 
+        // ── 图生命周期：操作 registry（多图注册表），不修改当前图 ──
         case 'add_graph':
             return executeAddGraph(graph, operation, registry)
 

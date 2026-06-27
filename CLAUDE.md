@@ -1,5 +1,16 @@
 # Asterism
 
+## 核心定义
+
+- **狭义 GraphData**：`packages/graph-engine/src/types/graph_data.ts` 定义的图结构类型。
+- **广义 GraphData**：一切需要持久化存储的数据（狭义 GraphData + OperationLog + 其他持久化数据）。
+- **GraphEngine**：框架无关、纯函数式的广义 GraphData 状态迁移引擎，是系统中所有 GraphData 转换操作的唯一入口。
+  - 负责：定义类型、validate / execute / compose / replay
+  - 不负责：I/O、持久化、持有状态
+  - 与框架无关
+- **Runtime 层**：位于前端的 GraphData 状态所有者，负责持有运行时状态（currentGraph / undoStack / registry）、编排引擎操作（调 Engine → 后处理）、实现持久化 I/O。Runtime 不负责 UI 渲染和纯函数转换，一定是框架绑定的（当前为 Pinia + Vue）
+- **Cytoscape 渲染层**：GraphData 的只读投影。接收 GraphData 渲染到画布，捕获交互事件后经 UI 适配层回流至 Runtime。禁止持有 GraphData 引用、禁止保存业务状态、禁止直接修改 GraphData
+
 ## 项目定位
 
 - **Graph Engine 开发目标**：让用户当前的学习 / 认知 / 研究状态可视化、可形式化表达。
@@ -32,25 +43,19 @@
 
 1. **GraphData 是唯一事实源（Single Source of Truth）**
 2. **Cytoscape 只是 Renderer**，永远不是事实源
-3. **Runtime 优先于 UI**
-4. **所有 GraphData 修改必须经过 `graph_store.applyOperation()`**
-5. **Local First** — 当前用 localStorage 持久化
-6. **Position 持久化** — GraphData.position 是唯一位置事实源
-7. **Cognitive State 持久化** — 折叠/展开状态随 GraphData 一起持久化
+
+3. **Local First** — 当前用 localStorage 持久化
 
 ## 架构分层（严格单向数据流）
 
 ```
 用户交互 (DOM)
     ↓
-Cytoscape 交互适配层 (use_graph_interaction.ts)
-    ↓ 语义事件 (CanvasClicked, NodeClicked, EdgeClicked, NodeDragEnded)
-    ↓
-UI 适配层 (operation_controller.ts)  ← 模式/工具状态 + 事件路由
-    ↓ 委托图操作
-图操作翻译层 (graph_operations.ts)  ← 认知编排 + add/delete/fold/update
-    ↓ GraphOperation / applyBatch
-Graph Runtime (graph_store.ts) ← 唯一事实源
+UI 适配层 (operation_controller.ts / ui_store / draft_store)
+    ↓ 事件路由 + 模式/工具状态
+Runtime (graph_store.ts + graph_operations.ts + graph_persistence.ts)
+    ↓ 委托 Engine 纯函数转换 + 后处理
+GraphEngine (@my-project/graph-engine)
     ↓ watch(currentGraph)
 渲染投影层 (graph_element_mapper.ts)
     ↓ CyElements
@@ -61,17 +66,10 @@ Cytoscape Renderer (use_cytoscape_renderer.ts)
 
 | Store | 职责 | 禁止 |
 |-------|------|------|
-| graph_store | GraphData 唯一事实源，applyOperation() 唯一写入点 | Draft/Cytoscape 禁止进入 |
+| graph_store | GraphData 唯一事实源，当前图 / undoStack / registry 状态持有者 | Draft/Cytoscape 禁止进入 |
 | ui_store | 用户 UI 意图（交互模式、选中工具、浮空窗） | 不保存 GraphData |
 | draft_store | 临时草稿（DraftNode/DraftEdge），互斥 | 不直接进入 GraphData |
 
-## Cytoscape 边界（最重要）
-
-- 禁止 cy 修改 GraphData
-- 禁止 cy 持有 GraphData 引用
-- 禁止 cy 保存业务状态
-- 数据流只能是 GraphData → Cytoscape，不允许反向
-- 反向必须经过：Interaction → Controller → GraphStore
 
 ## 重要 Commit
 
@@ -142,7 +140,7 @@ Cytoscape Renderer (use_cytoscape_renderer.ts)
 - 批量事务：applyBatch（validate-all-first → execute-all 或整批丢弃）
 - 认知编排：deconstruct / induce / internalize / diverge（compose/cognitive/）
 - 布局编排：move / adjust / orbit / path（compose/arrangement/）
-- 基础设施：多图注册表（GraphRegistry）、碰撞检测、位置放置、跨图搜索、ID 生成
+- 基础设施：碰撞检测、位置放置、跨图搜索、ID 生成
 - 操作日志类型层：OperationLog / OperationLogEntry / State（树形操作树，支持 undo）
 - 操作回放：replayGraph / replayToStep
 - 前端已切到引擎全部 API，冗余代码已清理
@@ -411,7 +409,9 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
 
 ## 十六、GraphData 唯一事实源（项目基石）
 
-所有 GraphData 修改必须经过 `graph_store.applyOperation()`。
+GraphData 是唯一事实源。修改 GraphData 的两条合法路径：
+1. **原子操作**：`graph_store.applyOperation()`（单个 add/delete/update/move/fold/expand）
+2. **编排操作**：`graph_operations.ts` → Engine applyBatch → `graphStore.currentGraph = ...`（deconstruct/induce/internalize/diverge 等认知操作）
 
 ## 十七、Import 组织规范
 

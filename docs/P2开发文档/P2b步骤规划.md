@@ -13,6 +13,36 @@
 
 ## 开发步骤
 
+### Step 0：架构调整 — GraphRegistry 归入 Runtime
+
+**背景**：Phase 2a 将 `graph_registry.ts`（`Map<GraphId, GraphData>`）随 compose 层迁入引擎，但按核心定义：
+
+- Registry 不持久化 → 不属于广义 GraphData
+- 不持久化的数据结构 → 不属于 GraphEngine 职责
+- GraphEngine 是纯函数引擎，不持有状态 → `registerGraph` 等写操作不应在 `execute.ts` 中出现
+
+**目标**：将 GraphRegistry 的类型定义和实现从 engine 迁移至前端 Runtime，清理 `execute.ts` 中的副作用调用。
+
+**子任务**：
+
+| # | 内容 | 注意事项 |
+|---|------|---------|
+| 0.1 | 确定迁移方案：引擎保留 `GraphRegistry` 类型引用（import type）还是完全移除 | 跨图搜索（diverge/induce）的 compose 层只读 registry——可以接受由 Runtime 注入的查找函数 `(graphId) → GraphData | undefined`，不依赖具体 Map 实现 |
+| 0.2 | 将 `graph_registry.ts` 从 `packages/graph-engine/src/infrastructure/` 迁至 `frontend/src/graph/utilities/` | 更新所有 import |
+| 0.3 | 移除 `execute.ts` 中 `executeAddGraph` / `executeDeleteGraph` 对 `registerGraph` / `unregisterGraph` 的调用 | `executeAddGraph` 只做校验和返回结果，不操作 registry。registry 写操作由 Runtime 在 `applyBatch` 返回后统一处理（已有 `graph_store.registerNewGraph` 可覆盖持久化 + registry） |
+| 0.4 | 更新 `graph_store.ts` 中 registry 相关逻辑，确认 `initRegistry`、`registerNewGraph`、`getGraphById` 等不受影响 | |
+| 0.5 | 更新 `graph_operations.ts` 中 registry 传入逻辑，确认 compose 层的只读查询仍能工作 | 引擎 compose 函数目前接受 `registry` 参数做跨图搜索——改为接受查找函数 |
+| 0.6 | 运行全部测试（engine 119 + 前端），确认无回归 | |
+| 0.7 | 清理引擎 `packages/graph-engine/src/infrastructure/` 目录，如仅剩 `graph_registry.ts` 则删除该目录 | |
+
+**验收标准**：
+- `packages/graph-engine` 不再导出 `graph_registry` 相关函数
+- `execute.ts` 不再调用 `registerGraph` / `unregisterGraph`
+- 前端所有 registry 操作集中在 `graph_store.ts` 中
+- 测试全部通过
+
+---
+
 ### Step 1：交互模式架构设计与反馈规范
 
 **目标**：在写代码前，完成 Cognition 和 Arrangement 两种交互模式的代码架构设计，并明确所有操作的 UI 交互流程和用户可见反馈。
