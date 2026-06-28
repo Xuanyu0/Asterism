@@ -19,7 +19,7 @@ describe('internalize', () => {
             nodeIds: ['int-K1', 'int-K2', 'int-Ref'] as NodeId[],
             parentGraph: graph,
             commonLayer: common,
-            registry: new Map(),
+            lookupGraph: () => undefined,
             nodeRadiusOverrides: R,
         })
         expect(result.issues.filter(i => i.severity === 'error')).toHaveLength(0)
@@ -39,7 +39,7 @@ describe('internalize', () => {
             nodeIds: ['r1', 'r2'] as NodeId[],
             parentGraph: graph,
             commonLayer: common,
-            registry: new Map(),
+            lookupGraph: () => undefined,
             nodeRadiusOverrides: R,
         })
         // 全为引用节点 → error
@@ -54,7 +54,7 @@ describe('internalize', () => {
             nodeIds: ['int-abs' as NodeId],
             parentGraph: graph,
             commonLayer: common,
-            registry: new Map(),
+            lookupGraph: () => undefined,
             nodeRadiusOverrides: R,
         })
         expect(result.issues.filter(i => i.severity === 'error')).toHaveLength(0)
@@ -73,7 +73,7 @@ describe('internalize', () => {
             nodeIds: ['k1', 'k2', 'k3'] as NodeId[],
             parentGraph: graph,
             commonLayer: common,
-            registry: new Map(),
+            lookupGraph: () => undefined,
             nodeRadiusOverrides: R,
         })
         expect(result.issues.filter(i => i.severity === 'error')).toHaveLength(0)

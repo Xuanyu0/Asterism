@@ -8,31 +8,29 @@
  * 总体结构：
  *
  *     1. executeOperation — Operation router，按 type 分派
- *     2. 各 executeXxx — 11 种 Operation 具体执行函数
+ *     2. 各 executeXxx — 9 种图内变更操作的具体执行函数
  *
  * 规则：
  *
  *     1. 本模块不负责校验。
- *     2. 除 add_graph / delete_graph 外，所有操作返回新的 GraphData，不修改传入 GraphData。
- *        add_graph / delete_graph 操作的是 registry（多图注册表），当前图不变。
+ *     2. 所有操作返回新的 GraphData，不修改传入 GraphData。
  *     3. 所有图内变更操作会写入 timestamp。
- *     4. 签名 (graph, op, registry?) → graph。
- *        add_graph / delete_graph 通过 registry 修改多图集合（add_graph 注册新图，
- *        delete_graph 注销图）。其余 9 种操作不依赖 registry。
+ *     4. 签名 (graph, op) → graph。
  *     5. 度数同步委托给 sync.ts。图遍历委托给 traversal.ts。
+ *     6. add_graph / delete_graph 不在 execute 层处理——它们是 compose→Runtime 信号，
+ *        落到 default 分支静默返回原 graph。Runtime 在 applyBatch 返回后读 operations
+ *        数组中的 add_graph/delete_graph 操作自行处理 registry 副作用。
  *
  * 外部如何使用：
  *     import { executeOperation } from '@my-project/graph-engine'
  */
 
 import type { GraphData, NodeId } from '../types/graph_data'
-import type { GraphRegistry } from '../types/infrastructure_types'
 import type { GraphOperation } from '../types/atomic_operations'
 import { syncReferenceNodeDegree } from './sync'
 import { collectDependencyNodeIds } from './traversal'
-import { registerGraph, unregisterGraph } from '../infrastructure/graph_registry'
 
-export function executeOperation(graph: GraphData, operation: GraphOperation, registry?: GraphRegistry): GraphData {
+export function executeOperation(graph: GraphData, operation: GraphOperation): GraphData {
     switch (operation.type) {
         // ── 图内变更：修改当前图中的节点/边，返回新的 GraphData ──
         case 'add_node':
@@ -62,13 +60,6 @@ export function executeOperation(graph: GraphData, operation: GraphOperation, re
 
         case 'expand_dependency':
             return executeExpandDependency(graph, operation)
-
-        // ── 图生命周期：操作 registry（多图注册表），不修改当前图 ──
-        case 'add_graph':
-            return executeAddGraph(graph, operation, registry)
-
-        case 'delete_graph':
-            return executeDeleteGraph(graph, operation, registry)
 
         default:
             return graph
@@ -364,44 +355,4 @@ function executeExpandDependency(graph: GraphData, operation: { type: 'expand_de
         },
         updatedAt: now,
     }
-}
-
-// ═══════════ Graph lifecycle operations ═══════════
-
-/**
- * 功能：
- *
- *     将新图注册到多图集合。当前图本身不变——变更发生在 registry 中。
- *
- * 规则：
- *
- *     只在 registry 存在时执行。无 registry 时静默跳过（纯单图场景）。
- */
-function executeAddGraph(
-    graph: GraphData,
-    operation: { type: 'add_graph'; graph: GraphData },
-    registry?: GraphRegistry,
-): GraphData {
-    if (registry) {
-        registerGraph(registry, operation.graph)
-    }
-
-    return graph
-}
-
-/**
- * 功能：
- *
- *     从多图集合中注销一张图。当前图本身不变。
- */
-function executeDeleteGraph(
-    graph: GraphData,
-    operation: { type: 'delete_graph'; graphId: string },
-    registry?: GraphRegistry,
-): GraphData {
-    if (registry) {
-        unregisterGraph(registry, operation.graphId)
-    }
-
-    return graph
 }

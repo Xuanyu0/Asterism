@@ -21,13 +21,13 @@
  *
  *     import { induce } from '@my-project/graph-engine'
  *
- *     const result = induce({ nodeIds, parentGraph, registry, nodeRadiusOverrides, allEdges })
- *     // applyBatch(result.childGraphData, result.operations.child, registry)
- *     // applyBatch(parentGraph, result.operations.parent, registry)
+ *     const result = induce({ nodeIds, parentGraph, lookupGraph, nodeRadiusOverrides, allEdges })
+ *     // applyBatch(result.childGraphData, result.operations.child)
+ *     // applyBatch(parentGraph, result.operations.parent)
  */
 
 import type { EdgeData, GraphData, NodeId, NodePosition } from '../../types/graph_data'
-import type { GraphRegistry, NodeRadiusMap } from '../../types/infrastructure_types'
+import type { GraphLookup, NodeRadiusMap } from '../../types/infrastructure_types'
 import type { ComposeIssue } from '../types'
 import type { GraphOperation } from '../../types/atomic_operations'
 import { generateGraphId, generateNodeId, generateEdgeId } from '../../core/id'
@@ -58,8 +58,8 @@ export interface InduceParams {
     /** 被选节点所在的父图。 */
     parentGraph: GraphData
 
-    /** 多图注册表。 */
-    registry: GraphRegistry
+    /** 跨图查询函数。给定 graphId 返回对应 GraphData 或 undefined。 */
+    lookupGraph: GraphLookup
 
     /** 节点半径覆盖表。 */
     nodeRadiusOverrides: NodeRadiusMap

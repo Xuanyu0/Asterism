@@ -38,7 +38,7 @@ export type {
 
 /** 消费者：前端 graph_store / operation_controller、引擎 compose 层。 */
 export type {
-    GraphRegistry, SearchResult, NodeRadiusMap,
+    GraphLookup, SearchResult, NodeRadiusMap,
 } from './types/infrastructure_types'
 
 /** 消费者：引擎内部 & 前端渲染层。 */
@@ -211,41 +211,20 @@ export type {
 } from './compose'
 
 // ═══════════════════════════════════════════════════════════════════
-// infrastructure — 初始化、注册表管理、ID 生成、校验、常量
+// infrastructure — 跨图搜索、碰撞检测、布局放置、几何工具
 //
 // 消费者：
-//     graph_store — 启动时重建 Registry、导航时查询子图、创建新图时注册。
-//     前端搜索浮空窗 — diverge 前置跨图搜索。
+//     前端搜索浮空窗 — diverge 操作前置跨图搜索。
+//     compose 层 — 碰撞检测、布局放置。
 // ═══════════════════════════════════════════════════════════════════
 
 /**
  * 功能：
  *
- *     多图注册表管理函数。
+ *     跨图节点搜索。按 label 子串匹配，遍历 graphIds 指定的全部图。
  *
- * 消费者：
- *
- *     graph_store（initRegistry / registerNewGraph / getGraphById / deleteSavedGraph）
- *
- * 使用：
- *
- *     const registry = createRegistry()
- *     registerGraph(registry, graph)
- *     const found = getGraph(registry, graphId)
- */
-export {
-    createRegistry,
-    registerGraph,
-    getGraph,
-    hasGraph,
-    unregisterGraph,
-    listGraphs,
-} from './infrastructure'
-
-/**
- * 功能：
- *
- *     跨图节点搜索。label 子串匹配。
+ *     多图注册表管理函数（createRegistry / registerGraph / lookupGraph 等）已迁至前端 Runtime——
+ *     引擎是纯函数，不持有注册表状态。前端通过 graph_registry.ts 管理 GraphId → GraphData 映射。
  *
  * 消费者：
  *
@@ -253,8 +232,8 @@ export {
  *
  * 使用：
  *
- *     const results = searchNodes('相对论', registry)
- *     const results = searchNodes('相对论', registry, graphId)  // 限定图
+ *     const results = searchNodes('相对论', allGraphIds, lookupGraph)
+ *     const results = searchNodes('相对论', allGraphIds, lookupGraph, graphId)  // 限定图
  */
 export { searchNodes } from './infrastructure'
 

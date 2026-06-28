@@ -23,19 +23,18 @@
  *
  *     import { internalize } from '@my-project/graph-engine'
  *
- *     const result = internalize({ nodeIds, parentGraph, commonLayer, registry, nodeRadiusOverrides })
- *     // applyBatch(parentGraph, result.operations.parent, registry)
- *     // applyBatch(commonLayer, result.operations.commonLayer, registry)
+ *     const result = internalize({ nodeIds, parentGraph, commonLayer, lookupGraph, nodeRadiusOverrides })
+ *     // applyBatch(parentGraph, result.operations.parent)
+ *     // applyBatch(commonLayer, result.operations.commonLayer)
  */
 
 import type { GraphData, NodeId, NodePosition } from '../../types/graph_data'
-import type { GraphRegistry, NodeRadiusMap } from '../../types/infrastructure_types'
+import type { GraphLookup, NodeRadiusMap } from '../../types/infrastructure_types'
 import type { ComposeIssue } from '../types'
 import type { GraphOperation } from '../../types/atomic_operations'
 import { generateNodeId } from '../../core/id'
 import { scatterInCircle } from '../../infrastructure/placement'
 import { hasCollisionAt, hasCollisionInDrafts } from '../../infrastructure/collision'
-import { getGraph } from '../../infrastructure/graph_registry'
 import { DEFAULT_LAYOUT_RULES } from '../../core/rules'
 
 // ═══════════ 常量 ═══════════
@@ -59,8 +58,8 @@ export interface InternalizeParams {
     /** 常识层图（kind = 'commonLayer'）。 */
     commonLayer: GraphData
 
-    /** 多图注册表。 */
-    registry: GraphRegistry
+    /** 跨图查询函数。给定 graphId 返回对应 GraphData 或 undefined。 */
+    lookupGraph: GraphLookup
 
     /** 节点半径覆盖表。 */
     nodeRadiusOverrides: NodeRadiusMap
@@ -88,7 +87,7 @@ export function internalize(params: InternalizeParams): {
     operations: { parent: GraphOperation[]; child: GraphOperation[]; commonLayer: GraphOperation[] }
     issues: ComposeIssue[]
 } {
-    const { nodeIds, parentGraph, commonLayer, registry, nodeRadiusOverrides } = params
+    const { nodeIds, parentGraph, commonLayer, lookupGraph, nodeRadiusOverrides } = params
     const issues: ComposeIssue[] = []
 
     // ── 语义预检 ──
@@ -111,7 +110,7 @@ export function internalize(params: InternalizeParams): {
     const notFoundIds: string[] = []
 
     for (const nodeId of nodeIds) {
-        const found = findNodeInGraphOrChildGraphs(nodeId, parentGraph, registry)
+        const found = findNodeInGraphOrChildGraphs(nodeId, parentGraph, lookupGraph)
         if (found) {
             resolvedNodes.push(found)
         } else {
@@ -182,7 +181,7 @@ export function internalize(params: InternalizeParams): {
         // 抽象节点：递归清理子图
         if (kn.node.role === 'knowledge' && kn.node.form === 'abstract' && kn.node.childGraphId) {
             const childGraphId = kn.node.childGraphId
-            const childGraph = getGraph(registry, childGraphId)
+            const childGraph = lookupGraph(childGraphId)
 
             if (childGraph) {
                 // 删除子图内所有普通边
@@ -217,7 +216,7 @@ export function internalize(params: InternalizeParams): {
 
         // 抽象节点：子图内知识节点也一并迁入
         if (kn.node.role === 'knowledge' && kn.node.form === 'abstract' && kn.node.childGraphId) {
-            const childGraph = getGraph(registry, kn.node.childGraphId)
+            const childGraph = lookupGraph(kn.node.childGraphId)
             if (childGraph) {
                 for (const childNode of childGraph.nodes) {
                     if (childNode.role === 'knowledge') {
@@ -296,7 +295,7 @@ export function internalize(params: InternalizeParams): {
 function findNodeInGraphOrChildGraphs(
     nodeId: NodeId,
     graph: GraphData,
-    registry: GraphRegistry,
+    lookupGraph: GraphLookup,
 ): { node: GraphData['nodes'][number]; graph: GraphData } | null {
     const node = graph.nodes.find(node => node.id === nodeId)
     if (node) return { node, graph }
@@ -304,9 +303,9 @@ function findNodeInGraphOrChildGraphs(
     // 递归搜索子图（抽象节点的 childGraphId）
     for (const maybeAbstract of graph.nodes) {
         if (maybeAbstract.role === 'knowledge' && maybeAbstract.form === 'abstract' && maybeAbstract.childGraphId) {
-            const childGraph = getGraph(registry, maybeAbstract.childGraphId)
+            const childGraph = lookupGraph(maybeAbstract.childGraphId)
             if (childGraph) {
-                const found = findNodeInGraphOrChildGraphs(nodeId, childGraph, registry)
+                const found = findNodeInGraphOrChildGraphs(nodeId, childGraph, lookupGraph)
                 if (found) return found
             }
         }

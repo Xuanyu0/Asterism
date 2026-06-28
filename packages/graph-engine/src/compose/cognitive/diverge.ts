@@ -30,8 +30,8 @@
  *     // result.operations.peer     → applyBatch(peerGraph, result.operations.peer)
  */
 
-import type { EdgeData, GraphData, NodeId, NodePosition } from '../../types/graph_data'
-import type { GraphRegistry, NodeRadiusMap } from '../../types/infrastructure_types'
+import type { EdgeData, GraphData, GraphId, NodeId, NodePosition } from '../../types/graph_data'
+import type { GraphLookup, NodeRadiusMap } from '../../types/infrastructure_types'
 import type { ComposeIssue, DraftPosition } from '../types'
 import type { GraphOperation } from '../../types/atomic_operations'
 import { generateNodeId, generateEdgeId } from '../../core/id'
@@ -63,8 +63,11 @@ export interface DivergeParams {
     /** 用户点击空白处的位置。null = 两节点都在当前图。 */
     heuristicPosition: NodePosition | null
 
-    /** 多图注册表。 */
-    registry: GraphRegistry
+    /** 跨图查询函数。给定 graphId 返回对应 GraphData 或 undefined。 */
+    lookupGraph: GraphLookup
+
+    /** 已注册图谱的全部 ID 列表，用于跨图查找节点所属图。 */
+    graphIds: GraphId[]
 }
 
 /**
@@ -107,7 +110,7 @@ export function diverge(params: DivergeParams): {
     drafts: DraftHeuristicPosition[]
     issues: ComposeIssue[]
 } {
-    const { sourceNodeId, targetNodeId, currentGraph, heuristicPosition, registry } = params
+    const { sourceNodeId, targetNodeId, currentGraph, heuristicPosition, lookupGraph, graphIds } = params
     const issues: ComposeIssue[] = []
 
     const sourceInCurrent = currentGraph.nodes.some(node => node.id === sourceNodeId)
@@ -192,8 +195,8 @@ export function diverge(params: DivergeParams): {
         return { operations: { current: [], peer: [] }, drafts: [], issues }
     }
 
-    // 查找对端图中的缺失节点（源知识节点）
-    const peerGraph = findPeerGraph(registry, sourceNodeId, targetNodeId, currentGraph.id, missingNodeId)
+    // 查找哪个已注册图包含 source 或 target 节点
+    const peerGraph = findPeerGraph(graphIds, lookupGraph, sourceNodeId, targetNodeId, currentGraph.id)
 
     if (!peerGraph) {
         issues.push({
@@ -322,20 +325,24 @@ export function diverge(params: DivergeParams): {
 /**
  * 功能：
  *
- *     在 registry 中查找缺失节点所在的图。
+ *     在已注册图中查找缺失节点所在的图。
  *
- *     遍历 registry 中除 currentGraphId 之外的所有图，
+ *     遍历 graphIds 中除 currentGraphId 之外的所有图，通过 lookupGraph 获取 GraphData，
  *     返回第一个包含 missingNodeId 的图及其 GraphData。
  */
 function findPeerGraph(
-    registry: GraphRegistry,
+    graphIds: GraphId[],
+    lookupGraph: GraphLookup,
     sourceNodeId: NodeId,
     targetNodeId: NodeId,
     currentGraphId: string,
-    missingNodeId: NodeId,
 ): { graph: GraphData } | null {
-    for (const [graphId, graph] of registry) {
+    for (const graphId of graphIds) {
         if (graphId === currentGraphId) continue
+
+        const graph = lookupGraph(graphId)
+
+        if (!graph) continue
 
         // 查找知识节点（源节点或目标节点在哪个图里）
         if (graph.nodes.some(node => node.id === sourceNodeId || node.id === targetNodeId)) {

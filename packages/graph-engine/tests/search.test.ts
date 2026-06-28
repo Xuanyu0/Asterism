@@ -6,8 +6,8 @@
 
 import { describe, it, expect } from 'vitest'
 import { searchNodes } from '../src/infrastructure/search'
-import { createRegistry, registerGraph } from '../src/infrastructure/graph_registry'
-import type { GraphData, NodeData, GraphRegistry } from '../src/types/graph_data'
+import type { GraphData, GraphId, NodeData } from '../src/types/graph_data'
+import type { GraphLookup } from '../src/types/infrastructure_types'
 
 // helpers
 
@@ -48,76 +48,86 @@ function refNode(id: string, label: string, sourceGraphId: string, sourceNodeId:
     }
 }
 
+/** 构造 lookupGraph + graphIds 辅助。 */
+function makeLookup(graphs: GraphData[]): { graphIds: GraphId[]; lookupGraph: GraphLookup } {
+    const map = new Map<GraphId, GraphData>()
+    for (const g of graphs) {
+        map.set(g.id as GraphId, g)
+    }
+    return {
+        graphIds: Array.from(map.keys()),
+        lookupGraph: (id: GraphId) => map.get(id),
+    }
+}
+
 // ═══════════ searchNodes ═══════════
 
 describe('searchNodes', () => {
     it('returns empty array for empty query', () => {
-        const registry = createRegistry()
+        const { graphIds, lookupGraph } = makeLookup([])
 
-        const results = searchNodes('', registry)
+        const results = searchNodes('', graphIds, lookupGraph)
 
         expect(results).toEqual([])
     })
 
     it('matches nodes by label substring', () => {
-        const registry = createRegistry()
         const g = graph('g1', 'Test Graph', [
             kn('n1', '递归'),
             kn('n2', '迭代'),
             kn('n3', '尾递归优化'),
         ])
-        registerGraph(registry, g)
+        const { graphIds, lookupGraph } = makeLookup([g])
 
-        const results = searchNodes('递归', registry)
+        const results = searchNodes('递归', graphIds, lookupGraph)
 
         expect(results).toHaveLength(2)
         expect(results.map(r => r.nodeId)).toEqual(['n1', 'n3'])
     })
 
     it('returns empty array when no match', () => {
-        const registry = createRegistry()
+        const { graphIds, lookupGraph } = makeLookup([graph('g1', 'G', [kn('n1', '递归')])])
 
-        registerGraph(registry, graph('g1', 'G', [kn('n1', '递归')]))
-        const results = searchNodes('不存在', registry)
+        const results = searchNodes('不存在', graphIds, lookupGraph)
 
         expect(results).toEqual([])
     })
 
     it('searches single graph when graphId provided', () => {
-        const registry = createRegistry()
+        const g1 = graph('g1', '图一', [kn('n1', '递归')])
+        const g2 = graph('g2', '图二', [kn('n2', '递归函数')])
+        const { graphIds, lookupGraph } = makeLookup([g1, g2])
 
-        registerGraph(registry, graph('g1', '图一', [kn('n1', '递归')]))
-        registerGraph(registry, graph('g2', '图二', [kn('n2', '递归函数')]))
-        const results = searchNodes('递归', registry, 'g1')
+        const results = searchNodes('递归', graphIds, lookupGraph, 'g1' as GraphId)
 
         expect(results).toHaveLength(1)
         expect(results[0]!.graphId).toBe('g1')
     })
 
-    it('searches all graphs when graphId omitted', () => {
-        const registry = createRegistry()
+    it('searches all graphs when all graphIds provided', () => {
+        const g1 = graph('g1', '图一', [kn('n1', '递归')])
+        const g2 = graph('g2', '图二', [kn('n2', '递归函数')])
+        const { graphIds, lookupGraph } = makeLookup([g1, g2])
 
-        registerGraph(registry, graph('g1', '图一', [kn('n1', '递归')]))
-        registerGraph(registry, graph('g2', '图二', [kn('n2', '递归函数')]))
-        const results = searchNodes('递归', registry)
+        const results = searchNodes('递归', graphIds, lookupGraph)
 
         expect(results).toHaveLength(2)
     })
 
     it('returns empty for nonexistent graphId', () => {
-        const results = searchNodes('递归', createRegistry(), 'missing')
+        const { graphIds, lookupGraph } = makeLookup([])
+        const results = searchNodes('递归', graphIds, lookupGraph, 'missing' as GraphId)
         expect(results).toEqual([])
     })
 
     it('matches reference nodes as well', () => {
-        const registry = createRegistry()
         const g = graph('g1', 'G', [
             kn('n1', '递归'),
             refNode('r1', '递归投影', 'g0', 'x'),
         ])
-        registerGraph(registry, g)
+        const { graphIds, lookupGraph } = makeLookup([g])
 
-        const results = searchNodes('递归', registry)
+        const results = searchNodes('递归', graphIds, lookupGraph)
 
         expect(results).toHaveLength(2)
     })
@@ -127,17 +137,12 @@ describe('searchNodes', () => {
 
 describe('graphPath in search results', () => {
     it('builds root-to-leaf path for nested graphs', () => {
-        const registry = createRegistry()
-
         const g0 = graph('root', '根图', [kn('n0', '根节点')])
         const g1 = graph('child', '子图', [kn('n1', '递归')], 'root')
         const g2 = graph('grandchild', '孙图', [kn('n2', '递归')], 'child')
+        const { graphIds, lookupGraph } = makeLookup([g0, g1, g2])
 
-        registerGraph(registry, g0)
-        registerGraph(registry, g1)
-        registerGraph(registry, g2)
-
-        const results = searchNodes('递归', registry)
+        const results = searchNodes('递归', graphIds, lookupGraph)
 
         for (const r of results) {
             expect(r.graphPath[0]).toBe('root')
@@ -146,10 +151,9 @@ describe('graphPath in search results', () => {
     })
 
     it('single root graph has path of length 1', () => {
-        const registry = createRegistry()
+        const { graphIds, lookupGraph } = makeLookup([graph('root', '根图', [kn('n1', '递归')])])
 
-        registerGraph(registry, graph('root', '根图', [kn('n1', '递归')]))
-        const results = searchNodes('递归', registry)
+        const results = searchNodes('递归', graphIds, lookupGraph)
 
         expect(results).toHaveLength(1)
         expect(results[0]!.graphPath).toEqual(['root'])

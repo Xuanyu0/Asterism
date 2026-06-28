@@ -139,7 +139,7 @@ export function deleteGraph(graphId: GraphId): void {
  *     const ids = listSavedGraphIds()
  *     for (const id of ids) {
  *         const graph = loadGraph(id)
- *         registerGraph(registry, graph)
+ *         registerGraph(graphRegistry, graph)
  *     }
  */
 export function listSavedGraphIds(): GraphId[] {

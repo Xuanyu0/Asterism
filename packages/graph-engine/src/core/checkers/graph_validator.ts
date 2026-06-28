@@ -103,7 +103,7 @@ export function validateGraph(graph: GraphData): ValidationResult {
  * 规则：
  *     每个引用节点必须指向存在的源图/源节点。
  *     当前单图上下文暂不执行多图检查，仅检测同图内的引用一致性。
- *     跨图引用一致性标记为 Phase 3 启用（需 GraphRegistry 参与）。
+ *     跨图引用一致性标记为 Phase 3 启用（需跨图查询能力参与）。
  */
 function validateReferenceNodeConsistency(graph: GraphData): ValidationIssue[] {
     const issues: ValidationIssue[] = []
@@ -122,7 +122,7 @@ function validateReferenceNodeConsistency(graph: GraphData): ValidationIssue[] {
                 targetId: refNode.id,
             })
         }
-        // 跨图引用一致性暂不检测，Phase 3 启用（需要 GraphRegistry）
+        // 跨图引用一致性暂不检测，Phase 3 启用（需要跨图查询能力）
     }
 
     return issues

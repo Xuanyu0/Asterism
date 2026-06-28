@@ -32,7 +32,7 @@ import { pushUndoSnapshot, shouldPushUndoSnapshot } from '@/graph/graph_store'
 import { saveGraph, loadGraph, deleteGraph } from '@/graph/utilities/graph_persistence'
 
 import { useGraphStore } from '@/graph/graph_store'
-import type { GraphRegistry } from '@my-project/graph-engine'
+import type { GraphRegistry } from '@/graph/utilities/graph_registry'
 
 import {
     createGoldenTestGraph,

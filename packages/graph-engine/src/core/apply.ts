@@ -14,7 +14,6 @@
  */
 
 import type { GraphData } from '../types/graph_data'
-import type { GraphRegistry } from '../types/infrastructure_types'
 import type { GraphOperation } from '../types/atomic_operations'
 import type { ValidationResult } from '../types/validation'
 import { validateOperation } from './validate'
@@ -23,7 +22,6 @@ import { executeOperation } from './execute'
 export function applyOperation(
     graph: GraphData,
     operation: GraphOperation,
-    registry?: GraphRegistry,
 ): { graph: GraphData; validation: ValidationResult } {
     const validation = validateOperation(graph, operation)
 
@@ -31,7 +29,7 @@ export function applyOperation(
         return { graph, validation }
     }
 
-    const newGraph = executeOperation(graph, operation, registry)
+    const newGraph = executeOperation(graph, operation)
 
     return { graph: newGraph, validation }
 }

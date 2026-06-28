@@ -39,7 +39,6 @@
  */
 
 import type { GraphData } from '../types/graph_data'
-import type { GraphRegistry } from '../types/infrastructure_types'
 import type { GraphOperation } from '../types/atomic_operations'
 import type { ValidationResult } from '../types/validation'
 import { validateOperation } from '../core/validate'
@@ -120,24 +119,10 @@ export interface BatchResult {
 export function applyBatch(
     graph: GraphData,
     ops: GraphOperation[],
-    optionsOrRegistry?: BatchOptions | GraphRegistry,
     options?: BatchOptions,
 ): BatchResult {
-    // registry 可通过第三个参数传入（applyBatch(graph, ops, registry)），
-    // 也可通过第四个参数传入（applyBatch(graph, ops, registry, options)），
-    // 或省略（纯单图场景）
-    let registry: GraphRegistry | undefined
-    let batchOptions: BatchOptions | undefined
-
-    if (optionsOrRegistry instanceof Map) {
-        registry = optionsOrRegistry
-        batchOptions = options
-    } else {
-        batchOptions = optionsOrRegistry
-    }
-
-    const dryRun = batchOptions?.dryRun ?? false
-    const stopOnFirst = batchOptions?.stopOnFirst ?? false
+    const dryRun = options?.dryRun ?? false
+    const stopOnFirst = options?.stopOnFirst ?? false
 
     // Phase 1 — 逐条 validate
     const results: PerOpResult[] = []
@@ -175,7 +160,7 @@ export function applyBatch(
     let currentGraph = graph
 
     for (const op of ops) {
-        currentGraph = executeOperation(currentGraph, op, registry)
+        currentGraph = executeOperation(currentGraph, op)
     }
 
     return {

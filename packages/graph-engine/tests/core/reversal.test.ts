@@ -9,7 +9,6 @@ import { describe, it, expect } from 'vitest'
 import type { GraphData, GraphId, NodeId } from '../../src/types/graph_data'
 import { createReversal } from '../../src/core/reversal'
 import { executeOperation } from '../../src/core/execute'
-import { createRegistry, registerGraph } from '../../src/infrastructure/graph_registry'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
 
 const G = 'test-rev' as GraphId
@@ -27,12 +26,12 @@ function makeGraph(nodes = 2, edges = 0): GraphData {
 }
 
 // 回放逆操作后状态应与操作前一致
-function assertReversalRoundTrip(graph: GraphData, op: Parameters<typeof executeOperation>[1], registry = createRegistry()): void {
+function assertReversalRoundTrip(graph: GraphData, op: Parameters<typeof executeOperation>[1]): void {
     const reversals = createReversal(graph, op)
-    const after = executeOperation(graph, op, registry)
+    const after = executeOperation(graph, op)
     let reverted = after
     for (const rev of reversals) {
-        reverted = executeOperation(reverted, rev, registry)
+        reverted = executeOperation(reverted, rev)
     }
     // degree/edges 恢复
     expect(reverted.nodes.length).toBe(graph.nodes.length)
@@ -98,9 +97,8 @@ describe('createReversal move_node', () => {
 })
 
 describe('createReversal add_graph', () => {
-    it('逆操作 delete_graph 从 registry 移除', () => {
+    it('逆操作 delete_graph', () => {
         const graph = makeGraph(2)
-        const registry = createRegistry()
         const child = assembleGraph({ id: 'child-rev' as GraphId, nodes: [], edges: [], kind: 'subgraph' })
         const op = { type: 'add_graph' as const, graph: child }
         const revs = createReversal(graph, op)

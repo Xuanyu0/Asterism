@@ -7,7 +7,6 @@
 import { describe, it, expect } from 'vitest'
 import type { GraphData, GraphId, NodeId } from '../../src/types/graph_data'
 import { applyBatch } from '../../src/compose/pipeline'
-import { createRegistry } from '../../src/infrastructure/graph_registry'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
 
 const G = 'test-pl' as GraphId
@@ -62,15 +61,15 @@ describe('applyBatch', () => {
         expect(result.results.length).toBe(1) // 第一个失败后停
     })
 
-    it('add_graph 经 registry 执行', () => {
+    it('add_graph 校验通过并返回原图不变', () => {
         const graph = makeBase()
-        const registry = createRegistry()
         const child = assembleGraph({ id: 'child-pl' as GraphId, nodes: [], edges: [], kind: 'subgraph' })
         const ops = [
             { type: 'add_graph' as const, graph: child },
         ]
-        const result = applyBatch(graph, ops, registry)
+        const result = applyBatch(graph, ops)
         expect(result.validation.valid).toBe(true)
-        expect(registry.has('child-pl' as GraphId)).toBe(true)
+        // 当前图不变——add_graph 只声明子图的存在，registry 写操作由 Runtime 处理
+        expect(result.graph).toBe(graph)
     })
 })

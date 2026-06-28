@@ -6,7 +6,7 @@
  *     这些类型不参与 GraphData 持久化——它们是运行时索引、查询结果、渲染辅助。
  *
  * 总体结构：
- *     1. GraphRegistry  — 多图运行时索引
+ *     1. GraphLookup    — 跨图查询函数类型
  *     2. SearchResult   — 跨图节点搜索结果
  *     3. NodeRadiusMap  — 碰撞检测半径特例覆盖
  *
@@ -15,13 +15,18 @@
  *     2. 与 graph_data.ts 分离——graph_data.ts 只包含可持久化的图结构类型。
  *
  * 外部如何使用：
- *     import type { GraphRegistry, SearchResult, NodeRadiusMap } from '@my-project/graph-engine'
+ *     import type { GraphLookup, SearchResult, NodeRadiusMap } from '@my-project/graph-engine'
  */
 
 import type { GraphData, GraphId, NodeId, NodeData } from './graph_data'
 
-/** 多图上下文。Map<GraphId, GraphData> 的类型别名。 */
-export type GraphRegistry = Map<GraphId, GraphData>
+/**
+ * 跨图查询函数。
+ *
+ * 给定 graphId，返回对应 GraphData；若 graphId 未注册则返回 undefined。
+ * 引擎侧统一使用此函数类型做跨图只读查询，不依赖具体 Map 实现。
+ */
+export type GraphLookup = (graphId: GraphId) => GraphData | undefined
 
 /** 跨图节点搜索结果。 */
 export interface SearchResult {

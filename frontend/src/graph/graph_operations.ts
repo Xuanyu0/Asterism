@@ -130,7 +130,7 @@ export function useGraphOperations() {
             return
         }
 
-        const batchResult = applyBatch(graphStore.currentGraph, result.operations, graphStore.registry)
+        const batchResult = applyBatch(graphStore.currentGraph, result.operations)
         uiStore.lastOperationValidation = batchResult.validation
 
         if (batchResult.validation.valid) {
@@ -169,7 +169,7 @@ export function useGraphOperations() {
         const result = composeInduce({
             nodeIds,
             parentGraph: graphStore.currentGraph,
-            registry: graphStore.registry,
+            lookupGraph: graphStore.makeLookup(),
             nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.currentGraph),
             allEdges: graphStore.currentGraph.edges,
         })
@@ -189,7 +189,7 @@ export function useGraphOperations() {
         }
 
         if (result.operations.parent.length > 0) {
-            const parentBatch = applyBatch(graphStore.currentGraph, result.operations.parent, graphStore.registry)
+            const parentBatch = applyBatch(graphStore.currentGraph, result.operations.parent)
             uiStore.lastOperationValidation = parentBatch.validation
 
             if (!parentBatch.validation.valid) {
@@ -203,7 +203,7 @@ export function useGraphOperations() {
             const { childGraphData } = result as { childGraphData?: GraphData }
 
             if (childGraphData) {
-                const childBatch = applyBatch(childGraphData, result.operations.child, graphStore.registry)
+                const childBatch = applyBatch(childGraphData, result.operations.child)
 
                 if (childBatch.validation.valid) {
                     graphStore.registerNewGraph(childBatch.graph)
@@ -232,7 +232,7 @@ export function useGraphOperations() {
             return
         }
 
-        const commonLayer = findCommonLayer(graphStore.registry)
+        const commonLayer = findCommonLayer(graphStore.graphRegistry)
 
         if (!commonLayer) {
             uiStore.lastOperationValidation = {
@@ -252,7 +252,7 @@ export function useGraphOperations() {
             nodeIds,
             parentGraph: graphStore.currentGraph,
             commonLayer,
-            registry: graphStore.registry,
+            lookupGraph: graphStore.makeLookup(),
             nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.currentGraph),
         })
 
@@ -271,7 +271,7 @@ export function useGraphOperations() {
         }
 
         if (result.operations.parent.length > 0) {
-            const parentBatch = applyBatch(graphStore.currentGraph, result.operations.parent, graphStore.registry)
+            const parentBatch = applyBatch(graphStore.currentGraph, result.operations.parent)
 
             if (!parentBatch.validation.valid) {
                 uiStore.lastOperationValidation = parentBatch.validation
@@ -283,7 +283,7 @@ export function useGraphOperations() {
         }
 
         if (result.operations.commonLayer.length > 0) {
-            const clBatch = applyBatch(commonLayer, result.operations.commonLayer, graphStore.registry)
+            const clBatch = applyBatch(commonLayer, result.operations.commonLayer)
 
             if (clBatch.validation.valid) {
                 graphStore.registerNewGraph(clBatch.graph)
@@ -319,7 +319,8 @@ export function useGraphOperations() {
             targetNodeId,
             currentGraph: graphStore.currentGraph,
             heuristicPosition,
-            registry: graphStore.registry,
+            lookupGraph: graphStore.makeLookup(),
+            graphIds: Array.from(graphStore.graphRegistry.keys()),
         })
 
         if (result.issues.some(issue => issue.severity === 'error')) {
@@ -337,7 +338,7 @@ export function useGraphOperations() {
         }
 
         if (result.operations.current.length > 0) {
-            const currentBatch = applyBatch(graphStore.currentGraph, result.operations.current, graphStore.registry)
+            const currentBatch = applyBatch(graphStore.currentGraph, result.operations.current)
             uiStore.lastOperationValidation = currentBatch.validation
 
             if (!currentBatch.validation.valid) {
@@ -354,7 +355,7 @@ export function useGraphOperations() {
                     const peerGraph = graphStore.getGraphById(draft.graphId)
 
                     if (peerGraph) {
-                        const peerBatch = applyBatch(peerGraph, result.operations.peer, graphStore.registry)
+                        const peerBatch = applyBatch(peerGraph, result.operations.peer)
 
                         if (peerBatch.validation.valid) {
                             graphStore.registerNewGraph(peerBatch.graph)
@@ -372,8 +373,8 @@ export function useGraphOperations() {
      *
      *     在 Registry 中查找常识层图。
      */
-    function findCommonLayer(registry: import('@my-project/graph-engine').GraphRegistry): GraphData | undefined {
-        for (const [, graph] of registry) {
+    function findCommonLayer(graphRegistry: import('@/graph/utilities/graph_registry').GraphRegistry): GraphData | undefined {
+        for (const [, graph] of graphRegistry) {
             if (graph.kind === 'commonLayer') {
                 return graph
             }
@@ -422,7 +423,7 @@ export function useGraphOperations() {
             return
         }
 
-        const batchResult = applyBatch(graphStore.currentGraph, result.operations, graphStore.registry)
+        const batchResult = applyBatch(graphStore.currentGraph, result.operations)
         uiStore.lastOperationValidation = batchResult.validation
 
         if (batchResult.validation.valid) {

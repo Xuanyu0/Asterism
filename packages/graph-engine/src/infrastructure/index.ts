@@ -5,15 +5,6 @@
  *     infrastructure 层统一出口。被 engine/src/index.ts re-export。
  */
 
-export {
-    createRegistry,
-    registerGraph,
-    getGraph,
-    hasGraph,
-    unregisterGraph,
-    listGraphs,
-} from './graph_registry'
-
 export { searchNodes } from './search'
 
 export { hasCollisionAt, hasCollisionInDrafts } from './collision'

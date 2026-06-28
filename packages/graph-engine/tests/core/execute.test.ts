@@ -7,9 +7,8 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import type { GraphData, GraphId, NodeId, GraphRegistry } from '../../src/types/graph_data'
+import type { GraphData, GraphId, NodeId } from '../../src/types/graph_data'
 import { executeOperation } from '../../src/core/execute'
-import { createRegistry, registerGraph } from '../../src/infrastructure/graph_registry'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
 
 const G = 'test-exec' as GraphId
@@ -142,22 +141,18 @@ describe('execute collapse / expand', () => {
 })
 
 describe('execute add_graph / delete_graph', () => {
-    it('add_graph 写 registry', () => {
+    it('add_graph 落到 default 分支，返回原图不变', () => {
         const graph = makeGraph(2)
-        const registry = createRegistry()
-        const _ = executeOperation(graph, {
+        const result = executeOperation(graph, {
             type: 'add_graph',
             graph: assembleGraph({ id: 'child-1' as GraphId, nodes: [], edges: [], kind: 'subgraph' }),
-        }, registry)
-        expect(registry.has('child-1' as GraphId)).toBe(true)
+        })
+        expect(result).toBe(graph)
     })
 
-    it('delete_graph 从 registry 移除', () => {
-        const registry: GraphRegistry = createRegistry()
-        const child = assembleGraph({ id: 'child-1' as GraphId, nodes: [], edges: [], kind: 'subgraph' })
-        registerGraph(registry, child)
+    it('delete_graph 落到 default 分支，返回原图不变', () => {
         const graph = makeGraph(2)
-        executeOperation(graph, { type: 'delete_graph', graphId: 'child-1' as GraphId }, registry)
-        expect(registry.has('child-1' as GraphId)).toBe(false)
+        const result = executeOperation(graph, { type: 'delete_graph', graphId: 'child-1' as GraphId })
+        expect(result).toBe(graph)
     })
 })

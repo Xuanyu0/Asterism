@@ -29,10 +29,12 @@
 
 import { defineStore } from 'pinia'
 
-import type { EdgeId, GraphData, GraphId, GraphRegistry, NodeId } from '@my-project/graph-engine'
+import type { EdgeId, GraphData, GraphId, GraphLookup, NodeId } from '@my-project/graph-engine'
 import type { GraphOperation } from '@my-project/graph-engine'
-import { createRegistry, registerGraph, unregisterGraph, getGraph, hasGraph } from '@my-project/graph-engine'
 import type { ValidationResult } from '@my-project/graph-engine'
+
+import type { GraphRegistry } from '@/graph/utilities/graph_registry'
+import { createRegistry, registerGraph, unregisterGraph, lookupGraph, hasGraph } from '@/graph/utilities/graph_registry'
 
 import { saveGraph, loadGraph, deleteGraph, listSavedGraphIds } from '@/graph/utilities/graph_persistence'
 import { normalizeGraph } from '@my-project/graph-engine'
@@ -128,7 +130,7 @@ export interface GraphStoreState {
     lastSaveTime: number | null
 
     /** 多图注册表，由 localStorage 中全部已保存 GraphData 重建的运行时索引。 */
-    registry: GraphRegistry
+    graphRegistry: GraphRegistry
 }
 
 /**
@@ -164,7 +166,7 @@ export const useGraphStore = defineStore('graph_store', {
         lastValidationResult: null,
         undoStack: [],
         lastSaveTime: null as number | null,
-        registry: createRegistry(),
+        graphRegistry: createRegistry(),
     }),
 
     actions: {
@@ -224,7 +226,7 @@ export const useGraphStore = defineStore('graph_store', {
             }
 
             saveGraph(this.currentGraph)
-            registerGraph(this.registry, this.currentGraph)
+            registerGraph(this.graphRegistry, this.currentGraph)
 
             this.lastSaveTime = Date.now()
         },
@@ -261,7 +263,7 @@ export const useGraphStore = defineStore('graph_store', {
             }
 
             this.setCurrentGraph(graph)
-            registerGraph(this.registry, graph)
+            registerGraph(this.graphRegistry, graph)
 
             return true
         },
@@ -283,7 +285,7 @@ export const useGraphStore = defineStore('graph_store', {
          */
         deleteSavedGraph(graphId: GraphId): void {
             deleteGraph(graphId)
-            unregisterGraph(this.registry, graphId)
+            unregisterGraph(this.graphRegistry, graphId)
         },
 
         /**
@@ -375,18 +377,18 @@ export const useGraphStore = defineStore('graph_store', {
             const savedIds = listSavedGraphIds()
 
             for (const graphId of savedIds) {
-                if (hasGraph(this.registry, graphId)) continue
+                if (hasGraph(this.graphRegistry, graphId)) continue
 
                 const graph = loadGraph(graphId)
 
                 if (graph) {
-                    registerGraph(this.registry, graph)
+                    registerGraph(this.graphRegistry, graph)
                 }
             }
 
             // 当前已加载的图可能尚未持久化（例如 mock 数据），也注册进去
-            if (this.currentGraph && !hasGraph(this.registry, this.currentGraph.id)) {
-                registerGraph(this.registry, this.currentGraph)
+            if (this.currentGraph && !hasGraph(this.graphRegistry, this.currentGraph.id)) {
+                registerGraph(this.graphRegistry, this.currentGraph)
             }
         },
 
@@ -404,7 +406,26 @@ export const useGraphStore = defineStore('graph_store', {
          *     operation_controller（Cognition 模式）
          */
         getGraphById(graphId: GraphId): GraphData | undefined {
-            return getGraph(this.registry, graphId)
+            return lookupGraph(this.graphRegistry, graphId)
+        },
+
+        /**
+         * 功能：
+         *
+         *     创建供引擎 compose 层使用的跨图查询函数。
+         *
+         *     引擎各 compose 函数通过 GraphLookup 只读访问多图数据，
+         *     不依赖具体 Map 实现。本方法将 Runtime 持有的 graphRegistry
+         *     包装为 (graphId) → GraphData | undefined 的纯查询函数。
+         *
+         * 消费者：
+         *
+         *     graph_operations（induce / internalize / diverge 调用前构造 lookupGraph 参数）
+         */
+        makeLookup(): GraphLookup {
+            return (graphId: GraphId): GraphData | undefined => {
+                return this.graphRegistry.get(graphId)
+            }
         },
 
         /**
@@ -429,7 +450,7 @@ export const useGraphStore = defineStore('graph_store', {
          */
         registerNewGraph(graph: GraphData): void {
             saveGraph(graph)
-            registerGraph(this.registry, graph)
+            registerGraph(this.graphRegistry, graph)
         },
 
         /**
@@ -469,7 +490,7 @@ export const useGraphStore = defineStore('graph_store', {
                 return result
             }
 
-            const { graph, validation } = applyOperation(this.currentGraph, operation, this.registry)
+            const { graph, validation } = applyOperation(this.currentGraph, operation)
             this.lastValidationResult = validation
 
             if (!validation.valid) {

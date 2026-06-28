@@ -2,18 +2,16 @@
  * search.ts
  *
  * 功能：
- *     图节点搜索引擎。按 label 子串匹配节点，支持单图搜索和全注册表搜索。
+ *     图节点搜索引擎。按 label 子串匹配节点，支持全图搜索和单图搜索。
  *
  * 总体结构：
- *     1. searchNodes — 主入口，按 graphId? 参数分派搜索范围
- *     2. searchSingleGraph — 单图搜索
- *     3. searchAllGraphs — 遍历注册表全部图搜索
- *     4. buildGraphPath — parentGraphId 回溯构造根图到目标图的路径
+ *     1. searchNodes — 主入口，按 graphIds + 可选 graphId 分派搜索范围
+ *     2. buildGraphPath — parentGraphId 回溯构造根图到目标图的路径
  *
  * 规则：
  *     1. 匹配方式：node.label 子串包含 query（大小写敏感）。
- *     2. graphId 传入 → 只搜指定图。不传 → 搜注册表全部图。
- *     3. 结果含 graphPath 字段（根图 → 目标图的 GraphId 链）。
+ *     2. graphId 传入 → 只搜指定图。不传 → 遍历 graphIds 全部图。
+ *     3. 结果含 graphPath 字段（根图 → 目标图的 GraphId 链），通过 lookupGraph 回溯。
  *     4. 0 结果 → 返回 []，不报错。
  *     5. 查询串为空 → 返回 []。
  *
@@ -22,20 +20,20 @@
  */
 
 import type { GraphData, GraphId } from '../types/graph_data'
-import type { GraphRegistry, SearchResult } from '../types/infrastructure_types'
-import { getGraph } from './graph_registry'
+import type { GraphLookup, SearchResult } from '../types/infrastructure_types'
 
 /**
  * 功能：
  *     按 label 子串搜索节点。
  *
  * 使用：
- *     searchNodes("递归", registry)                     → 搜所有图
- *     searchNodes("递归", registry, "graph-1")          → 只搜 graph-1
+ *     searchNodes("递归", allGraphIds, lookupGraph)           → 搜全部已注册图
+ *     searchNodes("递归", allGraphIds, lookupGraph, "g1")     → 只搜 g1
  */
 export function searchNodes(
     query: string,
-    registry: GraphRegistry,
+    graphIds: GraphId[],
+    lookupGraph: GraphLookup,
     graphId?: GraphId,
 ): SearchResult[] {
     if (!query) {
@@ -43,22 +41,34 @@ export function searchNodes(
     }
 
     if (graphId !== undefined) {
-        const graph = getGraph(registry, graphId)
+        const graph = lookupGraph(graphId)
 
         if (!graph) {
             return []
         }
 
-        return searchSingleGraph(query, graph, registry)
+        return searchInGraph(query, graph, lookupGraph)
     }
 
-    return searchAllGraphs(query, registry)
+    const results: SearchResult[] = []
+
+    for (const id of graphIds) {
+        const graph = lookupGraph(id)
+
+        if (!graph) {
+            continue
+        }
+
+        results.push(...searchInGraph(query, graph, lookupGraph))
+    }
+
+    return results
 }
 
-function searchSingleGraph(
+function searchInGraph(
     query: string,
     graph: GraphData,
-    registry: GraphRegistry,
+    lookupGraph: GraphLookup,
 ): SearchResult[] {
     const results: SearchResult[] = []
 
@@ -68,7 +78,7 @@ function searchSingleGraph(
                 graphId: graph.id,
                 nodeId: node.id,
                 node,
-                graphPath: buildGraphPath(graph, registry),
+                graphPath: buildGraphPath(graph, lookupGraph),
             })
         }
     }
@@ -76,24 +86,20 @@ function searchSingleGraph(
     return results
 }
 
-function searchAllGraphs(query: string, registry: GraphRegistry): SearchResult[] {
-    const results: SearchResult[] = []
-
-    for (const graph of registry.values()) {
-        results.push(...searchSingleGraph(query, graph, registry))
-    }
-
-    return results
-}
-
-function buildGraphPath(graph: GraphData, registry: GraphRegistry): GraphId[] {
+function buildGraphPath(graph: GraphData, lookupGraph: GraphLookup): GraphId[] {
     const path: GraphId[] = [graph.id]
 
     // parentGraphId: undefined = 根图
     let currentGraph = graph
-    while (currentGraph.parentGraphId && registry.has(currentGraph.parentGraphId)) {
+    while (currentGraph.parentGraphId) {
+        const parent = lookupGraph(currentGraph.parentGraphId)
+
+        if (!parent) {
+            break
+        }
+
         path.unshift(currentGraph.parentGraphId)
-        currentGraph = registry.get(currentGraph.parentGraphId)!
+        currentGraph = parent
     }
 
     return path
