@@ -13,7 +13,45 @@
 
 ## 开发步骤
 
-### Step 0：架构调整 — GraphRegistry 归入 Runtime
+### Step -1：设计文档补完
+
+**背景**：CLAUDE.md 的文档层级继承规则（第六条）要求"开发文档中的技术决策必须溯源到设计文档的意图"。但当前代码中已存在一系列设计层面的概念（架构分层、操作类型系统、编排契约、操作日志模型、验证系统、逆转机制等），仅在 `开发文档/` 或代码中定义，在 `设计/` 下没有对应来源。
+
+**目标**：扫描代码与开发文档中已有的设计层面概念，将 `docs/设计/` 下缺失的内容补完。
+
+**原则**：
+
+- 只补充**已存在于代码或开发文档中**的概念——不创造新设计
+- 只补充**设计层面**的内容（架构、语义、契约）——不搬运实现细节
+- 写入位置遵循既有分类逻辑（核心定义进 `01-核心定义.md`，交互模式进 `02-交互设计.md` 等）
+- 语言风格与既有设计文档一致（`*` 列表、定义/规则/约束结构）
+
+**待补完内容**：
+
+| # | 概念 | 现有位置 | 补入文档 |
+|---|------|---------|---------|
+| 1 | GraphEngine 核心定义（纯函数契约、框架无关、职责边界） | `CLAUDE.md`、`开发指南.md` | `01-核心定义.md` |
+| 2 | 四层架构与单向数据流（UI 适配 → Runtime → Engine → Renderer） | `CLAUDE.md`、`开发指南.md` | `01-核心定义.md` |
+| 3 | 11 种原子操作类型系统（含 `add_graph`/`delete_graph`） | `atomic_operations.ts`、`开发指南.md` | `01-核心定义.md` |
+| 4 | 原子操作 vs 认知操作二层架构 | `开发指南.md`、`P2a步骤规划.md` | `01-核心定义.md` |
+| 5 | 编排层 ComposeResult 契约与 applyBatch 事务 | `compose/types.ts`、`pipeline.ts` | `01-核心定义.md` |
+| 6 | 操作日志树模型（两层、分支语义、State 标签） | `operation_log.ts`、`开发指南.md` | `01-核心定义.md` |
+| 7 | 逆转/逆操作系统（全覆盖、捕获前状态） | `reversal.ts`、`开发指南.md` | `01-核心定义.md` |
+| 8 | 验证系统（三级严重性、两范围、checker 架构） | `validation.ts`、`开发指南.md` | `01-核心定义.md` |
+| 9 | 多图生命周期与运行时注册表（GraphRegistry） | `graph_registry.ts`、`开发指南.md` | `01-核心定义.md` |
+| 10 | 渐进操作封闭性原理 | `开发指南.md` 设计原则 §15 | `01-核心定义.md` |
+| 11 | 发散操作的镜像补全 | `开发指南.md`、`diverge.ts` | `02-交互设计.md`（发散小节） |
+
+**不在本次补完范围内**（属于代码实现细节或已有高层提及）：
+- GraphData 字段级模式细节（`parentGraphId`、`ownerNodeId` 等）— 属于 `spec/` 或类型注释
+- 分层轨道间距模型 — 属于 placement 实现细节
+- 依赖遍历规则 — 属于 traversal 实现细节
+- 引用节点度数同步 — `01-核心定义.md` §引用节点已有高层声明
+- SPI/持久化适配器 — 当前仅 localStorage 一种实现，抽象层意义有限，待 Phase 3 引入 Supabase 后再补充
+
+---
+
+### Step 0：架构调整 — GraphRegistry 归入 Runtime ✅ 已完成
 
 **背景**：Phase 2a 将 `graph_registry.ts`（`Map<GraphId, GraphData>`）随 compose 层迁入引擎，但按核心定义：
 
@@ -27,7 +65,7 @@
 
 | # | 内容 | 注意事项 |
 |---|------|---------|
-| 0.1 | 确定迁移方案：引擎保留 `GraphRegistry` 类型引用（import type）还是完全移除 | 跨图搜索（diverge/induce）的 compose 层只读 registry——可以接受由 Runtime 注入的查找函数 `(graphId) → GraphData | undefined`，不依赖具体 Map 实现 |
+| 0.1 | 确定迁移方案：引擎的 `GraphRegistry` 类型引用（import type）完全移除 | 跨图搜索（diverge/induce）的 compose 层只读 registry——可以接受由 Runtime 注入的查找函数 `(graphId) → GraphData | undefined`，不依赖具体 Map 实现 |
 | 0.2 | 将 `graph_registry.ts` 从 `packages/graph-engine/src/infrastructure/` 迁至 `frontend/src/graph/utilities/` | 更新所有 import |
 | 0.3 | 移除 `execute.ts` 中 `executeAddGraph` / `executeDeleteGraph` 对 `registerGraph` / `unregisterGraph` 的调用 | `executeAddGraph` 只做校验和返回结果，不操作 registry。registry 写操作由 Runtime 在 `applyBatch` 返回后统一处理（已有 `graph_store.registerNewGraph` 可覆盖持久化 + registry） |
 | 0.4 | 更新 `graph_store.ts` 中 registry 相关逻辑，确认 `initRegistry`、`registerNewGraph`、`getGraphById` 等不受影响 | |
