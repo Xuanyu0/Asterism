@@ -124,19 +124,95 @@
 | 类别 | 架构含义 | 当前实现问题 |
 |------|---------|------------|
 | 硬性规则（TS 类型系统） | 编译时保证，无需运行时触发 | 部分 `!` non-null assertion 是程序员承诺而非类型保证 |
-| 自定义-全局规则（GraphData 元素不变量） | 默认所有修改 GraphData 的操作都执行 | 当前每个 `validateXxx` 手动 import checker，无统一 pre-filter 层 |
-| 自定义-局部-非内联规则（独立 checker 函数） | 需要灵活开关或泛用 | 硬编码在 `validate.ts` 编排中，无运行时启用/禁用机制 |
-| 自定义-局部-内联规则（写在功能代码中） | 不需要灵活开关 | 现状正常，保持 |
+| 自定义-全局规则（GraphData 元素不变量） | 在 `applyBatch` dry-run execute 后对 resultGraph 统一校验。不依赖操作路径，覆盖自动完整 | 散落在各 `validateXxx` 中手动 import + 手动构造模拟态。`validateHeuristicEdgeReference` 在 atomic 路径已遗漏 |
+| 自定义-局部-非内联规则（独立 checker 函数） | 作为操作前提条件留在 `applyBatch` Phase 1 的局部校验中 | 无单独开关机制，待 Phase 2b 按需引入 |
+| 自定义-局部-内联规则（写在功能代码中） | 不需要灵活开关。保持在 compose/ 的语义预检中 | 现状正常，保持 |
 
-**待决架构问题**：
+**架构决策：`applyBatch` 作为修改 GraphData 的唯一入口**
 
-> **Q-R1**：全局规则 pre-filter 层应该放在哪里？
->
-> **建议**：在 `apply.ts` 的 `applyOperation` 中新增公共前置校验步骤——任何操作执行前自动过全局规则列表，不通过则提前返回 error。这样各 `validateXxx` 不再需要手动 import 全局 checker，保证"一处定义，所有操作自动遵守"。
+- `applyBatch(pipeline.ts)` 是 GE 中修改 GraphData 的唯一入口。
+- `applyOperation(apply.ts)` 废弃——单步操作也包装为 `[op]` 走 `applyBatch`。
+- 统一入口前存在两条修改路径（`graph_store.applyOperation` + `graph_operations` 调 `applyBatch`），各自有自己的校验编排和 undo 处理，导致全局规则覆盖不一致、`graph_validator` 与操作流程割裂。
 
-> **Q-R2**：当前 `ComposeIssue`（compose/types.ts）和 `ValidationIssue`（types/validation.ts）两套问题类型语义等价但类型不统一——是否合并？
->
-> **建议**：合并为统一类型。两套类型都在表达"规则检查未通过"，分开只是历史原因。统一后 validate 层的错误和 compose 层的错误走同一条管道到用户屏幕。
+统一入口后的执行流程：
+
+```
+graph_store / graph_operations / 其他调用方
+  ↓ 统一调 applyBatch(ops)
+  │
+  ├─ Phase 1: validate 局部规则
+  │   └─ 只保留：ID重复、节点存在、位置有效、折叠条件等操作前提
+  │   └─ 全局 checker 调用从各 validateXxx 中移除
+  │
+  ├─ Phase 2: dry-run execute 全部 → 得到 resultGraph
+  │   └─ 注意：此结果图不会被持久化，仅用于校验
+  │   └─ 不需要手动构造模拟态（如 createGraphWithEdge）
+  │
+  ├─ Phase 3: 全局规则列表校验 resultGraph
+  │   └─ 统一 pass：validateNodeLabel / validateSelfLoop / validateRealDirectedCycle / ...
+  │   └─ 任一 error → 整批丢弃，返回 issues（resultGraph 丢弃）
+  │   └─ 全部通过 → 正式执行 + 记录 reversal
+  │
+  └─ 返回 resultGraph + validation
+```
+
+**需要改动的位置**：
+
+| 文件 | 改动 |
+|------|------|
+| `pipeline.ts` | 新增 Phase 3——dry-run execute 后跑全局规则列表；Phase 1 移除全局 checker |
+| `apply.ts` `applyOperation` | 废弃。保留但实现改为 `applyBatch([op])`，或直接删除 |
+| `validate.ts` 各 `validateXxx` | 只保留局部规则（ID重复、节点存在、位置有效、折叠条件等），移除全局 checker 调用 |
+| `rule_checkers.ts` | 统一签名改为 `(graph, op) => ValidationIssue[]`，内部按 `op.type` 决定是否跳过 |
+| `graph_validator.ts` | 复用同一份全局规则列表，不再与 applyBatch 的校验路径分裂 |
+| `graph_store.ts` | `applyOperation` 调用改为 `applyBatch([op])` |
+
+**消除了的债务**：
+- `applyOperation` / `applyBatch` / `graph_validator` 三条路径各自维护校验代码
+- `createGraphWithEdge` 等手动模拟态（与 execute 真实逻辑存在偏差风险）
+- 全局规则在 atomic 操作路径上的覆盖漏洞（如 `validateHeuristicEdgeReference` 在 add/update_edge 中遗漏）
+- 多条修改路径各自处理 undo snapshot，compose 操作无 reversal 记录
+
+**架构决策：`ComposeIssue` 与 `ValidationIssue` 的关系**
+
+两者不合并——校验的客体不同（操作语义 vs GraphData 不变量），但字段结构对齐。
+
+统一字段命名：`ValidationIssue.level` → `ValidationIssue.severity`，与 `ComposeIssue.severity` 一致。
+
+`ComposeIssue` 补齐 `code` 字段，字段顺序与 `ValidationIssue` 对齐：
+
+```ts
+// ValidationIssue（统一后）
+export interface ValidationIssue {
+    severity: ValidationLevel
+    code: string
+    message: string
+    targetType: ValidationTargetType
+    targetId?: string
+}
+
+// ComposeIssue（对齐后）
+export interface ComposeIssue {
+    severity: 'error' | 'warning'
+    code: string
+    message: string
+}
+```
+
+`ComposeIssue` 不包含 `targetType` / `targetId`——compose 层的预检错误是关于操作语义的（"沟通节点不能参与归纳"），不是关于 GraphData 元素的。
+
+**架构决策：`compose/types.ts` 迁入 `types/` 目录**
+
+`packages/graph-engine/src/compose/types.ts` 定义的是 compose 层共享类型（`DraftPosition`、`ComposeIssue`、`ComposeResult`），不包含 compose 逻辑。迁入 `packages/graph-engine/src/types/compose_types.ts`，使引擎的类型定义全部集中在 `types/` 下，与 `validation.ts`、`atomic_operations.ts` 等平行。
+
+改动影响：
+
+| 文件 | 改动 |
+|------|------|
+| `compose/types.ts` → `types/compose_types.ts` | 文件搬移，`'../types/xxx'` 改为 `'./xxx'` |
+| `compose/arrangement/*.ts` `compose/cognitive/*.ts` `compose/types.ts` | `'../types'` → `'../../types/compose_types'` |
+| `compose/index.ts` | `'./types'` → `'../types/compose_types'` |
+| `packages/graph-engine/src/index.ts` | 检查 compose 类型导出路径
 
 #### 1.2 交互架构设计与错误反馈机制
 
@@ -154,10 +230,12 @@
 规则校验结果必须通过一条完整的管道从 engine 到达用户屏幕，中间不能有断点：
 
 ```
-规则被执行（rule_checkers / compose 语义预检）
-    ↓ 输出统一类型 ValidationIssue[]
-引擎返回结果（apply / applyBatch / compose）
-    ↓ 携带 validation.issues
+规则被执行
+  ├─ 全局规则列表（applyBatch Phase 3）  → 产出 ValidationIssue[]
+  └─ compose 语义预检                    → 产出 ComposeIssue[]
+    ↓ 字段结构已对齐（severity/code/message）
+引擎返回结果（applyBatch）
+    ↓ 携带 issues
 graph_store / graph_operations 接收
     ↓ 存入 ui_store.lastOperationValidation
 Vue 组件读取
@@ -166,8 +244,7 @@ Vue 组件读取
 ```
 
 **当前缺陷**：
-- `ComposeIssue` 和 `ValidationIssue` 类型不统一，管道在 compose 层断裂
-- `graph_operations.ts` 中的编排操作（induce/internalize/...）返回的是 `ComposeIssue[]`，需要额外转换才能存入 `lastOperationValidation`
+- `graph_operations.ts` 中的编排操作（induce/internalize/...）返回的是 `ComposeIssue[]`，需要在接收端转换（`ComposeIssue` → `ValidationIssue` 或统一展示形态）才能存入 `lastOperationValidation`。字段对齐后转换成本已降低
 - 没有统一的"错误清除"时机规范
 
 **架构产出物**：
