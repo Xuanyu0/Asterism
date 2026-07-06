@@ -1,5 +1,5 @@
 /**
- * types.ts
+ * compose_types.ts
  *
  * 功能：
  *
@@ -21,8 +21,8 @@
  *     3. Draft 泛型——各编排模块可在 DraftPosition 基础上扩展（如 diverge 加 graphId）。
  */
 
-import type { NodeId, NodePosition } from '../types/graph_data'
-import type { GraphOperation } from '../types/atomic_operations'
+import type { NodeId, NodePosition } from './graph_data'
+import type { GraphOperation } from './atomic_operations'
 
 /**
  * 功能：
@@ -51,8 +51,9 @@ export interface DraftPosition {
  *     - 展示方式（toast / 内联文案）是 UI 层决策，引擎不参与。
  */
 export interface ComposeIssue {
-    message: string
     severity: 'error' | 'warning'
+    code: string
+    message: string
 }
 
 /**

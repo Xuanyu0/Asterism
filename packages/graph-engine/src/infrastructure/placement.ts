@@ -266,7 +266,7 @@ export function distributeOnTiers(
         const orbitRadius = (tier.tier + 1) * D0
 
         for (let i = 0; i < N; i++) {
-            const nodeId = tier.nodeIds[i]
+            const nodeId = tier.nodeIds[i]!
             const angle = N === 1 ? startAngle : startAngle + (2 * Math.PI * i) / N
 
             result.push({

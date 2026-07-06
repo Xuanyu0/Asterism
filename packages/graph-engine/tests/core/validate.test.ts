@@ -67,22 +67,24 @@ describe('validate add_edge', () => {
         expect(result.valid).toBe(false)
     })
 
-    it('自环', () => {
+    it('自环由 applyBatch 全局规则检出（validateOperation 只校验前提）', () => {
         const graph = makeGraph(2)
         const result = validateOperation(graph, {
             type: 'add_edge',
             edge: createEdge({ id: 'e-self' as NodeId, graphId: G, source: 'n0' as NodeId, target: 'n0' as NodeId, kind: 'real', direction: 'directed' }),
         })
-        expect(result.valid).toBe(false)
+        // validateOperation 不再检查自环——全局规则在 applyBatch Phase 3 统一执行
+        expect(result.valid).toBe(true)
     })
 
-    it('重边', () => {
+    it('重边由 applyBatch 全局规则检出（validateOperation 只校验前提）', () => {
         const graph = makeGraph(3, 1) // e0 已连接 n0→n1
         const result = validateOperation(graph, {
             type: 'add_edge',
             edge: createEdge({ id: 'e-dup' as NodeId, graphId: G, source: 'n0' as NodeId, target: 'n1' as NodeId, kind: 'real', direction: 'directed' }),
         })
-        expect(result.valid).toBe(false)
+        // validateOperation 不再检查重边——全局规则在 applyBatch Phase 3 统一执行
+        expect(result.valid).toBe(true)
     })
 })
 

@@ -33,8 +33,7 @@
 
 import type { NodeId, NodePosition, NodeData } from '../../types/graph_data'
 import type { NodeRadiusMap } from '../../types/infrastructure_types'
-import type { ComposeResult } from '../types'
-import type { DraftPosition } from '../types'
+import type { ComposeResult, DraftPosition } from '../../types/compose_types'
 import { hasCollisionAt } from '../../infrastructure/collision'
 
 /**
@@ -72,8 +71,9 @@ export function moveNode(params: {
 
     const issues = blocked
         ? [{
-            message: `节点 ${nodeId} 在目标位置与已有节点碰撞，无法放置。`,
             severity: 'error' as const,
+            code: 'MOVE_NODE_COLLISION',
+            message: `节点 ${nodeId} 在目标位置与已有节点碰撞，无法放置。`,
         }]
         : []
 

@@ -11,7 +11,7 @@
  *     2. selectedNodeId / selectedEdgeId  — 当前选中对象
  *     3. graphPath  — 当前图路径
  *     4. undoStack  — 全操作撤销栈（Step 12 将升级为 OperationLog）
- *     5. applyOperation  — 委托引擎 applyOperation 执行 validate + execute
+ *     5. applyBatch  — 委托引擎 applyBatch 执行 validate + execute
  *
  * 规则：
  *
@@ -24,7 +24,7 @@
  *     import { useGraphStore } from '@/graph/graph_store'
  *     const graphStore = useGraphStore()
  *     graphStore.setCurrentGraph(mockGraph)
- *     graphStore.applyOperation(operation)
+ *     graphStore.applyBatch([operation])
  */
 
 import { defineStore } from 'pinia'
@@ -38,7 +38,7 @@ import { createRegistry, registerGraph, unregisterGraph, lookupGraph, hasGraph }
 
 import { saveGraph, loadGraph, deleteGraph, listSavedGraphIds } from '@/graph/utilities/graph_persistence'
 import { normalizeGraph } from '@my-project/graph-engine'
-import { applyOperation } from '@my-project/graph-engine'
+import { applyBatch } from '@my-project/graph-engine'
 
 const MAX_UNDO_STACK_SIZE = 20
 
@@ -53,7 +53,7 @@ const MAX_UNDO_STACK_SIZE = 20
  *
  * 消费者：
  *
- *     applyOperation（undo snapshot）、test_evaluation_machine.ts
+ *     applyBatch（undo snapshot）、test_evaluation_machine.ts
  */
 export function shouldPushUndoSnapshot(operation: GraphOperation): boolean {
     switch (operation.type) {
@@ -83,7 +83,7 @@ export function shouldPushUndoSnapshot(operation: GraphOperation): boolean {
  *
  * 消费者：
  *
- *     applyOperation（undo snapshot）、test_evaluation_machine.ts
+ *     applyBatch（undo snapshot）、test_evaluation_machine.ts
  */
 export function pushUndoSnapshot(undoStack: GraphData[], graph: GraphData): GraphData[] {
     const snapshot: GraphData = JSON.parse(JSON.stringify(graph))
@@ -142,20 +142,20 @@ export interface GraphStoreState {
  * 总体结构：
  *
  *     1. state  — 当前图数据、选中状态、撤销栈
- *     2. actions  — 图操作入口（setCurrentGraph / applyOperation / saveCurrentGraph / undoDelete 等）
+ *     2. actions  — 图操作入口（setCurrentGraph / applyBatch / saveCurrentGraph / undoDelete 等）
  *
  * 规则：
  *
  *     1. Draft 数据与 Cytoscape Runtime 禁止进入本 Store。
  *     2. UI Runtime 必须通过 operation_controller 间接调用本 Store。
- *     3. 所有修改委托引擎 applyOperation 执行 validate + execute。
+ *     3. 所有修改委托引擎 applyBatch 执行 validate + execute。
  *
  * 使用：
  *
  *     import { useGraphStore } from '@/graph/graph_store'
  *     const graphStore = useGraphStore()
  *     graphStore.setCurrentGraph(graph)
- *     graphStore.applyOperation(operation)
+ *     graphStore.applyBatch([operation])
  */
 export const useGraphStore = defineStore('graph_store', {
     state: (): GraphStoreState => ({
@@ -461,7 +461,7 @@ export const useGraphStore = defineStore('graph_store', {
          * 规则：
          *
          *     1. 所有 GraphData 修改必须经过本函数。
-         *     2. 委托引擎 applyOperation 执行 validate + execute。
+         *     2. 委托引擎 applyBatch 执行 validate + execute。
          *     3. 校验通过后才允许修改 GraphData。
          *     4. 所有修改操作自动记录 Undo Snapshot。
          *
@@ -473,12 +473,12 @@ export const useGraphStore = defineStore('graph_store', {
          *
          *     operation_controller
          */
-        applyOperation(operation: GraphOperation): ValidationResult {
+        applyBatch(operations: GraphOperation[]): ValidationResult {
             if (!this.currentGraph) {
                 const result: ValidationResult = {
                     valid: false,
                     issues: [{
-                        level: 'error',
+                        severity: 'error',
                         code: 'CURRENT_GRAPH_NOT_FOUND',
                         message: '当前没有可操作的知识图谱。',
                         targetType: 'graph',
@@ -490,7 +490,7 @@ export const useGraphStore = defineStore('graph_store', {
                 return result
             }
 
-            const { graph, validation } = applyOperation(this.currentGraph, operation)
+            const { graph, validation } = applyBatch(this.currentGraph, operations)
             this.lastValidationResult = validation
 
             if (!validation.valid) {
@@ -498,7 +498,7 @@ export const useGraphStore = defineStore('graph_store', {
             }
 
             // 保存 Undo Snapshot（Step 12 将替换为 OperationLog 增量记录）
-            if (shouldPushUndoSnapshot(operation)) {
+            if (operations.some(shouldPushUndoSnapshot)) {
                 this.undoStack = pushUndoSnapshot(this.undoStack, this.currentGraph)
             }
 

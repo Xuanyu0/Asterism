@@ -2,7 +2,7 @@
 
 ## 总体方向
 
-1. **首要任务**：实现多主图谱切换（保存/加载/切换 UI），让用户能管理多个独立知识图谱。此功能对前端的实际使用体验最为关键。
+1. **首要任务**：实现多根图谱切换（保存/加载/切换 UI），让用户能管理多个独立知识图谱。此功能对前端的实际使用体验最为关键。
 2. **核心功能**：落实 Cognition（induce / internalize 多选 UI、diverge 跨图搜索）和 Arrangement（moveNode 拖拽、orbit / path 布局、adjust 连续调整）全部操作的前端端到端链路。
 3. **共依赖优先**：先开发 Cognition 和 Arrangement 共同依赖的基础能力（多选机制、交互模式框架），再分别实现各操作。
 4. **Undo / Redo 延后**，置于 Phase 2b 末尾。
@@ -71,11 +71,8 @@
 
 | # | 概念 | 现有位置 | 补入文档 |
 |---|------|---------|---------|
-| 1 | 四层架构与单向数据流（UI 适配 → Runtime → Engine → Renderer） | `CLAUDE.md`、`开发指南.md` | `01-核心定义.md` |
-| 2 | 11 种原子操作类型系统（含 `add_graph`/`delete_graph`） | `atomic_operations.ts`、`开发指南.md` | `01-核心定义.md` |
-| 3 | 操作日志树模型（两层、分支语义、State 标签） | `operation_log.ts`、`开发指南.md` | `01-核心定义.md` |
-| 4 | 逆转/逆操作系统（全覆盖、捕获前状态） | `reversal.ts`、`开发指南.md` | `01-核心定义.md` |
-| 5 | 渐进操作封闭性原理 | `开发指南.md` 设计原则 §15 | `01-核心定义.md` |
+| 1 | 操作日志树模型（两层、分支语义、State 标签） | `operation_log.ts`、`开发指南.md` | `01-核心定义.md` |
+| 2 | 逆转/逆操作系统（全覆盖、捕获前状态） | `reversal.ts`、`开发指南.md` | `01-核心定义.md` |
 
 ---
 
@@ -109,112 +106,71 @@
 
 ---
 
-### Step 1：交互模式架构设计与反馈规范
+### Step 1：规则系统架构定位与前端入口规划 ✅ 1.1 已完成
 
-**目标**：在写代码前，完成三件事——（1）确定规则系统在架构中的定位，（2）完成交互模式的代码架构设计与错误反馈机制设计，（3）明确所有操作的 UI 交互流程规范。
+**目标**：
+1. 确定规则系统在架构中的定位，完成引擎层规则校验路径统一（1.1）。
+2. 决策 `applyBatch` 在前端的统一入口是否完全落入 `graphStore`（1.2，待决策）。
+3. 完成交互模式代码架构设计与错误反馈机制设计（1.3）。
+4. 明确所有操作的 UI 交互流程规范（1.4）。
 
-#### 1.1 规则系统的架构定位
+#### 1.1 规则系统的架构定位 ✅ 已完成
 
-**依据**：`docs/设计/05-规则分类.md`。
+**已完成的核心改造**：
 
-**背景**：规则在项目中一直以分散形式存在（`rule_checkers.ts` 中的全局校验器、`validate.ts` 中的操作编排、`compose/` 中的语义预检），从未在架构层面被显式定位。实际上规则系统构成了项目的 Policy-based Design——操作是 Host，规则是注入的策略。
-
-**规则分类与架构含义**：
-
-| 类别 | 架构含义 | 当前实现问题 |
-|------|---------|------------|
-| 硬性规则（TS 类型系统） | 编译时保证，无需运行时触发 | 部分 `!` non-null assertion 是程序员承诺而非类型保证 |
-| 自定义-全局规则（GraphData 元素不变量） | 在 `applyBatch` dry-run execute 后对 resultGraph 统一校验。不依赖操作路径，覆盖自动完整 | 散落在各 `validateXxx` 中手动 import + 手动构造模拟态。`validateHeuristicEdgeReference` 在 atomic 路径已遗漏 |
-| 自定义-局部-非内联规则（独立 checker 函数） | 作为操作前提条件留在 `applyBatch` Phase 1 的局部校验中 | 无单独开关机制，待 Phase 2b 按需引入 |
-| 自定义-局部-内联规则（写在功能代码中） | 不需要灵活开关。保持在 compose/ 的语义预检中 | 现状正常，保持 |
-
-**架构决策：`applyBatch` 作为修改 GraphData 的唯一入口**
-
-- `applyBatch(pipeline.ts)` 是 GE 中修改 GraphData 的唯一入口。
-- `applyOperation(apply.ts)` 废弃——单步操作也包装为 `[op]` 走 `applyBatch`。
-- 统一入口前存在两条修改路径（`graph_store.applyOperation` + `graph_operations` 调 `applyBatch`），各自有自己的校验编排和 undo 处理，导致全局规则覆盖不一致、`graph_validator` 与操作流程割裂。
-
-统一入口后的执行流程：
-
-```
-graph_store / graph_operations / 其他调用方
-  ↓ 统一调 applyBatch(ops)
-  │
-  ├─ Phase 1: validate 局部规则
-  │   └─ 只保留：ID重复、节点存在、位置有效、折叠条件等操作前提
-  │   └─ 全局 checker 调用从各 validateXxx 中移除
-  │
-  ├─ Phase 2: dry-run execute 全部 → 得到 resultGraph
-  │   └─ 注意：此结果图不会被持久化，仅用于校验
-  │   └─ 不需要手动构造模拟态（如 createGraphWithEdge）
-  │
-  ├─ Phase 3: 全局规则列表校验 resultGraph
-  │   └─ 统一 pass：validateNodeLabel / validateSelfLoop / validateRealDirectedCycle / ...
-  │   └─ 任一 error → 整批丢弃，返回 issues（resultGraph 丢弃）
-  │   └─ 全部通过 → 正式执行 + 记录 reversal
-  │
-  └─ 返回 resultGraph + validation
-```
-
-**需要改动的位置**：
-
-| 文件 | 改动 |
+| 决策 | 实现 |
 |------|------|
-| `pipeline.ts` | 新增 Phase 3——dry-run execute 后跑全局规则列表；Phase 1 移除全局 checker |
-| `apply.ts` `applyOperation` | 废弃。保留但实现改为 `applyBatch([op])`，或直接删除 |
-| `validate.ts` 各 `validateXxx` | 只保留局部规则（ID重复、节点存在、位置有效、折叠条件等），移除全局 checker 调用 |
-| `rule_checkers.ts` | 统一签名改为 `(graph, op) => ValidationIssue[]`，内部按 `op.type` 决定是否跳过 |
-| `graph_validator.ts` | 复用同一份全局规则列表，不再与 applyBatch 的校验路径分裂 |
-| `graph_store.ts` | `applyOperation` 调用改为 `applyBatch([op])` |
+| `applyBatch` 作为唯一入口 | `pipeline.ts` 新增 Phase 3 全局规则校验；`applyOperation` 已彻底删除 |
+| 全局规则表 | 新建 `core/checkers/global_rules_table.ts`，所有全局规则签名统一为 `(graph) => ValidationIssue[]` |
+| 局部规则清理 | `validate.ts` 只保留操作前提条件校验（ID 重复、节点存在、位置有效、折叠条件） |
+| 全图体检复用 | `graph_validator.ts` 直接调用 `runGlobalRules(graph)` |
+| 类型字段对齐 | `ValidationIssue.level` → `severity`；`ComposeIssue` 补齐 `code` |
+| 类型文件迁移 | `compose/types.ts` → `types/compose_types.ts` |
 
-**消除了的债务**：
-- `applyOperation` / `applyBatch` / `graph_validator` 三条路径各自维护校验代码
-- `createGraphWithEdge` 等手动模拟态（与 execute 真实逻辑存在偏差风险）
-- 全局规则在 atomic 操作路径上的覆盖漏洞（如 `validateHeuristicEdgeReference` 在 add/update_edge 中遗漏）
-- 多条修改路径各自处理 undo snapshot，compose 操作无 reversal 记录
+**执行流程**：
 
-**架构决策：`ComposeIssue` 与 `ValidationIssue` 的关系**
-
-两者不合并——校验的客体不同（操作语义 vs GraphData 不变量），但字段结构对齐。
-
-统一字段命名：`ValidationIssue.level` → `ValidationIssue.severity`，与 `ComposeIssue.severity` 一致。
-
-`ComposeIssue` 补齐 `code` 字段，字段顺序与 `ValidationIssue` 对齐：
-
-```ts
-// ValidationIssue（统一后）
-export interface ValidationIssue {
-    severity: ValidationLevel
-    code: string
-    message: string
-    targetType: ValidationTargetType
-    targetId?: string
-}
-
-// ComposeIssue（对齐后）
-export interface ComposeIssue {
-    severity: 'error' | 'warning'
-    code: string
-    message: string
-}
+```
+调用方
+  ↓ applyBatch(ops)
+  ├─ Phase 1: 局部规则校验（操作前提）
+  ├─ Phase 2: dry-run execute → resultGraph
+  ├─ Phase 3: 全局规则校验 resultGraph
+  │   └─ 任一 error → 整批丢弃
+  │   └─ 全部通过 → 正式返回 resultGraph
+  └─ 返回 GraphData + validation
 ```
 
-`ComposeIssue` 不包含 `targetType` / `targetId`——compose 层的预检错误是关于操作语义的（"沟通节点不能参与归纳"），不是关于 GraphData 元素的。
+**全局规则开关**：`BatchOptions.globalRulesTable?: GlobalRulesTable`，默认 `DEFAULT_GLOBAL_RULES_TABLE` 全部开启，可单独关闭指定规则。
 
-**架构决策：`compose/types.ts` 迁入 `types/` 目录**
+#### 1.2 applyBatch 前端入口统一（待 Step 1.2 决策）
 
-`packages/graph-engine/src/compose/types.ts` 定义的是 compose 层共享类型（`DraftPosition`、`ComposeIssue`、`ComposeResult`），不包含 compose 逻辑。迁入 `packages/graph-engine/src/types/compose_types.ts`，使引擎的类型定义全部集中在 `types/` 下，与 `validation.ts`、`atomic_operations.ts` 等平行。
+**当前状态**：
 
-改动影响：
+Step 1.1 完成后，前端修改 GraphData 已全部通过引擎 `applyBatch`，但入口不统一：
 
-| 文件 | 改动 |
-|------|------|
-| `compose/types.ts` → `types/compose_types.ts` | 文件搬移，`'../types/xxx'` 改为 `'./xxx'` |
-| `compose/arrangement/*.ts` `compose/cognitive/*.ts` `compose/types.ts` | `'../types'` → `'../../types/compose_types'` |
-| `compose/index.ts` | `'./types'` → `'../types/compose_types'` |
-| `packages/graph-engine/src/index.ts` | 检查 compose 类型导出路径
+| 调用方 | 入口 | 原因 |
+|--------|------|------|
+| 单步操作（add/delete/update/move/fold） | `graphStore.applyBatch([op])` | 只操作 currentGraph |
+| 认知操作（deconstruct/induce/internalize/diverge） | 直接 `import { applyBatch }` 对 parent/child/peer 图分别执行 | 需要跨图操作，graphStore 只持有 currentGraph |
 
-#### 1.2 交互架构设计与错误反馈机制
+**待决策问题**：是否所有 `applyBatch` 调用都应统一经过 `graphStore` 的 action？
+
+**方案 A：维持现状**
+- 单步走 `graphStore.applyBatch([op])`
+- 跨图认知操作直接调引擎 `applyBatch`
+- 优点：简单，符合 graphStore 只持有 currentGraph 的职责
+- 缺点："所有 GraphData 修改经过 graphStore" 的直觉被打破
+
+**方案 B：graphStore 增加通用执行入口**
+- 新增 `graphStore.applyBatchToGraph(graph, operations): { graph, validation }`
+- 单步操作和跨图操作都经过 graphStore
+- graphStore 负责：执行 applyBatch、更新传入的 graph 对象、undo snapshot、持久化（如需要）
+- 优点：入口统一，便于集中管理 side effect（undo、持久化、registry）
+- 缺点：graphStore 职责变宽，需要处理任意图而不仅是 currentGraph
+
+**Step 1.2 任务**：在实现 Cognition / Arrangement 前端 UI 前，先选定方案 A 或方案 B，并重构 `graph_operations.ts`。
+
+#### 1.3 交互架构设计与错误反馈机制
 
 **依据**：`docs/设计/02-交互设计.md`。
 
@@ -255,7 +211,7 @@ Vue 组件读取
 | 错误路由规范 | 浮空窗内错误就近显示，画布操作错误统一在底部通知区，全局规则错误在确认前阻断 |
 | 清除时机 | 用户关闭浮空窗、开始新操作、点击确认后清除错误状态 |
 
-#### 1.3 用户交互反馈规范
+#### 1.4 用户交互反馈规范
 
 为每个操作定义以下内容并写入设计文档：
 
@@ -270,11 +226,25 @@ Vue 组件读取
 
 > **设计原则**：每个操作的交互反馈必须是**用户可感知的**。不允许存在"用户点了但没有任何事发生"的断点。
 
+#### 1.5 术语统一：主图/主图谱 → 根图谱
+
+**背景**：设计文档中"主图"和"主图谱"两个术语混用，且与代码枚举值 `'main'` 的语义不一致（"主"暗示等级关系，"根"表达结构关系）。
+
+**改动范围**：`docs/设计/`、`docs/开发文档/`、`docs/spec/` 下所有 `.md` 文件中"主图"和"主图谱"统一替换为"根图谱"。术语映射表同步更新。代码中的 `GraphKind='main'` 保持不变——只改文档层。
+
+**子任务**：
+
+| # | 内容 | 注意事项 |
+|---|------|---------|
+| 1.4.1 | 扫描全部文档文件，替换"主图"/"主图谱"→"根图谱" | ✅ 已完成 |
+| 1.4.2 | 更新术语映射表 | ✅ 已完成 |
+| 1.4.3 | 代码中 `GraphKind` 枚举值 `'main'` → `'root'`，同步更新所有 `kind === 'main'` 的判断和 `createGraphId` 等默认值 | 含测试文件中的字面量、`graph_types.ts`、`graph_data.ts`、`graph_store.ts` 等引用位置 |
+
 ---
 
-### Step 2：多主图谱切换 — 保存/加载/切换 UI（首要任务）
+### Step 2：多根图谱切换 — 保存/加载/切换 UI（首要任务）
 
-**目标**：用户能在前端保存当前主图谱、列出所有已保存的主图谱、切换到另一个已保存的主图谱。
+**目标**：用户能在前端保存当前根图谱、列出所有已保存的根图谱、切换到另一个已保存的根图谱。
 
 #### 2.1 数据层确认
 
@@ -284,15 +254,15 @@ Vue 组件读取
 
 在 `OperationToolbar.vue` 或导航区域添加：
 
-- **保存按钮**：保存当前主图谱至 localStorage
-- **加载对话框**：列出所有已保存主图谱，点击后切换
+- **保存按钮**：保存当前根图谱至 localStorage
+- **加载对话框**：列出所有已保存根图谱，点击后切换
 - **删除按钮**：删除已保存图谱，操作后列表刷新
 
 #### 2.3 哨兵加载
 
 修改 `KnowledgeGraph.vue` / `main.ts` 的启动逻辑：
 
-- 首次启动 → 新建空主图谱
+- 首次启动 → 新建空根图谱
 - 非首次启动 → 自动加载上次使用的图谱（读取 `lastSaveTime` + 对应 ID）
 
 #### 2.4 用户可见反馈
@@ -300,7 +270,7 @@ Vue 组件读取
 | 操作 | 视觉反馈 |
 |------|---------|
 | 保存成功 | 保存按钮状态变化 |
-| 加载列表 | 对话框列出所有主图谱（名称/ID + 保存时间） |
+| 加载列表 | 对话框列出所有根图谱（名称/ID + 保存时间） |
 | 切换图谱 | 画布刷新，新的图谱完全替换当前视图 |
 | 删除图谱 | 图谱从列表消失，无法再加载 |
 
@@ -310,7 +280,7 @@ Vue 组件读取
 
 **建议**：需要。保存是静默操作——用户点了按钮后如果没有反馈，可能会不确定是否生效。建议画布左下角短暂显示"已保存"文字，2 秒后自动消失。理由：信息量极小，不打断用户注意流，且不依赖任何第三方库即可实现。
 
-> **Q2**：首次启动时新建的"空主图谱"——它真的是空画布吗？还是需要预设一个引导节点？
+> **Q2**：首次启动时新建的"空根图谱"——它真的是空画布吗？还是需要预设一个引导节点？
 
 **建议**：画布完全为空更好。理由：空画布是用户的知识空白最诚实的表达。首次使用时工具栏和模式按钮已经在屏幕上，用户不需要被"教"怎么用——直接点"添加实节点"即可开始。如果空画布导致 Cytoscape 初始化报错，就用一个仅有 `nodes: [], edges: []` 的合法空 GraphData。
 
@@ -597,7 +567,7 @@ Cytoscape drag（Arrangement 模式下启用节点拖拽）
 
 ## Phase 2b 完成标志 = MVP 交付
 
-1. **多主图谱切换**：用户可保存当前图谱、列出所有已保存图谱、切换到另一个图谱；启动时自动加载上次使用的图谱
+1. **多根图谱切换**：用户可保存当前图谱、列出所有已保存图谱、切换到另一个图谱；启动时自动加载上次使用的图谱
 2. **Cognition 操作**：用户可通过 deconstruct / induce / internalize / diverge 改变知识结构
 3. **Arrangement 操作**：用户可拖拽移动节点、使用 orbit / path 布局、adjust 连续微调
 4. **操作失败可见**：用户在所有操作失败时能看到错误提示

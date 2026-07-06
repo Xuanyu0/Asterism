@@ -28,7 +28,7 @@
 
 import type { EdgeData, GraphData, NodeId, NodePosition } from '../../types/graph_data'
 import type { GraphLookup, NodeRadiusMap } from '../../types/infrastructure_types'
-import type { ComposeIssue } from '../types'
+import type { ComposeIssue } from '../../types/compose_types'
 import type { GraphOperation } from '../../types/atomic_operations'
 import { generateGraphId, generateNodeId, generateEdgeId } from '../../core/id'
 import { distributeOnTiers, scatterInCircle } from '../../infrastructure/placement'
@@ -97,8 +97,9 @@ export function induce(params: InduceParams): {
 
     if (nodeIds.length < 2) {
         issues.push({
-            message: `归纳操作至少需要两个节点。`,
             severity: 'error',
+            code: 'INDUCE_INSUFFICIENT_NODES',
+            message: `归纳操作至少需要两个节点。`,
         })
         return { operations: { child: [], parent: [] }, childGraphData: null!, issues }
     }
@@ -110,8 +111,9 @@ export function induce(params: InduceParams): {
         const foundIds = new Set(selectedNodes.map(node => node.id))
         for (const missingId of nodeIds.filter(id => !foundIds.has(id))) {
             issues.push({
-                message: `节点 ${missingId} 在当前图谱中不存在。`,
                 severity: 'error',
+                code: 'INDUCE_TARGET_NOT_FOUND',
+                message: `节点 ${missingId} 在当前图谱中不存在。`,
             })
         }
         return { operations: { child: [], parent: [] }, childGraphData: null!, issues }
@@ -120,8 +122,9 @@ export function induce(params: InduceParams): {
     for (const node of selectedNodes) {
         if (node.role === 'reference' && node.referenceKind === 'communication') {
             issues.push({
-                message: `节点 ${node.id} 是沟通节点，不能参与归纳。沟通节点是父图邻居在子图中的透明投影，不应被二次归纳。`,
                 severity: 'error',
+                code: 'INDUCE_COMMUNICATION_NODE_FORBIDDEN',
+                message: `节点 ${node.id} 是沟通节点，不能参与归纳。沟通节点是父图邻居在子图中的透明投影，不应被二次归纳。`,
             })
             return { operations: { child: [], parent: [] }, childGraphData: null!, issues }
         }
@@ -164,8 +167,9 @@ export function induce(params: InduceParams): {
 
             if (seen.has(key)) {
                 issues.push({
-                    message: `归纳操作将对邻居 ${neighborId} 产生重边冲突（kind=${edge.kind}, direction=${edge.direction}），当前不支持此拓扑。`,
                     severity: 'error',
+                    code: 'INDUCE_DUPLICATE_EDGE_CONFLICT',
+                    message: `归纳操作将对邻居 ${neighborId} 产生重边冲突（kind=${edge.kind}, direction=${edge.direction}），当前不支持此拓扑。`,
                 })
                 return { operations: { child: [], parent: [] }, childGraphData: null!, issues }
             }
@@ -178,8 +182,9 @@ export function induce(params: InduceParams): {
     const nodesWithPos = selectedNodes.filter(node => node.position)
     if (nodesWithPos.length === 0) {
         issues.push({
-            message: `被选节点均无位置信息，无法计算形心。`,
             severity: 'error',
+            code: 'INDUCE_NO_POSITION',
+            message: `被选节点均无位置信息，无法计算形心。`,
         })
         return { operations: { child: [], parent: [] }, childGraphData: null!, issues }
     }
@@ -217,7 +222,7 @@ export function induce(params: InduceParams): {
             position: node.position ?? { x: 0, y: 0 },
         }))
 
-        const satelliteSpecs = neighbors.map((_neighbor, i) => ({ id: commNodeIds[i], radius: maxCommRadius }))
+        const satelliteSpecs = neighbors.map((_neighbor, i) => ({ id: commNodeIds[i]!, radius: maxCommRadius }))
         const tiers: TierAssignment[] = [{ tier: 0, nodeIds: commNodeIds }]
 
         // 最远被选节点距形心的距离。distributeOnTiers 内部 D0 = centerRadius + maxSatR + R0，
@@ -244,8 +249,9 @@ export function induce(params: InduceParams): {
 
         if (!commPositionsFound) {
             issues.push({
-                message: `无法为沟通节点找到不碰撞的位置（已重试 ${MAX_RETRIES} 次）。`,
                 severity: 'error',
+                code: 'INDUCE_COMM_NODE_PLACEMENT_FAILED',
+                message: `无法为沟通节点找到不碰撞的位置（已重试 ${MAX_RETRIES} 次）。`,
             })
             return { operations: { child: [], parent: [] }, childGraphData: null!, issues }
         }
@@ -257,9 +263,10 @@ export function induce(params: InduceParams): {
     const communicationNodes: GraphData['nodes'] = []
 
     for (let i = 0; i < neighbors.length; i++) {
-        const neighbor = neighbors[i]
-        const commId = commDrafts[i]?.nodeId ?? generateNodeId()
-        const position = commDrafts[i]?.position ?? { x: centroid.x, y: centroid.y }
+        const neighbor = neighbors[i]!
+        const draft = commDrafts[i]
+        const commId = draft?.nodeId ?? generateNodeId()
+        const position = draft?.position ?? { x: centroid.x, y: centroid.y }
 
         commNodeMap.set(neighbor.id, commId)
 
@@ -367,8 +374,9 @@ export function induce(params: InduceParams): {
 
         if (attempt === MAX_RETRIES - 1) {
             issues.push({
-                message: `无法为抽象节点找到不碰撞的位置（已重试 ${MAX_RETRIES} 次）。`,
                 severity: 'error',
+                code: 'INDUCE_ABSTRACT_NODE_PLACEMENT_FAILED',
+                message: `无法为抽象节点找到不碰撞的位置（已重试 ${MAX_RETRIES} 次）。`,
             })
             return { operations: { child: [], parent: [] }, childGraphData: null!, issues }
         }

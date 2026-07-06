@@ -4,7 +4,7 @@
  * 功能：
  *
  *     纯 UI 适配层。负责交互模式/工具状态管理和语义事件路由。
- *     不调引擎 compose、不调 graphStore.applyOperation——所有图操作委托给 graph_operations。
+ *     不调引擎 compose、不调 graphStore.applyBatch——所有图操作委托给 graph_operations。
  *
  * 总体结构：
  *

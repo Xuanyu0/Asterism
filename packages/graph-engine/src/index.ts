@@ -22,7 +22,7 @@
  * 外部如何使用：
  *
  *     import type { GraphData, NodeData } from '@my-project/graph-engine'
- *     import { applyOperation, applyBatch, searchNodes } from '@my-project/graph-engine'
+ *     import { applyBatch, searchNodes } from '@my-project/graph-engine'
  */
 
 // ═══════════ Types ═══════════
@@ -44,7 +44,7 @@ export type {
 /** 消费者：引擎内部 & 前端渲染层。 */
 export type { LayoutRules, NodeRules } from './core/rules'
 
-/** 消费者：graph_store.applyOperation / operation_controller / 操作日志。 */
+/** 消费者：graph_store.applyBatch / operation_controller / 操作日志。 */
 export type {
     AddNodeOperation, AddEdgeOperation, DeleteNodeOperation, DeleteEdgeOperation,
     UpdateNodeOperation, UpdateEdgeOperation, MoveNodeOperation,
@@ -62,7 +62,7 @@ export type {
 
 /** 消费者：graph_store（校验返回值）。 */
 export type {
-    ValidationLevel, ValidationTargetType,
+    ValidationSeverity, ValidationTargetType,
     ValidationIssue, ValidationResult,
 } from './types/validation'
 
@@ -73,30 +73,7 @@ export type { OperationLogEntry, OperationLog, State } from './types/operation_l
 export type { PersistenceAdapter } from './spi/persistence'
 
 // ═══════════════════════════════════════════════════════════════════
-// apply — 单步提交
-//
-// 消费者：
-//     graph_store.applyOperation — 单步操作统一入口。
-//     Phase 3 AI Runtime — 逐条提交 Graph Patch Plan 中的原子操作。
-// ═══════════════════════════════════════════════════════════════════
-
-/**
- * 功能：
- *
- *     单步操作执行。先 validate，通过后 execute。
- *
- * 消费者：
- *
- *     graph_store.applyOperation
- *
- * 使用：
- *
- *     const { graph, validation } = applyOperation(currentGraph, operation)
- */
-export { applyOperation } from './core/apply'
-
-// ═══════════════════════════════════════════════════════════════════
-// applyBatch — 批量事务
+// applyBatch — 批量事务（GraphData 修改唯一入口）
 //
 // 消费者：
 //     operation_controller — compose 函数产出 operations 后，

@@ -7,12 +7,12 @@
  *
  * 总体结构：
  *     1. 测试数据完整性 — 所有工厂函数产出合法 GraphData
- *     2. 图操作执行器 — applyOperationToGraph_DEPRECATED 纯函数正确性
+ *     2. 图操作执行器 — applyBatch 纯函数正确性
  *     3. 折叠/展开 — cognitiveState 正确性
  *     4. 操作校验器 — OperationValidator 规则拦截
  *     5. 撤销栈 — pushUndoSnapshot / undoDelete
  *     6. 持久化 — localStorage 往返
- *     7. Graph Store 集成 — store.applyOperation 全链路
+ *     7. Graph Store 集成 — store.applyBatch 全链路
  *
  * 自动化覆盖率：
  *     覆盖清单中全部数据层测试（约 70%）。视觉样式、动画、DOM 交互仍需手动。
@@ -26,7 +26,7 @@ import type { GraphOperation } from '@my-project/graph-engine'
 import type { ValidationResult } from '@my-project/graph-engine'
 
 import { validateGraph } from '@my-project/graph-engine'
-import { applyOperation } from '@my-project/graph-engine'
+import { applyBatch } from '@my-project/graph-engine'
 
 import { pushUndoSnapshot, shouldPushUndoSnapshot } from '@/graph/graph_store'
 import { saveGraph, loadGraph, deleteGraph } from '@/graph/utilities/graph_persistence'
@@ -71,11 +71,11 @@ interface TestSuite {
 const G = 'test-eval' as GraphId
 
 /**
- * 引擎 applyOperation 的测试兼容包装器。
+ * 引擎 applyBatch 的测试兼容包装器。
  * 引擎返回 { graph, validation }，旧测试代码期望直接返回 GraphData。
  */
 function applyOp(graph: GraphData, op: GraphOperation): GraphData {
-    return applyOperation(graph, op).graph
+    return applyBatch(graph, [op]).graph
 }
 
 function suite(name: string, tests: TestResult[]): TestSuite {
@@ -191,7 +191,7 @@ function testOperationExecutor(): TestSuite {
         results.push({
             name: 'add_node 新节点存在且数据完整',
             passed: (() => {
-                const found = next.nodes.find(node => n.id === 'c')
+                const found = next.nodes.find(node => node.id === 'c')
                 return !!found && found.label === '节点C' && found.position?.x === 600
             })(),
         })
@@ -219,11 +219,11 @@ function testOperationExecutor(): TestSuite {
         results.push({
             name: 'add_edge 两端 degree +1',
             passed: (() => {
-                const a = next.nodes.find(node => n.id === 'a')
-                const b = next.nodes.find(node => n.id === 'b')
+                const a = next.nodes.find(node => node.id === 'a')
+                const b = next.nodes.find(node => node.id === 'b')
                 return a!.degree === 1 && b!.degree === 1
             })(),
-            detail: `a.degree=${next.nodes.find(node => n.id === 'a')!.degree}, b.degree=${next.nodes.find(node => n.id === 'b')!.degree}`,
+            detail: `a.degree=${next.nodes.find(node => node.id === 'a')!.degree}, b.degree=${next.nodes.find(node => node.id === 'b')!.degree}`,
         })
     }
 
@@ -239,7 +239,7 @@ function testOperationExecutor(): TestSuite {
         })
         results.push({
             name: 'delete_node 被删节点不存在于结果中',
-            passed: !next.nodes.find(node => n.id === 'a'),
+            passed: !next.nodes.find(node => node.id === 'a'),
         })
     }
 
@@ -264,8 +264,8 @@ function testOperationExecutor(): TestSuite {
         })
         results.push({
             name: 'delete_node 相邻节点 degree 减少',
-            passed: next.nodes.find(node => n.id === 'b')!.degree === 0,
-            detail: `b.degree=${next.nodes.find(node => n.id === 'b')!.degree}`,
+            passed: next.nodes.find(node => node.id === 'b')!.degree === 0,
+            detail: `b.degree=${next.nodes.find(node => node.id === 'b')!.degree}`,
         })
     }
 
@@ -290,25 +290,25 @@ function testOperationExecutor(): TestSuite {
         })
         results.push({
             name: 'delete_edge 两端 degree -1',
-            passed: next.nodes.find(node => n.id === 'a')!.degree === 0
-                && next.nodes.find(node => n.id === 'b')!.degree === 0,
+            passed: next.nodes.find(node => node.id === 'a')!.degree === 0
+                && next.nodes.find(node => node.id === 'b')!.degree === 0,
         })
     }
 
     // --- update_node ---
     {
         const graph = makeTwoNodeGraph()
-        const originalA = graph.nodes.find(node => n.id === 'a')!
+        const originalA = graph.nodes.find(node => node.id === 'a')!
         const updatedA = { ...originalA, label: '改过标签', summary: '新摘要' } as NodeData
         const next = applyOp(graph, { type: 'update_node', node: updatedA })
 
         results.push({
             name: 'update_node 标签更新',
-            passed: next.nodes.find(node => n.id === 'a')!.label === '改过标签',
+            passed: next.nodes.find(node => node.id === 'a')!.label === '改过标签',
         })
         results.push({
             name: 'update_node 摘要更新',
-            passed: (next.nodes.find(node => n.id === 'a') as Extract<NodeData, { role: 'knowledge' }>).summary === '新摘要',
+            passed: (next.nodes.find(node => node.id === 'a') as Extract<NodeData, { role: 'knowledge' }>).summary === '新摘要',
         })
         results.push({
             name: 'update_node 节点数不变',
@@ -352,7 +352,7 @@ function testOperationExecutor(): TestSuite {
         results.push({
             name: 'move_node 位置更新',
             passed: (() => {
-                const pos = next.nodes.find(node => n.id === 'a')!.position!
+                const pos = next.nodes.find(node => node.id === 'a')!.position!
                 return pos.x === 999 && pos.y === 888
             })(),
         })
@@ -364,7 +364,7 @@ function testOperationExecutor(): TestSuite {
         const snapshot = graph.nodes.length
 applyOp(graph, { type: 'delete_node', nodeId: 'a' as NodeId })
         results.push({
-            name: 'applyOperationToGraph_DEPRECATED 不修改入参 GraphData',
+            name: 'applyBatch 不修改入参 GraphData',
             passed: graph.nodes.length === snapshot,
             detail: `期望 ${snapshot}, 实际 ${graph.nodes.length}`,
         })
@@ -455,7 +455,7 @@ function testOperationValidator(): TestSuite {
     const results: TestResult[] = []
 
     function expectValid(label: string, graph: GraphData, op: GraphOperation): TestResult {
-        const r = applyOp(graph, op).validation
+        const r = applyBatch(graph, [op]).validation
         return {
             name: label,
             passed: r.valid,
@@ -464,7 +464,7 @@ function testOperationValidator(): TestSuite {
     }
 
     function expectInvalid(label: string, graph: GraphData, op: GraphOperation): TestResult {
-        const r = applyOp(graph, op).validation
+        const r = applyBatch(graph, [op]).validation
         return {
             name: label,
             passed: !r.valid,
@@ -742,12 +742,12 @@ function testGraphStoreIntegration(): TestSuite {
         })
     }
 
-    // --- applyOperation 完整链路 ---
+    // --- applyBatch 完整链路 ---
     {
         const graph = makeTwoNodeGraph()
         store.setCurrentGraph(graph)
 
-        const result: ValidationResult = store.applyOperation({
+        const result: ValidationResult = store.applyBatch([{
             type: 'add_node',
             node: {
                 role: 'knowledge',
@@ -761,29 +761,29 @@ function testGraphStoreIntegration(): TestSuite {
                 degree: 0,
                 position: { x: 100, y: 100 },
             },
-        })
+        }])
 
         results.push({
-            name: 'applyOperation 返回 valid=true',
+            name: 'applyBatch 返回 valid=true',
             passed: result.valid,
             detail: result.issues.map(i => i.message).join('; '),
         })
         results.push({
-            name: 'applyOperation 后节点数正确',
+            name: 'applyBatch 后节点数正确',
             passed: store.currentGraph?.nodes.length === 3,
             detail: `期望 3, 实际 ${store.currentGraph?.nodes.length}`,
         })
     }
 
-    // --- applyOperation 被校验拒绝 ---
+    // --- applyBatch 被校验拒绝 ---
     {
         const graph = makeTwoNodeGraph()
         store.setCurrentGraph(graph)
 
-        const result: ValidationResult = store.applyOperation({
+        const result: ValidationResult = store.applyBatch([{
             type: 'delete_node',
             nodeId: 'nonexistent' as NodeId,
-        })
+        }])
 
         results.push({
             name: '非法 delete_node 返回 valid=false',
@@ -802,9 +802,9 @@ function testGraphStoreIntegration(): TestSuite {
         const graph = makeTwoNodeGraph()
         store.setCurrentGraph(graph)
 
-        // 需要走 graph_store.applyOperation 来触发 undo 入栈
-        // 注意：applyOperation 内部先 validate 再 pushUndo 再 execute
-        store.applyOperation({ type: 'delete_node', nodeId: 'a' as NodeId })
+        // 需要走 graph_store.applyBatch 来触发 undo 入栈
+        // 注意：applyBatch 内部先 validate 再 pushUndo 再 execute
+        store.applyBatch([{ type: 'delete_node', nodeId: 'a' as NodeId }])
 
         const afterDelete = store.currentGraph!.nodes.length
 
@@ -822,7 +822,7 @@ function testGraphStoreIntegration(): TestSuite {
         })
         results.push({
             name: 'undoDelete 恢复被删节点',
-            passed: !!store.currentGraph?.nodes.find(node => n.id === 'a'),
+            passed: !!store.currentGraph?.nodes.find(node => node.id === 'a'),
         })
     }
 

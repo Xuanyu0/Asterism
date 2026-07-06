@@ -26,7 +26,7 @@
  */
 
 import type { GraphData, NodeId, NodePosition } from '../../types/graph_data'
-import type { ComposeIssue } from '../types'
+import type { ComposeIssue } from '../../types/compose_types'
 import type { GraphOperation } from '../../types/atomic_operations'
 import { generateGraphId, generateNodeId } from '../../core/id'
 
@@ -75,32 +75,36 @@ export function deconstruct(params: DeconstructParams): {
 
     if (!targetNode) {
         issues.push({
-            message: `节点 ${nodeId} 在当前图谱中不存在。`,
             severity: 'error',
+            code: 'DECONSTRUCT_TARGET_NOT_FOUND',
+            message: `节点 ${nodeId} 在当前图谱中不存在。`,
         })
         return { operations: [], issues }
     }
 
     if (targetNode.role !== 'knowledge') {
         issues.push({
-            message: `节点 ${nodeId} 不是知识节点，不能解构。`,
             severity: 'error',
+            code: 'DECONSTRUCT_TARGET_NOT_KNOWLEDGE',
+            message: `节点 ${nodeId} 不是知识节点，不能解构。`,
         })
         return { operations: [], issues }
     }
 
     if (targetNode.kind !== 'real') {
         issues.push({
-            message: `节点 ${nodeId} 是虚节点，不能解构。`,
             severity: 'error',
+            code: 'DECONSTRUCT_TARGET_VIRTUAL',
+            message: `节点 ${nodeId} 是虚节点，不能解构。`,
         })
         return { operations: [], issues }
     }
 
     if (targetNode.form === 'abstract') {
         issues.push({
-            message: `节点 ${nodeId} 已是抽象节点，不能重复解构。`,
             severity: 'error',
+            code: 'DECONSTRUCT_TARGET_ALREADY_ABSTRACT',
+            message: `节点 ${nodeId} 已是抽象节点，不能重复解构。`,
         })
         return { operations: [], issues }
     }

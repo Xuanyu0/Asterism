@@ -2,19 +2,22 @@
  * validate.ts
  *
  * 功能：
- *     校验单步 GraphOperation 是否合法。
+ *
+ *     校验单步 GraphOperation 的前提条件是否满足。
  *
  * 总体结构：
+ *
  *     1. validateOperation — 统一入口，按 type 分派
- *     2. 编排逻辑 — 按操作类型组合 core/checkers/ 中的原子规则
- *     3. 各 validateXxx — 按操作类型编排校验流程
+ *     2. 各 validateXxx    — 按操作类型编排局部校验
  *
  * 规则：
- *     1. 只校验当前操作，不修改 GraphData。
- *     2. 原子规则统一在 core/checkers/ 中定义，本模块仅做编排。
- *     3. 不替代 graph_validator 的全图体检。
+ *
+ *     1. 只校验操作前提（ID 重复、节点存在、位置有效、折叠条件等）。
+ *     2. GraphData 不变量（标签长度、自环、重边、成环等）由 applyBatch Phase 3 全局规则统一校验。
+ *     3. 认知演化操作（explore / unearth）不在 MVP 阶段做数据校验，默认合法。
  *
  * 外部如何使用：
+ *
  *     import { validateOperation } from '@my-project/graph-engine'
  */
 
@@ -23,31 +26,16 @@ import type { GraphOperation } from '../types/atomic_operations'
 import type { ValidationIssue, ValidationResult } from '../types/validation'
 import { collectDependencyNodeIds } from './traversal'
 import { DEFAULT_GRAPH_RULES } from './checkers/rules'
-import * as RuleCheckers from './checkers/rule_checkers'
 
-// ═══════════ 编排逻辑 ═══════════
+// ═══════════ 工具函数 ═══════════
 
 function hasNode(graph: GraphData, nodeId: NodeId): boolean {
     return graph.nodes.some(node => node.id === nodeId)
 }
 
-function createGraphWithEdge(graph: GraphData, edge: EdgeData): GraphData {
-    return {
-        ...graph,
-        edges: [...graph.edges, edge],
-    }
-}
-
-function createGraphWithoutEdge(graph: GraphData, edgeId: string): GraphData {
-    return {
-        ...graph,
-        edges: graph.edges.filter(edge => edge.id !== edgeId),
-    }
-}
-
 function createResult(issues: ValidationIssue[]): ValidationResult {
     return {
-        valid: issues.every(issue => issue.level !== 'error'),
+        valid: issues.every(issue => issue.severity !== 'error'),
         issues,
     }
 }
@@ -59,7 +47,7 @@ function validateAddNode(graph: GraphData, operation: { type: 'add_node'; node: 
 
     if (graph.nodes.some(node => node.id === operation.node.id)) {
         issues.push({
-            level: 'error',
+            severity: 'error',
             code: 'NODE_ID_DUPLICATED',
             message: '不能添加 id 已存在的节点。',
             targetType: 'node',
@@ -69,7 +57,7 @@ function validateAddNode(graph: GraphData, operation: { type: 'add_node'; node: 
 
     if (graph.nodes.length + 1 > DEFAULT_GRAPH_RULES.nodeHardLimit) {
         issues.push({
-            level: 'error',
+            severity: 'error',
             code: 'NODE_COUNT_HARD_LIMIT_EXCEEDED',
             message: `当前图节点数即将超过 ${DEFAULT_GRAPH_RULES.nodeHardLimit}，禁止继续添加新节点。`,
             targetType: 'graph',
@@ -77,22 +65,13 @@ function validateAddNode(graph: GraphData, operation: { type: 'add_node'; node: 
         })
     }
 
-    issues.push(...RuleCheckers.validateNodeLabel(operation.node))
-    issues.push(...RuleCheckers.validateNodeSummary(operation.node))
-
     return createResult(issues)
 }
 
 function validateAddEdge(graph: GraphData, operation: { type: 'add_edge'; edge: EdgeData }): ValidationResult {
     const issues: ValidationIssue[] = []
-    const graphAfterAddEdge = createGraphWithEdge(graph, operation.edge)
 
     issues.push(...validateEdgeEndpointExists(graph, operation.edge))
-    issues.push(...RuleCheckers.validateEdgeLabel(operation.edge))
-    issues.push(...RuleCheckers.validateSelfLoop(operation.edge))
-    issues.push(...RuleCheckers.validateDuplicateEdge(graph, operation.edge))
-    issues.push(...RuleCheckers.validateVirtualNodeEdgeRule(graphAfterAddEdge, operation.edge))
-    issues.push(...RuleCheckers.validateRealDirectedCycle(graphAfterAddEdge))
 
     return createResult(issues)
 }
@@ -102,7 +81,7 @@ function validateDeleteNode(graph: GraphData, operation: { type: 'delete_node'; 
 
     if (!hasNode(graph, operation.nodeId)) {
         issues.push({
-            level: 'error',
+            severity: 'error',
             code: 'NODE_NOT_FOUND',
             message: '不能删除不存在的节点。',
             targetType: 'node',
@@ -118,7 +97,7 @@ function validateDeleteEdge(graph: GraphData, operation: { type: 'delete_edge'; 
 
     if (!graph.edges.some(edge => edge.id === operation.edgeId)) {
         issues.push({
-            level: 'error',
+            severity: 'error',
             code: 'EDGE_NOT_FOUND',
             message: '不能删除不存在的边。',
             targetType: 'edge',
@@ -134,7 +113,7 @@ function validateUpdateNode(graph: GraphData, operation: { type: 'update_node'; 
 
     if (!hasNode(graph, operation.node.id)) {
         issues.push({
-            level: 'error',
+            severity: 'error',
             code: 'NODE_NOT_FOUND',
             message: '不能更新不存在的节点。',
             targetType: 'node',
@@ -142,20 +121,15 @@ function validateUpdateNode(graph: GraphData, operation: { type: 'update_node'; 
         })
     }
 
-    issues.push(...RuleCheckers.validateNodeLabel(operation.node))
-    issues.push(...RuleCheckers.validateNodeSummary(operation.node))
-
     return createResult(issues)
 }
 
 function validateUpdateEdge(graph: GraphData, operation: { type: 'update_edge'; edge: EdgeData }): ValidationResult {
     const issues: ValidationIssue[] = []
-    const graphWithoutOldEdge = createGraphWithoutEdge(graph, operation.edge.id)
-    const graphAfterUpdateEdge = createGraphWithEdge(graphWithoutOldEdge, operation.edge)
 
     if (!graph.edges.some(edge => edge.id === operation.edge.id)) {
         issues.push({
-            level: 'error',
+            severity: 'error',
             code: 'EDGE_NOT_FOUND',
             message: '不能更新不存在的边。',
             targetType: 'edge',
@@ -164,11 +138,6 @@ function validateUpdateEdge(graph: GraphData, operation: { type: 'update_edge'; 
     }
 
     issues.push(...validateEdgeEndpointExists(graph, operation.edge))
-    issues.push(...RuleCheckers.validateEdgeLabel(operation.edge))
-    issues.push(...RuleCheckers.validateSelfLoop(operation.edge))
-    issues.push(...RuleCheckers.validateDuplicateEdge(graphWithoutOldEdge, operation.edge))
-    issues.push(...RuleCheckers.validateVirtualNodeEdgeRule(graphAfterUpdateEdge, operation.edge))
-    issues.push(...RuleCheckers.validateRealDirectedCycle(graphAfterUpdateEdge))
 
     return createResult(issues)
 }
@@ -178,7 +147,7 @@ function validateMoveNode(graph: GraphData, operation: { type: 'move_node'; node
 
     if (!hasNode(graph, operation.nodeId)) {
         issues.push({
-            level: 'error',
+            severity: 'error',
             code: 'NODE_NOT_FOUND',
             message: '不能移动不存在的节点。',
             targetType: 'node',
@@ -188,7 +157,7 @@ function validateMoveNode(graph: GraphData, operation: { type: 'move_node'; node
 
     if (!Number.isFinite(operation.position.x) || !Number.isFinite(operation.position.y)) {
         issues.push({
-            level: 'error',
+            severity: 'error',
             code: 'INVALID_NODE_POSITION',
             message: '节点位置必须是有效数字。',
             targetType: 'node',
@@ -205,7 +174,7 @@ function validateCollapseDependency(graph: GraphData, operation: { type: 'collap
 
     if (!hasNode(graph, operation.targetNodeId)) {
         issues.push({
-            level: 'error',
+            severity: 'error',
             code: 'NODE_NOT_FOUND',
             message: '不能折叠不存在的目标节点。',
             targetType: 'node',
@@ -215,7 +184,7 @@ function validateCollapseDependency(graph: GraphData, operation: { type: 'collap
 
     if (dependencyNodeIds.length === 0) {
         issues.push({
-            level: 'error',
+            severity: 'error',
             code: 'NO_DEPENDENCY_TO_COLLAPSE',
             message: '目标节点没有可折叠的有向实边前置依赖。',
             targetType: 'node',
@@ -225,7 +194,7 @@ function validateCollapseDependency(graph: GraphData, operation: { type: 'collap
 
     if (hasUndirectedEdgeInsideNodeSet(graph, [...dependencyNodeIds, operation.targetNodeId])) {
         issues.push({
-            level: 'error',
+            severity: 'error',
             code: 'DEPENDENCY_REGION_HAS_UNDIRECTED_EDGE',
             message: '依赖折叠区域内存在无向边，暂不允许折叠。',
             targetType: 'node',
@@ -241,7 +210,7 @@ function validateExpandDependency(graph: GraphData, operation: { type: 'expand_d
 
     if (!hasNode(graph, operation.targetNodeId)) {
         issues.push({
-            level: 'error',
+            severity: 'error',
             code: 'NODE_NOT_FOUND',
             message: '不能展开不存在的目标节点。',
             targetType: 'node',
@@ -257,7 +226,7 @@ function validateEdgeEndpointExists(graph: GraphData, edge: EdgeData): Validatio
 
     if (!hasNode(graph, edge.source)) {
         issues.push({
-            level: 'error',
+            severity: 'error',
             code: 'EDGE_SOURCE_NOT_FOUND',
             message: '边的起点节点不存在。',
             targetType: 'edge',
@@ -267,7 +236,7 @@ function validateEdgeEndpointExists(graph: GraphData, edge: EdgeData): Validatio
 
     if (!hasNode(graph, edge.target)) {
         issues.push({
-            level: 'error',
+            severity: 'error',
             code: 'EDGE_TARGET_NOT_FOUND',
             message: '边的终点节点不存在。',
             targetType: 'edge',
@@ -292,15 +261,17 @@ function hasUndirectedEdgeInsideNodeSet(graph: GraphData, nodeIds: NodeId[]): bo
 
 /**
  * 功能：
- *     校验单步 GraphOperation 是否合法。
+ *
+ *     校验单步 GraphOperation 的前提条件是否满足。
  *
  * 规则：
- *     1. 只校验当前操作，不修改 GraphData。
- *     2. 认知演化操作（explore / unearth / deconstruct / induce / internalize）
- *        暂不在 MVP 阶段做数据校验，默认合法。
+ *
+ *     1. 只校验局部前提条件。
+ *     2. GraphData 不变量由 applyBatch Phase 3 统一校验。
  *
  * 使用：
- *     applyOperation 内部调用。
+ *
+ *     applyBatch 内部 Phase 1 调用。
  */
 export function validateOperation(graph: GraphData, operation: GraphOperation): ValidationResult {
     switch (operation.type) {
@@ -330,6 +301,10 @@ export function validateOperation(graph: GraphData, operation: GraphOperation): 
 
         case 'expand_dependency':
             return validateExpandDependency(graph, operation)
+
+        case 'add_graph':
+        case 'delete_graph':
+            return createResult([])
 
         default:
             return createResult([])

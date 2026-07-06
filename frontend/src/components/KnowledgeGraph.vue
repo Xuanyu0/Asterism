@@ -195,7 +195,7 @@ watch(
  *
  * 前端机制（Vue 3 框架行为）：
  *     - watch 在依赖变化后的下一个微任务中执行回调。
- *       因为 graphStore.applyOperation() 同步更新 currentGraph，
+ *       因为 graphStore.applyBatch() 同步更新 currentGraph，
  *       而 currentGraph watcher 先于本 watcher 注册（源码顺序），
  *       所以 syncElements 中的 cy.json() 先执行（覆盖元素），
  *       随后本 watcher 再尝试给已被 cy.json 覆盖的新元素加 class。

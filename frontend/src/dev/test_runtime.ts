@@ -201,7 +201,6 @@ function loadDeleteUndoGraph(): void {
 function enterAddRealNodeMode(): void {
     const controller = useOperationController()
 
-    controller.enterOperationMode()
     controller.selectOperationTool('add')
     controller.selectAddTarget('node')
     controller.selectAddNodeKind('real')
@@ -216,7 +215,6 @@ function enterAddRealNodeMode(): void {
 function enterAddVirtualNodeMode(): void {
     const controller = useOperationController()
 
-    controller.enterOperationMode()
     controller.selectOperationTool('add')
     controller.selectAddTarget('node')
     controller.selectAddNodeKind('virtual')
@@ -231,7 +229,6 @@ function enterAddVirtualNodeMode(): void {
 function enterDeleteMode(): void {
     const controller = useOperationController()
 
-    controller.enterOperationMode()
     controller.selectOperationTool('delete')
 
     console.log('✅ 已进入 Delete 模式')
@@ -244,7 +241,6 @@ function enterDeleteMode(): void {
 function enterFoldMode(): void {
     const controller = useOperationController()
 
-    controller.enterOperationMode()
     controller.selectOperationTool('fold')
 
     console.log('✅ 已进入 Fold 模式')

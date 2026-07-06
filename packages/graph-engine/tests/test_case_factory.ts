@@ -593,7 +593,7 @@ function validateOrThrow(graph: GraphData): void {
 
     if (!result.valid) {
         const details = result.issues
-            .map(issue => `  [${issue.level}] ${issue.code}: ${issue.message} (target: ${issue.targetType} ${issue.targetId ?? ''})`)
+            .map(issue => `  [${issue.severity}] ${issue.code}: ${issue.message} (target: ${issue.targetType} ${issue.targetId ?? ''})`)
             .join('\n')
 
         throw new Error(

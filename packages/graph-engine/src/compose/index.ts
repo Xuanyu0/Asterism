@@ -6,7 +6,7 @@
  *     的模块由对应 Step 填充。被 engine/src/index.ts re-export。
  */
 
-export type { DraftPosition, ComposeIssue, ComposeResult } from './types'
+export type { DraftPosition, ComposeIssue, ComposeResult } from '../types/compose_types'
 
 export { applyBatch } from './pipeline'
 export type { BatchOptions, PerOpResult, BatchResult } from './pipeline'

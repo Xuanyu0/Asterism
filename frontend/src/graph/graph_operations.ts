@@ -4,8 +4,8 @@
  * 功能：
  *
  *     图操作翻译层。接收 store 引用，实现所有具体的图操作函数。
- *     本文件是 engine compose / applyBatch / graphStore.applyOperation 在前端的唯一调用点
- *     （除 graph_store.applyOperation 内部委托外）。
+ *     本文件是 engine compose / applyBatch / graphStore.applyBatch 在前端的唯一调用点
+ *     （除 graph_store.applyBatch 内部委托外）。
  *
  * 总体结构：
  *
@@ -119,8 +119,8 @@ export function useGraphOperations() {
             uiStore.lastOperationValidation = {
                 valid: false,
                 issues: result.issues.map(issue => ({
-                    level: issue.severity,
-                    code: 'COMPOSE_ISSUE',
+                    severity: issue.severity,
+                    code: issue.code,
                     message: issue.message,
                     targetType: 'node' as const,
                     targetId: nodeId,
@@ -178,8 +178,8 @@ export function useGraphOperations() {
             uiStore.lastOperationValidation = {
                 valid: false,
                 issues: result.issues.map(issue => ({
-                    level: issue.severity,
-                    code: 'COMPOSE_ISSUE',
+                    severity: issue.severity,
+                    code: issue.code,
                     message: issue.message,
                     targetType: 'graph' as const,
                 })),
@@ -238,7 +238,7 @@ export function useGraphOperations() {
             uiStore.lastOperationValidation = {
                 valid: false,
                 issues: [{
-                    level: 'error',
+                    severity: 'error',
                     code: 'COMMON_LAYER_NOT_FOUND',
                     message: '未找到常识层图谱，无法执行内化操作。',
                     targetType: 'graph',
@@ -260,8 +260,8 @@ export function useGraphOperations() {
             uiStore.lastOperationValidation = {
                 valid: false,
                 issues: result.issues.map(issue => ({
-                    level: issue.severity,
-                    code: 'COMPOSE_ISSUE',
+                    severity: issue.severity,
+                    code: issue.code,
                     message: issue.message,
                     targetType: 'graph' as const,
                 })),
@@ -327,8 +327,8 @@ export function useGraphOperations() {
             uiStore.lastOperationValidation = {
                 valid: false,
                 issues: result.issues.map(issue => ({
-                    level: issue.severity,
-                    code: 'COMPOSE_ISSUE',
+                    severity: issue.severity,
+                    code: issue.code,
                     message: issue.message,
                     targetType: 'graph' as const,
                 })),
@@ -412,8 +412,8 @@ export function useGraphOperations() {
             uiStore.lastOperationValidation = {
                 valid: false,
                 issues: result.issues.map(issue => ({
-                    level: issue.severity,
-                    code: 'COMPOSE_ISSUE',
+                    severity: issue.severity,
+                    code: issue.code,
                     message: issue.message,
                     targetType: 'node' as const,
                     targetId: nodeId,
@@ -489,7 +489,7 @@ export function useGraphOperations() {
      *
      *     1. label 为空时拒绝提交。
      *     2. DraftNode 不直接进入 GraphData。
-     *     3. 只有 graphStore.applyOperation() 可以修改 GraphData。
+     *     3. 只有 graphStore.applyBatch() 可以修改 GraphData。
      */
     function confirmDraftNode(): void {
         if (!draftStore.draftNode) {
@@ -523,10 +523,10 @@ export function useGraphOperations() {
             },
         }
 
-        const result = graphStore.applyOperation({
+        const result = graphStore.applyBatch([{
             type: 'add_node',
             node,
-        })
+        }])
 
         uiStore.lastOperationValidation = result
 
@@ -552,10 +552,10 @@ export function useGraphOperations() {
             return
         }
 
-        const result = graphStore.applyOperation({
+        const result = graphStore.applyBatch([{
             type: 'update_node',
             node,
-        })
+        }])
 
         uiStore.lastOperationValidation = result
 
@@ -579,10 +579,10 @@ export function useGraphOperations() {
             return
         }
 
-        const result = graphStore.applyOperation({
+        const result = graphStore.applyBatch([{
             type: 'update_edge',
             edge,
-        })
+        }])
 
         uiStore.lastOperationValidation = result
 
@@ -698,10 +698,10 @@ export function useGraphOperations() {
             uiStore.closeFloatingWindow()
         }
 
-        const result = graphStore.applyOperation({
+        const result = graphStore.applyBatch([{
             type: 'delete_node',
             nodeId,
-        })
+        }])
 
         uiStore.lastOperationValidation = result
     }
@@ -722,10 +722,10 @@ export function useGraphOperations() {
             uiStore.closeFloatingWindow()
         }
 
-        const result = graphStore.applyOperation({
+        const result = graphStore.applyBatch([{
             type: 'delete_edge',
             edgeId,
-        })
+        }])
 
         uiStore.lastOperationValidation = result
     }
@@ -774,10 +774,10 @@ export function useGraphOperations() {
             label: '',
         }
 
-        const result = graphStore.applyOperation({
+        const result = graphStore.applyBatch([{
             type: 'add_edge',
             edge,
-        })
+        }])
 
         uiStore.lastOperationValidation = result
 
@@ -804,16 +804,15 @@ export function useGraphOperations() {
         const isFolded = foldedDeps.some(f => f.targetNodeId === nodeId)
 
         if (isFolded) {
-            graphStore.applyOperation({
+            graphStore.applyBatch([{
                 type: 'expand_dependency',
                 targetNodeId: nodeId,
-            })
+            }])
         } else {
-            graphStore.applyOperation({
+            graphStore.applyBatch([{
                 type: 'collapse_dependency',
-
                 targetNodeId: nodeId,
-            })
+            }])
         }
     }
 

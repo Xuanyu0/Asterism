@@ -30,7 +30,7 @@
 
 import type { EdgeData, NodeData, NodeId, NodePosition } from '../../types/graph_data'
 import type { NodeRadiusMap } from '../../types/infrastructure_types'
-import type { ComposeIssue, ComposeResult, DraftPosition } from '../types'
+import type { ComposeIssue, ComposeResult, DraftPosition } from '../../types/compose_types'
 import { distributeOnLine } from '../../infrastructure/placement'
 import { hasCollisionInDrafts } from '../../infrastructure/collision'
 
@@ -95,8 +95,9 @@ export function pathLayout(params: PathParams): ComposeResult<DraftPosition> {
 
         if (!hasDirectedRealEdge) {
             issues.push({
-                message: `节点 ${pn.id} 与轴心节点 ${axis.id} 之间不存在有向实边，不能参与路径布局。`,
                 severity: 'error',
+                code: 'PATH_MISSING_DIRECTED_REAL_EDGE',
+                message: `节点 ${pn.id} 与轴心节点 ${axis.id} 之间不存在有向实边，不能参与路径布局。`,
             })
         }
     }
@@ -106,7 +107,7 @@ export function pathLayout(params: PathParams): ComposeResult<DraftPosition> {
 
     const drafts: DraftPosition[] = pathNodes.map((pn, i) => ({
         nodeId: pn.id,
-        position: positions[i],
+        position: positions[i]!,
     }))
 
     // ── 碰撞检测 ──
@@ -114,8 +115,9 @@ export function pathLayout(params: PathParams): ComposeResult<DraftPosition> {
 
     if (blocked) {
         issues.push({
-            message: '部分路径节点草稿位置与已有节点碰撞，无法放置。',
             severity: 'error',
+            code: 'PATH_COLLISION',
+            message: '部分路径节点草稿位置与已有节点碰撞，无法放置。',
         })
     }
 

@@ -32,7 +32,7 @@
 
 import type { EdgeData, GraphData, GraphId, NodeId, NodePosition } from '../../types/graph_data'
 import type { GraphLookup, NodeRadiusMap } from '../../types/infrastructure_types'
-import type { ComposeIssue, DraftPosition } from '../types'
+import type { ComposeIssue, DraftPosition } from '../../types/compose_types'
 import type { GraphOperation } from '../../types/atomic_operations'
 import { generateNodeId, generateEdgeId } from '../../core/id'
 import { scatterInCircle } from '../../infrastructure/placement'
@@ -123,8 +123,9 @@ export function diverge(params: DivergeParams): {
 
         if (!sourceInCurrent || !targetInCurrent) {
             issues.push({
-                message: `节点不存在于当前图中，请先通过搜索创建启发节点。`,
                 severity: 'error',
+                code: 'DIVERGE_NODE_NOT_IN_CURRENT_GRAPH',
+                message: `节点不存在于当前图中，请先通过搜索创建启发节点。`,
             })
             return { operations: { current: [], peer: [] }, drafts: [], issues }
         }
@@ -135,8 +136,9 @@ export function diverge(params: DivergeParams): {
 
         if (sourceNode.role === 'reference' && targetNode.role === 'reference') {
             issues.push({
-                message: `边的两个端点不能同时为引用节点——禁止链式引用。`,
                 severity: 'error',
+                code: 'DIVERGE_CHAIN_REFERENCE_FORBIDDEN',
+                message: `边的两个端点不能同时为引用节点——禁止链式引用。`,
             })
             return { operations: { current: [], peer: [] }, drafts: [], issues }
         }
@@ -168,8 +170,9 @@ export function diverge(params: DivergeParams): {
     // 两个节点不能都在当前图中
     if (sourceInCurrent && targetInCurrent) {
         issues.push({
-            message: `节点 ${sourceNodeId} 和 ${targetNodeId} 都已存在于当前图中，无需创建启发节点。请直接连边。`,
             severity: 'error',
+            code: 'DIVERGE_BOTH_NODES_IN_CURRENT_GRAPH',
+            message: `节点 ${sourceNodeId} 和 ${targetNodeId} 都已存在于当前图中，无需创建启发节点。请直接连边。`,
         })
         return { operations: { current: [], peer: [] }, drafts: [], issues }
     }
@@ -181,16 +184,18 @@ export function diverge(params: DivergeParams): {
 
     if (!inGraphNode) {
         issues.push({
-            message: `节点 ${inGraphNodeId} 在当前图谱中不存在。`,
             severity: 'error',
+            code: 'DIVERGE_IN_GRAPH_NODE_NOT_FOUND',
+            message: `节点 ${inGraphNodeId} 在当前图谱中不存在。`,
         })
         return { operations: { current: [], peer: [] }, drafts: [], issues }
     }
 
     if (inGraphNode.role !== 'knowledge') {
         issues.push({
-            message: `边的两个端点不能同时为引用节点——禁止链式引用。`,
             severity: 'error',
+            code: 'DIVERGE_CHAIN_REFERENCE_FORBIDDEN',
+            message: `边的两个端点不能同时为引用节点——禁止链式引用。`,
         })
         return { operations: { current: [], peer: [] }, drafts: [], issues }
     }
@@ -200,8 +205,9 @@ export function diverge(params: DivergeParams): {
 
     if (!peerGraph) {
         issues.push({
-            message: `节点 ${missingNodeId} 在所有已注册图谱中均不存在。`,
             severity: 'error',
+            code: 'DIVERGE_PEER_NODE_NOT_FOUND',
+            message: `节点 ${missingNodeId} 在所有已注册图谱中均不存在。`,
         })
         return { operations: { current: [], peer: [] }, drafts: [], issues }
     }
@@ -210,8 +216,9 @@ export function diverge(params: DivergeParams): {
 
     if (!missingNode || missingNode.role !== 'knowledge') {
         issues.push({
-            message: `目标节点 ${missingNodeId} 不是知识节点，不能创建发散连接。`,
             severity: 'error',
+            code: 'DIVERGE_PEER_NODE_NOT_KNOWLEDGE',
+            message: `目标节点 ${missingNodeId} 不是知识节点，不能创建发散连接。`,
         })
         return { operations: { current: [], peer: [] }, drafts: [], issues }
     }
@@ -265,8 +272,9 @@ export function diverge(params: DivergeParams): {
 
     if (!mirrorPosition) {
         issues.push({
-            message: `镜像启发节点在对端图 ${peerGraph.graph.id} 中无法找到空位。`,
             severity: 'error',
+            code: 'DIVERGE_MIRROR_PLACEMENT_FAILED',
+            message: `镜像启发节点在对端图 ${peerGraph.graph.id} 中无法找到空位。`,
         })
         return { operations: { current: [], peer: [] }, drafts: [], issues }
     }

@@ -3,7 +3,7 @@
  *
  * 功能：
  *
- *     操作序列事务流水线。所有 composite 编排共享的批量执行入口。
+ *     操作序列事务流水线。所有 GraphData 修改的唯一入口。
  *
  * 总体结构：
  *
@@ -13,17 +13,18 @@
  *
  * 事务语义：
  *
- *     预校验方案（validate-all-first）：
- *         1. 逐条 validate
- *         2. 任一失败 → 整批丢弃，graph 原封不动，返回所有 issue
- *         3. 全通过 → 逐条 execute，返回新 graph
+ *     1. Phase 1 — 逐条校验操作前提条件（validateOperation）。
+ *     2. Phase 2 — dry-run execute 全部操作，得到 resultGraph。
+ *     3. Phase 3 — 对 resultGraph 运行全局不变量规则。
+ *     4. 任一阶段失败 → 整批丢弃，graph 原封不动，返回所有 issue。
+ *     5. 全部通过 → 正式返回 resultGraph。
  *
  *     不存在"执行一半需要回滚"的场景——全通过后才开始 execute。
  *
  * 与 reversal 的关系：
  *
  *     applyBatch 不内部调用 createReversal。reversal 的调用时机由上层
- *     （graph_store）在调用 applyBatch 之前决定——这是 Step 11 的职责。
+ *     （graph_store）在调用 applyBatch 之前决定。
  *     applyBatch 是纯函数，不产生副效应。
  *
  * 外部如何使用：
@@ -43,6 +44,8 @@ import type { GraphOperation } from '../types/atomic_operations'
 import type { ValidationResult } from '../types/validation'
 import { validateOperation } from '../core/validate'
 import { executeOperation } from '../core/execute'
+import type { GlobalRulesTable } from '../core/checkers/global_rules_table'
+import { DEFAULT_GLOBAL_RULES_TABLE, runGlobalRules } from '../core/checkers/global_rules_table'
 
 /**
  * 功能：
@@ -51,8 +54,9 @@ import { executeOperation } from '../core/execute'
  *
  * 规则：
  *
- *     - dryRun：只 validate 不 execute。用于认知操作正式执行前预判。
+ *     - dryRun：只校验不执行。用于认知操作正式执行前预判。
  *     - stopOnFirst：遇第一个失败即停（默认 false，聚合全部 issue 后返回）。
+ *     - globalRulesTable：全局规则开关表。未传入时使用默认全开配置。
  */
 export interface BatchOptions {
     /** 只校验不执行。默认 false。 */
@@ -60,6 +64,9 @@ export interface BatchOptions {
 
     /** 遇第一个失败即停。默认 false——聚合所有 issue。 */
     stopOnFirst?: boolean
+
+    /** 全局规则开关表。默认 DEFAULT_GLOBAL_RULES_TABLE。 */
+    globalRulesTable?: GlobalRulesTable
 }
 
 /**
@@ -94,21 +101,24 @@ export interface BatchResult {
 /**
  * 功能：
  *
- *     批量事务执行。逐条 validate → 全通过后逐条 execute。
- *     任一失败则整批丢弃，入参 graph 原封不动。
+ *     批量事务执行。修改 GraphData 的唯一入口。
+ *
+ *     Phase 1 校验操作前提 → Phase 2 dry-run execute → Phase 3 全局规则校验 →
+ *     全部通过后返回新图。
  *
  * 规则：
  *
  *     1. validate-all-first：全部校验通过后才开始 execute。
- *     2. 失败回退：任一校验不通过，graph 不变，返回聚合后的 issues。
- *     3. stopOnFirst：遇第一个错误即停（可配合 dryRun 预判）。
+ *     2. 失败回退：任一阶段失败，graph 不变，返回聚合后的 issues。
+ *     3. stopOnFirst：遇第一个错误即停。
  *     4. 不内部调用 createReversal——reversal 由上层管理。
+ *     5. 全局规则在 Phase 3 对结果图统一运行，不依赖操作类型。
  *
  * 参数：
  *
  *     graph     — 操作前的 GraphData 快照
  *     ops       — 待执行的操作序列
- *     options   — [可选] dryRun / stopOnFirst
+ *     options   — [可选] dryRun / stopOnFirst / globalRulesTable
  *
  * 使用：
  *
@@ -123,8 +133,9 @@ export function applyBatch(
 ): BatchResult {
     const dryRun = options?.dryRun ?? false
     const stopOnFirst = options?.stopOnFirst ?? false
+    const globalRulesTable = options?.globalRulesTable ?? DEFAULT_GLOBAL_RULES_TABLE
 
-    // Phase 1 — 逐条 validate
+    // Phase 1 — 逐条校验操作前提条件
     const results: PerOpResult[] = []
 
     for (const op of ops) {
@@ -135,36 +146,47 @@ export function applyBatch(
         if (!validation.valid && stopOnFirst) break
     }
 
-    // 聚合校验结果
-    const allIssues = results.flatMap(r => r.validation.issues)
-    const hasFailure = results.some(r => !r.validation.valid)
+    const localIssues = results.flatMap(r => r.validation.issues)
+    const hasLocalFailure = results.some(r => !r.validation.valid)
 
-    if (hasFailure) {
+    if (hasLocalFailure) {
         return {
             graph,
-            validation: { valid: false, issues: allIssues },
+            validation: { valid: false, issues: localIssues },
             results,
         }
     }
 
-    // Phase 2 — dryRun 时跳过 execute
+    // Phase 2 — dry-run execute 全部操作，得到 resultGraph
+    let resultGraph = graph
+
+    for (const op of ops) {
+        resultGraph = executeOperation(resultGraph, op)
+    }
+
+    // Phase 3 — 对 resultGraph 运行全局不变量规则
+    const globalIssues = runGlobalRules(resultGraph, globalRulesTable)
+    const hasGlobalFailure = globalIssues.some(issue => issue.severity === 'error')
+
+    if (hasGlobalFailure) {
+        return {
+            graph,
+            validation: { valid: false, issues: [...localIssues, ...globalIssues] },
+            results,
+        }
+    }
+
+    // dryRun 模式：校验通过但不执行
     if (dryRun) {
         return {
             graph,
-            validation: { valid: true, issues: allIssues },
+            validation: { valid: true, issues: [...localIssues, ...globalIssues] },
             results,
         }
     }
 
-    // Phase 3 — 全通过，逐条 execute
-    let currentGraph = graph
-
-    for (const op of ops) {
-        currentGraph = executeOperation(currentGraph, op)
-    }
-
     return {
-        graph: currentGraph,
+        graph: resultGraph,
         validation: { valid: true, issues: [] },
         results,
     }

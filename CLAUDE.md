@@ -146,16 +146,7 @@ Cytoscape Renderer (use_cytoscape_renderer.ts)
 - 操作回放：replayGraph / replayToStep
 - 前端已切到引擎全部 API，冗余代码已清理
 
-**Phase 2a 完成标志**（详见 `docs/P2开发文档/P2a步骤规划.md`）：
-
-| Step | 内容 | 可验证标志 |
-|------|------|----------|
-| 1-8 | 引擎骨架 → 认知操作层 | 20 测试文件 119 测试全部通过 |
-| 9 | 测试覆盖 | 19 个子任务全部有测试文件 |
-| 10 | 公开 API 收口 | 按 6 类组织 index.ts，26 处消费者标注，不导出内部模块 |
-| 11 | 前端适配 | graph_store 切 engine apply，import 全部指向 @my-project/graph-engine，删除 9 个重复文件，交互模式去 Operation 化，常驻操作栏 |
-
-**Phase 2a 定性标准**：引擎作为独立的 `@my-project/graph-engine` 包运行，框架无关，20 文件 119 测试。前端仅通过 graph_store + graph_operations 两个文件调引擎，所有 import 指向引擎包。
+**Phase 2a 完成标志**：引擎作为独立的 `@my-project/graph-engine` 包运行，框架无关，20 文件 119 测试。前端仅通过 graph_store + graph_operations 两个文件调引擎，所有 import 指向引擎包。
 
 ---
 
@@ -195,11 +186,11 @@ GE 的全部功能在前端完全落地，使 Cognition（除 explore / unearth�
 
 ### Phase 3：功能与 UI 界面迭代优化
 
-- 导航卡片（Dock / Expand / Hidden 三态）
-- Overlay 视图 Button（沉浸浏览、Notebook 视图、未掌握视图、知识群聚焦视图）
-- 笔记库（图谱节点 ↔ 笔记联动）
-- 交互模式按钮图标替换（C = 放大镜，A = 星系）
-- 按钮视觉动效（半透明浮空、离开 3s 淡化、滑动弹出 300ms）
+- 导航卡片
+- Overlay 视图 Button
+- 笔记库
+- 交互模式按钮图标替换、
+- 按钮视觉动效
 - 学习历史回顾 UI（时间轴视图、State 列表、分支选择）
 
 ---
@@ -235,19 +226,7 @@ GE 的全部功能在前端完全落地，使 Cognition（除 explore / unearth�
 
 ### 变量命名规则
 
-遍历节点使用 `node`，遍历边使用 `edge`，禁止单字母简写。
-
-```ts
-// ❌ 禁止
-graph.nodes.filter(n => n.role === 'knowledge')
-graph.edges.find(e => e.id === targetId)
-for (const e of params.edges) { degreeMap.set(e.source, ...) }
-
-// ✅ 使用全称
-graph.nodes.filter(node => node.role === 'knowledge')
-graph.edges.find(edge => edge.id === targetId)
-for (const edge of params.edges) { degreeMap.set(edge.source, ...) }
-```
+禁止变量单字母简写。
 
 ## 二、文件命名（snake_case）
 
@@ -322,7 +301,7 @@ export interface XXX { }
 2. 参数说明格式：`参数名 — 一句话说清语义。键 = 键语义，值 = 值语义`。每参数一行。
 3. 无参数的函数省略 `参数：` 段。
 
-## 七、禁止内部注释
+## 七、内部注释规则
 
 允许：文件头 / 接口 / 函数注释。
 禁止：逐行注释、解释显然的代码行为的废话注释。
@@ -332,19 +311,6 @@ export interface XXX { }
 1. **前端特有语法**（供 C++ 背景开发者理解）。如 `function*`、`yield`、`Proxy` 等 C++ 无直接对应的语法。
    格式：代码后同一行 `// [语法名]：[一句话解释]`。
 2. **非直觉实现**。代码逻辑正确但为什么这样写不是一眼能看懂的。
-
-```ts
-// ✅ 允许：解释 TS 特有语法
-function* iterateNodes(...): Generator<...> {  // Generator：惰性迭代器，C++20 std::generator 等价
-    yield node  // yield：暂停并返回值，C++ co_yield 等价
-}
-
-// ✅ 允许：解释非直觉实现
-return R0 * Math.sqrt(1 + node.degree)  // √(1+d) 保证 degree=0 时半径不为 0
-
-// ❌ 禁止：解释显然行为
-const node = allNodes.find(node => node.id === nodeId)  // 查找节点 ← 废话
-```
 
 ## 八、跨文件意图注释
 
@@ -394,7 +360,7 @@ define Phase 2b MVP scope with completion criteria and detailed task list
 - Add arrangement tasks: moveNode, orbit, path, adjust with collision preview
 - Add data integrity tasks: sentinel loading, save/load graph UI, localStorage persistence
 
-Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+Co-Authored-By: 
 ```
 
 规则：
@@ -411,7 +377,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
 ## 十六、GraphData 唯一事实源（项目基石）
 
 GraphData 是唯一事实源。修改 GraphData 的两条合法路径：
-1. **原子操作**：`graph_store.applyOperation()`（单个 add/delete/update/move/fold/expand）
+1. **原子操作**：`graphStore.applyBatch([operation])`（单个 add/delete/update/move/fold/expand 包装为单元素数组）
 2. **编排操作**：`graph_operations.ts` → Engine applyBatch → `graphStore.currentGraph = ...`（deconstruct/induce/internalize/diverge 等认知操作）
 
 ## 十七、Import 组织规范
@@ -439,21 +405,11 @@ import NodeWindow from './graph/NodeWindow.vue'
 - `type` import 和普通 import 可以混在同一组
 - 组内按路径字母序
 
-## 十八、Vue 组件命名
+## 十八、前端特有机制注释规范
 
-`.vue` 文件统一 **PascalCase**（与 Vue 生态一致），`.ts` 业务文件保持 **snake_case**。
-
-## 十九、前端特有机制注释规范
-
-**原则**：对于依赖 Vue / TypeScript / 前端框架特有行为（非通用编程范式）的代码，必须在注释中说明机制，帮助熟悉 C++ 但不熟悉前端的开发者理解"魔法"。
+**原则**：对于依赖 Vue / TypeScript / 前端框架特有行为（非通用编程范式）的代码，必须在注释中说明机制，帮助熟悉 C++ 面向过程式编程和Java面向对象式编程，但不熟悉前端的开发者理解"魔法"。
 
 **格式**：在现有注释结构中增加"前端机制"小节（放在"规则"之前或之后，视上下文而定）：
-
-```
- * 前端机制（供熟悉 C++/通用编程但不熟悉前端框架的开发者参考）：
- *     - 模式名：机制说明。
- *       C++ 类比：对应的 C++ 概念。
-```
 
 **规则**：
 1. 只解释 **"为什么会这样"**，不解释"这行代码在干什么"（不违反第七条）
@@ -461,44 +417,7 @@ import NodeWindow from './graph/NodeWindow.vue'
 3. 只标记**非直觉的框架行为**，通用 TypeScript/JS 语法不解释
 4. 简单模板语法（如单个 `@click`）不需要注释，复杂的响应式链条才需要
 
-
-### 示例：KnowledgeGraph.vue 文件头
-
-```ts
-/**
- * 功能：
- *     KnowledgeGraph 页面组合层。
- *
- * 总体结构：
- *     1. 挂载 Cytoscape 容器
- *     2. 初始化 Cytoscape Renderer
- *     3. 监听 GraphData 变化并同步渲染
- *     4. 绑定 Cytoscape 语义交互事件
- *     5. 挂载 NodeWindow 与 OperationToolbar
- *
- * 前端机制（Vue 3 框架行为）：
- *     - <script setup lang="ts">：
- *       Vue 3 编译期语法糖。顶层变量自动暴露给模板，import 的组件自动注册。
- *       C++ 类比：编译器自动生成声明，无需手动写 return / components。
- *
- *     - ref<HTMLDivElement | null>(null)：
- *       Vue 响应式引用。模板中的 ref="cyContainer" 自动将 DOM 元素赋值给 .value。
- *       C++ 类比：std::shared_ptr + Observer 通知，但框架自动管理注册/注销。
- *
- *     - onMounted / onBeforeUnmount：
- *       生命周期钩子。onMounted ≈ 构造函数（DOM 已挂载），
- *       onBeforeUnmount ≈ 析构函数（组件销毁前清理）。注意 onMounted 之前 ref 为空。
- *
- *     - watch(source, callback, { deep: true })：
- *       响应式观察者。source 中访问的响应式值变化时触发 callback。
- *       deep: true 递归监听嵌套属性。C++ 类比：Observer + 自动深比较 + 自动注册/注销。
- *
- * 外部如何使用：
- *     App.vue 直接挂载本组件。
- */
-```
-
-## 二十、单次调用函数直接内联
+## 十九、单次调用函数直接内联
 
 纯函数辅助逻辑如果只被一个函数调用（且不 export），**不单独拆函数**，直接在调用处写代码加功能注释。
 
@@ -523,7 +442,7 @@ function foo(): void {
 | export 为公开 API | ✅ 独立函数及文档注释 |
 | 函数体过长（>30 行）混在一起不利于阅读 | ✅ 拆为语义块 |
 
-## 二十一、Vue 模板语法规范
+## 二十、Vue 模板语法规范
 
 **禁止缩写**。Vue 模板中所有指令必须使用完整形式，不准使用缩写：
 
@@ -539,7 +458,7 @@ function foo(): void {
 
 原因：缩写形式是 Vue 特有的语法糖，对 C++ 背景开发者不透明——`:` 和 `@` 在 HTML 中无对应语义。完整形式直接表达意图：`v-on:` = "绑定事件"，`v-bind:` = "绑定属性"。
 
-## 二十二、设计决策权限
+## 二十一、设计决策权限
 
 | 行为 | 允许 | 禁止 |
 |------|------|------|
@@ -554,6 +473,21 @@ function foo(): void {
 2. **不允许主动提出"要不要我把这个写进文档"。** 只在用户问到时回答"需要的话可以"。
 3. **代码按现有规范自由修改**，无需额外确认。
 4. 此规则旨在确保用户（而非 AI）是设计文档的唯一作者——AI 的产出进入对话和代码，不进设计文档。
+
+## 二十二、Git 提交权限
+
+| 行为 | 允许 | 禁止 |
+|------|------|------|
+| 在对话中说明改动、解释 diff | ✅ | |
+| 未经用户明确许可执行 `git commit` | | ❌ |
+| 未经用户明确许可执行 `git push` / `git rebase` / `git reset` 等变基/推送操作 | | ❌ |
+| 经用户检查并明确许可后提交 | ✅ | |
+
+规则：
+
+1. **AI 不得在未经用户明确许可的情况下执行任何 git 提交或推送类操作。** 即使改动已经通过测试，也必须等待用户检查并给出明确许可。
+2. **AI 可以主动展示 `git status`、`git diff` 和测试结果**，帮助用户做提交决策。
+3. 用户说"帮我 commit"或"提交"时，仍需先展示 diff 供用户确认，再执行。
 
 ## 二十三、设计文档层级与冲突处理
 
@@ -580,7 +514,7 @@ function foo(): void {
 3. 当 spec 中的实现细节与开发文档矛盾时，以开发文档为准。
 4. 若上级文档未覆盖某话题，下级文档的结论为有效默认值。
 
-## 二十四、文档检索规范
+## 二十三、文档检索规范
 
 ### 两种检索机制
 

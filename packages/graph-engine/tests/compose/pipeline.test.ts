@@ -72,4 +72,82 @@ describe('applyBatch', () => {
         // 当前图不变——add_graph 只声明子图的存在，registry 写操作由 Runtime 处理
         expect(result.graph).toBe(graph)
     })
+
+    it('全局规则在 Phase 3 生效：自环被拦截', () => {
+        const graph = makeBase()
+        const ops = [
+            {
+                type: 'add_edge' as const,
+                edge: createEdge({
+                    id: 'e-self' as NodeId,
+                    graphId: G,
+                    source: 'n0' as NodeId,
+                    target: 'n0' as NodeId,
+                    kind: 'real',
+                    direction: 'directed',
+                }),
+            },
+        ]
+        const result = applyBatch(graph, ops)
+        expect(result.validation.valid).toBe(false)
+        expect(result.validation.issues.some(i => i.code === 'SELF_LOOP_FORBIDDEN')).toBe(true)
+        expect(result.graph.edges.length).toBe(0)
+    })
+
+    it('全局规则在 Phase 3 生效：重边被拦截', () => {
+        const graph = makeBase()
+        const ops = [
+            {
+                type: 'add_edge' as const,
+                edge: createEdge({
+                    id: 'e0' as NodeId,
+                    graphId: G,
+                    source: 'n0' as NodeId,
+                    target: 'n1' as NodeId,
+                    kind: 'real',
+                    direction: 'directed',
+                }),
+            },
+            {
+                type: 'add_edge' as const,
+                edge: createEdge({
+                    id: 'e-dup' as NodeId,
+                    graphId: G,
+                    source: 'n0' as NodeId,
+                    target: 'n1' as NodeId,
+                    kind: 'real',
+                    direction: 'directed',
+                }),
+            },
+        ]
+        const result = applyBatch(graph, ops)
+        expect(result.validation.valid).toBe(false)
+        expect(result.validation.issues.some(i => i.code === 'DUPLICATE_EDGE_FORBIDDEN')).toBe(true)
+        expect(result.graph.edges.length).toBe(0)
+    })
+
+    it('globalRulesTable 可关闭指定规则', () => {
+        const graph = makeBase()
+        const ops = [
+            {
+                type: 'add_edge' as const,
+                edge: createEdge({
+                    id: 'e-self' as NodeId,
+                    graphId: G,
+                    source: 'n0' as NodeId,
+                    target: 'n0' as NodeId,
+                    kind: 'real',
+                    direction: 'directed',
+                }),
+            },
+        ]
+        const result = applyBatch(graph, ops, {
+            globalRulesTable: {
+                SELF_LOOP_FORBIDDEN: false,
+                REAL_DIRECTED_CYCLE_FORBIDDEN: false,
+            },
+        })
+        expect(result.validation.valid).toBe(true)
+        expect(result.graph.edges.length).toBe(1)
+    })
 })

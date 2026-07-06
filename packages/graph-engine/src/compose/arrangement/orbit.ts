@@ -31,7 +31,7 @@
 
 import type { EdgeData, NodeData, NodeId, NodePosition } from '../../types/graph_data'
 import type { NodeRadiusMap } from '../../types/infrastructure_types'
-import type { ComposeIssue, ComposeResult, DraftPosition } from '../types'
+import type { ComposeIssue, ComposeResult, DraftPosition } from '../../types/compose_types'
 import { computeTierSpacing, snapOrbit } from '../../infrastructure/placement'
 import { hasCollisionInDrafts } from '../../infrastructure/collision'
 
@@ -109,8 +109,9 @@ export function orbit(params: OrbitParams): ComposeResult<DraftPosition> {
 
         if (!hasRealEdge) {
             issues.push({
-                message: `节点 ${satellite.id} 与中心节点 ${center.id} 之间不存在实边，不能参与环绕布局。`,
                 severity: 'error',
+                code: 'ORBIT_MISSING_REAL_EDGE',
+                message: `节点 ${satellite.id} 与中心节点 ${center.id} 之间不存在实边，不能参与环绕布局。`,
             })
         }
     }
@@ -126,8 +127,9 @@ export function orbit(params: OrbitParams): ComposeResult<DraftPosition> {
         const currentPos = nodePosMap.get(satellite.id)
         if (!currentPos) {
             issues.push({
-                message: `节点 ${satellite.id} 在当前图谱中不存在。`,
                 severity: 'error',
+                code: 'ORBIT_SATELLITE_NOT_FOUND',
+                message: `节点 ${satellite.id} 在当前图谱中不存在。`,
             })
             continue
         }
@@ -140,8 +142,9 @@ export function orbit(params: OrbitParams): ComposeResult<DraftPosition> {
 
     if (blocked) {
         issues.push({
-            message: '部分卫星草稿位置与已有节点碰撞，无法放置。',
             severity: 'error',
+            code: 'ORBIT_COLLISION',
+            message: '部分卫星草稿位置与已有节点碰撞，无法放置。',
         })
     }
 

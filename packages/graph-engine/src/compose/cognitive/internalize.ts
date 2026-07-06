@@ -30,7 +30,7 @@
 
 import type { GraphData, NodeId, NodePosition } from '../../types/graph_data'
 import type { GraphLookup, NodeRadiusMap } from '../../types/infrastructure_types'
-import type { ComposeIssue } from '../types'
+import type { ComposeIssue } from '../../types/compose_types'
 import type { GraphOperation } from '../../types/atomic_operations'
 import { generateNodeId } from '../../core/id'
 import { scatterInCircle } from '../../infrastructure/placement'
@@ -94,8 +94,9 @@ export function internalize(params: InternalizeParams): {
 
     if (nodeIds.length < 1) {
         issues.push({
-            message: `内化操作至少需要一个节点。`,
             severity: 'error',
+            code: 'INTERNALIZE_EMPTY_SELECTION',
+            message: `内化操作至少需要一个节点。`,
         })
         return { operations: { parent: [], child: [], commonLayer: [] }, issues }
     }
@@ -121,8 +122,9 @@ export function internalize(params: InternalizeParams): {
     if (notFoundIds.length > 0) {
         for (const missingId of notFoundIds) {
             issues.push({
-                message: `节点 ${missingId} 在当前图谱及其子图中均不存在。`,
                 severity: 'error',
+                code: 'INTERNALIZE_TARGET_NOT_FOUND',
+                message: `节点 ${missingId} 在当前图谱及其子图中均不存在。`,
             })
         }
         return { operations: { parent: [], child: [], commonLayer: [] }, issues }
@@ -134,8 +136,9 @@ export function internalize(params: InternalizeParams): {
 
     if (knowledgeNodes.length === 0) {
         issues.push({
-            message: `所有目标节点均为引用节点，不存在可内化的知识节点。引用节点已在原图中自动删除。`,
             severity: 'error',
+            code: 'INTERNALIZE_ONLY_REFERENCE_NODES',
+            message: `所有目标节点均为引用节点，不存在可内化的知识节点。引用节点已在原图中自动删除。`,
         })
         return { operations: { parent: [], child: [], commonLayer: [] }, issues }
     }
@@ -143,8 +146,9 @@ export function internalize(params: InternalizeParams): {
     for (const rn of knowledgeNodes) {
         if (rn.node.role === 'knowledge' && rn.node.kind === 'real' && rn.node.form === 'abstract') {
             issues.push({
-                message: `节点 ${rn.node.id} 是抽象节点，其子图内的沟通节点将被一并删除。`,
                 severity: 'warning',
+                code: 'INTERNALIZE_ABSTRACT_NODE_RECURSIVE',
+                message: `节点 ${rn.node.id} 是抽象节点，其子图内的沟通节点将被一并删除。`,
             })
         }
     }

@@ -185,9 +185,9 @@ export function hasCollisionInDrafts(
 
     // 草稿 vs 草稿：两两检查
     for (let i = 0; i < draftItems.length; i++) {
-        const a = draftItems[i]
+        const a = draftItems[i]!
         for (let j = i + 1; j < draftItems.length; j++) {
-            const b = draftItems[j]
+            const b = draftItems[j]!
             const minDist = a.radius + b.radius
             if (squaredDistance(a.draft.position, b.draft.position) < minDist * minDist) {
                 return true
