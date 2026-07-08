@@ -22,3 +22,6 @@ dist/
 # Python 虚拟环境
 venv/
 backend/venv/
+
+# 临时文件
+*.txt
