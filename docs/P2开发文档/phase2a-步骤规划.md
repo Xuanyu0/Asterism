@@ -1,4 +1,4 @@
-# Phase 2 步骤规划
+# Phase 2 步骤规划  — 已完成（历史参考）
 
 > 抽取自 `graph-engine开发手册.md §十`。本文档定义 Phase 2 的任务分解、难度评估和阶段划分。
 
@@ -25,7 +25,7 @@
 
 ## 阶段划分
 
-### Step 1：Engine 项目骨架搭建 ✅
+### Step 1：Engine 项目骨架搭建  --Complete
 
 | # | 任务 | 产出 |
 |---|------|------|
@@ -34,7 +34,7 @@
 | 1.3 | 创建 `packages/graph-engine/tsconfig.json`，配置项目引用 | tsc 编译就绪 |
 | 1.4 | 安装 vitest | 测试框架就绪 |
 
-### Step 2：类型层迁移（types/） ✅
+### Step 2：类型层迁移（types/）  --Complete
 
 | # | 任务 | 说明 |
 |---|------|------|
@@ -45,7 +45,7 @@
 | 2.5 | 新增操作日志类型 | `engine/src/types/operation_log.ts`（新增）。定义 `OperationLogEntry`、`OperationLog`、`ReflogEntry`。支持 Git 追加模型 |
 | 2.6 | 更新前端 import 路径 | 所有 `@/definitions/types/xxx` → `@my-project/graph-engine` |
 
-### Step 3：核心引擎迁移（core/） ✅
+### Step 3：核心引擎迁移（core/）  --Complete
 
 **⚠️ 新增逻辑**：迁移时需补充引用节点穿透（update_node 时同步修改原节点）、引用节点级联删除（delete_node 时跟随原节点生命周期）、虚节点约束校验。这些是 Phase 1 未实现的功能。
 
@@ -61,7 +61,7 @@
 | 3.6 | 新建 `engine/src/core/reversal.ts` | 逆元构造器。在 execute 前调用，捕获操作对象完整前状态，返回逆操作序列。11 种原子操作全部覆盖。已通过 `index.ts` 导出，接入调用链路在 Step 10.6 |
 | 3.7 | 新建 `engine/src/core/replay.ts` | 操作序列回放。`replayGraph(base, ops) → GraphData` / `replayToStep(base, ops, step) → GraphData`。纯函数。已通过 `index.ts` 导出，接入调用链路在 Step 10.6 |
 
-### Step 4：规则约束层合并（core/checkers/） ✅
+### Step 4：规则约束层合并（core/checkers/）  --Complete
 
 **新增逻辑**：rule_checkers 需新增引用节点边约束、虚节点度数规则（r₀ 固定）、启发节点操作约束等。非纯搬家。迁移目标为 `core/checkers/`（`core/` 子文件夹），由 `core/validate.ts` 编排。
 
@@ -73,7 +73,7 @@
 | 4.4 | 新建 `engine/src/core/checkers/registry.ts` | `DEFAULT_RULES` 启用表，约 20 行。Phase 3 扩展点 |
 | — | ~~迁移 `operation_validator.ts` 至 checkers/~~ | **已由 3.2 处理**：编排逻辑由 `core/validate.ts` 承接，checkers/ 仅存放原子规则和常量 |
 
-### Step 5：基础设施实现（infrastructure/） ✅
+### Step 5：基础设施实现（infrastructure/）  --Complete
 
 **目标**：实现认知操作和布局操作共同依赖的底层能力 + 持久化接口迁入。全部是纯函数。
 
@@ -103,7 +103,7 @@
 - `distributeOnTiers` 不扩展 D₀ 至外层级（即 D₀ 被约束 C 扩展后，所有层级同步放大，内部层级不一定被扩展）。当前实现为单 D₀ 全局缩放。
 - 间距中 `r₀` 项保证层间可容纳一个孤立节点。
 
-### Step 6：Compose 基础层实现（compose/） ✅
+### Step 6：Compose 基础层实现（compose/）  --Complete
 
 **目标**：提取布局操作（Step 7）和认知操作（Step 8）共享的类型定义和事务流水线，避免在 9 个 compose 模块中各自重复实现 `{ drafts, issues }` 契约和操作序列事务语义。
 
@@ -157,7 +157,7 @@ applyBatch(graph, ops):
 
 ---
 
-### Step 7：布局操作层实现（compose/arrangement/） ✅
+### Step 7：布局操作层实现（compose/arrangement/）  --Complete
 
 **目标**：将 Arrange 模式下的位置计算编排逻辑下沉为引擎纯函数。依赖 Step 5 的 `collision` 和 `placement` 基础设施。
 
@@ -202,7 +202,7 @@ Adjust Orbit 融合了原 Adjust Angle 的操作语义——拖拽同时改变�
 | 7.4 | `path.ts` | 路径布局。`pathLayout(params) → ComposeResult<DraftPosition>`。校验：参与节点必须通过有向实边与轴心节点连接。内部 `distributeOnLine` 沿射线等距排列 + `hasCollisionInDrafts` 批量判碰。前端改变方向角后重新调此函数拿最新 drafts + issues。 |
 | 7.5 | `cloud.ts` | 云布局。`cloudLayout(params) → ComposeResult<DraftPosition>`。任意节点和边类型均可参与。内部 `scatterInCircle` 生成随机位置 + `hasCollisionInDrafts` 批量判碰，循环重试至不碰或达上限。<br>> **延后至 Phase 2b**：约束布局算法。当前用 scatterInCircle 作为简单替代。 |
 
-### Step 7.5：认知操作 Spec 编写（docs/spec/） ✅
+### Step 7.5：认知操作 Spec 编写（docs/spec/）  --Complete
 
 **目标**：在动工 Step 8 之前，为 4 个认知操作各写一份精确规格说明书，关闭所有"边写边决策"的敞口。
 
@@ -218,7 +218,7 @@ Adjust Orbit 融合了原 Adjust Angle 的操作语义——拖拽同时改变�
 
 > **依赖**：Step 7.5 的 Spec 是 Step 8 的输入。先写 Spec，再写代码——Spec 定稿后再开工 coding。
 
-### Step 8：认知操作层实现（compose/cognitive/） ✅
+### Step 8：认知操作层实现（compose/cognitive/）  --Complete
 
 **目标**：根据 Step 7.5 的 Spec，将 `operation_controller.ts` 中 Cognition 模式的 TODO stubs 下沉为引擎纯函数。依赖 Step 5 的基础设施（registry、search、placement）和 Step 7 的布局编排。
 
@@ -232,7 +232,7 @@ Adjust Orbit 融合了原 Adjust Angle 的操作语义——拖拽同时改变�
 | 8.4 | `diverge.ts` (~90 行) | 发散：跨图创建启发节点 + 有向虚边。三种 case 场景处理 + `scatterInCircle` 自动生成镜像节点位置。依赖 `search` 做跨图节点查找 |
 | 8.5 | 新建 `compose/index.ts` (~5 行) | 统一 re-export 所有认知操作和布局操作。Phase 3 扩展点 |
 
-### Step 9：测试覆盖 ✅
+### Step 9：测试覆盖  --Complete
 
 | # | 任务 | 测试数 | 状态 |
 |---|------|:--:|:--:|
@@ -258,7 +258,7 @@ Adjust Orbit 融合了原 Adjust Angle 的操作语义——拖拽同时改变�
 
 重复文件已检测：根目录 `tests/pipeline.test.ts`（6 tests）和 `tests/search.test.ts`（9 tests）功能被 `compose/pipeline.test.ts` 和 `infrastructure/search.test.ts` 覆盖，后续可清理。
 
-### Step 10：公开 API 收口（先于 Step 11） ✅
+### Step 10：公开 API 收口（先于 Step 11）  --Complete
 
 导出分为 6 类：
 
@@ -287,7 +287,7 @@ Adjust Orbit 融合了原 Adjust Angle 的操作语义——拖拽同时改变�
 | 10.2 ✅ | 为每个导出函数标注消费者 | `/** 消费者：graph_store */` 或 `/** 消费者：operation_controller */`，共 26 处 |
 | 10.3 ✅ | 确认不导出列表 | execute / validate / sync / checkers / collision / placement / geometry 均不出现在 index.ts（仅 `validateGraph` 例外——公开全图体检函数） |
 
-### Step 11：前端适配（依赖 Step 10 的 API 收口）
+### Step 11：前端适配（依赖 Step 10 的 API 收口）  --Complete
 
 | # | 任务 | 说明 |
 |---|------|------|
