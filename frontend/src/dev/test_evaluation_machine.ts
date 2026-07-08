@@ -23,7 +23,6 @@
 
 import type { EdgeData, EdgeId, GraphData, GraphId, NodeData, NodeId } from '@my-project/graph-engine'
 import type { GraphOperation } from '@my-project/graph-engine'
-import type { ValidationResult } from '@my-project/graph-engine'
 
 import { validateGraph } from '@my-project/graph-engine'
 import { applyBatch } from '@my-project/graph-engine'
@@ -32,7 +31,6 @@ import { pushUndoSnapshot, shouldPushUndoSnapshot } from '@/graph/graph_store'
 import { saveGraph, loadGraph, deleteGraph } from '@/graph/utilities/graph_persistence'
 
 import { useGraphStore } from '@/graph/graph_store'
-import type { GraphRegistry } from '@/graph/utilities/graph_registry'
 
 import {
     createGoldenTestGraph,
@@ -723,31 +721,31 @@ function testGraphStoreIntegration(): TestSuite {
     const store = useGraphStore()
 
     // 保存当前状态
-    const savedGraph = store.currentGraph
+    const savedGraph = store.graphView
     const savedUndoStack = [...store.undoStack]
 
-    // --- setCurrentGraph ---
+    // --- setGraphView ---
     {
         const golden = createGoldenTestGraph()
-        store.setCurrentGraph(golden)
+        store.setGraphView(golden)
         results.push({
-            name: 'setCurrentGraph 设置当前图',
-            passed: store.currentGraph?.id === 'graph-golden',
-            detail: `期望 graph-golden, 实际 ${store.currentGraph?.id}`,
+            name: 'setGraphView 设置当前图',
+            passed: store.graphView?.id === 'graph-golden',
+            detail: `期望 graph-golden, 实际 ${store.graphView?.id}`,
         })
         results.push({
-            name: 'setCurrentGraph 加载 6 节点',
-            passed: store.currentGraph?.nodes.length === 6,
-            detail: `期望 6, 实际 ${store.currentGraph?.nodes.length}`,
+            name: 'setGraphView 加载 6 节点',
+            passed: store.graphView?.nodes.length === 6,
+            detail: `期望 6, 实际 ${store.graphView?.nodes.length}`,
         })
     }
 
-    // --- applyBatch 完整链路 ---
+    // --- applyBatchToGraph 完整链路 ---
     {
         const graph = makeTwoNodeGraph()
-        store.setCurrentGraph(graph)
+        store.setGraphView(graph)
 
-        const result: ValidationResult = store.applyBatch([{
+        const result = store.applyBatchToGraph(store.graphView!, [{
             type: 'add_node',
             node: {
                 role: 'knowledge',
@@ -764,49 +762,49 @@ function testGraphStoreIntegration(): TestSuite {
         }])
 
         results.push({
-            name: 'applyBatch 返回 valid=true',
-            passed: result.valid,
-            detail: result.issues.map(i => i.message).join('; '),
+            name: 'applyBatchToGraph 返回 valid=true',
+            passed: result.validation.valid,
+            detail: result.validation.issues.map(i => i.message).join('; '),
         })
         results.push({
-            name: 'applyBatch 后节点数正确',
-            passed: store.currentGraph?.nodes.length === 3,
-            detail: `期望 3, 实际 ${store.currentGraph?.nodes.length}`,
+            name: 'applyBatchToGraph 后节点数正确',
+            passed: store.graphView?.nodes.length === 3,
+            detail: `期望 3, 实际 ${store.graphView?.nodes.length}`,
         })
     }
 
-    // --- applyBatch 被校验拒绝 ---
+    // --- applyBatchToGraph 被校验拒绝 ---
     {
         const graph = makeTwoNodeGraph()
-        store.setCurrentGraph(graph)
+        store.setGraphView(graph)
 
-        const result: ValidationResult = store.applyBatch([{
+        const result = store.applyBatchToGraph(store.graphView!, [{
             type: 'delete_node',
             nodeId: 'nonexistent' as NodeId,
         }])
 
         results.push({
             name: '非法 delete_node 返回 valid=false',
-            passed: !result.valid,
-            detail: result.valid ? '应拒绝但通过了' : undefined,
+            passed: !result.validation.valid,
+            detail: result.validation.valid ? '应拒绝但通过了' : undefined,
         })
         results.push({
             name: '非法操作后节点数不变',
-            passed: store.currentGraph?.nodes.length === 2,
-            detail: `期望 2, 实际 ${store.currentGraph?.nodes.length}`,
+            passed: store.graphView?.nodes.length === 2,
+            detail: `期望 2, 实际 ${store.graphView?.nodes.length}`,
         })
     }
 
     // --- undoDelete ---
     {
         const graph = makeTwoNodeGraph()
-        store.setCurrentGraph(graph)
+        store.setGraphView(graph)
 
-        // 需要走 graph_store.applyBatch 来触发 undo 入栈
-        // 注意：applyBatch 内部先 validate 再 pushUndo 再 execute
-        store.applyBatch([{ type: 'delete_node', nodeId: 'a' as NodeId }])
+        // 需要走 graph_store.applyBatchToGraph 来触发 undo 入栈
+        // 注意：applyBatchToGraph 内部先 validate 再 pushUndo 再 execute
+        store.applyBatchToGraph(store.graphView!, [{ type: 'delete_node', nodeId: 'a' as NodeId }])
 
-        const afterDelete = store.currentGraph!.nodes.length
+        const afterDelete = store.graphView!.nodes.length
 
         store.undoDelete()
 
@@ -817,17 +815,17 @@ function testGraphStoreIntegration(): TestSuite {
         })
         results.push({
             name: 'undoDelete 恢复节点',
-            passed: store.currentGraph?.nodes.length === 2,
-            detail: `期望 2, 实际 ${store.currentGraph?.nodes.length}`,
+            passed: store.graphView?.nodes.length === 2,
+            detail: `期望 2, 实际 ${store.graphView?.nodes.length}`,
         })
         results.push({
             name: 'undoDelete 恢复被删节点',
-            passed: !!store.currentGraph?.nodes.find(node => node.id === 'a'),
+            passed: !!store.graphView?.nodes.find(node => node.id === 'a'),
         })
     }
 
     // 恢复原状态
-    store.setCurrentGraph(savedGraph!)
+    store.setGraphView(savedGraph!)
     store.$patch({ undoStack: savedUndoStack })
 
     return suite('Graph Store 集成', results)

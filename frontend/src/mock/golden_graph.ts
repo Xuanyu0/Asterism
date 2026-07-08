@@ -6,10 +6,10 @@
  *
  * 使用方式：
  * import { goldenGraph } from '@/mock/golden_graph'
- * graphStore.setCurrentGraph(goldenGraph)
+ * graphStore.setGraphView(goldenGraph)
  */
 
-import type { GraphData, NodeData, EdgeData } from '@my-project/graph-engine'
+import type { GraphData } from '@my-project/graph-engine'
 
 export const goldenGraph: GraphData = {
     id: 'graph-golden',

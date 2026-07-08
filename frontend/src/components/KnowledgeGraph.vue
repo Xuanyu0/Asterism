@@ -129,9 +129,9 @@ onMounted(() => {
     graphStore.initRegistry()
     renderer.mount()
 
-    if (graphStore.currentGraph) {
+    if (graphStore.graphView) {
         renderer.syncElements(
-            mapGraphDataToCyElements(graphStore.currentGraph),
+            mapGraphDataToCyElements(graphStore.graphView),
         )
     }
 
@@ -174,7 +174,7 @@ onMounted(() => {
  *     5. 本监听不负责决定图谱视角策略。
  */
 watch(
-    () => graphStore.currentGraph,
+    () => graphStore.graphView,
     (newGraph) => {
         if (!newGraph) {
             return
@@ -195,8 +195,8 @@ watch(
  *
  * 前端机制（Vue 3 框架行为）：
  *     - watch 在依赖变化后的下一个微任务中执行回调。
- *       因为 graphStore.applyBatch() 同步更新 currentGraph，
- *       而 currentGraph watcher 先于本 watcher 注册（源码顺序），
+ *       因为 graphStore.applyBatchToGraph() 同步更新 graphView，
+ *       而 graphView watcher 先于本 watcher 注册（源码顺序），
  *       所以 syncElements 中的 cy.json() 先执行（覆盖元素），
  *       随后本 watcher 再尝试给已被 cy.json 覆盖的新元素加 class。
  *       C++ 类比：析构顺序由注册顺序决定，但这里是调度顺序——Vue 按注册顺序 flush。

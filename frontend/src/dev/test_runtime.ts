@@ -55,7 +55,7 @@ import {
 export function initTestRuntime(): void {
     const graphStore = useGraphStore()
 
-    graphStore.setCurrentGraph(createGoldenTestGraph())
+    graphStore.setGraphView(createGoldenTestGraph())
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -103,7 +103,7 @@ export function exposeTestRuntimeToWindow(): void {
 function loadGoldenGraph(): void {
     const graphStore = useGraphStore()
 
-    graphStore.setCurrentGraph(createGoldenTestGraph())
+    graphStore.setGraphView(createGoldenTestGraph())
 
     console.log('✅ 已加载金牌测试图')
 }
@@ -119,7 +119,7 @@ function loadGoldenGraph(): void {
 function loadChainDAG(n?: number): void {
     const graphStore = useGraphStore()
 
-    graphStore.setCurrentGraph(createChainDAG(n ?? 5))
+    graphStore.setGraphView(createChainDAG(n ?? 5))
 
     console.log(`✅ 已加载 ${n ?? 5} 节点链式 DAG`)
 }
@@ -131,7 +131,7 @@ function loadChainDAG(n?: number): void {
 function loadEdgeMatrix(): void {
     const graphStore = useGraphStore()
 
-    graphStore.setCurrentGraph(createEdgeMatrixGraph())
+    graphStore.setGraphView(createEdgeMatrixGraph())
 
     console.log('✅ 已加载 2×2 边矩阵测试图')
 }
@@ -143,7 +143,7 @@ function loadEdgeMatrix(): void {
 function loadVirtualNodeGraph(): void {
     const graphStore = useGraphStore()
 
-    graphStore.setCurrentGraph(createVirtualNodeTestGraph())
+    graphStore.setGraphView(createVirtualNodeTestGraph())
 
     console.log('✅ 已加载虚节点测试图')
 }
@@ -155,7 +155,7 @@ function loadVirtualNodeGraph(): void {
 function loadAbstractNodeGraph(): void {
     const graphStore = useGraphStore()
 
-    graphStore.setCurrentGraph(createAbstractNodeTestGraph())
+    graphStore.setGraphView(createAbstractNodeTestGraph())
 
     console.log('✅ 已加载抽象节点测试图')
 }
@@ -167,7 +167,7 @@ function loadAbstractNodeGraph(): void {
 function loadCommunicationGraph(): void {
     const graphStore = useGraphStore()
 
-    graphStore.setCurrentGraph(createCommunicationTestGraph())
+    graphStore.setGraphView(createCommunicationTestGraph())
 
     console.log('✅ 已加载沟通节点/边测试图')
 }
@@ -179,7 +179,7 @@ function loadCommunicationGraph(): void {
 function loadDeleteUndoGraph(): void {
     const graphStore = useGraphStore()
 
-    graphStore.setCurrentGraph(createDeleteUndoTestGraph())
+    graphStore.setGraphView(createDeleteUndoTestGraph())
 
     console.log('✅ 已加载删除/撤销测试图')
 }

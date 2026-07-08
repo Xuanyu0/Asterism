@@ -14,7 +14,7 @@
  *     graph_store.ts 只调用本文件暴露的函数。
  *
  *     示例：
- *         saveGraph(currentGraph)
+ *         saveGraph(graphView)
  *         const graph = loadGraph(graphId)
  *         deleteGraph(graphId)
  */
@@ -52,7 +52,7 @@ function createGraphStorageKey(graphId: GraphId): string {
  *     5. 调用本函数前，调用方应确保 GraphData 已经过 Validator 或 Store Runtime 处理。
  *
  * 使用：
- *     saveGraph(currentGraph)
+ *     saveGraph(graphView)
  */
 export function saveGraph(graph: GraphData): void {
     const storageKey = createGraphStorageKey(graph.id)
@@ -75,7 +75,7 @@ export function saveGraph(graph: GraphData): void {
  *     const graph = loadGraph(graphId)
  *
  *     if (graph) {
- *         graphStore.setCurrentGraph(graph)
+ *         graphStore.setGraphView(graph)
  *     }
  */
 export function loadGraph(graphId: GraphId): GraphData | null {
@@ -100,7 +100,7 @@ export function loadGraph(graphId: GraphId): GraphData | null {
  * 规则：
  *     1. 只删除对应 GraphId 的图谱数据。
  *     2. 如果对应 GraphData 不存在，本函数不会报错。
- *     3. 本函数不会修改 graph_store.currentGraph。
+ *     3. 本函数不会修改 graph_store.graphView。
  *     4. 调用方如果需要同步当前运行时状态，需要自己处理。
  *
  * 使用：

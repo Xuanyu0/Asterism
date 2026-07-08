@@ -170,6 +170,17 @@ Step 1.1 完成后，前端修改 GraphData 已全部通过引擎 `applyBatch`�
 
 **Step 1.2 任务**：在实现 Cognition / Arrangement 前端 UI 前，先选定方案 A 或方案 B，并重构 `graph_operations.ts`。
 
+> **共识：Registry 修改统一经过 apply 入口（除初始化外）。**
+>
+> `graphRegistry` 虽然不是 GraphData 本身，但它是 Runtime 层的核心运行时索引。除 `initRegistry`（启动重建）和 `loadGraphToView`（加载时注册）外，所有对 registry 的写操作（`registerGraph` / `unregisterGraph`）都应当由 `applyBatchToGraph` / `applyBatchToGraphs` 在执行业务操作的过程中统一完成。
+>
+> 理由：
+> - 保证 registry 与 GraphData 事实源始终一致
+> - 避免调用方绕过 apply 入口直接修改 registry，破坏事务边界
+> - `add_graph` / `delete_graph` 操作作为 compose→Runtime 信号，由 apply 入口统一兑现 registry 副作用
+>
+> 已按此共识移除 `graph_store.ts` 中的 `registerNewGraph` action；`saveGraphView` action 也因自动保存策略而移除。
+
 #### 1.3 交互架构设计与错误反馈机制
 
 **依据**：`docs/设计/02-交互设计.md`。
@@ -240,6 +251,168 @@ Vue 组件读取
 | 1.4.2 | 更新术语映射表 | ✅ 已完成 |
 | 1.4.3 | 代码中 `GraphKind` 枚举值 `'main'` → `'root'`，同步更新所有 `kind === 'main'` 的判断和 `createGraphId` 等默认值 | 含测试文件中的字面量、`graph_types.ts`、`graph_data.ts`、`graph_store.ts` 等引用位置 |
 
+#### 1.6 已知 Bug 记录：internalize 子图删除操作未分发
+
+**状态**：方案 B 重构完成后发现，待修复。
+
+**问题描述**：
+
+`composeInternalize` 返回的 `operations.child` 是一个扁平的 `GraphOperation[]`，包含抽象节点子图上的 `delete_node` / `delete_edge` 操作。但返回值**没有携带每个操作对应的目标子图 ID**。
+
+`graph_operations.ts` 中的 `internalize` 函数当前只能把 `operations.parent` 提交到 `graphView`，把 `operations.commonLayer` 提交到 `commonLayer`，而无法将 `operations.child` 正确路由到对应的子图。
+
+**导致的后果**：
+
+- 若被内化的节点位于抽象节点的子图中，子图内的沟通节点和相关边不会被删除。
+- 子图中残留本应被清理的数据，造成数据不一致。
+
+**修复方案**：
+
+1. 修改 `packages/graph-engine/src/compose/cognitive/internalize.ts` 的返回类型，将 `operations.child` 改为按子图分组：
+
+   ```ts
+   operations: {
+       parent: GraphOperation[]
+       childByGraph: { graphId: GraphId; operations: GraphOperation[] }[]
+       commonLayer: GraphOperation[]
+   }
+   ```
+
+2. 更新 `frontend/src/graph/graph_operations.ts` 中的 `internalize` 函数：
+   - 遍历 `result.operations.childByGraph`
+   - 通过 `graphStore.getGraphById(graphId)` 获取子图
+   - 将每个子图的 operations 加入 `applyBatchToGraphs` 的 `targets`
+
+3. 更新 `packages/graph-engine/tests/compose/cognitive/internalize.test.ts` 中的相关断言。
+
+**修复优先级**：高。该 bug 会导致跨图内化后的数据不一致，但本次方案 B 重构尚未引入新 bug，只是暴露并保留了 Phase 2a 的既有问题。
+
+#### 1.7 已知 Bug 与设计决策：diverge 跨图 peer 图路由 + 同图启发节点规则提升
+
+**状态**：方案 B 重构后代码审查发现，待后续统一修复。
+
+##### Bug：diverge 无法正确找到 peer 图
+
+**问题描述**：
+
+`frontend/src/graph/graph_operations.ts` 中的 `diverge` 函数通过遍历 `result.drafts` 来查找 peer 图：
+
+```ts
+for (const draft of result.drafts) {
+    if ('graphId' in draft && draft.graphId !== graphStore.graphView?.id) {
+        const peerGraph = graphStore.getGraphById(draft.graphId)
+        ...
+    }
+}
+```
+
+但 `packages/graph-engine/src/compose/cognitive/diverge.ts:322-326` 明确说明，`drafts` 只包含当前图的启发节点预览：
+
+```ts
+const drafts: DraftHeuristicPosition[] = [{
+    nodeId: heuristicId,
+    position: heuristicPosition,
+    graphId: currentGraph.id,  // 永远只含当前图
+}]
+```
+
+因此 `draft.graphId !== graphStore.graphView?.id` 永远不会成立，`peerGraph` 永远不会被找到，`result.operations.peer` 永远不会被提交。
+
+**导致的后果**：
+
+- 跨图 diverge 实际上只修改了 current 图，peer 图没有任何变化。
+- peer 图中的镜像启发节点和镜像有向虚边不会被创建。
+
+**修复方案**：
+
+1. 修改 `packages/graph-engine/src/compose/cognitive/diverge.ts` 的返回类型，增加 `peerGraphId`：
+
+   ```ts
+   return {
+       operations: { current: currentOps, peer: peerOps },
+       drafts,
+       peerGraphId: peerGraph.graph.id,  // 新增
+       issues,
+   }
+   ```
+
+2. 更新 `frontend/src/graph/graph_operations.ts` 中的 `diverge` 函数：
+
+   ```ts
+   if (result.operations.peer.length > 0 && result.peerGraphId) {
+       const peerGraph = graphStore.getGraphById(result.peerGraphId)
+       if (peerGraph) {
+           targets.push({ graph: peerGraph, operations: result.operations.peer })
+       }
+   }
+   ```
+
+3. 更新 `packages/graph-engine/tests/compose/cognitive/diverge.test.ts` 中的相关断言。
+
+##### 设计决策：将"禁止同图启发节点引用"提升为全局规则
+
+**背景**：
+
+当前 `composeDiverge` 在 Case B（创建启发节点）中硬编码了同图检查：
+
+```ts
+if (sourceInCurrent && targetInCurrent) {
+    issues.push({ code: 'DIVERGE_BOTH_NODES_IN_CURRENT_GRAPH', ... })
+}
+```
+
+设计文档 `docs/设计/02-交互设计.md` 的三种情况也隐含：同图发散直接连边，不创建启发节点。
+
+**决策**：
+
+将这条 inline 规则提取为全局规则 `INTRA_GRAPH_HEURISTIC_REFERENCE_FORBIDDEN`，由 `applyBatch` Phase 3 在 resultGraph 上统一执行。
+
+**理由**：
+
+1. 引用节点是 GraphData 的一部分，同图引用属于图数据层面的约束，适合全局规则。
+2. 统一在 applyBatch Phase 3 执行，所有产生 GraphData 的路径自动遵守，不再依赖单个 compose 函数的局部预检。
+3. 当前没有长期用户数据，默认开启不会破坏既有数据。
+
+**实施方案**：
+
+1. 在 `packages/graph-engine/src/core/checkers/global_rules_table.ts` 新增规则函数：
+
+   ```ts
+   function checkNoIntraGraphHeuristicReference(graph: GraphData): ValidationIssue[] {
+       const issues: ValidationIssue[] = []
+       for (const node of graph.nodes) {
+           if (
+               node.role === 'reference'
+               && node.referenceKind === 'heuristic'
+               && node.sourceGraphId === graph.id
+           ) {
+               issues.push({
+                   severity: 'error',
+                   code: 'INTRA_GRAPH_HEURISTIC_REFERENCE_FORBIDDEN',
+                   message: `启发节点 ${node.id} 的源图与当前图相同，禁止同图引用。`,
+                   targetType: 'node',
+                   targetId: node.id,
+               })
+           }
+       }
+       return issues
+   }
+   ```
+
+2. 将规则加入 `DEFAULT_GLOBAL_RULES_TABLE`，默认开启。
+3. 从 `packages/graph-engine/src/compose/cognitive/diverge.ts` 中移除 `DIVERGE_BOTH_NODES_IN_CURRENT_GRAPH` 的 inline 检查。
+4. 更新 `packages/graph-engine/tests/compose/cognitive/diverge.test.ts`：
+   - 移除对 `DIVERGE_BOTH_NODES_IN_CURRENT_GRAPH` 的断言
+   - 新增测试验证同图 diverge 返回的 operations 经过 `applyBatch` 后被全局规则拒绝
+5. 更新 `frontend/src/graph/graph_operations.ts` 中的 `diverge` 函数，移除对旧错误码的专门处理。
+
+**规则范围**：
+
+- 仅针对 `referenceKind === 'heuristic'` 的引用节点。
+- 沟通节点（`referenceKind === 'communication'`）天然跨图（子图 → 父图），不受此规则影响。
+
+**修复优先级**：中。该问题影响跨图 diverge 的完整性，但当前 UI 尚未开放 diverge 的完整入口，用户暂时不会触发。
+
 ---
 
 ### Step 2：多根图谱切换 — 保存/加载/切换 UI（首要任务）
@@ -248,7 +421,7 @@ Vue 组件读取
 
 #### 2.1 数据层确认
 
-- `graph_store.ts` 中 `saveCurrentGraph` / `loadGraphToCurrent` / `deleteSavedGraph` 已实现，确认其接口签名和调用方式
+- `graph_store.ts` 中 `loadGraphToView` / `deleteSavedGraph` 已实现；保存功能由 `applyBatchToGraph` / `applyBatchToGraphs` 在 `persist: true` 时自动完成，不再提供独立的 `saveCurrentGraph` / `saveGraphView` action
 
 #### 2.2 UI 组件实现
 
@@ -327,6 +500,21 @@ Vue 组件读取
 > **Q4**：框选拖拽过程中，选中区域的视觉呈现是什么？
 
 **建议**：Cytoscape 原生提供的半透明蓝色选框即可。理由：不做自定义渲染——这是通用交互范式，用户不需要被教。后续如果需要统一视觉风格再替换。
+
+#### 3.4 待解决设计问题：选中状态归属
+
+**问题**：`graph_store.ts` 当前持有 `selectedNodeId` / `selectedEdgeId`，但选中状态本质上是 UI Runtime 状态，不是 GraphData。
+
+**两种方案**：
+
+| 方案 | 位置 | 优点 | 缺点 |
+|------|------|------|------|
+| A（当前） | `graph_store.ts` | 与图数据邻近，组件读取方便 | 污染 GraphData Store 的纯度 |
+| B | `ui_store.ts` | UI 状态归位，graph_store 只保留 GraphData | 部分读取路径需改到 ui_store |
+
+**建议**：方案 A 在 Phase 2b 可接受，因为当前选中状态主要用于图操作路由；若未来 UI 需要根据选中状态做复杂反馈（如右键菜单、批量操作面板），再迁移到 `ui_store.ts`。
+
+**结论**：暂不迁移，本问题在 Step 3 记录，后续视 UI 复杂度决定是否调整。
 
 ---
 
@@ -549,6 +737,16 @@ Cytoscape drag（Arrangement 模式下启用节点拖拽）
 **延后处理**，当前 `undoStack`（全量快照）继续使用，升级为 `OperationLog`（树形操作树 + 增量逆操作）待此步骤执行。
 
 **设计文档依据**：`docs/设计/04-UI与笔记库.md §Button设计` 定义左下角回溯按钮及其灰显规则。
+
+> **共识：所有关于 Undo / Redo 的问题统一在本步骤解决，不在此前步骤做局部补丁。**
+>
+> 当前已知、待 Step 7 统一处理的 Undo 相关问题：
+> - `undoStack` 是完整 GraphData 快照，刷新后失效
+> - 跨图操作（`induce` / `internalize` / `diverge`）修改了 peer / child / commonLayer 图，`undoDelete` 只恢复 `graphView`
+> - `add_graph` 创建的子图在 undo 后不会自动删除，可能成为 orphan 图
+> - undo / redo 的 cursor 边界灰显规则
+>
+> 在 Step 7 之前，`graph_store.ts` 继续用 `undoStack` + `pushUndoSnapshot` 做最小可用实现，不引入 OperationLog 的局部补丁。
 
 #### 7.1 操作日志升级
 

@@ -6,7 +6,7 @@
 |------|------|------|
 | `nodeIds` | `NodeId[]` | 前端用户框选的待内化节点列表 |
 | `parentGraph` | `GraphData` | graph_store 当前快照（被选节点所在的父图） |
-| `commonLayer` | `GraphData` | graph_store 中的常识层图（`kind: 'commonLayer'`，`parentGraphId = 主图谱 ID`） |
+| `commonLayer` | `GraphData` | graph_store 中的常识层图（`kind: 'commonLayer'`，`parentGraphId = 根图谱 ID`） |
 | `registry` | `GraphRegistry` | 多图注册表，由 graph_store 传入 |
 | `nodeRadiusOverrides` | `NodeRadiusMap` | 前端预计算的半径覆盖表，用于 `scatterInCircle` 碰撞检测 |
 
@@ -18,7 +18,7 @@
 |---|---|
 | 调用方 | 前端 `operation_controller`（Cognition 模式） |
 | 频率 | 一次性——用户框选节点后执行"内化"命令时调用 |
-| 前置要求 | `commonLayer` 已存在（应用初始化时创建）。常识层的 `parentGraphId = 主图谱 ID`，`kind = 'commonLayer'` |
+| 前置要求 | `commonLayer` 已存在（应用初始化时创建）。常识层的 `parentGraphId = 根图谱 ID`，`kind = 'commonLayer'` |
 
 内化操作是认知层面的"收纳"——将确认已内化的知识节点从工作区（父图/子图）转移到常识层，清空其边结构，节点本身保留。
 

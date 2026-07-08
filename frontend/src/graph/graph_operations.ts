@@ -4,8 +4,8 @@
  * 功能：
  *
  *     图操作翻译层。接收 store 引用，实现所有具体的图操作函数。
- *     本文件是 engine compose / applyBatch / graphStore.applyBatch 在前端的唯一调用点
- *     （除 graph_store.applyBatch 内部委托外）。
+ *     本文件是 engine compose 与 graphStore.applyBatchToGraph / applyBatchToGraphs
+ *     在前端的唯一调用点。
  *
  * 总体结构：
  *
@@ -22,7 +22,7 @@
  *
  *     1. 所有函数签名：(store refs, ...params) → void。
  *     2. 错误通过 uiStore.lastOperationValidation 侧通道返回。
- *     3. 认知操作统一模式：compose → 判 issues → applyBatch 逐图提交。
+ *     3. 认知操作统一模式：compose → 判 issues → applyBatchToGraphs 批量提交。
  *     4. 本文件不操作 Cytoscape 实例。
  *     5. 本文件不负责 UI 状态路由——路由逻辑在 operation_controller。
  *
@@ -46,7 +46,6 @@ import { useUIStore } from '@/ui/ui_store'
 import { useDraftStore } from '@/ui/draft_store'
 
 import { generateNodeId, generateEdgeId } from '@my-project/graph-engine'
-import { applyBatch } from '@my-project/graph-engine'
 import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
 
 // compose — arrangement
@@ -98,21 +97,21 @@ export function useGraphOperations() {
      * 规则：
      *
      *     1. 委托引擎 composeDeconstruct 产出 operations。
-     *     2. applyBatch 统一提交。
-     *     3. 若创建了新子图，注册到 Registry 并持久化。
+     *     2. applyBatchToGraph 统一提交到 graphView。
+     *     3. add_graph 操作由 graphStore 统一注册并持久化新子图。
      *
      * 消费者：
      *
      *     operation_controller（Cognition 按钮）
      */
     function deconstruct(nodeId: NodeId): void {
-        if (!graphStore.currentGraph || !nodeId) {
+        if (!graphStore.graphView || !nodeId) {
             return
         }
 
         const result = composeDeconstruct({
             nodeId,
-            parentGraph: graphStore.currentGraph,
+            parentGraph: graphStore.graphView,
         })
 
         if (result.issues.some(issue => issue.severity === 'error')) {
@@ -130,20 +129,12 @@ export function useGraphOperations() {
             return
         }
 
-        const batchResult = applyBatch(graphStore.currentGraph, result.operations)
+        const batchResult = graphStore.applyBatchToGraph(
+            graphStore.graphView,
+            result.operations,
+        )
+
         uiStore.lastOperationValidation = batchResult.validation
-
-        if (batchResult.validation.valid) {
-            graphStore.currentGraph = batchResult.graph
-
-            // 解构创建的子图已通过 add_graph 操作注册到 Registry。
-            // 将新子图持久化到 localStorage。
-            for (const op of result.operations) {
-                if (op.type === 'add_graph') {
-                    graphStore.registerNewGraph(op.graph)
-                }
-            }
-        }
     }
 
     /**
@@ -154,24 +145,24 @@ export function useGraphOperations() {
      * 规则：
      *
      *     1. 委托引擎 composeInduce 产出跨图 operations。
-     *     2. applyBatch 逐图提交。
-     *     3. 归纳创建的子图注册并持久化。
+     *     2. applyBatchToGraphs 批量提交父图和子图。
+     *     3. 任一图失败则整批丢弃。
      *
      * 消费者：
      *
      *     operation_controller（Cognition 按钮）
      */
     function induce(nodeIds: NodeId[]): void {
-        if (!graphStore.currentGraph || nodeIds.length < 2) {
+        if (!graphStore.graphView || nodeIds.length < 2) {
             return
         }
 
         const result = composeInduce({
             nodeIds,
-            parentGraph: graphStore.currentGraph,
+            parentGraph: graphStore.graphView,
             lookupGraph: graphStore.makeLookup(),
-            nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.currentGraph),
-            allEdges: graphStore.currentGraph.edges,
+            nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.graphView),
+            allEdges: graphStore.graphView.edges,
         })
 
         if (result.issues.some(issue => issue.severity === 'error')) {
@@ -188,28 +179,25 @@ export function useGraphOperations() {
             return
         }
 
+        const targets = []
+
         if (result.operations.parent.length > 0) {
-            const parentBatch = applyBatch(graphStore.currentGraph, result.operations.parent)
-            uiStore.lastOperationValidation = parentBatch.validation
-
-            if (!parentBatch.validation.valid) {
-                return
-            }
-
-            graphStore.currentGraph = parentBatch.graph
+            targets.push({
+                graph: graphStore.graphView,
+                operations: result.operations.parent,
+            })
         }
 
         if (result.operations.child.length > 0) {
-            const { childGraphData } = result as { childGraphData?: GraphData }
-
-            if (childGraphData) {
-                const childBatch = applyBatch(childGraphData, result.operations.child)
-
-                if (childBatch.validation.valid) {
-                    graphStore.registerNewGraph(childBatch.graph)
-                }
-            }
+            targets.push({
+                graph: result.childGraphData,
+                operations: result.operations.child,
+            })
         }
+
+        const batchResult = graphStore.applyBatchToGraphs(targets)
+
+        uiStore.lastOperationValidation = batchResult.validation
     }
 
     /**
@@ -220,15 +208,21 @@ export function useGraphOperations() {
      * 规则：
      *
      *     1. 委托引擎 composeInternalize 产出跨图 operations。
-     *     2. applyBatch 逐图提交。
+     *     2. applyBatchToGraphs 批量提交父图和常识层。
      *     3. 当前 registry 中未找到常识层图时拒绝执行。
+     *
+     * 注意：
+     *
+     *     composeInternalize 返回的 operations.child 是按子图分组的删除操作，
+     *     但当前返回结构未携带子图 ID 映射。Phase 2b 后续需补齐子图操作的多图分发。
+     *     本函数当前仅提交 parent 与 commonLayer，与 Phase 2a 行为保持一致。
      *
      * 消费者：
      *
      *     operation_controller（Cognition 按钮）
      */
     function internalize(nodeIds: NodeId[]): void {
-        if (!graphStore.currentGraph || nodeIds.length === 0) {
+        if (!graphStore.graphView || nodeIds.length === 0) {
             return
         }
 
@@ -250,10 +244,10 @@ export function useGraphOperations() {
 
         const result = composeInternalize({
             nodeIds,
-            parentGraph: graphStore.currentGraph,
+            parentGraph: graphStore.graphView,
             commonLayer,
             lookupGraph: graphStore.makeLookup(),
-            nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.currentGraph),
+            nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.graphView),
         })
 
         if (result.issues.some(issue => issue.severity === 'error')) {
@@ -270,27 +264,25 @@ export function useGraphOperations() {
             return
         }
 
+        const targets = []
+
         if (result.operations.parent.length > 0) {
-            const parentBatch = applyBatch(graphStore.currentGraph, result.operations.parent)
-
-            if (!parentBatch.validation.valid) {
-                uiStore.lastOperationValidation = parentBatch.validation
-
-                return
-            }
-
-            graphStore.currentGraph = parentBatch.graph
+            targets.push({
+                graph: graphStore.graphView,
+                operations: result.operations.parent,
+            })
         }
 
         if (result.operations.commonLayer.length > 0) {
-            const clBatch = applyBatch(commonLayer, result.operations.commonLayer)
-
-            if (clBatch.validation.valid) {
-                graphStore.registerNewGraph(clBatch.graph)
-            }
+            targets.push({
+                graph: commonLayer,
+                operations: result.operations.commonLayer,
+            })
         }
 
-        uiStore.lastOperationValidation = { valid: true, issues: [] }
+        const batchResult = graphStore.applyBatchToGraphs(targets)
+
+        uiStore.lastOperationValidation = batchResult.validation
     }
 
     /**
@@ -303,21 +295,21 @@ export function useGraphOperations() {
      *     1. 委托引擎 composeDiverge 产出跨图 operations。
      *     2. heuristicPosition 为 null 时两节点直连（同图）。
      *        heuristicPosition 非 null 时在点击位置创建启发节点（跨图）。
-     *     3. applyBatch 逐图提交（current + peer）。
+     *     3. applyBatchToGraphs 批量提交 current 与 peer。
      *
      * 消费者：
      *
      *     operation_controller（Cognition 按钮）
      */
     function diverge(sourceNodeId: NodeId, targetNodeId: NodeId, heuristicPosition: { x: number; y: number } | null): void {
-        if (!graphStore.currentGraph) {
+        if (!graphStore.graphView) {
             return
         }
 
         const result = composeDiverge({
             sourceNodeId,
             targetNodeId,
-            currentGraph: graphStore.currentGraph,
+            currentGraph: graphStore.graphView,
             heuristicPosition,
             lookupGraph: graphStore.makeLookup(),
             graphIds: Array.from(graphStore.graphRegistry.keys()),
@@ -337,35 +329,36 @@ export function useGraphOperations() {
             return
         }
 
+        const targets = []
+
         if (result.operations.current.length > 0) {
-            const currentBatch = applyBatch(graphStore.currentGraph, result.operations.current)
-            uiStore.lastOperationValidation = currentBatch.validation
-
-            if (!currentBatch.validation.valid) {
-                return
-            }
-
-            graphStore.currentGraph = currentBatch.graph
+            targets.push({
+                graph: graphStore.graphView,
+                operations: result.operations.current,
+            })
         }
 
         if (result.operations.peer.length > 0) {
             // 对端图：通过 registry 查找 peer 操作目标图
             for (const draft of result.drafts) {
-                if ('graphId' in draft && draft.graphId !== graphStore.currentGraph?.id) {
+                if ('graphId' in draft && draft.graphId !== graphStore.graphView?.id) {
                     const peerGraph = graphStore.getGraphById(draft.graphId)
 
                     if (peerGraph) {
-                        const peerBatch = applyBatch(peerGraph, result.operations.peer)
-
-                        if (peerBatch.validation.valid) {
-                            graphStore.registerNewGraph(peerBatch.graph)
-                        }
+                        targets.push({
+                            graph: peerGraph,
+                            operations: result.operations.peer,
+                        })
                     }
+
+                    break
                 }
             }
         }
 
-        uiStore.lastOperationValidation = { valid: true, issues: [] }
+        const batchResult = graphStore.applyBatchToGraphs(targets)
+
+        uiStore.lastOperationValidation = batchResult.validation
     }
 
     /**
@@ -397,15 +390,15 @@ export function useGraphOperations() {
      *     3. 当前直接执行——草稿预览 UI 在 Phase 2b 实现。
      */
     function moveNode(nodeId: NodeId, position: { x: number; y: number }): void {
-        if (!graphStore.currentGraph) {
+        if (!graphStore.graphView) {
             return
         }
 
         const result = composeMoveNode({
             nodeId,
             desiredPosition: position,
-            allNodes: graphStore.currentGraph.nodes,
-            nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.currentGraph),
+            allNodes: graphStore.graphView.nodes,
+            nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.graphView),
         })
 
         if (result.issues.some(issue => issue.severity === 'error')) {
@@ -423,12 +416,12 @@ export function useGraphOperations() {
             return
         }
 
-        const batchResult = applyBatch(graphStore.currentGraph, result.operations)
-        uiStore.lastOperationValidation = batchResult.validation
+        const batchResult = graphStore.applyBatchToGraph(
+            graphStore.graphView,
+            result.operations,
+        )
 
-        if (batchResult.validation.valid) {
-            graphStore.currentGraph = batchResult.graph
-        }
+        uiStore.lastOperationValidation = batchResult.validation
     }
 
     /**
@@ -489,14 +482,14 @@ export function useGraphOperations() {
      *
      *     1. label 为空时拒绝提交。
      *     2. DraftNode 不直接进入 GraphData。
-     *     3. 只有 graphStore.applyBatch() 可以修改 GraphData。
+     *     3. 只有 graphStore.applyBatchToGraph() 可以修改 GraphData。
      */
     function confirmDraftNode(): void {
         if (!draftStore.draftNode) {
             return
         }
 
-        if (!graphStore.currentGraph) {
+        if (!graphStore.graphView) {
             return
         }
 
@@ -510,7 +503,7 @@ export function useGraphOperations() {
         const node: NodeData = {
             role: 'knowledge',
             id: generateNodeId(),
-            graphId: graphStore.currentGraph.id,
+            graphId: graphStore.graphView.id,
             kind: draftNode.kind,
             form: draftNode.kind === 'real' ? 'atomic' : undefined,
             label,
@@ -523,14 +516,14 @@ export function useGraphOperations() {
             },
         }
 
-        const result = graphStore.applyBatch([{
+        const result = graphStore.applyBatchToGraph(graphStore.graphView, [{
             type: 'add_node',
             node,
         }])
 
-        uiStore.lastOperationValidation = result
+        uiStore.lastOperationValidation = result.validation
 
-        if (result.valid) {
+        if (result.validation.valid) {
             draftStore.clearDraftNode()
         }
     }
@@ -548,18 +541,18 @@ export function useGraphOperations() {
      *     2. 校验通过后关闭浮空窗。
      */
     function confirmExistingNodeEdit(node: NodeData): void {
-        if (!graphStore.currentGraph) {
+        if (!graphStore.graphView) {
             return
         }
 
-        const result = graphStore.applyBatch([{
+        const result = graphStore.applyBatchToGraph(graphStore.graphView, [{
             type: 'update_node',
             node,
         }])
 
-        uiStore.lastOperationValidation = result
+        uiStore.lastOperationValidation = result.validation
 
-        if (result.valid) {
+        if (result.validation.valid) {
             uiStore.closeFloatingWindow()
         }
     }
@@ -575,18 +568,18 @@ export function useGraphOperations() {
      *     2. 校验通过后关闭浮空窗。
      */
     function confirmExistingEdgeEdit(edge: EdgeData): void {
-        if (!graphStore.currentGraph) {
+        if (!graphStore.graphView) {
             return
         }
 
-        const result = graphStore.applyBatch([{
+        const result = graphStore.applyBatchToGraph(graphStore.graphView, [{
             type: 'update_edge',
             edge,
         }])
 
-        uiStore.lastOperationValidation = result
+        uiStore.lastOperationValidation = result.validation
 
-        if (result.valid) {
+        if (result.validation.valid) {
             uiStore.closeFloatingWindow()
         }
     }
@@ -698,12 +691,12 @@ export function useGraphOperations() {
             uiStore.closeFloatingWindow()
         }
 
-        const result = graphStore.applyBatch([{
+        const result = graphStore.applyBatchToGraph(graphStore.graphView!, [{
             type: 'delete_node',
             nodeId,
         }])
 
-        uiStore.lastOperationValidation = result
+        uiStore.lastOperationValidation = result.validation
     }
 
     /**
@@ -722,12 +715,12 @@ export function useGraphOperations() {
             uiStore.closeFloatingWindow()
         }
 
-        const result = graphStore.applyBatch([{
+        const result = graphStore.applyBatchToGraph(graphStore.graphView!, [{
             type: 'delete_edge',
             edgeId,
         }])
 
-        uiStore.lastOperationValidation = result
+        uiStore.lastOperationValidation = result.validation
     }
 
     // ── 添加边操作 ──
@@ -760,13 +753,13 @@ export function useGraphOperations() {
             return
         }
 
-        if (!graphStore.currentGraph) {
+        if (!graphStore.graphView) {
             return
         }
 
         const edge: EdgeData = {
             id: generateEdgeId(),
-            graphId: graphStore.currentGraph.id,
+            graphId: graphStore.graphView.id,
             source: uiStore.pendingAddEdge.sourceNodeId,
             target: nodeId,
             kind: edgeKind,
@@ -774,14 +767,14 @@ export function useGraphOperations() {
             label: '',
         }
 
-        const result = graphStore.applyBatch([{
+        const result = graphStore.applyBatchToGraph(graphStore.graphView, [{
             type: 'add_edge',
             edge,
         }])
 
-        uiStore.lastOperationValidation = result
+        uiStore.lastOperationValidation = result.validation
 
-        if (result.valid) {
+        if (result.validation.valid) {
             uiStore.resetPendingEdge()
         }
     }
@@ -800,16 +793,16 @@ export function useGraphOperations() {
      *     3. 未折叠 → collapse_dependency。
      */
     function toggleFold(nodeId: NodeId): void {
-        const foldedDeps = graphStore.currentGraph?.cognitiveState?.foldedDependencies ?? []
+        const foldedDeps = graphStore.graphView?.cognitiveState?.foldedDependencies ?? []
         const isFolded = foldedDeps.some(f => f.targetNodeId === nodeId)
 
         if (isFolded) {
-            graphStore.applyBatch([{
+            graphStore.applyBatchToGraph(graphStore.graphView!, [{
                 type: 'expand_dependency',
                 targetNodeId: nodeId,
             }])
         } else {
-            graphStore.applyBatch([{
+            graphStore.applyBatchToGraph(graphStore.graphView!, [{
                 type: 'collapse_dependency',
                 targetNodeId: nodeId,
             }])

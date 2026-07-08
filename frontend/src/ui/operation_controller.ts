@@ -55,9 +55,7 @@ import { useGraphOperations } from '@/graph/graph_operations'
  *     1. 坐标来自 Cytoscape 交互适配层。
  *     2. 是否创建 DraftNode 由当前 UI Runtime 状态决定。
  */
-export interface CanvasClickedPayload extends GraphPosition {
-
-}
+export type CanvasClickedPayload = GraphPosition
 
 /**
  * 功能：
@@ -262,7 +260,7 @@ export function useOperationController() {
             }
 
             default: {
-                const node = graphStore.currentGraph?.nodes.find(node => node.id === payload.nodeId)
+                const node = graphStore.graphView?.nodes.find(node => node.id === payload.nodeId)
                 if (node) {
                     uiStore.openFloatingWindow(node)
                 }
@@ -288,7 +286,7 @@ export function useOperationController() {
             return
         }
 
-        const edge = graphStore.currentGraph?.edges.find(potentialEdge => potentialEdge.id === payload.edgeId)
+        const edge = graphStore.graphView?.edges.find(potentialEdge => potentialEdge.id === payload.edgeId)
         if (edge) {
             uiStore.openFloatingWindow(edge)
         }

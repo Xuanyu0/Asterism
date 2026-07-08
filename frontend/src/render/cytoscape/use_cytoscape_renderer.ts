@@ -93,7 +93,7 @@ export function useCytoscapeRenderer(
      *
      * 使用：
      *     watch(
-     *         () => graphStore.currentGraph,
+     *         () => graphStore.graphView,
      *         graph => {
      *             renderer.syncElements(mapGraphDataToCyElements(graph))
      *         },
@@ -110,15 +110,6 @@ export function useCytoscapeRenderer(
 
         cy.resize()
     }
-
-    function fitView(): void {
-        if (!cy) {
-            return
-        }
-
-        cy.fit()
-    }
-
 
     /**
      * 功能：

@@ -27,7 +27,7 @@ export type GraphRegistry = Map<GraphId, GraphData>
 graph_store（Pinia）
     ├── currentGraph: GraphData | null     ← 当前浏览/编辑的单图
     ├── registry: GraphRegistry           ← 多图注册表（新增字段）
-    │       ├── MapEntry: 'main-graph-1' → <主图谱>
+    │       ├── MapEntry: 'main-graph-1' → <根图谱>
     │       ├── MapEntry: 'sub-2'        → <子图 2>
     │       └── MapEntry: 'common-1'     → <常识层>
     └── ...
