@@ -473,6 +473,15 @@ export function useGraphOperations() {
         const label = draftNode.label.trim()
 
         if (!label) {
+            graphStore.lastValidationResult = {
+                valid: false,
+                issues: [{
+                    severity: 'error' as const,
+                    code: 'EMPTY_LABEL',
+                    message: '节点标签不能为空。',
+                    targetType: 'node' as const,
+                }],
+            }
             return
         }
 
@@ -772,17 +781,14 @@ export function useGraphOperations() {
         const foldedDeps = graphStore.graphView?.cognitiveState?.foldedDependencies ?? []
         const isFolded = foldedDeps.some(f => f.targetNodeId === nodeId)
 
-        if (isFolded) {
-            graphStore.applyBatchToGraph(graphStore.graphView!, [{
-                type: 'expand_dependency',
-                targetNodeId: nodeId,
-            }])
-        } else {
-            graphStore.applyBatchToGraph(graphStore.graphView!, [{
-                type: 'collapse_dependency',
-                targetNodeId: nodeId,
-            }])
-        }
+        const operationType = isFolded ? 'expand_dependency' as const : 'collapse_dependency' as const
+
+        const result = graphStore.applyBatchToGraph(graphStore.graphView!, [{
+            type: operationType,
+            targetNodeId: nodeId,
+        }])
+
+        graphStore.lastValidationResult = result.validation
     }
 
     // ── 公开 API ──

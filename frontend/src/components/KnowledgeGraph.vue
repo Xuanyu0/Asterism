@@ -147,6 +147,11 @@ const containerClasses = computed(() => {
         return { 'cursor-cell': true }
     }
 
+    // 解构操作：crosshair 光标，提示用户选择目标节点
+    if (s.selectedCognitionAction === 'deconstruct') {
+        return { 'cursor-deconstruct': true }
+    }
+
     return {}
 })
 
@@ -202,6 +207,34 @@ onMounted(() => {
         })
     }
 })
+
+/**
+ * 功能：
+ *     监听待定边起点节点 ID 变化，施加/清除高亮。
+ */
+watch(
+    () => operationController.ui.state.pendingAddEdge.sourceNodeId,
+    (nodeId, prevNodeId) => {
+        const cy = renderer.getInstance()
+        if (!cy) {
+            return
+        }
+
+        if (prevNodeId) {
+            const prevTarget = cy.getElementById(prevNodeId)
+            if (prevTarget.length > 0) {
+                prevTarget.removeClass('edge-source-target')
+            }
+        }
+
+        if (nodeId) {
+            const target = cy.getElementById(nodeId)
+            if (target.length > 0) {
+                target.addClass('edge-source-target')
+            }
+        }
+    },
+)
 
 /**
  * 功能：
@@ -317,6 +350,11 @@ onBeforeUnmount(() => {
 .cursor-cell {
     cursor: cell;
 }
+
+.cursor-deconstruct {
+    cursor: crosshair;
+}
+
 .canvas-error-notice {
     position: fixed;
     bottom: 20px;

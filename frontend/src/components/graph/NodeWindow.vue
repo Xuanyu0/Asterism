@@ -89,7 +89,7 @@
  *     KnowledgeGraph.vue 挂载本组件。
  */
 
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useDraftStore } from '@/ui/draft_store'
 import { useOperationController } from '@/ui/operation_controller'
 import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
@@ -100,6 +100,10 @@ const controller = useOperationController()
 const draftNode = computed(() => draftStore.draftNode)
 
 const floatingData = computed(() => controller.ui.state.floatingWindowData)
+
+watch(floatingData, () => {
+    editingData = null
+})
 
 const isEdge = computed(() => {
     const data = floatingData.value

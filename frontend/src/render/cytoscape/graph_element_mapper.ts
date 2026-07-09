@@ -116,7 +116,7 @@ export interface CyElements {
  *     1. 只读取节点字段。
  *     2. 不修改节点数据。
  */
-export function getNodeClasses(node: NodeData): string[] {
+export function getNodeClasses(node: NodeData, foldedParentIds?: Set<NodeId>): string[] {
     const classes: string[] = []
 
     if (node.role === 'knowledge') {
@@ -125,6 +125,10 @@ export function getNodeClasses(node: NodeData): string[] {
     } else {
         classes.push('node-reference')
         classes.push(`ref-${node.referenceKind}`)
+    }
+
+    if (foldedParentIds?.has(node.id)) {
+        classes.push('has-folded-deps')
     }
 
     return classes
@@ -167,13 +171,27 @@ export function getFoldedNodeIds(graph: GraphData): Set<NodeId> {
 
 /**
  * 功能：
+ *     读取当前图中拥有被折叠依赖的父节点 ID。
+ *
+ * 规则：
+ *     1. 折叠状态属于 GraphData.cognitiveState。
+ *     2. 父节点 ID 为 FoldedDependencyState.targetNodeId。
+ */
+export function getFoldedParentNodeIds(graph: GraphData): Set<NodeId> {
+    const foldedDependencies = graph.cognitiveState?.foldedDependencies ?? []
+
+    return new Set(foldedDependencies.map((state) => state.targetNodeId))
+}
+
+/**
+ * 功能：
  *     将 NodeData 投影为 CyNodeElement。
  *
  * 规则：
  *     1. 禁止把完整 NodeData 作为 data 传给 Cytoscape。
  *     2. position 允许作为普通值传入，但不能由 Cytoscape 反向直接修改 GraphData。
  */
-function mapNodeToCyElement(node: NodeData): CyNodeElement {
+function mapNodeToCyElement(node: NodeData, foldedParentIds: Set<NodeId>): CyNodeElement {
     const data: CyNodeData = {
         id: node.id,
         label: node.label,
@@ -193,7 +211,7 @@ function mapNodeToCyElement(node: NodeData): CyNodeElement {
         group: 'nodes',
         data,
         position: node.position,
-        classes: getNodeClasses(node),
+        classes: getNodeClasses(node, foldedParentIds),
     }
 }
 
@@ -231,11 +249,12 @@ function mapEdgeToCyElement(edge: EdgeData): CyEdgeElement {
  */
 export function mapGraphDataToCyElements(graph: GraphData): CyElements {
     const foldedNodeIds = getFoldedNodeIds(graph)
+    const foldedParentIds = getFoldedParentNodeIds(graph)
 
     return {
         nodes: graph.nodes
             .filter((node) => !foldedNodeIds.has(node.id))
-            .map((node) => mapNodeToCyElement(node)),
+            .map((node) => mapNodeToCyElement(node, foldedParentIds)),
 
         edges: graph.edges
             .filter((edge) => !foldedNodeIds.has(edge.source) && !foldedNodeIds.has(edge.target))

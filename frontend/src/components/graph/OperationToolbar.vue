@@ -34,44 +34,54 @@
             </button>
 
             <!-- 模式选择子列表 -->
-            <template v-if="showModeSelector">
-                <button
-                    v-bind:class="{ active: uiStore.interactionMode === 'cognition' }"
-                    v-on:click="setMode('cognition')"
+            <Transition name="slide-left">
+                <div
+                    v-if="showModeSelector"
+                    class="mode-selector-list"
                 >
-                    Cognition
-                </button>
-                <button
-                    v-bind:class="{ active: uiStore.interactionMode === 'arrangement' }"
-                    v-on:click="setMode('arrangement')"
-                >
-                    Arrangement
-                </button>
-            </template>
+                    <button
+                        v-bind:class="{ active: uiStore.interactionMode === 'cognition' }"
+                        v-on:click="setMode('cognition')"
+                    >
+                        Cognition
+                    </button>
+                    <button
+                        v-bind:class="{ active: uiStore.interactionMode === 'arrangement' }"
+                        v-on:click="setMode('arrangement')"
+                    >
+                        Arrangement
+                    </button>
+                </div>
+            </Transition>
 
             <!-- Cognition 子操作 -->
-            <template v-if="!showModeSelector && uiStore.interactionMode === 'cognition'">
-                <button v-on:click="controller.explore()">
-                    Explore
-                </button>
-                <button v-on:click="controller.unearth()">
-                    Unearth
-                </button>
-                <button
-                    v-bind:class="{ active: uiStore.selectedCognitionAction === 'deconstruct' }"
-                    v-on:click="controller.selectCognitionAction(
-                        uiStore.selectedCognitionAction === 'deconstruct' ? null : 'deconstruct'
-                    )"
+            <Transition name="slide-left">
+                <div
+                    v-if="!showModeSelector && uiStore.interactionMode === 'cognition'"
+                    class="cognition-action-list"
                 >
-                    Deconstruct
-                </button>
-                <button v-on:click="controller.induce([])">
-                    Induce
-                </button>
-                <button v-on:click="controller.internalize([])">
-                    Internalize
-                </button>
-            </template>
+                    <button v-on:click="controller.explore()">
+                        Explore
+                    </button>
+                    <button v-on:click="controller.unearth()">
+                        Unearth
+                    </button>
+                    <button
+                        v-bind:class="{ active: uiStore.selectedCognitionAction === 'deconstruct' }"
+                        v-on:click="controller.selectCognitionAction(
+                            uiStore.selectedCognitionAction === 'deconstruct' ? null : 'deconstruct'
+                        )"
+                    >
+                        Deconstruct
+                    </button>
+                    <button v-on:click="controller.induce([])">
+                        Induce
+                    </button>
+                    <button v-on:click="controller.internalize([])">
+                        Internalize
+                    </button>
+                </div>
+            </Transition>
 
             <!-- Arrangement 占位 -->
             <div v-if="!showModeSelector && uiStore.interactionMode === 'arrangement'">
@@ -310,6 +320,7 @@ function activateTool(btn: (typeof standingButtons)[number]): void {
 }
 
 .toolbar-column {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -364,6 +375,29 @@ function activateTool(btn: (typeof standingButtons)[number]): void {
 
 .mode-btn:hover {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.mode-selector-list,
+.cognition-action-list {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: max-content;
+    z-index: 1;
+}
+
+.slide-left-enter-active,
+.slide-left-leave-active {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.slide-left-enter-from,
+.slide-left-leave-to {
+    opacity: 0;
+    transform: translateX(-12px);
 }
 
 .placeholder-text {

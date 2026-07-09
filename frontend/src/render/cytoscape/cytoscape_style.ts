@@ -108,5 +108,23 @@ export function createCytoscapeStyle() {
                 'target-arrow-color': '#ef4444',
             },
         },
+        // 边添加起点高亮
+        {
+            selector: '.edge-source-target',
+            style: {
+                'border-width': 3,
+                'border-color': '#3b82f6',
+                'border-style': 'solid',
+            },
+        },
+        // 折叠依赖指示
+        {
+            selector: '.has-folded-deps',
+            style: {
+                'border-width': 4,
+                'border-color': '#9333ea',
+                'border-style': 'double',
+            },
+        },
     ]
 }
