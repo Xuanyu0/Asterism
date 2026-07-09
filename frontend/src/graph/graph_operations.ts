@@ -4,8 +4,8 @@
  * 功能：
  *
  *     图操作翻译层。接收 store 引用，实现所有具体的图操作函数。
- *     本文件是 engine compose 与 graphStore.applyBatchToGraph / applyBatchToGraphs
- *     在前端的唯一调用点。
+ *     本文件是 engine compose 在前端的唯一调用点。
+ *     compose 产出的 operations 通过 graphStore.applyBatchToGraph / applyBatchToGraphs 提交。
  *
  * 总体结构：
  *
@@ -21,7 +21,7 @@
  * 规则：
  *
  *     1. 所有函数签名：(store refs, ...params) → void。
- *     2. 错误通过 uiStore.lastOperationValidation 侧通道返回。
+ *     2. 错误通过 graphStore.lastValidationResult 侧通道返回。
  *     3. 认知操作统一模式：compose → 判 issues → applyBatchToGraphs 批量提交。
  *     4. 本文件不操作 Cytoscape 实例。
  *     5. 本文件不负责 UI 状态路由——路由逻辑在 operation_controller。
@@ -39,12 +39,13 @@ import type {
     GraphData,
     NodeRadiusMap,
 } from '@my-project/graph-engine'
-import type { ComposeIssue, ValidationIssue, ValidationTargetType } from '@my-project/graph-engine'
 import type { DraftNode } from '@/definitions/types/draft_types'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { useUIStore } from '@/ui/ui_store'
 import { useDraftStore } from '@/ui/draft_store'
+
+import { mapComposeIssues, hasErrors } from '@/graph/utilities/issue_mapper'
 
 import { generateNodeId, generateEdgeId } from '@my-project/graph-engine'
 import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
@@ -57,52 +58,6 @@ import { induce as composeInduce } from '@my-project/graph-engine'
 import { internalize as composeInternalize } from '@my-project/graph-engine'
 import { diverge as composeDiverge } from '@my-project/graph-engine'
 
-
-// ── ComposeIssue → ValidationIssue 映射 ──
-
-/**
- * 功能：
- *
- *     将引擎 compose 层的 ComposeIssue[] 转换为校验层 ValidationIssue[]。
- *
- * 规则：
- *
- *     1. ComposeIssue 缺 targetType / targetId——由调用方补充。
- *     2. 映射在前端边界统一完成，引擎类型保持纯净。
- *     3. severity / code / message 原样传递。
- *
- * 参数：
- *
- *     issues — compose 函数返回的 ComposeIssue[]
- *     targetType — 操作对象的类型（node / edge / graph）
- *     targetId — 操作对象的 ID（可选，graph 级别操作无 targetId）
- */
-function mapComposeIssues(
-    issues: ComposeIssue[],
-    targetType: ValidationTargetType,
-    targetId?: string,
-): ValidationIssue[] {
-    return issues.map(issue => ({
-        severity: issue.severity,
-        code: issue.code,
-        message: issue.message,
-        targetType,
-        ...(targetId !== undefined ? { targetId } : {}),
-    }))
-}
-
-/**
- * 功能：
- *
- *     检查 ComposeIssue[] 是否含 error 级问题。
- *
- * 规则：
- *
- *     含 error 时操作不可提交，前端应展示错误并阻断。
- */
-function hasErrors(issues: ComposeIssue[]): boolean {
-    return issues.some(issue => issue.severity === 'error')
-}
 
 export function useGraphOperations() {
     const graphStore = useGraphStore()
@@ -163,7 +118,7 @@ export function useGraphOperations() {
         })
 
         if (hasErrors(result.issues)) {
-            uiStore.lastOperationValidation = {
+            graphStore.lastValidationResult = {
                 valid: false,
                 issues: mapComposeIssues(result.issues, 'node', nodeId),
             }
@@ -176,7 +131,7 @@ export function useGraphOperations() {
             result.operations,
         )
 
-        uiStore.lastOperationValidation = batchResult.validation
+        graphStore.lastValidationResult = batchResult.validation
     }
 
     /**
@@ -208,7 +163,7 @@ export function useGraphOperations() {
         })
 
         if (hasErrors(result.issues)) {
-            uiStore.lastOperationValidation = {
+            graphStore.lastValidationResult = {
                 valid: false,
                 issues: mapComposeIssues(result.issues, 'graph'),
             }
@@ -234,7 +189,7 @@ export function useGraphOperations() {
 
         const batchResult = graphStore.applyBatchToGraphs(targets)
 
-        uiStore.lastOperationValidation = batchResult.validation
+        graphStore.lastValidationResult = batchResult.validation
     }
 
     /**
@@ -266,7 +221,7 @@ export function useGraphOperations() {
         const commonLayer = findCommonLayer(graphStore.graphRegistry)
 
         if (!commonLayer) {
-            uiStore.lastOperationValidation = {
+            graphStore.lastValidationResult = {
                 valid: false,
                 issues: [{
                     severity: 'error',
@@ -288,7 +243,7 @@ export function useGraphOperations() {
         })
 
         if (hasErrors(result.issues)) {
-            uiStore.lastOperationValidation = {
+            graphStore.lastValidationResult = {
                 valid: false,
                 issues: mapComposeIssues(result.issues, 'graph'),
             }
@@ -314,7 +269,7 @@ export function useGraphOperations() {
 
         const batchResult = graphStore.applyBatchToGraphs(targets)
 
-        uiStore.lastOperationValidation = batchResult.validation
+        graphStore.lastValidationResult = batchResult.validation
     }
 
     /**
@@ -348,7 +303,7 @@ export function useGraphOperations() {
         })
 
         if (hasErrors(result.issues)) {
-            uiStore.lastOperationValidation = {
+            graphStore.lastValidationResult = {
                 valid: false,
                 issues: mapComposeIssues(result.issues, 'graph'),
             }
@@ -385,7 +340,7 @@ export function useGraphOperations() {
 
         const batchResult = graphStore.applyBatchToGraphs(targets)
 
-        uiStore.lastOperationValidation = batchResult.validation
+        graphStore.lastValidationResult = batchResult.validation
     }
 
     /**
@@ -429,7 +384,7 @@ export function useGraphOperations() {
         })
 
         if (hasErrors(result.issues)) {
-            uiStore.lastOperationValidation = {
+            graphStore.lastValidationResult = {
                 valid: false,
                 issues: mapComposeIssues(result.issues, 'node', nodeId),
             }
@@ -442,7 +397,7 @@ export function useGraphOperations() {
             result.operations,
         )
 
-        uiStore.lastOperationValidation = batchResult.validation
+        graphStore.lastValidationResult = batchResult.validation
     }
 
     /**
@@ -542,7 +497,7 @@ export function useGraphOperations() {
             node,
         }])
 
-        uiStore.lastOperationValidation = result.validation
+        graphStore.lastValidationResult = result.validation
 
         if (result.validation.valid) {
             draftStore.clearDraftNode()
@@ -571,7 +526,7 @@ export function useGraphOperations() {
             node,
         }])
 
-        uiStore.lastOperationValidation = result.validation
+        graphStore.lastValidationResult = result.validation
 
         if (result.validation.valid) {
             uiStore.closeFloatingWindow()
@@ -598,7 +553,7 @@ export function useGraphOperations() {
             edge,
         }])
 
-        uiStore.lastOperationValidation = result.validation
+        graphStore.lastValidationResult = result.validation
 
         if (result.validation.valid) {
             uiStore.closeFloatingWindow()
@@ -717,7 +672,7 @@ export function useGraphOperations() {
             nodeId,
         }])
 
-        uiStore.lastOperationValidation = result.validation
+        graphStore.lastValidationResult = result.validation
     }
 
     /**
@@ -741,7 +696,7 @@ export function useGraphOperations() {
             edgeId,
         }])
 
-        uiStore.lastOperationValidation = result.validation
+        graphStore.lastValidationResult = result.validation
     }
 
     // ── 添加边操作 ──
@@ -793,7 +748,7 @@ export function useGraphOperations() {
             edge,
         }])
 
-        uiStore.lastOperationValidation = result.validation
+        graphStore.lastValidationResult = result.validation
 
         if (result.validation.valid) {
             uiStore.resetPendingEdge()

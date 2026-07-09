@@ -18,19 +18,6 @@
             v-on:input="handleDraftSummaryInput"
         />
 
-        <div
-            v-if="errorIssues.length > 0"
-            class="error-messages"
-        >
-            <p
-                v-for="(issue, index) in errorIssues"
-                v-bind:key="issue.code + '-' + index"
-                class="error-message"
-            >
-                {{ issue.message }}
-            </p>
-        </div>
-
         <div class="button-row">
             <button v-on:click="controller.confirmDraftNode">
                 Confirm
@@ -54,19 +41,6 @@
             placeholder="Label"
             v-on:input="handleFloatingLabelInput"
         />
-
-        <div
-            v-if="errorIssues.length > 0"
-            class="error-messages"
-        >
-            <p
-                v-for="(issue, index) in errorIssues"
-                v-bind:key="issue.code + '-' + index"
-                class="error-message"
-            >
-                {{ issue.message }}
-            </p>
-        </div>
 
         <div class="button-row">
             <button v-on:click="handleFloatingConfirm">
@@ -114,22 +88,6 @@ const controller = useOperationController()
 const draftNode = computed(() => draftStore.draftNode)
 
 const floatingData = computed(() => controller.ui.state.floatingWindowData)
-
-/**
- * 功能：
- *     从 UI 状态读取当前操作的 error 级校验问题。
- *
- * 规则：
- *     1. 只显示 severity === 'error' 的 issues。
- *     2. warning 级 issues 不在浮空窗显示——warning 允许操作继续。
- */
-const errorIssues = computed(() => {
-    const validation = controller.ui.state.lastOperationValidation
-    if (!validation || !validation.valid) {
-        return validation?.issues.filter(issue => issue.severity === 'error') ?? []
-    }
-    return []
-})
 
 const isEdge = computed(() => {
     const data = floatingData.value
@@ -197,24 +155,6 @@ function handleFloatingConfirm(): void {
 </script>
 
 <style scoped>
-.error-messages {
-    margin-bottom: 8px;
-    padding: 8px;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 4px;
-}
-
-.error-message {
-    color: #dc2626;
-    font-size: 13px;
-    margin: 0 0 4px 0;
-}
-
-.error-message:last-child {
-    margin-bottom: 0;
-}
-
 .floating-window {
     position: absolute;
     top: 20px;

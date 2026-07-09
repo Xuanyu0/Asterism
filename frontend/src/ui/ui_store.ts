@@ -9,7 +9,6 @@
  * 2. selectedCognitionAction / selectedOperationTool: 当前选中的操作
  * 3. pendingAddNode / pendingAddEdge: 待定添加状态
  * 4. floatingWindowData: 浮空窗显示的节点/边数据
- * 5. lastOperationValidation: 最近一次操作校验结果（由 operation_controller 写入）
  *
  * 外部使用方式：
  * import { useUIStore } from '@/ui/ui_store'
@@ -20,7 +19,6 @@
 import { defineStore } from 'pinia'
 
 import type { NodeData, EdgeData, NodeId, EdgeId } from '@my-project/graph-engine'
-import type { ValidationResult } from '@my-project/graph-engine'
 
 import type {
     InteractionMode,
@@ -37,6 +35,8 @@ import type {
     EdgeKind,
     EdgeDirection,
 } from '@my-project/graph-engine'
+
+import { useGraphStore } from '@/graph/graph_store'
 
 
 
@@ -59,7 +59,6 @@ export interface UIStoreState {
     pendingAddNode: PendingAddNodeState
     pendingAddEdge: PendingAddEdgeState
     floatingWindowData: NodeData | EdgeData | null
-    lastOperationValidation: ValidationResult | null
     pendingDeleteNodeId: NodeId | null
     pendingDeleteEdgeId: EdgeId | null
 }
@@ -100,7 +99,6 @@ export const useUIStore = defineStore('ui_store', {
         sourceNodeId: null,
     },
     floatingWindowData: null,
-    lastOperationValidation: null,
     pendingDeleteNodeId: null,
     pendingDeleteEdgeId: null,
     }),
@@ -115,6 +113,8 @@ export const useUIStore = defineStore('ui_store', {
          *     2. 切换模式时重置当前操作状态。
          */
         setInteractionMode(mode: InteractionMode) {
+            useGraphStore().clearValidationResult()
+
             this.interactionMode = mode
 
             this.selectedCognitionAction = null
@@ -130,8 +130,6 @@ export const useUIStore = defineStore('ui_store', {
 
             this.pendingDeleteNodeId = null
             this.pendingDeleteEdgeId = null
-
-            this.lastOperationValidation = null
         },
 
 
@@ -145,8 +143,9 @@ export const useUIStore = defineStore('ui_store', {
          *     2. 切换操作时清除上一次操作的校验结果。
          */
         selectCognitionAction(actionType: CognitionAction | null) {
+            useGraphStore().clearValidationResult()
+
             this.selectedCognitionAction = actionType
-            this.lastOperationValidation = null
         },
 
         /**
@@ -158,13 +157,15 @@ export const useUIStore = defineStore('ui_store', {
          *     2. 切换操作时清除上一次操作的校验结果。
          */
         selectArrangementAction(actionType: ArrangementAction | null) {
+            useGraphStore().clearValidationResult()
+
             this.selectedArrangementAction = actionType
-            this.lastOperationValidation = null
         },
 
         selectOperationTool(tool: OperationTool | null) {
+            useGraphStore().clearValidationResult()
+
             this.selectedOperationTool = tool
-            this.lastOperationValidation = null
 
             // 切换工具时清理上一工具可能残留的边起点选择
             if (tool !== 'add') {
@@ -228,8 +229,9 @@ export const useUIStore = defineStore('ui_store', {
         },
 
         closeFloatingWindow() {
+            useGraphStore().clearValidationResult()
+
             this.floatingWindowData = null
-            this.lastOperationValidation = null
         },
 
         /**
@@ -341,10 +343,11 @@ export const useUIStore = defineStore('ui_store', {
          *     2. 将 interactionMode 重置为 'cognition'。
          */
         exitMode() {
+            useGraphStore().clearValidationResult()
+
             this.resetOperationState()
             this.selectedCognitionAction = null
             this.selectedArrangementAction = null
-            this.lastOperationValidation = null
             this.interactionMode = 'cognition'
         },
 

@@ -175,6 +175,12 @@ const standingButtons = [
 ]
 
 function activateTool(btn: (typeof standingButtons)[number]): void {
+    // Toggle：若当前按钮对应的工具状态已激活，重置为无选中状态。
+    if (activeToolId.value === btn.tool) {
+        controller.resetOperationTool()
+        return
+    }
+
     switch (btn.tool) {
         case 'add-real-node':
             controller.selectOperationTool('add')

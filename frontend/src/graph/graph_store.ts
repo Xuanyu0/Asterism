@@ -158,6 +158,9 @@ export interface GraphStoreState {
     /** 当前图路径，用于子图逐级返回。 */
     graphPath: GraphId[]
 
+    /** 最近一次操作校验结果。操作执行后由 applyBatchToGraph / applyBatchToGraphs 写入。 */
+    lastValidationResult: ValidationResult | null
+
     /** 全操作撤销栈，刷新网页后自然清空。 */
     undoStack: GraphData[]
 
@@ -198,6 +201,7 @@ export const useGraphStore = defineStore('graph_store', {
         selectedNodeId: null,
         selectedEdgeId: null,
         graphPath: [],
+        lastValidationResult: null,
         undoStack: [],
         lastSaveTime: null as number | null,
         graphRegistry: createRegistry(),
@@ -234,6 +238,7 @@ export const useGraphStore = defineStore('graph_store', {
             this.graphPath = [graph.id]
             this.selectedNodeId = null
             this.selectedEdgeId = null
+            this.lastValidationResult = null
             this.undoStack = []
         },
 
@@ -463,10 +468,13 @@ export const useGraphStore = defineStore('graph_store', {
             operations: GraphOperation[],
             options?: ApplyBatchToGraphOptions,
         ): { validation: ValidationResult } {
-            return this.applyBatchToGraphs(
+            const result = this.applyBatchToGraphs(
                 [{ graph: targetGraph, operations }],
                 options,
             )
+            this.lastValidationResult = result.validation
+
+            return result
         },
 
         /**
@@ -506,6 +514,8 @@ export const useGraphStore = defineStore('graph_store', {
             if (targets.length === 0) {
                 const emptyValidation: ValidationResult = { valid: true, issues: [] }
 
+                this.lastValidationResult = emptyValidation
+
                 return { validation: emptyValidation }
             }
 
@@ -518,6 +528,8 @@ export const useGraphStore = defineStore('graph_store', {
                 const { graph: resultGraph, validation } = applyBatch(inputGraph, target.operations)
 
                 if (!validation.valid) {
+                    this.lastValidationResult = validation
+
                     return { validation }
                 }
 
@@ -588,7 +600,25 @@ export const useGraphStore = defineStore('graph_store', {
                 issues: allIssues,
             }
 
+            this.lastValidationResult = validation
+
             return { validation }
+        },
+
+        /**
+         * 功能：
+         *
+         *     清除上一次操作的校验结果。
+         *
+         *     供 UI 层在切换模式/工具/操作、关闭浮空窗时调用，
+         *     确保用户不会看到已过期的校验错误消息。
+         *
+         * 规则：
+         *
+         *     不清除 this.lastValidationResult 之外的任何状态。
+         */
+        clearValidationResult() {
+            this.lastValidationResult = null
         },
     },
 })
