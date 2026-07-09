@@ -41,26 +41,20 @@
             功能：
                 画布操作错误通知区。浮空窗关闭或打开时均显示错误，统一展示位置。
         -->
-        <div
-            v-if="canvasErrorIssues.length > 0"
-            class="canvas-error-notice"
+        <NotificationPanel
+            :visible="canvasErrorIssues.length > 0"
+            accent="red"
+            closable
+            v-on:close="graphStore.clearValidationResult()"
         >
-            <button
-                type="button"
-                class="canvas-error-close"
-                aria-label="关闭错误通知"
-                v-on:click.stop="graphStore.clearValidationResult()"
-            >
-                ×
-            </button>
             <p
                 v-for="(issue, index) in canvasErrorIssues"
                 v-bind:key="issue.code + '-' + index"
-                class="canvas-error-message"
+                class="canvas-error-text"
             >
                 {{ issue.message }}
             </p>
-        </div>
+        </NotificationPanel>
     </div>
 </template>
 
@@ -106,6 +100,7 @@ import { useGraphInteraction } from '@/render/cytoscape/use_graph_interaction.ts
 import { useOperationController } from '@/ui/operation_controller'
 
 import NodeWindow from './graph/NodeWindow.vue'
+import NotificationPanel from './notification/NotificationPanel.vue'
 import OperationToolbar from './graph/OperationToolbar.vue'
 
 const cyContainer = ref<HTMLDivElement | null>(null)
@@ -265,72 +260,42 @@ watch(
 
 /**
  * 功能：
- *     监听待定删除节点 ID 变化，施加/清除 Cytoscape 视觉高亮。
- *
- * 前端机制（Vue 3 框架行为）：
- *     - watch 在依赖变化后的下一个微任务中执行回调。
- *       因为 graphStore.applyBatchToGraph() 同步更新 graphView，
- *       而 graphView watcher 先于本 watcher 注册（源码顺序），
- *       所以 syncElements 中的 cy.json() 先执行（覆盖元素），
- *       随后本 watcher 再尝试给已被 cy.json 覆盖的新元素加 class。
- *       C++ 类比：析构顺序由注册顺序决定，但这里是调度顺序——Vue 按注册顺序 flush。
+ *     创建监听待定目标 ID 变化的 watcher，施加/清除 Cytoscape 高亮 class。
  *
  * 规则：
- *     1. cy.json() 调用后 Cytoscape 元素 id 不变时可安全二次 addClass。
- *     2. 目标元素可能已被删除（删除确认后清空 pendingDelete），需判空。
+ *     1. 适用于 pendingDeleteNodeId / pendingDeleteEdgeId 等 ID 字段。
+ *     2. getter 返回 ID 或 null，watcher 自动管理 class 增删。
  */
-watch(
+function watchPendingTarget(
+    getter: () => string | null,
+    className: string,
+): void {
+    watch(
+        getter,
+        (id, prevId) => {
+            const cy = renderer.getInstance()
+            if (!cy) return
+
+            if (prevId) {
+                const prev = cy.getElementById(prevId)
+                if (prev.length > 0) prev.removeClass(className)
+            }
+            if (id) {
+                const target = cy.getElementById(id)
+                if (target.length > 0) target.addClass(className)
+            }
+        },
+    )
+}
+
+watchPendingTarget(
     () => operationController.ui.state.pendingDeleteNodeId,
-    (nodeId, prevNodeId) => {
-        const cy = renderer.getInstance()
-        if (!cy) {
-            return
-        }
-
-        // 移除上一个目标的高亮
-        if (prevNodeId) {
-            const prevTarget = cy.getElementById(prevNodeId)
-            if (prevTarget.length > 0) {
-                prevTarget.removeClass('delete-target')
-            }
-        }
-
-        // 施加新目标的高亮
-        if (nodeId) {
-            const target = cy.getElementById(nodeId)
-            if (target.length > 0) {
-                target.addClass('delete-target')
-            }
-        }
-    },
+    'delete-target',
 )
 
-/**
- * 功能：
- *     监听待定删除边 ID 变化，施加/清除 Cytoscape 视觉高亮。
- */
-watch(
+watchPendingTarget(
     () => operationController.ui.state.pendingDeleteEdgeId,
-    (edgeId, prevEdgeId) => {
-        const cy = renderer.getInstance()
-        if (!cy) {
-            return
-        }
-
-        if (prevEdgeId) {
-            const prevTarget = cy.getElementById(prevEdgeId)
-            if (prevTarget.length > 0) {
-                prevTarget.removeClass('delete-target')
-            }
-        }
-
-        if (edgeId) {
-            const target = cy.getElementById(edgeId)
-            if (target.length > 0) {
-                target.addClass('delete-target')
-            }
-        }
-    },
+    'delete-target',
 )
 
 onBeforeUnmount(() => {
@@ -355,53 +320,13 @@ onBeforeUnmount(() => {
     cursor: crosshair;
 }
 
-.canvas-error-notice {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    max-width: 400px;
-    padding: 12px 16px;
-    background: rgba(254, 242, 242, 0.95);
-    border: 1px solid #fecaca;
-    border-left: 4px solid #dc2626;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.12);
-    z-index: 998;
-    pointer-events: none;
-}
-
-.canvas-error-close {
-    position: absolute;
-    top: 4px;
-    right: 6px;
-    width: 20px;
-    height: 20px;
-    padding: 0;
-    line-height: 1;
-    background: transparent;
-    border: none;
-    border-radius: 4px;
+.canvas-error-text {
     color: #dc2626;
-    font-size: 18px;
-    cursor: pointer;
-    pointer-events: auto;
-    transition: background 0.15s;
-}
-
-.canvas-error-close:hover {
-    background: rgba(220, 38, 38, 0.08);
-    color: #991b1b;
-}
-
-.canvas-error-message {
-    color: #dc2626;
-    font-size: 13px;
-    margin: 0 0 4px 0;
+    margin: 0;
     text-align: center;
 }
 
-.canvas-error-message:last-child {
-    margin-bottom: 0;
+.canvas-error-text + .canvas-error-text {
+    margin-top: 4px;
 }
 </style>
