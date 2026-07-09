@@ -8,9 +8,8 @@
             v-bind:title="btn.label"
             v-on:click="activateTool(btn)"
         >
-            {{ btn.icon }}
+            <component :is="btn.icon" class="size-4 pointer-events-none" :class="btn.iconClass" />
         </button>
-
     </div>
 
     <!-- 模式按钮 + 子操作（左上角） -->
@@ -104,8 +103,16 @@
  *     KnowledgeGraph.vue 挂载本组件。
  */
 
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, type Component } from 'vue'
 import { useOperationController } from '@/ui/operation_controller'
+
+import {
+    PlusCircleIcon,
+    ArrowRightIcon,
+    MinusIcon,
+    TrashIcon,
+    ChevronDownIcon,
+} from '@heroicons/vue/24/outline'
 
 const controller = useOperationController()
 const uiStore = controller.ui.state
@@ -160,18 +167,23 @@ function setMode(mode: 'cognition' | 'arrangement'): void {
 }
 
 // 常驻操作栏按钮定义
-const standingButtons = [
+const standingButtons: Array<{
+    tool: string
+    icon: Component
+    iconClass?: string
+    label: string
+}> = [
     // 节点组
-    { tool: 'add-real-node' as const, icon: '+ 实○', label: '添加实节点' },
-    { tool: 'add-virtual-node' as const, icon: '+ 虚○', label: '添加虚节点' },
+    { tool: 'add-real-node' as const, icon: PlusCircleIcon, label: '添加实节点' },
+    { tool: 'add-virtual-node' as const, icon: PlusCircleIcon, iconClass: 'opacity-60', label: '添加虚节点' },
     // 边组
-    { tool: 'add-real-directed' as const, icon: '+ 实→', label: '添加有向实边' },
-    { tool: 'add-real-undirected' as const, icon: '+ 实—', label: '添加无向实边' },
-    { tool: 'add-virtual-directed' as const, icon: '+ 虚→', label: '添加有向虚边' },
-    { tool: 'add-virtual-undirected' as const, icon: '+ 虚—', label: '添加无向虚边' },
+    { tool: 'add-real-directed' as const, icon: ArrowRightIcon, label: '添加有向实边' },
+    { tool: 'add-real-undirected' as const, icon: MinusIcon, label: '添加无向实边' },
+    { tool: 'add-virtual-directed' as const, icon: ArrowRightIcon, iconClass: 'opacity-60', label: '添加有向虚边' },
+    { tool: 'add-virtual-undirected' as const, icon: MinusIcon, iconClass: 'opacity-60', label: '添加无向虚边' },
     // 工具组
-    { tool: 'delete' as const, icon: ' x ', label: '删除' },
-    { tool: 'fold' as const, icon: '∨', label: '折叠' },
+    { tool: 'delete' as const, icon: TrashIcon, label: '删除' },
+    { tool: 'fold' as const, icon: ChevronDownIcon, label: '折叠' },
 ]
 
 function activateTool(btn: (typeof standingButtons)[number]): void {
