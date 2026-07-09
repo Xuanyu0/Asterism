@@ -11,7 +11,7 @@
  *
  *     1. 认知操作  — deconstruct / induce / internalize / diverge / unearth / explore
  *     2. 添加操作  — confirmDraftNode / targetNodeForEdge
- *     3. 删除操作  — executeDeleteNode / executeDeleteEdge / confirmDelete / cancelDelete / targetNodeForDelete / targetEdgeForDelete
+     *     3. 删除操作  — executeDeleteNode / executeDeleteEdge / cancelDelete / targetNodeForDelete / targetEdgeForDelete
  *     4. 折叠操作  — toggleFold
  *     5. 编辑操作  — confirmExistingNodeEdit / confirmExistingEdgeEdit / closeFloatingWindow
  *     6. 布局操作  — moveNode / computeNodeRadiusOverrides
@@ -588,26 +588,6 @@ export function useGraphOperations() {
     /**
      * 功能：
      *
-     *     确认执行待定删除操作。
-     *
-     * 规则：
-     *
-     *     1. 必须在存在待定删除目标时调用。
-     *     2. 执行后自动清除待定状态。
-     */
-    function confirmDelete(): void {
-        if (uiStore.pendingDeleteNodeId) {
-            executeDeleteNode(uiStore.pendingDeleteNodeId)
-            uiStore.clearPendingDelete()
-        } else if (uiStore.pendingDeleteEdgeId) {
-            executeDeleteEdge(uiStore.pendingDeleteEdgeId)
-            uiStore.clearPendingDelete()
-        }
-    }
-
-    /**
-     * 功能：
-     *
      *     取消待定删除操作。
      */
     function cancelDelete(): void {
@@ -812,7 +792,6 @@ export function useGraphOperations() {
         confirmExistingEdgeEdit,
         closeFloatingWindow,
         // delete
-        confirmDelete,
         cancelDelete,
         targetNodeForDelete,
         targetEdgeForDelete,

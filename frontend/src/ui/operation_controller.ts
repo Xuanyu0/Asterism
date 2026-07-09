@@ -340,7 +340,6 @@ export function useOperationController() {
         confirmExistingEdgeEdit: ops.confirmExistingEdgeEdit,
         closeFloatingWindow: ops.closeFloatingWindow,
         // 删除
-        confirmDelete: ops.confirmDelete,
         cancelDelete: ops.cancelDelete,
 
         /**

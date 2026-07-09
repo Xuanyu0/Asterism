@@ -11,16 +11,6 @@
             {{ btn.icon }}
         </button>
 
-        <!-- 删除待定提示 -->
-        <template v-if="activeToolId === 'delete' && (uiStore.pendingDeleteNodeId || uiStore.pendingDeleteEdgeId)">
-            <span class="delete-confirm-hint">再次点击目标确认删除，或：</span>
-            <button class="confirm-delete-btn" v-on:click="controller.confirmDelete()">
-                确认
-            </button>
-            <button class="cancel-delete-btn" v-on:click="controller.cancelDelete()">
-                取消
-            </button>
-        </template>
     </div>
 
     <!-- 模式按钮 + 子操作（左上角） -->
@@ -283,27 +273,6 @@ function activateTool(btn: (typeof standingButtons)[number]): void {
 .standing-toolbar > button:nth-child(3),
 .standing-toolbar > button:nth-child(7) {
     margin-left: 8px;
-}
-
-.delete-confirm-hint {
-    font-size: 12px;
-    color: #ef4444;
-    padding: 0 4px;
-    white-space: nowrap;
-}
-
-.standing-toolbar .confirm-delete-btn {
-    background: #ef4444;
-    color: white;
-    border-color: #dc2626;
-}
-
-.standing-toolbar .confirm-delete-btn:hover {
-    background: #dc2626;
-}
-
-.standing-toolbar .cancel-delete-btn {
-    color: #6b7280;
 }
 
 /* ── 模式工具栏（左上角）── */

@@ -55,6 +55,26 @@
                 {{ issue.message }}
             </p>
         </NotificationPanel>
+
+        <!--
+            功能：
+                删除确认面板。删除工具激活并选择了待定目标时显示。
+        -->
+        <NotificationPanel
+            :visible="showDeleteConfirm"
+            accent="red"
+        >
+            <span>
+                再次点击将删除：<strong>{{ deleteTargetLabel }}</strong>
+            </span>
+            <template #actions>
+                <button
+                    type="button"
+                    class="delete-cancel-btn"
+                    v-on:click.stop="operationController.cancelDelete()"
+                >取消</button>
+            </template>
+        </NotificationPanel>
     </div>
 </template>
 
@@ -164,6 +184,28 @@ const canvasErrorIssues = computed(() => {
         return validation?.issues.filter(issue => issue.severity === 'error') ?? []
     }
     return []
+})
+
+const showDeleteConfirm = computed(() => {
+    const state = operationController.ui.state
+
+    return state.selectedOperationTool === 'delete'
+        && (state.pendingDeleteNodeId !== null || state.pendingDeleteEdgeId !== null)
+})
+
+const deleteTargetLabel = computed(() => {
+    const state = operationController.ui.state
+
+    if (state.pendingDeleteNodeId) {
+        const node = graphStore.graphView?.nodes.find(n => n.id === state.pendingDeleteNodeId)
+        return node?.label ?? '此节点'
+    }
+
+    if (state.pendingDeleteEdgeId) {
+        return '此边'
+    }
+
+    return ''
 })
 
 onMounted(() => {
@@ -328,5 +370,21 @@ onBeforeUnmount(() => {
 
 .canvas-error-text + .canvas-error-text {
     margin-top: 4px;
+}
+
+.delete-cancel-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.delete-cancel-btn:hover {
+    background: #f8fafc;
+    transform: translateY(-1px);
 }
 </style>
