@@ -238,6 +238,12 @@ function activateTool(btn: (typeof standingButtons)[number]): void {
     flex-direction: row;
     align-items: center;
     gap: 4px;
+    padding: 4px 6px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(6px);
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     z-index: 999;
 }
 
@@ -249,11 +255,13 @@ function activateTool(btn: (typeof standingButtons)[number]): void {
     cursor: pointer;
     font-size: 12px;
     white-space: nowrap;
-    transition: background 0.15s;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
 }
 
 .standing-toolbar button:hover {
     background: #f1f5f9;
+    transform: translateY(-1px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .standing-toolbar button.active {
@@ -274,13 +282,17 @@ function activateTool(btn: (typeof standingButtons)[number]): void {
     white-space: nowrap;
 }
 
-.confirm-delete-btn {
-    background: #ef4444 !important;
-    color: white !important;
-    border-color: #dc2626 !important;
+.standing-toolbar .confirm-delete-btn {
+    background: #ef4444;
+    color: white;
+    border-color: #dc2626;
 }
 
-.cancel-delete-btn {
+.standing-toolbar .confirm-delete-btn:hover {
+    background: #dc2626;
+}
+
+.standing-toolbar .cancel-delete-btn {
     color: #6b7280;
 }
 
@@ -341,12 +353,17 @@ function activateTool(btn: (typeof standingButtons)[number]): void {
 .mode-btn {
     font-weight: bold;
     font-size: 14px !important;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     padding: 0 !important;
     border-radius: 50% !important;
     text-align: center !important;
-    line-height: 26px;
+    line-height: 30px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.mode-btn:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .placeholder-text {

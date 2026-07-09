@@ -323,10 +323,12 @@ onBeforeUnmount(() => {
     left: 50%;
     transform: translateX(-50%);
     max-width: 400px;
-    padding: 10px 16px;
+    padding: 12px 16px;
     background: rgba(254, 242, 242, 0.95);
     border: 1px solid #fecaca;
+    border-left: 4px solid #dc2626;
     border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.12);
     z-index: 998;
     pointer-events: none;
 }
@@ -335,17 +337,22 @@ onBeforeUnmount(() => {
     position: absolute;
     top: 4px;
     right: 6px;
+    width: 20px;
+    height: 20px;
     padding: 0;
     line-height: 1;
     background: transparent;
     border: none;
+    border-radius: 4px;
     color: #dc2626;
-    font-size: 16px;
+    font-size: 18px;
     cursor: pointer;
     pointer-events: auto;
+    transition: background 0.15s;
 }
 
 .canvas-error-close:hover {
+    background: rgba(220, 38, 38, 0.08);
     color: #991b1b;
 }
 

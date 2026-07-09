@@ -6,12 +6,14 @@
     >
         <h3>Draft Node</h3>
 
+        <label class="field-label">Label</label>
         <input
             v-bind:value="draftNode.label"
             placeholder="Label"
             v-on:input="handleDraftLabelInput"
         />
 
+        <label class="field-label">Summary</label>
         <textarea
             v-bind:value="draftNode.summary"
             placeholder="Summary"
@@ -36,11 +38,21 @@
     >
         <h3>{{ isEdge ? 'Edit Edge' : 'Edit Node' }}</h3>
 
+        <label class="field-label">Label</label>
         <input
             v-bind:value="floatingData.label ?? ''"
             placeholder="Label"
             v-on:input="handleFloatingLabelInput"
         />
+
+        <template v-if="isKnowledgeNode">
+            <label class="field-label">Summary</label>
+            <textarea
+                v-bind:value="floatingSummary"
+                placeholder="Summary"
+                v-on:input="handleFloatingSummaryInput"
+            />
+        </template>
 
         <div class="button-row">
             <button v-on:click="handleFloatingConfirm">
@@ -80,7 +92,7 @@
 import { computed } from 'vue'
 import { useDraftStore } from '@/ui/draft_store'
 import { useOperationController } from '@/ui/operation_controller'
-import type { NodeData, EdgeData } from '@my-project/graph-engine'
+import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
 
 const draftStore = useDraftStore()
 const controller = useOperationController()
@@ -93,6 +105,16 @@ const isEdge = computed(() => {
     const data = floatingData.value
     if (!data) return false
     return 'source' in data && 'target' in data
+})
+
+const isKnowledgeNode = computed(() => {
+    const data = floatingData.value
+    return !!data && !isEdge.value && 'role' in data && data.role === 'knowledge'
+})
+
+const floatingSummary = computed(() => {
+    if (!isKnowledgeNode.value) return ''
+    return (floatingData.value as KnowledgeNodeData).summary ?? ''
 })
 
 /**
@@ -141,6 +163,18 @@ function handleFloatingLabelInput(event: Event): void {
     editingData = { ...editingData, label: target.value }
 }
 
+function handleFloatingSummaryInput(event: Event): void {
+    const target = event.target as HTMLTextAreaElement
+
+    if (!isKnowledgeNode.value) return
+
+    if (!editingData) {
+        editingData = { ...floatingData.value! }
+    }
+
+    editingData = { ...(editingData as KnowledgeNodeData), summary: target.value }
+}
+
 function handleFloatingConfirm(): void {
     if (!editingData) return
 
@@ -160,20 +194,80 @@ function handleFloatingConfirm(): void {
     top: 20px;
     right: 20px;
     width: 300px;
-    padding: 12px;
+    padding: 16px;
     background: white;
-    border: 1px solid #ccc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.06);
     z-index: 999;
+}
+
+.floating-window h3 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #1e293b;
+}
+
+.field-label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #475569;
 }
 
 .floating-window input,
 .floating-window textarea {
     width: 100%;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.floating-window input:focus,
+.floating-window textarea:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 .button-row {
     display: flex;
     gap: 8px;
+    margin-top: 4px;
+}
+
+.button-row button {
+    flex: 1;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.button-row button:first-child {
+    background: #3b82f6;
+    color: white;
+    border: none;
+}
+
+.button-row button:first-child:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+.button-row button:last-child {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+}
+
+.button-row button:last-child:hover {
+    background: #f8fafc;
+    transform: translateY(-1px);
 }
 </style>
