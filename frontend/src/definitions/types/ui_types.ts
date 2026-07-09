@@ -62,6 +62,24 @@ export type CognitionAction =
     | 'deconstruct'    // 解构
     | 'induce'    // 归纳
     | 'internalize'    // 内化 / 常识化
+    | 'diverge'    // 发散
+
+/**
+ * 功能：
+ *     定义 Arrangement 模式下的布局操作。
+ *
+ * 规则：
+ *     1. 每种操作有独立的选择 → 预览 → 确认流程。
+ *     2. move 为单节点拖拽，不需要多选。
+ *     3. orbit / path 需要选择中心/轴心 + 多个目标节点。
+ *     4. adjustDistance / adjustOrbit 为连续微调操作。
+ */
+export type ArrangementAction =
+    | 'move'    // 单节点移动
+    | 'orbit'    // 环绕布局
+    | 'path'    // 路径布局
+    | 'adjustDistance'    // 调整距离
+    | 'adjustOrbit'    // 调整轨道
 
 /**
  * 功能：

@@ -25,6 +25,7 @@ import type { ValidationResult } from '@my-project/graph-engine'
 import type {
     InteractionMode,
     CognitionAction,
+    ArrangementAction,
     OperationTool,
     AddTarget,
     PendingAddNodeState,
@@ -52,6 +53,7 @@ import type {
 export interface UIStoreState {
     interactionMode: InteractionMode
     selectedCognitionAction: CognitionAction | null
+    selectedArrangementAction: ArrangementAction | null
     selectedOperationTool: OperationTool | null
     pendingAddTarget: AddTarget | null
     pendingAddNode: PendingAddNodeState
@@ -86,6 +88,7 @@ export const useUIStore = defineStore('ui_store', {
     state: (): UIStoreState => ({
     interactionMode: 'cognition',  // 默认为 cognition 模式
     selectedCognitionAction: null,
+    selectedArrangementAction: null,
     selectedOperationTool: null,
     pendingAddTarget: null,
     pendingAddNode: {
@@ -115,6 +118,7 @@ export const useUIStore = defineStore('ui_store', {
             this.interactionMode = mode
 
             this.selectedCognitionAction = null
+            this.selectedArrangementAction = null
             this.selectedOperationTool = null
             this.pendingAddTarget = null
 
@@ -126,16 +130,41 @@ export const useUIStore = defineStore('ui_store', {
 
             this.pendingDeleteNodeId = null
             this.pendingDeleteEdgeId = null
+
+            this.lastOperationValidation = null
         },
 
 
 
+        /**
+         * 功能：
+         *     设置当前 Cognition 模式下的认知操作。
+         *
+         * 规则：
+         *     1. 仅在 cognition 模式下有效。
+         *     2. 切换操作时清除上一次操作的校验结果。
+         */
         selectCognitionAction(actionType: CognitionAction | null) {
             this.selectedCognitionAction = actionType
+            this.lastOperationValidation = null
+        },
+
+        /**
+         * 功能：
+         *     设置当前 Arrangement 模式下的布局操作。
+         *
+         * 规则：
+         *     1. 仅在 arrangement 模式下有效。
+         *     2. 切换操作时清除上一次操作的校验结果。
+         */
+        selectArrangementAction(actionType: ArrangementAction | null) {
+            this.selectedArrangementAction = actionType
+            this.lastOperationValidation = null
         },
 
         selectOperationTool(tool: OperationTool | null) {
             this.selectedOperationTool = tool
+            this.lastOperationValidation = null
 
             // 切换工具时清理上一工具可能残留的边起点选择
             if (tool !== 'add') {
@@ -314,6 +343,8 @@ export const useUIStore = defineStore('ui_store', {
         exitMode() {
             this.resetOperationState()
             this.selectedCognitionAction = null
+            this.selectedArrangementAction = null
+            this.lastOperationValidation = null
             this.interactionMode = 'cognition'
         },
 

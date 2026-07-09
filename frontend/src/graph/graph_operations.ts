@@ -39,6 +39,7 @@ import type {
     GraphData,
     NodeRadiusMap,
 } from '@my-project/graph-engine'
+import type { ComposeIssue, ValidationIssue, ValidationTargetType } from '@my-project/graph-engine'
 import type { DraftNode } from '@/definitions/types/draft_types'
 
 import { useGraphStore } from '@/graph/graph_store'
@@ -55,6 +56,53 @@ import { deconstruct as composeDeconstruct } from '@my-project/graph-engine'
 import { induce as composeInduce } from '@my-project/graph-engine'
 import { internalize as composeInternalize } from '@my-project/graph-engine'
 import { diverge as composeDiverge } from '@my-project/graph-engine'
+
+
+// ── ComposeIssue → ValidationIssue 映射 ──
+
+/**
+ * 功能：
+ *
+ *     将引擎 compose 层的 ComposeIssue[] 转换为校验层 ValidationIssue[]。
+ *
+ * 规则：
+ *
+ *     1. ComposeIssue 缺 targetType / targetId——由调用方补充。
+ *     2. 映射在前端边界统一完成，引擎类型保持纯净。
+ *     3. severity / code / message 原样传递。
+ *
+ * 参数：
+ *
+ *     issues — compose 函数返回的 ComposeIssue[]
+ *     targetType — 操作对象的类型（node / edge / graph）
+ *     targetId — 操作对象的 ID（可选，graph 级别操作无 targetId）
+ */
+function mapComposeIssues(
+    issues: ComposeIssue[],
+    targetType: ValidationTargetType,
+    targetId?: string,
+): ValidationIssue[] {
+    return issues.map(issue => ({
+        severity: issue.severity,
+        code: issue.code,
+        message: issue.message,
+        targetType,
+        ...(targetId !== undefined ? { targetId } : {}),
+    }))
+}
+
+/**
+ * 功能：
+ *
+ *     检查 ComposeIssue[] 是否含 error 级问题。
+ *
+ * 规则：
+ *
+ *     含 error 时操作不可提交，前端应展示错误并阻断。
+ */
+function hasErrors(issues: ComposeIssue[]): boolean {
+    return issues.some(issue => issue.severity === 'error')
+}
 
 export function useGraphOperations() {
     const graphStore = useGraphStore()
@@ -114,16 +162,10 @@ export function useGraphOperations() {
             parentGraph: graphStore.graphView,
         })
 
-        if (result.issues.some(issue => issue.severity === 'error')) {
+        if (hasErrors(result.issues)) {
             uiStore.lastOperationValidation = {
                 valid: false,
-                issues: result.issues.map(issue => ({
-                    severity: issue.severity,
-                    code: issue.code,
-                    message: issue.message,
-                    targetType: 'node' as const,
-                    targetId: nodeId,
-                })),
+                issues: mapComposeIssues(result.issues, 'node', nodeId),
             }
 
             return
@@ -165,15 +207,10 @@ export function useGraphOperations() {
             allEdges: graphStore.graphView.edges,
         })
 
-        if (result.issues.some(issue => issue.severity === 'error')) {
+        if (hasErrors(result.issues)) {
             uiStore.lastOperationValidation = {
                 valid: false,
-                issues: result.issues.map(issue => ({
-                    severity: issue.severity,
-                    code: issue.code,
-                    message: issue.message,
-                    targetType: 'graph' as const,
-                })),
+                issues: mapComposeIssues(result.issues, 'graph'),
             }
 
             return
@@ -250,15 +287,10 @@ export function useGraphOperations() {
             nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.graphView),
         })
 
-        if (result.issues.some(issue => issue.severity === 'error')) {
+        if (hasErrors(result.issues)) {
             uiStore.lastOperationValidation = {
                 valid: false,
-                issues: result.issues.map(issue => ({
-                    severity: issue.severity,
-                    code: issue.code,
-                    message: issue.message,
-                    targetType: 'graph' as const,
-                })),
+                issues: mapComposeIssues(result.issues, 'graph'),
             }
 
             return
@@ -315,15 +347,10 @@ export function useGraphOperations() {
             graphIds: Array.from(graphStore.graphRegistry.keys()),
         })
 
-        if (result.issues.some(issue => issue.severity === 'error')) {
+        if (hasErrors(result.issues)) {
             uiStore.lastOperationValidation = {
                 valid: false,
-                issues: result.issues.map(issue => ({
-                    severity: issue.severity,
-                    code: issue.code,
-                    message: issue.message,
-                    targetType: 'graph' as const,
-                })),
+                issues: mapComposeIssues(result.issues, 'graph'),
             }
 
             return
@@ -401,16 +428,10 @@ export function useGraphOperations() {
             nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.graphView),
         })
 
-        if (result.issues.some(issue => issue.severity === 'error')) {
+        if (hasErrors(result.issues)) {
             uiStore.lastOperationValidation = {
                 valid: false,
-                issues: result.issues.map(issue => ({
-                    severity: issue.severity,
-                    code: issue.code,
-                    message: issue.message,
-                    targetType: 'node' as const,
-                    targetId: nodeId,
-                })),
+                issues: mapComposeIssues(result.issues, 'node', nodeId),
             }
 
             return

@@ -158,9 +158,6 @@ export interface GraphStoreState {
     /** 当前图路径，用于子图逐级返回。 */
     graphPath: GraphId[]
 
-    /** 最近一次操作校验结果。 */
-    lastValidationResult: ValidationResult | null
-
     /** 全操作撤销栈，刷新网页后自然清空。 */
     undoStack: GraphData[]
 
@@ -201,7 +198,6 @@ export const useGraphStore = defineStore('graph_store', {
         selectedNodeId: null,
         selectedEdgeId: null,
         graphPath: [],
-        lastValidationResult: null,
         undoStack: [],
         lastSaveTime: null as number | null,
         graphRegistry: createRegistry(),
@@ -238,7 +234,6 @@ export const useGraphStore = defineStore('graph_store', {
             this.graphPath = [graph.id]
             this.selectedNodeId = null
             this.selectedEdgeId = null
-            this.lastValidationResult = null
             this.undoStack = []
         },
 
@@ -511,8 +506,6 @@ export const useGraphStore = defineStore('graph_store', {
             if (targets.length === 0) {
                 const emptyValidation: ValidationResult = { valid: true, issues: [] }
 
-                this.lastValidationResult = emptyValidation
-
                 return { validation: emptyValidation }
             }
 
@@ -525,8 +518,6 @@ export const useGraphStore = defineStore('graph_store', {
                 const { graph: resultGraph, validation } = applyBatch(inputGraph, target.operations)
 
                 if (!validation.valid) {
-                    this.lastValidationResult = validation
-
                     return { validation }
                 }
 
@@ -596,8 +587,6 @@ export const useGraphStore = defineStore('graph_store', {
                 valid: true,
                 issues: allIssues,
             }
-
-            this.lastValidationResult = validation
 
             return { validation }
         },

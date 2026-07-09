@@ -32,7 +32,7 @@ import type {
     EdgeId,
     GraphPosition,
 } from '@my-project/graph-engine'
-import type { OperationTool, AddTarget } from '@/definitions/types/ui_types'
+import type { OperationTool, AddTarget, CognitionAction, ArrangementAction } from '@/definitions/types/ui_types'
 import type { EdgeKind, EdgeDirection } from '@my-project/graph-engine'
 import type { KnowledgeNodeKind } from '@my-project/graph-engine'
 
@@ -150,8 +150,12 @@ export function useOperationController() {
 
     // ── 认知操作选择 ──
 
-    function selectCognitionAction(action: 'deconstruct' | null): void {
+    function selectCognitionAction(action: CognitionAction | null): void {
         uiStore.selectCognitionAction(action)
+    }
+
+    function selectArrangementAction(action: ArrangementAction | null): void {
+        uiStore.selectArrangementAction(action)
     }
 
     // ── 右键 ──
@@ -180,6 +184,11 @@ export function useOperationController() {
         // 清认知操作选中
         if (uiStore.selectedCognitionAction !== null) {
             uiStore.selectCognitionAction(null)
+        }
+
+        // 清布局操作选中
+        if (uiStore.selectedArrangementAction !== null) {
+            uiStore.selectArrangementAction(null)
         }
     }
 
@@ -306,6 +315,7 @@ export function useOperationController() {
         selectAddEdgeDirection,
         resetOperationTool,
         selectCognitionAction,
+        selectArrangementAction,
         // 右键
         handleRightClick,
         // 认知操作

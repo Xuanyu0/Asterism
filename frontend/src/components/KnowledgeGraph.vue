@@ -36,6 +36,23 @@
                 3. 不直接操作 Cytoscape。
         -->
         <OperationToolbar />
+
+        <!--
+            功能：
+                画布操作错误通知区。浮空窗关闭时显示 Cognition / Arrangement 操作的 error。
+        -->
+        <div
+            v-if="canvasErrorIssues.length > 0"
+            class="canvas-error-notice"
+        >
+            <p
+                v-for="(issue, index) in canvasErrorIssues"
+                v-bind:key="issue.code + '-' + index"
+                class="canvas-error-message"
+            >
+                {{ issue.message }}
+            </p>
+        </div>
     </div>
 </template>
 
@@ -123,6 +140,27 @@ const containerClasses = computed(() => {
     }
 
     return {}
+})
+
+/**
+ * 功能：
+ *     读取画布级操作的 error 校验问题。
+ *
+ * 规则：
+ *     1. 浮空窗打开时不在画布通知区显示——错误已在浮空窗内就近显示。
+ *     2. 只显示 severity === 'error' 的 issues。
+ *     3. 浮空窗关闭时，画布操作（Cognition / Arrangement）的错误在此显示。
+ */
+const canvasErrorIssues = computed(() => {
+    const state = operationController.ui.state
+    if (state.floatingWindowData) {
+        return []
+    }
+    const validation = state.lastOperationValidation
+    if (!validation || !validation.valid) {
+        return validation?.issues.filter(issue => issue.severity === 'error') ?? []
+    }
+    return []
 })
 
 onMounted(() => {
@@ -275,5 +313,29 @@ onBeforeUnmount(() => {
 
 .cursor-cell {
     cursor: cell;
+}
+.canvas-error-notice {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 400px;
+    padding: 10px 16px;
+    background: rgba(254, 242, 242, 0.95);
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    z-index: 998;
+    pointer-events: none;
+}
+
+.canvas-error-message {
+    color: #dc2626;
+    font-size: 13px;
+    margin: 0 0 4px 0;
+    text-align: center;
+}
+
+.canvas-error-message:last-child {
+    margin-bottom: 0;
 }
 </style>
