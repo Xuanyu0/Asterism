@@ -1,0 +1,33 @@
+/*
+ * 功能：
+ *     全局 UI 组件共享样式。
+ *
+ * 规则：
+ *     1. 只放跨组件复用的基础样式类，不包含布局/尺寸。
+ *     2. 组件特有样式仍用 scoped CSS。
+ *     3. C++ 类比：共享头文件——避免重复定义相同常量。
+ */
+
+@reference "tailwindcss";
+
+/* 次级按钮：白底 + 灰边框 + 悬停上移 */
+.btn-secondary {
+    @apply bg-white border border-slate-300 text-slate-600 cursor-pointer
+            transition duration-150 ease-out;
+}
+
+.btn-secondary:hover {
+    @apply bg-slate-100 text-slate-800 -translate-y-px shadow-sm;
+}
+
+.btn-secondary:focus-visible {
+    @apply outline-none ring-2 ring-blue-500/30 ring-offset-1;
+}
+
+.btn-secondary:active {
+    @apply translate-y-0 bg-slate-200 text-slate-900;
+}
+
+.btn-secondary:disabled {
+    @apply opacity-50 cursor-not-allowed translate-y-0 shadow-none bg-white text-slate-400;
+}
