@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+  <!-- 虚线圆圈 -->
+  <circle cx="12" cy="12" r="9" stroke-dasharray="4 3"/>
+  <!-- 加号 -->
+  <line x1="12" y1="9" x2="12" y2="15" stroke-linecap="round"/>
+  <line x1="9" y1="12" x2="15" y2="12" stroke-linecap="round"/>
+</svg>

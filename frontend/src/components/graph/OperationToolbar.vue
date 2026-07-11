@@ -8,7 +8,7 @@
             v-bind:title="btn.label"
             v-on:click="activateTool(btn)"
         >
-            <component :is="btn.icon" class="size-4 pointer-events-none" :class="btn.iconClass" />
+            <component v-bind:is="btn.icon" class="size-4 pointer-events-none" v-bind:class="btn.iconClass" />
         </button>
     </div>
 
@@ -113,6 +113,9 @@ import {
     TrashIcon,
     ChevronDownIcon,
 } from '@heroicons/vue/24/outline'
+import VirtualNodeIcon from '@/assets/icon-virtual-node.svg?component'
+import VirtualDirectedIcon from '@/assets/icon-virtual-directed.svg?component'
+import VirtualUndirectedIcon from '@/assets/icon-virtual-undirected.svg?component'
 
 const controller = useOperationController()
 const uiStore = controller.ui.state
@@ -175,12 +178,12 @@ const standingButtons: Array<{
 }> = [
     // 节点组
     { tool: 'add-real-node' as const, icon: PlusCircleIcon, label: '添加实节点' },
-    { tool: 'add-virtual-node' as const, icon: PlusCircleIcon, iconClass: 'opacity-60', label: '添加虚节点' },
+    { tool: 'add-virtual-node' as const, icon: VirtualNodeIcon, label: '添加虚节点' },
     // 边组
     { tool: 'add-real-directed' as const, icon: ArrowRightIcon, label: '添加有向实边' },
     { tool: 'add-real-undirected' as const, icon: MinusIcon, label: '添加无向实边' },
-    { tool: 'add-virtual-directed' as const, icon: ArrowRightIcon, iconClass: 'opacity-60', label: '添加有向虚边' },
-    { tool: 'add-virtual-undirected' as const, icon: MinusIcon, iconClass: 'opacity-60', label: '添加无向虚边' },
+    { tool: 'add-virtual-directed' as const, icon: VirtualDirectedIcon, label: '添加有向虚边' },
+    { tool: 'add-virtual-undirected' as const, icon: VirtualUndirectedIcon, label: '添加无向虚边' },
     // 工具组
     { tool: 'delete' as const, icon: TrashIcon, label: '删除' },
     { tool: 'fold' as const, icon: ChevronDownIcon, label: '折叠' },
