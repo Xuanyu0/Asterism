@@ -9,7 +9,6 @@
                 v-if="closable"
                 type="button"
                 class="notification-panel-close"
-                aria-label="关闭通知"
                 v-on:click.stop="emit('close')"
             >
                 ×
@@ -46,21 +45,25 @@ import { computed } from 'vue'
  *     导入组件后，绑定 visible / accent / closable，监听 close 事件。
  */
 
+// 输入：父组件传入 visible / accent / closable
 interface NotificationPanelProps {
     visible: boolean
-    accent?: 'red' | 'blue' | 'purple'
+    accent?: 'red' | 'blue'
     closable?: boolean
 }
 
+// 设置：accent 默认红色，closable 默认不显示
 const props = withDefaults(defineProps<NotificationPanelProps>(), {
     accent: 'red',
     closable: false,
 })
 
+// 输出：父组件监听 close 事件
 const emit = defineEmits<{
     (event: 'close'): void
 }>()
 
+// 衍生：accent 值决定左侧边框色
 const accentClass = computed(() => `accent-${props.accent}`)
 </script>
 
@@ -92,10 +95,6 @@ const accentClass = computed(() => `accent-${props.accent}`)
 
 .notification-panel.accent-blue {
     border-left-color: #3b82f6;
-}
-
-.notification-panel.accent-purple {
-    border-left-color: #9333ea;
 }
 
 .notification-panel-close {

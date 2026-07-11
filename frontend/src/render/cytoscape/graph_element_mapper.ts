@@ -11,7 +11,7 @@
  *     6. mapGraphDataToCyElements()
  *
  * 外部如何使用：
- *     KnowledgeGraph.vue 或 Cytoscape Renderer 调用 mapGraphDataToCyElements(graph)。
+ *     Graph.vue 或 Cytoscape Renderer 调用 mapGraphDataToCyElements(graph)。
  */
 
 import type {

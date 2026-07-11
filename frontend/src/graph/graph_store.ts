@@ -378,11 +378,11 @@ export const useGraphStore = defineStore('graph_store', {
          *
          * 使用：
          *
-         *     graph_store 首次创建后，由 setGraphView 或 KnowledgeGraph.vue onMounted 触发。
+         *     graph_store 首次创建后，由 setGraphView 或 Graph.vue onMounted 触发。
          *
          * 消费者：
          *
-         *     KnowledgeGraph.vue onMounted
+         *     Graph.vue onMounted
          */
         initRegistry(): void {
             const savedIds = listSavedGraphIds()

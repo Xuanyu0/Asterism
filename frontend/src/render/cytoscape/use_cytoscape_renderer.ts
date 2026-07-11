@@ -9,7 +9,7 @@
  *     4. getInstance()
  *
  * 外部如何使用：
- *     KnowledgeGraph.vue 在组件挂载后调用 mount() 创建 Cytoscape 实例，
+ *     Graph.vue 在组件挂载后调用 mount() 创建 Cytoscape 实例，
  *     在 GraphData 投影结果变化后调用 syncElements() 同步渲染内容，
  *     在组件卸载前调用 destroy() 销毁 Cytoscape 实例。
  *

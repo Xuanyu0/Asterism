@@ -6,22 +6,22 @@
  *
  * 当前 MVP：
  * 只有一个主页面：
- * KnowledgeGraphView
+ * GraphView
  *
  * 外部使用方式：
  * app.use(router)
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
-import KnowledgeGraphView from '@/views/KnowledgeGraphView.vue'
+import Graph from '@/views/Graph.vue'
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),    // 使用 HTML5 History 模式
     routes: [
         {
             path: '/',
-            name: 'knowledge-graph',
-            component: KnowledgeGraphView,    // 主知识图谱页面
+            name: 'graph',
+            component: Graph,    // 主图谱页面
         },
     ],
 })

@@ -1,94 +1,14 @@
-<template>
-    <div class="relative h-screen w-screen bg-slate-50" v-on:contextmenu.prevent>
-        <!--
-            功能：
-                Cytoscape 真正挂载的 DOM 容器。
-
-            规则：
-                1. ref="cyContainer" 会在 script 中得到这个 DOM。
-                2. h-full / w-full 继承父容器尺寸。
-                3. 本节点只给 Cytoscape 使用，不放业务逻辑。
-        -->
-        <div
-            ref="cyContainer"
-            class="h-full w-full"
-            v-bind:class="containerClasses"
-            v-on:contextmenu.prevent
-        ></div>
-
-        <!--
-            功能：
-                节点浮空窗。
-
-            规则：
-                1. DraftNode / 已有节点后续都通过这个组件展示。
-                2. 不直接操作 Cytoscape。
-        -->
-        <NodeWindow />
-
-        <!--
-            功能：
-                操作工具栏。
-
-            规则：
-                1. 负责修改 UI Runtime 的用户意图。
-                2. 不直接修改 GraphData。
-                3. 不直接操作 Cytoscape。
-        -->
-        <OperationToolbar />
-
-        <!--
-            功能：
-                画布操作错误通知区。浮空窗关闭或打开时均显示错误，统一展示位置。
-        -->
-        <NotificationPanel
-            :visible="canvasErrorIssues.length > 0"
-            accent="red"
-            closable
-            v-on:close="graphStore.clearValidationResult()"
-        >
-            <p
-                v-for="(issue, index) in canvasErrorIssues"
-                v-bind:key="issue.code + '-' + index"
-                class="canvas-error-text"
-            >
-                {{ issue.message }}
-            </p>
-        </NotificationPanel>
-
-        <!--
-            功能：
-                删除确认面板。删除工具激活并选择了待定目标时显示。
-        -->
-        <NotificationPanel
-            :visible="showDeleteConfirm"
-            accent="red"
-        >
-            <span>
-                再次点击将删除：<strong>{{ deleteTargetLabel }}</strong>
-            </span>
-            <template #actions>
-                <button
-                    type="button"
-                    class="delete-cancel-btn"
-                    v-on:click.stop="operationController.cancelDelete()"
-                >取消</button>
-            </template>
-        </NotificationPanel>
-    </div>
-</template>
-
 <script lang="ts" setup>
 /**
  * 功能：
- *     KnowledgeGraph 页面组合层。
+ *     Graph 页面组合层。
  *
  * 总体结构：
  *     1. 挂载 Cytoscape 容器
  *     2. 初始化 Cytoscape Renderer
  *     3. 监听 GraphData 变化并同步渲染
  *     4. 绑定 Cytoscape 语义交互事件
- *     5. 挂载 NodeWindow 与 OperationToolbar
+ *     5. 挂载 GraphNodeWindow 与 GraphOperationToolbar
  *
  * 前端机制（Vue 3 框架行为）：
  *     - <script setup lang="ts">：
@@ -119,9 +39,9 @@ import { useCytoscapeRenderer } from '@/render/cytoscape/use_cytoscape_renderer.
 import { useGraphInteraction } from '@/render/cytoscape/use_graph_interaction.ts'
 import { useOperationController } from '@/ui/operation_controller'
 
-import NodeWindow from './graph/NodeWindow.vue'
-import NotificationPanel from './notification/NotificationPanel.vue'
-import OperationToolbar from './graph/OperationToolbar.vue'
+import GraphNodeWindow from '@/components/GraphNodeWindow.vue'
+import NotificationPanel from '@/components/NotificationPanel.vue'
+import GraphOperationToolbar from '@/components/GraphOperationToolbar.vue'
 
 const cyContainer = ref<HTMLDivElement | null>(null)
 
@@ -278,7 +198,7 @@ watch(
  *     监听当前 GraphData 的变化，并同步 Cytoscape 渲染元素。
  *
  * 规则：
- *     1. KnowledgeGraph.vue 只负责组合 Runtime。
+ *     1. Graph.vue 只负责组合 Runtime。
  *     2. GraphData 必须先通过 graph_element_mapper.ts 投影为 CyElements。
  *     3. Renderer 只接收 CyElements，不直接接收 GraphData。
  *     4. 本监听不负责修改 GraphData。
@@ -345,6 +265,86 @@ onBeforeUnmount(() => {
 })
 </script>
 
+<template>
+    <div class="relative h-screen w-screen bg-slate-50" v-on:contextmenu.prevent>
+        <!--
+            功能：
+                Cytoscape 真正挂载的 DOM 容器。
+
+            规则：
+                1. ref="cyContainer" 会在 script 中得到这个 DOM。
+                2. h-full / w-full 继承父容器尺寸。
+                3. 本节点只给 Cytoscape 使用，不放业务逻辑。
+        -->
+        <div
+            ref="cyContainer"
+            class="h-full w-full"
+            v-bind:class="containerClasses"
+            v-on:contextmenu.prevent
+        ></div>
+
+        <!--
+            功能：
+                节点浮空窗。
+
+            规则：
+                1. DraftNode / 已有节点后续都通过这个组件展示。
+                2. 不直接操作 Cytoscape。
+        -->
+        <GraphNodeWindow />
+
+        <!--
+            功能：
+                操作工具栏。
+
+            规则：
+                1. 负责修改 UI Runtime 的用户意图。
+                2. 不直接修改 GraphData。
+                3. 不直接操作 Cytoscape。
+        -->
+        <GraphOperationToolbar />
+
+        <!--
+            功能：
+                画布操作错误通知区。浮空窗关闭或打开时均显示错误，统一展示位置。
+        -->
+        <NotificationPanel
+            v-bind:visible="canvasErrorIssues.length > 0"
+            accent="red"
+            closable
+            v-on:close="graphStore.clearValidationResult()"
+        >
+            <p
+                v-for="(issue, index) in canvasErrorIssues"
+                v-bind:key="issue.code + '-' + index"
+                class="canvas-error-text"
+            >
+                {{ issue.message }}
+            </p>
+        </NotificationPanel>
+
+        <!--
+            功能：
+                删除确认面板。删除工具激活并选择了待定目标时显示。
+        -->
+        <NotificationPanel
+            v-bind:visible="showDeleteConfirm"
+            accent="red"
+        >
+            <span>
+                再次点击将删除：<strong>{{ deleteTargetLabel }}</strong>
+            </span>
+            <template #actions>
+                <button
+                    type="button"
+                    class="btn-secondary delete-cancel-btn"
+                    v-on:click.stop="operationController.cancelDelete()"
+                >取消</button>
+            </template>
+        </NotificationPanel>
+    </div>
+</template>
+
 <style scoped>
 .cursor-pointer {
     cursor: pointer;
@@ -376,15 +376,5 @@ onBeforeUnmount(() => {
     padding: 6px 14px;
     border-radius: 6px;
     font-size: 13px;
-    cursor: pointer;
-    background: white;
-    border: 1px solid #e2e8f0;
-    color: #64748b;
-    transition: background 0.15s, transform 0.1s;
-}
-
-.delete-cancel-btn:hover {
-    background: #f8fafc;
-    transform: translateY(-1px);
 }
 </style>

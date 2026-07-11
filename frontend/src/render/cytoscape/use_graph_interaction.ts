@@ -8,7 +8,7 @@
  *     3. useGraphInteraction()
  *
  * 外部如何使用：
- *     KnowledgeGraph.vue 在 renderer mount 后传入 cy 实例与语义事件回调。
+ *     Graph.vue 在 renderer mount 后传入 cy 实例与语义事件回调。
  */
 
 import type { Core, EventObject } from 'cytoscape'

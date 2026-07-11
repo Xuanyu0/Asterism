@@ -100,7 +100,7 @@
  *
  * 外部如何使用：
  *
- *     KnowledgeGraph.vue 挂载本组件。
+ *     Graph.vue 挂载本组件。
  */
 
 import { ref, computed, watch, type Component } from 'vue'

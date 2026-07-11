@@ -25,7 +25,7 @@
                 Confirm
             </button>
 
-            <button v-on:click="controller.cancelDraftNode">
+            <button class="btn-secondary" v-on:click="controller.cancelDraftNode">
                 Cancel
             </button>
         </div>
@@ -59,7 +59,7 @@
                 Confirm
             </button>
 
-            <button v-on:click="controller.closeFloatingWindow">
+            <button class="btn-secondary" v-on:click="controller.closeFloatingWindow">
                 Cancel
             </button>
         </div>
@@ -86,7 +86,7 @@
  *       C++ 类比：if-else 分支，但框架在依赖变化时自动重新评估。
  *
  * 外部如何使用：
- *     KnowledgeGraph.vue 挂载本组件。
+ *     Graph.vue 挂载本组件。
  */
 
 import { computed, watch } from 'vue'
@@ -261,17 +261,6 @@ function handleFloatingConfirm(): void {
 
 .button-row button:first-child:hover {
     background: #2563eb;
-    transform: translateY(-1px);
-}
-
-.button-row button:last-child {
-    background: white;
-    border: 1px solid #e2e8f0;
-    color: #64748b;
-}
-
-.button-row button:last-child:hover {
-    background: #f8fafc;
     transform: translateY(-1px);
 }
 </style>
