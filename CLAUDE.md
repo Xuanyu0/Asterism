@@ -71,44 +71,13 @@ Cytoscape Renderer (use_cytoscape_renderer.ts)
 | ui_store | 用户 UI 意图（交互模式、选中工具、浮空窗） | 不保存 GraphData |
 | draft_store | 临时草稿（DraftNode/DraftEdge），互斥 | 不直接进入 GraphData |
 
-
-## 重要 Commit
-
-### Phase 1
-
-- `3755f74` — refactor-graph-isolate-cytoscape-runtime（已完成 Cytoscape 隔离）
-- `57f5cc6` — refactor graph types add role discriminated union for node identity（NodeRole 第一层判别，Phase 1 类型收口）
-- `0ddcbaa` — refactor graph isolate store internals and extract render layer（拆分 graph 内部实现至 utilities/，分离 render/ 渲染层）
-- `f1d9649` — refactor ui interaction add right-extending column toolbar and two-level right-click exit（Phase 1 收尾）
-- `8288b26` — cleanup frontend remove unused scaffold files and add coding conventions
-
-### Phase 2a
-
-- `e845905` — add compose base layer with ComposeResult types and applyBatch pipeline（Step 6）
-- `810bd5e` — implement Step 7 arrangement compose layer（Step 7：move / adjust / orbit / path）
-- `d7159fd` — implement step 8 deconstruct and diverge with spec-driven compose layer（Step 8 起步）
-- `29a3880` — implement induce compose function with add_graph in execute pipeline（Step 8 核心——最大认知操作）
-- `c250b77` — implement internalize compose function with child graph cleanup and scatter placement（Step 8 收尾）
-- `ab736ec` — implement step 9 test coverage — 20 test files, 119 passing tests（Step 9）
-- `a919a91` — complete step 10 api export reorganization with consumer annotations（Step 10）
-- `58b34c3` — refactor frontend switch to engine api and cleanup duplicate code（Step 11：切 engine apply，删 9 个重复文件）
-- `2aac5d7` — split operation controller extract graph operations layer（Step 11：UI 层拆分）
-
-## 项目规模（Phase 2a 完成时）
-
-| 区域 | 文件数 | 总行数 | 有效代码 | 注释+空行 | 说明 |
-|------|:-----:|:-----:|:------:|:--------:|------|
-| Engine 核心（`packages/graph-engine/src/`） | 39 | 5,492 | ~2,748 | ~2,744 | 类型、执行器、校验器、编排、基础设施 |
-| Engine 测试（`packages/graph-engine/tests/`） | 21 | 2,373 | ~1,773 | ~600 | 20 测试文件 119 用例 |
-| 前端（`frontend/src/`） | 24 | 5,664 | ~3,106 | ~2,558 | 3 store + 2 运行时 + 3 渲染 + 3 Vue 组件 |
-| 设计文档（`docs/`） | 25 | 4,381 | — | — | 设计、spec、开发文档 |
-| **合计** | **109** | **17,910** | **~7,627** | **~5,902** | + 4,381 文档 |
-
 ## 开发策略
 
 **Graph Engine 是整个项目的底层核心系统**，已作为独立、框架无关的 `@my-project/graph-engine` 包实现。前端通过 `graph_store.ts` + `graph_operations.ts` 调用引擎 API。
 
 ## 开发阶段总览
+
+* 注：项目实际内容以最新情况为准，此处仅记录历史情况。
 
 ### Phase 1：前端 Runtime 完成 ✅
 
@@ -116,21 +85,6 @@ Cytoscape Renderer (use_cytoscape_renderer.ts)
 2. **OperationToolbar Runtime** — 完善 Add Edge / Delete / Fold
 3. **OperationController 收口** — 彻底封死 ui_store/draft_store 对外暴露
 4. **Node Type 收口** — 引入 `NodeRole` 第一层判别，消除 `'normal'` 占位符，TS discriminated union
-
-> **注意**：`move` 已从 Phase 1 迁移至 Phase 2（Arrangement 模式）。当前 Operation 模式仅包含 Add / Delete / Fold。
-> `NodeViewRole` 已重构为 `NodeRole` + `ReferenceNodeKind`，`RealNodeForm: 'normal'` 已重命名为 `'atomic'`。
-> 详见 commit `57f5cc6`。
-
-**Phase 1 完成标志**：
-
-| # | 任务 | 可验证标志 |
-|---|------|----------|
-| 1 | NodeWindow Runtime | DraftNode 和 ExistingNode 共用同一个 `NodeWindow.vue` 组件；浮空窗确认后统一走 `update_node` operation |
-| 2 | OperationToolbar Runtime | 工具栏上的 add_edge / delete / fold 操作通过 `operation_controller` 发出 `GraphOperation`，不直接调 `graph_store` |
-| 3 | OperationController 收口 | `ui_store` 和 `draft_store` 不再被组件层之外的代码直接引用任何写操作；所有写入路径必经 `operation_controller` |
-| 4 | Node Type 收口 | `NodeRole` 作为第一层判别，`NodeData` 为 discriminated union；引用节点不再被迫携带无意义 `kind`/`form`；`'normal'` 占位符消除 |
-
-**定性标准**：从 UI 事件到 GraphData 变更，中间每一条路径都经过单向数据流的完整链路，不存在任何短路。
 
 ### Phase 2a：Graph Engine（架构核心层） ✅
 
@@ -140,13 +94,13 @@ Cytoscape Renderer (use_cytoscape_renderer.ts)
 - 单步操作（11 种原子操作）：apply + validate + execute + createReversal
 - 批量事务：applyBatch（validate-all-first → execute-all 或整批丢弃）
 - 认知编排：deconstruct / induce / internalize / diverge（compose/cognitive/）
-- 布局编排：move / adjust / orbit / path（compose/arrangement/）
+- 布局编排：moveNode / adjustDistance / adjustOrbit / orbit / pathLayout（compose/arrangement/）
 - 基础设施：碰撞检测、位置放置、跨图搜索、ID 生成
 - 操作日志类型层：OperationLog / OperationLogEntry / State（树形操作树，支持 undo）
 - 操作回放：replayGraph / replayToStep
 - 前端已切到引擎全部 API，冗余代码已清理
 
-**Phase 2a 完成标志**：引擎作为独立的 `@my-project/graph-engine` 包运行，框架无关，20 文件 119 测试。前端仅通过 graph_store + graph_operations 两个文件调引擎，所有 import 指向引擎包。
+**Phase 2a 完成标志**：引擎作为独立的 `@my-project/graph-engine` 包运行，框架无关。前端仅通过 graph_store + graph_operations 两个文件（非 types import）调引擎，所有 import 指向引擎包。
 
 ---
 
@@ -212,13 +166,13 @@ GE 的全部功能在前端完全落地，使 Cognition（除 explore / unearth�
 
 ## 设计文档
 
-- 完整设计文档：`docs/设计/`（按主题拆分为 4 份）
+- 完整设计文档：`docs/设计/`
 
 ---
 
-# 代码规范
+## 代码规范
 
-## 一、总体原则
+### 总体原则
 
 代码服务于 **Runtime 规则表达**，而不是实现细节表达。优先描述"这个对象是什么 / 承担什么职责 / 遵守什么规则"，而不是"这行代码在干什么"。
 
@@ -228,7 +182,7 @@ GE 的全部功能在前端完全落地，使 Cognition（除 explore / unearth�
 
 禁止变量单字母简写。
 
-## 二、文件命名（snake_case）
+### 文件命名（snake_case）
 
 所有 `.ts` 文件统一 `snake_case`：
 - ✅ `graph_store.ts`, `ui_store.ts`, `graph_operation_types.ts`, `graph_persistence.ts`
@@ -237,13 +191,13 @@ GE 的全部功能在前端完全落地，使 Cognition（除 explore / unearth�
 Vue 组件文件例外：统一 **PascalCase**（Vue 生态约定）：
 - ✅ `KnowledgeGraph.vue`, `NodeWindow.vue`, `OperationToolbar.vue`
 
-## 三、缩进规范
+### 缩进规范
 
 **4 空格**。禁止 Tab，禁止 2 空格。
 
-## 四、文件头注释
+### 文件头注释
 
-每个 Runtime 文件必须有文件头说明：
+每个文件必须有文件头说明：
 ```ts
 /**
  * 功能：
@@ -257,7 +211,7 @@ Vue 组件文件例外：统一 **PascalCase**（Vue 生态约定）：
  */
 ```
 
-## 五、接口注释（interface / type / class / enum）
+### 接口注释（interface / type / class / enum）
 
 所有类型定义必须有：
 ```ts
@@ -275,7 +229,7 @@ export interface XXX { }
 
 规则与函数注释相同：小节标题后空一行，再写内容。无 `参数：` 段。
 
-## 六、函数注释
+### 函数注释
 
 所有公开函数必须有：
 ```ts
@@ -301,148 +255,46 @@ export interface XXX { }
 2. 参数说明格式：`参数名 — 一句话说清语义。键 = 键语义，值 = 值语义`。每参数一行。
 3. 无参数的函数省略 `参数：` 段。
 
-## 七、内部注释规则
+### 注释规则推荐
 
-允许：文件头 / 接口 / 函数注释。
-禁止：逐行注释、解释显然的代码行为的废话注释。
-
-**例外**：以下两种情况允许行末简要注释：
+以下两种情况允许注释：
 
 1. **前端特有语法**（供 C++ 背景开发者理解）。如 `function*`、`yield`、`Proxy` 等 C++ 无直接对应的语法。
    格式：代码后同一行 `// [语法名]：[一句话解释]`。
 2. **非直觉实现**。代码逻辑正确但为什么这样写不是一眼能看懂的。
 
-## 八、跨文件意图注释
-
-如果某段代码的存在是为了解决**外部文件的代码**产生的问题（而非本文件内部的逻辑需要），必须在代码块内用注释注明意图。
-
-```ts
-// 清理 fold 状态中对该节点的引用。
-// delete_node 必须同步折叠状态，否则后续渲染会引用不存在的节点 ID 而报错。
-// 这属于 delete_node 完整语义的一部分，不是副作用。
-```
-
-判断标准：
-
-| 场景 | 加不加 |
-|------|--------|
-| 本文件内 A 函数调 B 函数 | ❌ 不加 |
-| execute.ts 的 delete_node 清理 cognitiveState（跨操作耦合） | ✅ 加 |
-| compose/cognitive 函数内自己校验输入 | ❌ 不加 |
-| execute.ts 更新节点度数（本文件内纯逻辑） | ❌ 不加 |
-
-## 九、状态定义规范
-
-
-状态字段名表达规则，禁用 `a: any` 式定义。
-
-## 十、Store 设计规范
-
-Store = 状态 + 动作。不负责 UI 渲染 / DOM 操作 / Cytoscape 操作。
-
-## 十二、空行规范
-
-逻辑块之间可空行分隔，禁止连续大量空行。
-
-## 十三、命令行规范
-
-命令前写说明注释。
-
-## 十四、Git 提交格式
-
-**全英文**。第一行为摘要行（`动词 + 模块 + 目的`），后续逐条罗列改动目的（不含具体文件名）：
-
-```
-define Phase 2b MVP scope with completion criteria and detailed task list
-
-- Add MVP completion criteria: 8 verifiable end-to-end behaviors
-- Expand cognition tasks: induce/internalize multi-select UI, diverge cross-graph search
-- Add arrangement tasks: moveNode, orbit, path, adjust with collision preview
-- Add data integrity tasks: sentinel loading, save/load graph UI, localStorage persistence
-
-Co-Authored-By: 
-```
-
-规则：
-
-1. 摘要行：一句话说清做了什么
-2. 空一行后列表罗列改动项，每项 `- 动词 模块或作用域：具体改动描述`（禁止罗列具体文件名）
-3. 改动项按模块分组，同模块相邻
-4. 末尾附 `Co-Authored-By` 行
-
-**粒度原则**：宁可偏小，不偏大。每个提交只包含一个逻辑独立的变更（原子化提交）。如果描述开始写得太长，说明该拆分了。同一文件的多个逻辑变更应通过 `git add -p` 拆到不同提交中。纯格式/重命名独立一个提交，不与其他逻辑变更混在一起。
-
-**摘要行长度规则**：
-- 尽量不超过 **50 字符**（Git 官方软限制）。超过说明本次提交体量可能偏大，应提示用户。
-- 超过 **100 字符**，必须重新审视：是否需要拆分提交？摘要能否提炼？
-
-## 十五、回答/协作规范
-
-说明为什么做 → 说明设计规则 → 给出代码 → 给出命令。
-
-## 十六、GraphData 唯一事实源（项目基石）
+### GraphData 唯一事实源（项目基石）
 
 GraphData 是唯一事实源。修改 GraphData 的两条合法路径：
 1. **原子操作**：`graphStore.applyBatch([operation])`（单个 add/delete/update/move/fold/expand 包装为单元素数组）
 2. **编排操作**：`graph_operations.ts` → Engine applyBatch → `graphStore.currentGraph = ...`（deconstruct/induce/internalize/diverge 等认知操作）
 
-## 十七、Import 组织规范
+### Import 组织规范
 
-强制分组 + 空行分隔，顺序如下：
-```ts
-// [1] 第三方库
-import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
-
-// [2] 项目 definitions（类型 & 校验）
-import type { GraphData } from '@/definitions/types/graph_types'
-import { OperationValidator } from '@/definitions/validators/operation_validator'
-
-// [3] 项目 graph / ui runtime
-import { useGraphStore } from '@/graph/graph_store'
-import { useUIStore } from '@/ui/ui_store'
-
-// [4] 相对路径导入（组件等）
-import NodeWindow from './graph/NodeWindow.vue'
-```
-
+强制分组 + 空行分隔
 规则：
 - 每组之间空一行
-- `type` import 和普通 import 可以混在同一组
-- 组内按路径字母序
+- `type` import 和普通 import 不要混在同一组
 
-## 十八、代码问答时需要注意的地方
+### 代码问答时需要注意的地方
 
 **用户背景**：熟悉 C++ 面向过程式编程、Java面向对象式编程、Python 基础，但不熟悉前端开发。
 
 **用户画像、教学策略、@librarian 角色、MCP 上下文获取流程** → 已提取为独立 skill：`@teach-user`。按需获取对应skill。
 
-## 十九、单次调用函数直接内联
+### 单次调用函数直接内联
 
 纯函数辅助逻辑如果只被一个函数调用（且不 export），**不单独拆函数**，直接在调用处写代码加功能注释。
-
-```ts
-// ❌ 不单独拆函数
-function fooHelper(x: T): U { ... }
-function foo(): void { barHelper(x) }
-
-// ✅ 直接内联
-function foo(): void {
-    // 辅助逻辑：描述做了什么
-    const result = doSomething(x)
-}
-```
 
 判断标准：
 
 | 场景 | 拆不拆 |
 |------|--------|
 | 纯函数辅助逻辑，只调 1 次 | ❌ 内联加注释 |
-| 纯函数辅助逻辑，被 ≥2 个函数调用 | ✅ 拆为 helpers |
+| 纯函数辅助逻辑，被 ≥2 个函数调用 | ✅ 拆为辅助函数 |
 | export 为公开 API | ✅ 独立函数及文档注释 |
-| 函数体过长（>30 行）混在一起不利于阅读 | ✅ 拆为语义块 |
 
-## 二十、Vue 模板语法规范
+### Vue 模板语法规范
 
 **禁止缩写**。Vue 模板中所有指令必须使用完整形式，不准使用缩写：
 
@@ -456,9 +308,7 @@ function foo(): void {
 | `:title` | ❌ | `v-bind:title` |
 | `:value` | ❌ | `v-bind:value` |
 
-原因：缩写形式是 Vue 特有的语法糖，对 C++ 背景开发者不透明——`:` 和 `@` 在 HTML 中无对应语义。完整形式直接表达意图：`v-on:` = "绑定事件"，`v-bind:` = "绑定属性"。
-
-## 二十一、设计决策权限
+### 设计决策权限
 
 | 行为 | 允许 | 禁止 |
 |------|------|------|
@@ -474,32 +324,9 @@ function foo(): void {
 3. **代码按现有规范自由修改**，无需额外确认。
 4. 此规则旨在确保用户（而非 AI）是设计文档的唯一作者——AI 的产出进入对话和代码，不进设计文档。
 
-## 二十二、Git 提交权限
-
-| 行为 | 允许 | 禁止 |
-|------|------|------|
-| 在对话中说明改动、解释 diff | ✅ | |
-| 未经用户明确许可执行 `git commit` | | ❌ |
-| 未经用户明确许可执行 `git push` / `git rebase` / `git reset` 等变基/推送操作 | | ❌ |
-| 经用户检查并明确许可后提交 | ✅ | |
-
-规则：
-
-1. **AI 不得在未经用户明确许可的情况下执行任何 git 提交或推送类操作。** 即使改动已经通过测试，也必须等待用户检查并给出明确许可。
-2. **AI 可以主动展示 `git status`、`git diff` 和测试结果**，帮助用户做提交决策。
-3. 用户说"帮我 commit"或"提交"时，仍需先展示 diff 供用户确认，再执行。
-
-## 二十三、设计文档层级与冲突处理
+### 设计文档层级与冲突处理
 
 `docs/` 下三个子目录存在严格的权威层级：
-
-```
-    设计/          ← 最高权威。用户亲身书写，表达用户的核心意志和设计意图
-    ↓ 主导
-    开发文档/      ← 次高权威。开发指南和步骤规划，服务于实现层
-    ↓ 主导
-    spec/          ← 参考级。技术规格说明，由开发过程派生
-```
 
 | 层级 | 目录 | 权威 | 内容性质 |
 |------|------|------|---------|
@@ -514,9 +341,9 @@ function foo(): void {
 3. 当 spec 中的实现细节与开发文档矛盾时，以开发文档为准。
 4. 若上级文档未覆盖某话题，下级文档的结论为有效默认值。
 
-## 二十三、文档检索规范
+### 文档检索规范
 
-### 两种检索机制
+#### 两种检索机制
 
 | 机制 | 触发方式 | 适用场景 |
 |------|---------|---------|
@@ -525,21 +352,14 @@ function foo(): void {
 
 注意力 + grep 协同使用：注意力判断"该不该搜"，grep 执行"精确搜"。
 
-### grep 调用范式
+#### grep 调用范式
 
-#### 调用前（必须）
+##### 调用前（必须）
 
 1. **先加载术语映射表**（`docs/设计/术语映射表.md`）—— 确保中文设计术语能正确映射到英文代码标识符。
-2. **汇报目标**——每次 grep 前，向用户明确说明：期望通过本次 grep 理解什么内容，或达成什么目标。
+2. **汇报目标**——每次 grep 前，先明确：期望通过本次 grep 理解什么内容，或达成什么目标。
 
-```
-格式示例：
-"我先 grep 确认下：induce 操作从 UI 按钮到 engine 的调用链是否完整。
- 搜索词：induce / composeInduce / internalize / composerInternalize，
- 目标：确认数据流是否端到端连通。"
-```
-
-#### 搜索路径优先级
+##### 搜索路径优先级
 
 对于功能设计类问题，按权威层级依次检索：
 
@@ -551,15 +371,7 @@ docs/开发文档/    ← 第二优先
 docs/spec/        ← 最后检索
 ```
 
-即：先 grep `docs/设计/`，无结果则 grep `docs/开发文档/`，再无则 grep `docs/spec/`。
-
-#### 调用后
-
-若同一目录下 grep 结果**物理分散但逻辑连贯**（同一设计概念的定义散落在文档的不同章节），应提醒用户：
-
-> "XX 概念在 `docs/设计/01-核心定义.md` 的第 20 行、第 150 行、第 300 行分别出现，内容在逻辑上是一个整体，建议整合到一个连续段落。"
-
-### 必须 grep 的场景（不自检，直接触发）
+#### 必须 grep 的场景
 
 | 场景 | 说明 |
 |------|------|
@@ -570,11 +382,4 @@ docs/spec/        ← 最后检索
 | **术语映射** | 用户说的中文术语和代码中的英文标识符之间的对应 |
 | **冲突裁决** | 需要同时查 L1/L2/L3 对同一概念的表述时 |
 
-### 不需要 grep 的场景（靠注意力，不额外调用）
-
-| 场景 | 原因 |
-|------|------|
-| 已知文件路径和行号（如前面子代理已探明） | 直接 Read |
-| 文件 < 100 行 | 全量 Read 成本更低 |
-| 单点修改（改一个已知函数内部逻辑） | 无跨文件影响 |
-| 用户明确指定"看看 XX 文件" | 直接 Read |
+* 若没有找到，就作为不确定项标记，然后直接向用户报告
