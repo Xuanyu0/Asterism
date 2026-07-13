@@ -8,7 +8,7 @@
  *     2. 初始化 Cytoscape Renderer
  *     3. 监听 GraphData 变化并同步渲染
  *     4. 绑定 Cytoscape 语义交互事件
- *     5. 挂载 GraphNodeWindow 与 GraphOperationToolbar
+ *     5. 挂载 GraphNodeWindow、GraphOperationToolbar 与 GraphModeSelector
  *
  * 前端机制（Vue 3 框架行为）：
  *     - <script setup lang="ts">：
@@ -42,6 +42,7 @@ import { useOperationController } from '@/ui/operation_controller'
 import GraphNodeWindow from '@/components/GraphNodeWindow.vue'
 import NotificationPanel from '@/components/NotificationPanel.vue'
 import GraphOperationToolbar from '@/components/GraphOperationToolbar.vue'
+import GraphModeSelector from '@/components/GraphModeSelector.vue'
 
 const cyContainer = ref<HTMLDivElement | null>(null)
 
@@ -303,6 +304,7 @@ onBeforeUnmount(() => {
                 3. 不直接操作 Cytoscape。
         -->
         <GraphOperationToolbar />
+        <GraphModeSelector />
 
         <!--
             功能：

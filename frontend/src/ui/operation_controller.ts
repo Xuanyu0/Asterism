@@ -24,7 +24,7 @@
  *
  * 外部如何使用：
  *
- *     Graph.vue、GraphNodeWindow.vue、GraphOperationToolbar.vue 调用本文件。
+ *     Graph.vue、GraphNodeWindow.vue、GraphOperationToolbar.vue 和 GraphModeSelector.vue 调用本文件。
  */
 
 import type {
