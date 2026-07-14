@@ -26,6 +26,7 @@ import type { GraphOperation } from '../types/atomic_operations'
 import type { ValidationIssue, ValidationResult } from '../types/validation'
 import { collectDependencyNodeIds } from './traversal'
 import { DEFAULT_GRAPH_RULES } from './checkers/rules'
+import { hasCollisionAt } from '../infrastructure/collision'
 
 // ═══════════ 工具函数 ═══════════
 
@@ -62,6 +63,22 @@ function validateAddNode(graph: GraphData, operation: { type: 'add_node'; node: 
             message: `当前图节点数即将超过 ${DEFAULT_GRAPH_RULES.nodeHardLimit}，禁止继续添加新节点。`,
             targetType: 'graph',
             targetId: graph.id,
+        })
+    }
+
+    // 新节点位置碰撞检测：Phase 1 局部规则，只检测新节点与已有节点是否重叠
+    if (operation.node.position && hasCollisionAt(
+        operation.node.id,
+        operation.node.position,
+        graph.nodes,
+        new Map(),
+    )) {
+        issues.push({
+            severity: 'error',
+            code: 'NODE_COLLISION',
+            message: '节点位置与已有节点碰撞，无法放置。',
+            targetType: 'node',
+            targetId: operation.node.id,
         })
     }
 
