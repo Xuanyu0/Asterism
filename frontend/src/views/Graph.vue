@@ -73,13 +73,23 @@ const containerClasses = computed(() => {
         return { 'cursor-pointer': true }
     }
 
-    // 添加节点：crosshair 光标
-    if (s.selectedOperationTool === 'add' && s.pendingAddTarget === 'node' && s.pendingAddNode.kind !== null) {
+    // 添加实节点：crosshair 光标
+    if (s.selectedOperationTool === 'add-real-node') {
         return { 'cursor-crosshair': true }
     }
 
-    // 添加边：cell 光标
-    if (s.selectedOperationTool === 'add' && s.pendingAddTarget === 'edge' && s.pendingAddEdge.kind !== null && s.pendingAddEdge.direction !== null && s.pendingAddEdge.sourceNodeId !== null) {
+    // 添加虚节点：crosshair 光标
+    if (s.selectedOperationTool === 'add-virtual-node') {
+        return { 'cursor-crosshair': true }
+    }
+
+    // 添加边：cell 光标（仅第一次点击节点后显示，提示用户点击第二个节点）
+    if ((s.selectedOperationTool === 'add-real-directed'
+            || s.selectedOperationTool === 'add-real-undirected'
+            || s.selectedOperationTool === 'add-virtual-directed'
+            || s.selectedOperationTool === 'add-virtual-undirected')
+        && s.operationRuntime.addEdgeSourceNodeId !== null
+    ) {
         return { 'cursor-cell': true }
     }
 
@@ -111,18 +121,18 @@ const showDeleteConfirm = computed(() => {
     const state = operationController.ui.state
 
     return state.selectedOperationTool === 'delete'
-        && (state.pendingDeleteNodeId !== null || state.pendingDeleteEdgeId !== null)
+        && (state.operationRuntime.pendingDeleteNodeId !== null || state.operationRuntime.pendingDeleteEdgeId !== null)
 })
 
 const deleteTargetLabel = computed(() => {
     const state = operationController.ui.state
 
-    if (state.pendingDeleteNodeId) {
-        const node = graphStore.graphView?.nodes.find(n => n.id === state.pendingDeleteNodeId)
+    if (state.operationRuntime.pendingDeleteNodeId) {
+        const node = graphStore.graphView?.nodes.find(n => n.id === state.operationRuntime.pendingDeleteNodeId)
         return node?.label ?? '此节点'
     }
 
-    if (state.pendingDeleteEdgeId) {
+    if (state.operationRuntime.pendingDeleteEdgeId) {
         return '此边'
     }
 
@@ -171,7 +181,7 @@ onMounted(() => {
  *     监听待定边起点节点 ID 变化，施加/清除高亮。
  */
 watch(
-    () => operationController.ui.state.pendingAddEdge.sourceNodeId,
+    () => operationController.ui.state.operationRuntime.addEdgeSourceNodeId,
     (nodeId, prevNodeId) => {
         const cy = renderer.getInstance()
         if (!cy) {
@@ -226,7 +236,7 @@ watch(
  *     创建监听待定目标 ID 变化的 watcher，施加/清除 Cytoscape 高亮 class。
  *
  * 规则：
- *     1. 适用于 pendingDeleteNodeId / pendingDeleteEdgeId 等 ID 字段。
+ *     1. 适用于 operationRuntime.pendingDeleteNodeId / pendingDeleteEdgeId 等 ID 字段。
  *     2. getter 返回 ID 或 null，watcher 自动管理 class 增删。
  */
 function watchPendingTarget(
@@ -252,12 +262,12 @@ function watchPendingTarget(
 }
 
 watchPendingTarget(
-    () => operationController.ui.state.pendingDeleteNodeId,
+    () => operationController.ui.state.operationRuntime.pendingDeleteNodeId,
     'delete-target',
 )
 
 watchPendingTarget(
-    () => operationController.ui.state.pendingDeleteEdgeId,
+    () => operationController.ui.state.operationRuntime.pendingDeleteEdgeId,
     'delete-target',
 )
 

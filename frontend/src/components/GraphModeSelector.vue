@@ -97,6 +97,7 @@ const uiStore = controller.ui.state
 
 const showModeSelector = ref(false)
 
+// 未来这里需要进行优化
 const modeButtonLabel = computed(() => {
     switch (uiStore.interactionMode) {
         case 'cognition': return 'C'

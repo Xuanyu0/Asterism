@@ -11,7 +11,7 @@
  *     1. 语义事件 Payload 定义
  *     2. useOperationController()：
  *        - 模式切换  — enterCognitionMode / enterArrangementMode
- *        - 工具选择  — selectOperationTool / selectAddTarget / selectAddNodeKind 等
+ *        - 工具选择  — selectOperationTool
  *        - 右键退出  — handleRightClick
  *        - 事件分派  — handleCanvasClicked / handleNodeClicked / handleEdgeClicked
  *
@@ -32,9 +32,7 @@ import type {
     EdgeId,
     GraphPosition,
 } from '@my-project/graph-engine'
-import type { OperationTool, AddTarget, CognitionAction, ArrangementAction } from '@/definitions/types/ui_types'
-import type { EdgeKind, EdgeDirection } from '@my-project/graph-engine'
-import type { KnowledgeNodeKind } from '@my-project/graph-engine'
+import type { OperationTool, CognitionAction, ArrangementAction } from '@/definitions/types/ui_types'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { useUIStore } from '@/ui/ui_store'
@@ -128,22 +126,6 @@ export function useOperationController() {
         uiStore.selectOperationTool(tool)
     }
 
-    function selectAddTarget(target: AddTarget | null): void {
-        uiStore.setAddTarget(target)
-    }
-
-    function selectAddNodeKind(kind: KnowledgeNodeKind | null): void {
-        uiStore.selectNodeKind(kind)
-    }
-
-    function selectAddEdgeKind(kind: EdgeKind | null): void {
-        uiStore.selectEdgeKind(kind)
-    }
-
-    function selectAddEdgeDirection(direction: EdgeDirection | null): void {
-        uiStore.selectEdgeDirection(direction)
-    }
-
     function resetOperationTool(): void {
         uiStore.resetOperationState()
     }
@@ -170,13 +152,8 @@ export function useOperationController() {
      *     仅取消当前所选操作、放弃所有草稿编辑。不改变交互模式。
      */
     function handleRightClick(): void {
-        // 清工具
-        if (uiStore.selectedOperationTool !== null) {
-            uiStore.resetOperationState()
-        }
-
-        // 清待定状态
-        uiStore.clearPendingDelete()
+        // 重置工具与运行态（含待定删除）
+        uiStore.resetOperationState()
 
         // 清草稿
         draftStore.clearDraftNode()
@@ -214,13 +191,19 @@ export function useOperationController() {
             return
         }
 
-        // 添加节点模式：创建 DraftNode
-        if (uiStore.selectedOperationTool === 'add'
-            && uiStore.pendingAddTarget === 'node'
-            && uiStore.pendingAddNode.kind
-        ) {
+        // 添加实节点模式：创建 DraftNode
+        if (uiStore.selectedOperationTool === 'add-real-node') {
             draftStore.createDraftNode(
-                uiStore.pendingAddNode.kind,
+                'real',
+                payload.x,
+                payload.y,
+            )
+        }
+
+        // 添加虚节点模式：创建 DraftNode
+        if (uiStore.selectedOperationTool === 'add-virtual-node') {
+            draftStore.createDraftNode(
+                'virtual',
                 payload.x,
                 payload.y,
             )
@@ -253,7 +236,10 @@ export function useOperationController() {
         const tool = uiStore.selectedOperationTool
 
         switch (tool) {
-            case 'add': {
+            case 'add-real-directed':
+            case 'add-real-undirected':
+            case 'add-virtual-directed':
+            case 'add-virtual-undirected': {
                 ops.targetNodeForEdge(payload.nodeId)
                 return
             }
@@ -269,6 +255,7 @@ export function useOperationController() {
             }
 
             default: {
+                // 'add-real-node', 'add-virtual-node', null, or other tools
                 const node = graphStore.graphView?.nodes.find(node => node.id === payload.nodeId)
                 if (node) {
                     uiStore.openFloatingWindow(node)
@@ -309,10 +296,6 @@ export function useOperationController() {
         enterArrangementMode,
         // 工具选择
         selectOperationTool,
-        selectAddTarget,
-        selectAddNodeKind,
-        selectAddEdgeKind,
-        selectAddEdgeDirection,
         resetOperationTool,
         selectCognitionAction,
         selectArrangementAction,

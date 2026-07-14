@@ -9,12 +9,10 @@
  *     1. InteractionMode：认知 / 操作 两种主模式。
  *     2. BaseInteractionState：基础相机与点击能力。
  *     3. CognitionAction：认知演化操作。
- *     4. OperationTool：Operation 模式下的一级工具。
- *     5. AddTarget：添加操作下的二级目标。
- *     6. PendingAddNodeState：添加节点时的待定状态。
- *     7. PendingAddEdgeState：添加边时的待定状态。
- *     8. NavigationCardState：导航卡片状态。
- *     9. UIStateSnapshot：UI 全局状态快照。
+ *     4. OperationTool：平铺的 8 种原子工具。
+ *     5. OperationRuntimeState：操作运行时中间状态。
+ *     6. NavigationCardState：导航卡片状态。
+ *     7. UIStateSnapshot：UI 全局状态快照。
  *
  * 外部如何使用：
  *     ui_store.ts 从本文件导入类型。
@@ -22,10 +20,8 @@
  */
 
 import type {
-    EdgeDirection,
-    EdgeKind,
-    KnowledgeNodeKind,
     NodeId,
+    EdgeId,
 } from '@my-project/graph-engine'
 
 export type InteractionMode = 'cognition' | 'arrangement' | null
@@ -83,60 +79,35 @@ export type ArrangementAction =
 
 /**
  * 功能：
- *     定义 Operation 模式下的一级工具。
+ *     定义 Operation 模式下平铺的 8 种原子工具。
  *
  * 规则：
- *     1. add 只是一级入口，不直接说明添加节点还是添加边。
+ *     1. 每个工具编码完整的添加路径（目标 + kind + direction）。
  *     2. delete 表示删除模式。
- *     3. move 表示移动节点模式。
- *     4. fold 表示依赖折叠 / 展开模式。
+ *     3. fold 表示依赖折叠 / 展开模式。
  */
 export type OperationTool =
-    | 'add'
+    | 'add-real-node'
+    | 'add-virtual-node'
+    | 'add-real-directed'
+    | 'add-real-undirected'
+    | 'add-virtual-directed'
+    | 'add-virtual-undirected'
     | 'delete'
     | 'fold'
 
 /**
  * 功能：
- *     定义 add 工具展开后的二级目标。
+ *     描述 Operation 模式下的运行时中间状态。
  *
  * 规则：
- *     1. node 表示准备添加节点。
- *     2. edge 表示准备添加边。
- *     3. null 表示尚未选择具体添加目标。
+ *     1. 只存储操作执行过程中产生的临时数据。
+ *     2. 工具切换时整体复位，不清零则可能造成误操作。
  */
-export type AddTarget =
-    | 'node'
-    | 'edge'
-
-/**
- * 功能：
- *     描述添加节点时的待定状态。
- *
- * 规则：
- *     1. kind 为 null 表示还没有选择实节点或虚节点。
- *     2. kind 不为 null 时，用户下一次点击空白画布会进入节点草稿流程。
- *     3. 节点草稿在 label 未补全前不应该写入 GraphData。
- */
-export interface PendingAddNodeState {
-    kind: KnowledgeNodeKind | null    // 当前准备添加的节点类型
-}
-
-/**
- * 功能：
- *     描述添加边时的待定状态。
- *
- * 规则：
- *     1. kind 表示实边或虚边。
- *     2. direction 表示有向边或无向边。
- *     3. sourceNodeId 表示用户第一次点击的节点。
- *     4. 有向边中，第一次点击为 source，第二次点击为 target。
- *     5. 无向边也保留点击顺序，但语义上不区分方向。
- */
-export interface PendingAddEdgeState {
-    kind: EdgeKind | null    // 当前准备添加的边类型
-    direction: EdgeDirection | null    // 当前准备添加的边方向
-    sourceNodeId: NodeId | null    // 添加边时第一次点击的节点
+export interface OperationRuntimeState {
+    addEdgeSourceNodeId: NodeId | null    // 添加边时第一次点击的节点
+    pendingDeleteNodeId: NodeId | null
+    pendingDeleteEdgeId: EdgeId | null
 }
 
 /**
@@ -172,9 +143,7 @@ export interface UIStateSnapshot {
     activeAction: UIAction    // 当前高层激活操作
     selectedCognitionAction: CognitionAction | null    // 当前认知操作
     selectedOperationTool: OperationTool | null    // 当前 Operation 工具
-    pendingAddTarget: AddTarget | null    // 当前 Add 二级目标
-    pendingAddNode: PendingAddNodeState    // 当前添加节点待定状态
-    pendingAddEdge: PendingAddEdgeState    // 当前添加边待定状态
+    operationRuntime: OperationRuntimeState    // 操作运行时状态
     navigationCardState: NavigationCardState    // 导航卡片状态
     immersiveModeEnabled: boolean    // 是否开启沉浸模式
     aiPanelExpanded: boolean    // AI 面板是否展开

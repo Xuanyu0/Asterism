@@ -33,9 +33,6 @@
  */
 
 import { computed, type Component } from 'vue'
-
-import { useOperationController } from '@/ui/operation_controller'
-
 import {
     PlusCircleIcon,
     ArrowRightIcon,
@@ -43,41 +40,26 @@ import {
     TrashIcon,
     ChevronDownIcon,
 } from '@heroicons/vue/24/outline'
+
 import VirtualNodeIcon from '@/assets/icon-virtual-node.svg?component'
 import VirtualDirectedIcon from '@/assets/icon-virtual-directed.svg?component'
 import VirtualUndirectedIcon from '@/assets/icon-virtual-undirected.svg?component'
 
+import type { OperationTool } from '@/definitions/types/ui_types'
+import { useOperationController } from '@/ui/operation_controller'
+
 const controller = useOperationController()
-const uiStore = controller.ui.state
 
 /**
  * 功能：
  *
- *     由 pending 状态反推当前激活的常驻按钮 ID，用于高亮。
+ *     selectedOperationTool 的恒等投影——直接透传原子工具 ID。
  */
-const activeToolId = computed(() => {
-    if (uiStore.selectedOperationTool === 'delete') return 'delete'
-    if (uiStore.selectedOperationTool === 'fold') return 'fold'
-    if (uiStore.selectedOperationTool === 'add') {
-        if (uiStore.pendingAddTarget === 'node') {
-            if (uiStore.pendingAddNode.kind === 'real') return 'add-real-node'
-            if (uiStore.pendingAddNode.kind === 'virtual') return 'add-virtual-node'
-        }
-        if (uiStore.pendingAddTarget === 'edge') {
-            const k = uiStore.pendingAddEdge.kind
-            const d = uiStore.pendingAddEdge.direction
-            if (k === 'real' && d === 'directed') return 'add-real-directed'
-            if (k === 'real' && d === 'undirected') return 'add-real-undirected'
-            if (k === 'virtual' && d === 'directed') return 'add-virtual-directed'
-            if (k === 'virtual' && d === 'undirected') return 'add-virtual-undirected'
-        }
-    }
-    return null
-})
+const activeToolId = computed<OperationTool | null>(() => controller.ui.state.selectedOperationTool)
 
 // 常驻操作栏按钮定义
 const standingButtons: Array<{
-    tool: string
+    tool: OperationTool
     icon: Component
     iconClass?: string
     label: string
@@ -95,55 +77,16 @@ const standingButtons: Array<{
     { tool: 'fold' as const, icon: ChevronDownIcon, label: '折叠' },
 ]
 
+
 function activateTool(btn: (typeof standingButtons)[number]): void {
-    // Toggle：若当前按钮对应的工具状态已激活，重置为无选中状态。
+    // Toggle：若当前按钮已激活，重置为无选中状态。
     if (activeToolId.value === btn.tool) {
         controller.resetOperationTool()
         return
     }
 
-    switch (btn.tool) {
-        case 'add-real-node':
-            controller.selectOperationTool('add')
-            controller.selectAddTarget('node')
-            controller.selectAddNodeKind('real')
-            break
-        case 'add-virtual-node':
-            controller.selectOperationTool('add')
-            controller.selectAddTarget('node')
-            controller.selectAddNodeKind('virtual')
-            break
-        case 'add-real-directed':
-            controller.selectOperationTool('add')
-            controller.selectAddTarget('edge')
-            controller.selectAddEdgeKind('real')
-            controller.selectAddEdgeDirection('directed')
-            break
-        case 'add-real-undirected':
-            controller.selectOperationTool('add')
-            controller.selectAddTarget('edge')
-            controller.selectAddEdgeKind('real')
-            controller.selectAddEdgeDirection('undirected')
-            break
-        case 'add-virtual-directed':
-            controller.selectOperationTool('add')
-            controller.selectAddTarget('edge')
-            controller.selectAddEdgeKind('virtual')
-            controller.selectAddEdgeDirection('directed')
-            break
-        case 'add-virtual-undirected':
-            controller.selectOperationTool('add')
-            controller.selectAddTarget('edge')
-            controller.selectAddEdgeKind('virtual')
-            controller.selectAddEdgeDirection('undirected')
-            break
-        case 'delete':
-            controller.selectOperationTool('delete')
-            break
-        case 'fold':
-            controller.selectOperationTool('fold')
-            break
-    }
+    // 原子工具选择——tool ID 编码完整路径
+    controller.selectOperationTool(btn.tool)
 }
 </script>
 

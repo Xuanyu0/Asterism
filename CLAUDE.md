@@ -63,6 +63,13 @@ GraphEngine (@my-project/graph-engine)
 Cytoscape Renderer (use_cytoscape_renderer.ts)
 ```
 
+## 前端架构设计
+
+### UI/UX设计指导
+
+- 对于 UX，代码中的状态设计应当遵循用户在交互时可感知的最小**交互单元**
+- 对于 UI 的架构设计，应当满足用户在页面上可见的最小可分类的**视觉单元**
+
 ## 三个 Pinia Store
 
 | Store | 职责 | 禁止 |

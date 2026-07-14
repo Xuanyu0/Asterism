@@ -7,7 +7,7 @@
  * 总体结构：
  * 1. interactionMode: 当前交互模式
  * 2. selectedCognitionAction / selectedOperationTool: 当前选中的操作
- * 3. pendingAddNode / pendingAddEdge: 待定添加状态
+ * 3. operationRuntime: 操作运行时中间状态（边添加起点、删除待定目标）
  * 4. floatingWindowData: 浮空窗显示的节点/边数据
  *
  * 外部使用方式：
@@ -25,16 +25,8 @@ import type {
     CognitionAction,
     ArrangementAction,
     OperationTool,
-    AddTarget,
-    PendingAddNodeState,
-    PendingAddEdgeState,
+    OperationRuntimeState,
 } from '@/definitions/types/ui_types'
-
-import type {
-    KnowledgeNodeKind,
-    EdgeKind,
-    EdgeDirection,
-} from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
 
@@ -55,12 +47,8 @@ export interface UIStoreState {
     selectedCognitionAction: CognitionAction | null
     selectedArrangementAction: ArrangementAction | null
     selectedOperationTool: OperationTool | null
-    pendingAddTarget: AddTarget | null
-    pendingAddNode: PendingAddNodeState
-    pendingAddEdge: PendingAddEdgeState
+    operationRuntime: OperationRuntimeState
     floatingWindowData: NodeData | EdgeData | null
-    pendingDeleteNodeId: NodeId | null
-    pendingDeleteEdgeId: EdgeId | null
 }
 
 
@@ -70,8 +58,8 @@ export interface UIStoreState {
  *     创建 UI Store 实例，管理用户交互意图与浮空窗状态。
  *
  * 总体结构：
- *     1. state: UIStoreState — 交互模式、选中工具、待定添加状态、浮空窗数据
- *     2. actions: 交互模式切换、工具选择、添加流程管理、浮空窗操作
+ *     1. state: UIStoreState — 交互模式、选中工具、运行时状态、浮空窗数据
+ *     2. actions: 交互模式切换、工具选择、运行时管理、浮空窗操作
  *
  * 规则：
  *     1. 本状态只描述用户当前 UI 意图，不保存 GraphData。
@@ -89,18 +77,12 @@ export const useUIStore = defineStore('ui_store', {
     selectedCognitionAction: null,
     selectedArrangementAction: null,
     selectedOperationTool: null,
-    pendingAddTarget: null,
-    pendingAddNode: {
-        kind: null,
-    },
-    pendingAddEdge: {
-        kind: null,
-        direction: null,
-        sourceNodeId: null,
+    operationRuntime: {
+        addEdgeSourceNodeId: null,
+        pendingDeleteNodeId: null,
+        pendingDeleteEdgeId: null,
     },
     floatingWindowData: null,
-    pendingDeleteNodeId: null,
-    pendingDeleteEdgeId: null,
     }),
 
     actions: {
@@ -120,16 +102,11 @@ export const useUIStore = defineStore('ui_store', {
             this.selectedCognitionAction = null
             this.selectedArrangementAction = null
             this.selectedOperationTool = null
-            this.pendingAddTarget = null
-
-            this.pendingAddNode.kind = null
-
-            this.pendingAddEdge.kind = null
-            this.pendingAddEdge.direction = null
-            this.pendingAddEdge.sourceNodeId = null
-
-            this.pendingDeleteNodeId = null
-            this.pendingDeleteEdgeId = null
+            this.operationRuntime = {
+                addEdgeSourceNodeId: null,
+                pendingDeleteNodeId: null,
+                pendingDeleteEdgeId: null,
+            }
         },
 
 
@@ -167,37 +144,12 @@ export const useUIStore = defineStore('ui_store', {
 
             this.selectedOperationTool = tool
 
-            // 切换工具时清理上一工具可能残留的边起点选择
-            if (tool !== 'add') {
-                this.pendingAddEdge.sourceNodeId = null
+            // 切换工具时整体复位运行态
+            this.operationRuntime = {
+                addEdgeSourceNodeId: null,
+                pendingDeleteNodeId: null,
+                pendingDeleteEdgeId: null,
             }
-
-            // 切换工具时清理待定删除目标
-            if (tool !== 'delete') {
-                this.pendingDeleteNodeId = null
-                this.pendingDeleteEdgeId = null
-            }
-        },
-
-        /**
-         * 功能：
-         *     设置 Add 模式下当前目标。
-         *
-         * 规则：
-         *     1. 仅在 add 工具下有效。
-         *     2. node 表示准备添加节点。
-         *     3. edge 表示准备添加边。
-         */
-        setAddTarget(
-            target: AddTarget | null
-        ) {
-            this.pendingAddTarget = target
-
-            this.pendingAddNode.kind = null
-
-            this.pendingAddEdge.kind = null
-            this.pendingAddEdge.direction = null
-            this.pendingAddEdge.sourceNodeId = null
         },
 
         /**
@@ -206,21 +158,16 @@ export const useUIStore = defineStore('ui_store', {
          *
          * 规则：
          *     1. 不影响当前 GraphData。
-         *     2. 清空所有待定添加状态。
+         *     2. 清空工具选择与运行态。
          */
         resetOperationState() {
             this.selectedOperationTool = null
 
-            this.pendingAddTarget = null
-
-            this.pendingAddNode.kind = null
-
-            this.pendingAddEdge.kind = null
-            this.pendingAddEdge.direction = null
-            this.pendingAddEdge.sourceNodeId = null
-
-            this.pendingDeleteNodeId = null
-            this.pendingDeleteEdgeId = null
+            this.operationRuntime = {
+                addEdgeSourceNodeId: null,
+                pendingDeleteNodeId: null,
+                pendingDeleteEdgeId: null,
+            }
         },
 
 
@@ -236,65 +183,14 @@ export const useUIStore = defineStore('ui_store', {
 
         /**
          * 功能：
-         *     设置当前准备添加的节点类型。
-         *
-         * 规则：
-         *     1. 仅在 Add Node 流程中有效。
-         *     2. 设置后表示用户已经完成节点类型选择。
-         */
-        selectNodeKind(
-            kind: KnowledgeNodeKind | null
-        ) {
-            this.pendingAddNode.kind = kind
-        },
-
-        /**
-         * 功能：
-         *     设置当前准备添加的边类型。
-         *
-         * 规则：
-         *     1. real 表示实边。
-         *     2. virtual 表示虚边。
-         *     3. 修改边类型时重置边方向与起点。
-         */
-        selectEdgeKind(
-            kind: EdgeKind | null
-        ) {
-            this.pendingAddEdge.kind = kind
-
-            this.pendingAddEdge.direction = null
-            this.pendingAddEdge.sourceNodeId = null
-        },
-
-        /**
-         * 功能：
-         *     设置当前准备添加的边方向。
-         *
-         * 规则：
-         *     1. 只有确定边类型后才能设置方向。
-         *     2. 修改方向时重置起始节点。
-         */
-        selectEdgeDirection(
-            direction: EdgeDirection | null
-        ) {
-            this.pendingAddEdge.direction = direction
-
-            this.pendingAddEdge.sourceNodeId = null
-        },
-
-
-        /**
-         * 功能：
          *     重置当前边添加流程。
          *
          * 规则：
-         *     1. 不影响节点添加流程。
-         *     2. 清空边相关运行时状态。
+         *     1. 不影响当前工具选择（kind/direction 由工具编码）。
+         *     2. 只清空边起点节点 ID。
          */
         resetPendingEdge() {
-            this.pendingAddEdge.kind = null
-            this.pendingAddEdge.direction = null
-            this.pendingAddEdge.sourceNodeId = null
+            this.operationRuntime.addEdgeSourceNodeId = null
         },
 
         /**
@@ -302,12 +198,12 @@ export const useUIStore = defineStore('ui_store', {
          *     标记待定删除的节点。
          *
          * 规则：
-         *     1. 与 pendingDeleteEdgeId 互斥。
+         *     1. 与 operationRuntime.pendingDeleteEdgeId 互斥。
          *     2. 供两步删除确认流程使用。
          */
         setPendingDeleteNode(nodeId: NodeId) {
-            this.pendingDeleteNodeId = nodeId
-            this.pendingDeleteEdgeId = null
+            this.operationRuntime.pendingDeleteNodeId = nodeId
+            this.operationRuntime.pendingDeleteEdgeId = null
         },
 
         /**
@@ -315,12 +211,12 @@ export const useUIStore = defineStore('ui_store', {
          *     标记待定删除的边。
          *
          * 规则：
-         *     1. 与 pendingDeleteNodeId 互斥。
+         *     1. 与 operationRuntime.pendingDeleteNodeId 互斥。
          *     2. 供两步删除确认流程使用。
          */
         setPendingDeleteEdge(edgeId: EdgeId) {
-            this.pendingDeleteEdgeId = edgeId
-            this.pendingDeleteNodeId = null
+            this.operationRuntime.pendingDeleteEdgeId = edgeId
+            this.operationRuntime.pendingDeleteNodeId = null
         },
 
         /**
@@ -328,8 +224,8 @@ export const useUIStore = defineStore('ui_store', {
          *     清除所有待定删除状态。
          */
         clearPendingDelete() {
-            this.pendingDeleteNodeId = null
-            this.pendingDeleteEdgeId = null
+            this.operationRuntime.pendingDeleteNodeId = null
+            this.operationRuntime.pendingDeleteEdgeId = null
         },
 
         /**

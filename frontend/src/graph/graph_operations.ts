@@ -40,6 +40,7 @@ import type {
     NodeRadiusMap,
 } from '@my-project/graph-engine'
 import type { DraftNode } from '@/definitions/types/draft_types'
+import type { OperationTool } from '@/definitions/types/ui_types'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { useUIStore } from '@/ui/ui_store'
@@ -57,6 +58,29 @@ import { deconstruct as composeDeconstruct } from '@my-project/graph-engine'
 import { induce as composeInduce } from '@my-project/graph-engine'
 import { internalize as composeInternalize } from '@my-project/graph-engine'
 import { diverge as composeDiverge } from '@my-project/graph-engine'
+
+/**
+ * 功能：
+ *     从平铺的 OperationTool 中推导边参数（kind + direction）。
+ *
+ * 规则：
+ *     1. 仅对 4 种边添加工具有效。
+ *     2. 非边工具返回 null。
+ */
+function getEdgeParamsFromTool(tool: OperationTool | null): { kind: 'real' | 'virtual'; direction: 'directed' | 'undirected' } | null {
+    switch (tool) {
+        case 'add-real-directed':
+            return { kind: 'real', direction: 'directed' }
+        case 'add-real-undirected':
+            return { kind: 'real', direction: 'undirected' }
+        case 'add-virtual-directed':
+            return { kind: 'virtual', direction: 'directed' }
+        case 'add-virtual-undirected':
+            return { kind: 'virtual', direction: 'undirected' }
+        default:
+            return null
+    }
+}
 
 
 export function useGraphOperations() {
@@ -606,7 +630,7 @@ export function useGraphOperations() {
      *     3. 点击不同节点：切换待定目标到新节点。
      */
     function targetNodeForDelete(nodeId: NodeId): void {
-        const currentNodeId = uiStore.pendingDeleteNodeId
+        const currentNodeId = uiStore.operationRuntime.pendingDeleteNodeId
 
         if (currentNodeId === nodeId) {
             executeDeleteNode(nodeId)
@@ -629,7 +653,7 @@ export function useGraphOperations() {
      *     3. 点击不同边：切换待定目标到新边。
      */
     function targetEdgeForDelete(edgeId: EdgeId): void {
-        const currentEdgeId = uiStore.pendingDeleteEdgeId
+        const currentEdgeId = uiStore.operationRuntime.pendingDeleteEdgeId
 
         if (currentEdgeId === edgeId) {
             executeDeleteEdge(edgeId)
@@ -697,24 +721,18 @@ export function useGraphOperations() {
      *
      * 规则：
      *
-     *     1. 只在 pendingAddTarget === 'edge' 且 kind/direction 已选定时生效。
-     *     2. 第一次点击记录 sourceNodeId。
+     *     1. tool ID 必须是 4 种边添加工具之一（kind/direction 由 tool 推导）。
+     *     2. 第一次点击记录 addEdgeSourceNodeId。
      *     3. 第二次点击构造 EdgeData 并提 add_edge Operation。
      */
     function targetNodeForEdge(nodeId: NodeId): void {
-        if (uiStore.pendingAddTarget !== 'edge') {
+        const edgeParams = getEdgeParamsFromTool(uiStore.selectedOperationTool)
+        if (!edgeParams) {
             return
         }
 
-        const edgeKind = uiStore.pendingAddEdge.kind
-        const edgeDirection = uiStore.pendingAddEdge.direction
-
-        if (!edgeKind || !edgeDirection) {
-            return
-        }
-
-        if (!uiStore.pendingAddEdge.sourceNodeId) {
-            uiStore.pendingAddEdge.sourceNodeId = nodeId
+        if (!uiStore.operationRuntime.addEdgeSourceNodeId) {
+            uiStore.operationRuntime.addEdgeSourceNodeId = nodeId
             return
         }
 
@@ -725,10 +743,10 @@ export function useGraphOperations() {
         const edge: EdgeData = {
             id: generateEdgeId(),
             graphId: graphStore.graphView.id,
-            source: uiStore.pendingAddEdge.sourceNodeId,
+            source: uiStore.operationRuntime.addEdgeSourceNodeId,
             target: nodeId,
-            kind: edgeKind,
-            direction: edgeDirection,
+            kind: edgeParams.kind,
+            direction: edgeParams.direction,
             label: '',
         }
 

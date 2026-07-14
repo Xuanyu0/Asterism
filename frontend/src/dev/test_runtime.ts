@@ -201,9 +201,7 @@ function loadDeleteUndoGraph(): void {
 function enterAddRealNodeMode(): void {
     const controller = useOperationController()
 
-    controller.selectOperationTool('add')
-    controller.selectAddTarget('node')
-    controller.selectAddNodeKind('real')
+    controller.selectOperationTool('add-real-node')
 
     console.log('✅ 已进入 Add Real Node 模式')
 }
@@ -215,9 +213,7 @@ function enterAddRealNodeMode(): void {
 function enterAddVirtualNodeMode(): void {
     const controller = useOperationController()
 
-    controller.selectOperationTool('add')
-    controller.selectAddTarget('node')
-    controller.selectAddNodeKind('virtual')
+    controller.selectOperationTool('add-virtual-node')
 
     console.log('✅ 已进入 Add Virtual Node 模式')
 }
