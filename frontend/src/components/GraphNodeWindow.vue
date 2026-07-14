@@ -21,11 +21,11 @@
         />
 
         <div class="button-row">
-            <button v-on:click="controller.confirmDraftNode">
+            <button v-on:click="handleConfirmDraftNode">
                 Confirm
             </button>
 
-            <button class="btn-secondary" v-on:click="controller.cancelDraftNode">
+            <button class="btn-secondary" v-on:click="handleCancelDraftNode">
                 Cancel
             </button>
         </div>
@@ -92,10 +92,12 @@
 import { computed, watch } from 'vue'
 import { useDraftStore } from '@/ui/draft_store'
 import { useOperationController } from '@/ui/operation_controller'
+import { useToolRouter } from '@/interactions/router'
 import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
 
 const draftStore = useDraftStore()
 const controller = useOperationController()
+const router = useToolRouter()
 
 const draftNode = computed(() => draftStore.draftNode)
 
@@ -148,6 +150,20 @@ function handleDraftSummaryInput(event: Event): void {
     controller.updateDraftNode({
         summary: target.value,
     })
+}
+
+function handleConfirmDraftNode(): void {
+    if (!draftStore.draftNode) return
+
+    router.activeHandler.value?.onConfirm?.(
+        draftStore.draftNode.label,
+        draftStore.draftNode.summary,
+    )
+}
+
+function handleCancelDraftNode(): void {
+    router.activeHandler.value?.onCancel?.()
+    controller.cancelDraftNode()
 }
 
 // ==================== 已有节点/边编辑 ====================

@@ -27,7 +27,7 @@
  */
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useOperationController } from '@/ui/operation_controller'
+import { useToolRouter } from '@/interactions/router'
 
 import {
     createGoldenTestGraph,
@@ -87,6 +87,10 @@ export function exposeTestRuntimeToWindow(): void {
         // UI 模式快捷切换
         enterAddRealNodeMode,
         enterAddVirtualNodeMode,
+        enterAddRealDirectedMode,
+        enterAddRealUndirectedMode,
+        enterAddVirtualDirectedMode,
+        enterAddVirtualUndirectedMode,
         enterDeleteMode,
         enterFoldMode,
     })
@@ -199,9 +203,9 @@ function loadDeleteUndoGraph(): void {
  *     浏览器控制台输入 window.enterAddRealNodeMode()
  */
 function enterAddRealNodeMode(): void {
-    const controller = useOperationController()
+    const router = useToolRouter()
 
-    controller.selectOperationTool('add-real-node')
+    router.activate('add-real-node')
 
     console.log('✅ 已进入 Add Real Node 模式')
 }
@@ -211,9 +215,9 @@ function enterAddRealNodeMode(): void {
  *     模拟用户进入 Add Virtual Node 流程。
  */
 function enterAddVirtualNodeMode(): void {
-    const controller = useOperationController()
+    const router = useToolRouter()
 
-    controller.selectOperationTool('add-virtual-node')
+    router.activate('add-virtual-node')
 
     console.log('✅ 已进入 Add Virtual Node 模式')
 }
@@ -223,9 +227,9 @@ function enterAddVirtualNodeMode(): void {
  *     模拟用户进入 Delete 模式。
  */
 function enterDeleteMode(): void {
-    const controller = useOperationController()
+    const router = useToolRouter()
 
-    controller.selectOperationTool('delete')
+    router.activate('delete')
 
     console.log('✅ 已进入 Delete 模式')
 }
@@ -235,9 +239,57 @@ function enterDeleteMode(): void {
  *     模拟用户进入 Fold 模式。
  */
 function enterFoldMode(): void {
-    const controller = useOperationController()
+    const router = useToolRouter()
 
-    controller.selectOperationTool('fold')
+    router.activate('fold')
 
     console.log('✅ 已进入 Fold 模式')
+}
+
+/**
+ * 功能：
+ *     模拟用户进入 Add Real Directed Edge 流程。
+ */
+function enterAddRealDirectedMode(): void {
+    const router = useToolRouter()
+
+    router.activate('add-real-directed')
+
+    console.log('✅ 已进入 Add Real Directed Edge 模式')
+}
+
+/**
+ * 功能：
+ *     模拟用户进入 Add Real Undirected Edge 流程。
+ */
+function enterAddRealUndirectedMode(): void {
+    const router = useToolRouter()
+
+    router.activate('add-real-undirected')
+
+    console.log('✅ 已进入 Add Real Undirected Edge 模式')
+}
+
+/**
+ * 功能：
+ *     模拟用户进入 Add Virtual Directed Edge 流程。
+ */
+function enterAddVirtualDirectedMode(): void {
+    const router = useToolRouter()
+
+    router.activate('add-virtual-directed')
+
+    console.log('✅ 已进入 Add Virtual Directed Edge 模式')
+}
+
+/**
+ * 功能：
+ *     模拟用户进入 Add Virtual Undirected Edge 流程。
+ */
+function enterAddVirtualUndirectedMode(): void {
+    const router = useToolRouter()
+
+    router.activate('add-virtual-undirected')
+
+    console.log('✅ 已进入 Add Virtual Undirected Edge 模式')
 }

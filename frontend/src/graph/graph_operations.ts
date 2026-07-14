@@ -10,13 +10,10 @@
  * 总体结构：
  *
  *     1. 认知操作  — deconstruct / induce / internalize / diverge / unearth / explore
- *     2. 添加操作  — confirmDraftNode / targetNodeForEdge
-     *     3. 删除操作  — executeDeleteNode / executeDeleteEdge / cancelDelete / targetNodeForDelete / targetEdgeForDelete
- *     4. 折叠操作  — toggleFold
- *     5. 编辑操作  — confirmExistingNodeEdit / confirmExistingEdgeEdit / closeFloatingWindow
- *     6. 布局操作  — moveNode / computeNodeRadiusOverrides
- *     7. 草稿操作  — updateDraftNode / cancelDraftNode
- *     8. 辅助      — findCommonLayer
+ *     2. 编辑操作  — confirmExistingNodeEdit / confirmExistingEdgeEdit / closeFloatingWindow
+ *     3. 布局操作  — moveNode / computeNodeRadiusOverrides
+ *     4. 草稿操作  — updateDraftNode / cancelDraftNode
+ *     5. 辅助      — findCommonLayer
  *
  * 规则：
  *
@@ -40,7 +37,6 @@ import type {
     NodeRadiusMap,
 } from '@my-project/graph-engine'
 import type { DraftNode } from '@/definitions/types/draft_types'
-import type { OperationTool } from '@/definitions/types/ui_types'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { useUIStore } from '@/ui/ui_store'
@@ -48,7 +44,6 @@ import { useDraftStore } from '@/ui/draft_store'
 
 import { mapComposeIssues, hasErrors } from '@/graph/utilities/issue_mapper'
 
-import { generateNodeId, generateEdgeId } from '@my-project/graph-engine'
 import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
 
 // compose — arrangement
@@ -58,30 +53,6 @@ import { deconstruct as composeDeconstruct } from '@my-project/graph-engine'
 import { induce as composeInduce } from '@my-project/graph-engine'
 import { internalize as composeInternalize } from '@my-project/graph-engine'
 import { diverge as composeDiverge } from '@my-project/graph-engine'
-
-/**
- * 功能：
- *     从平铺的 OperationTool 中推导边参数（kind + direction）。
- *
- * 规则：
- *     1. 仅对 4 种边添加工具有效。
- *     2. 非边工具返回 null。
- */
-function getEdgeParamsFromTool(tool: OperationTool | null): { kind: 'real' | 'virtual'; direction: 'directed' | 'undirected' } | null {
-    switch (tool) {
-        case 'add-real-directed':
-            return { kind: 'real', direction: 'directed' }
-        case 'add-real-undirected':
-            return { kind: 'real', direction: 'undirected' }
-        case 'add-virtual-directed':
-            return { kind: 'virtual', direction: 'directed' }
-        case 'add-virtual-undirected':
-            return { kind: 'virtual', direction: 'undirected' }
-        default:
-            return null
-    }
-}
-
 
 export function useGraphOperations() {
     const graphStore = useGraphStore()
@@ -473,70 +444,6 @@ export function useGraphOperations() {
         draftStore.clearDraftNode()
     }
 
-    /**
-     * 功能：
-     *
-     *     确认当前 DraftNode，并转换为 add_node Operation。
-     *
-     * 规则：
-     *
-     *     1. label 为空时拒绝提交。
-     *     2. DraftNode 不直接进入 GraphData。
-     *     3. 只有 graphStore.applyBatchToGraph() 可以修改 GraphData。
-     */
-    function confirmDraftNode(): void {
-        if (!draftStore.draftNode) {
-            return
-        }
-
-        if (!graphStore.graphView) {
-            return
-        }
-
-        const draftNode = draftStore.draftNode
-        const label = draftNode.label.trim()
-
-        if (!label) {
-            graphStore.lastValidationResult = {
-                valid: false,
-                issues: [{
-                    severity: 'error' as const,
-                    code: 'EMPTY_LABEL',
-                    message: '节点标签不能为空。',
-                    targetType: 'node' as const,
-                }],
-            }
-            return
-        }
-
-        const node: NodeData = {
-            role: 'knowledge',
-            id: generateNodeId(),
-            graphId: graphStore.graphView.id,
-            kind: draftNode.kind,
-            form: draftNode.kind === 'real' ? 'atomic' : undefined,
-            label,
-            summary: draftNode.summary.trim(),
-            abstractionLevel: 0,
-            degree: 0,
-            position: {
-                x: draftNode.x,
-                y: draftNode.y,
-            },
-        }
-
-        const result = graphStore.applyBatchToGraph(graphStore.graphView, [{
-            type: 'add_node',
-            node,
-        }])
-
-        graphStore.lastValidationResult = result.validation
-
-        if (result.validation.valid) {
-            draftStore.clearDraftNode()
-        }
-    }
-
     // ── 编辑操作（浮空窗确认） ──
 
     /**
@@ -607,188 +514,6 @@ export function useGraphOperations() {
         uiStore.closeFloatingWindow()
     }
 
-    // ── 删除操作 ──
-
-    /**
-     * 功能：
-     *
-     *     取消待定删除操作。
-     */
-    function cancelDelete(): void {
-        uiStore.clearPendingDelete()
-    }
-
-    /**
-     * 功能：
-     *
-     *     处理 Delete 模式下的节点点击——两步确认。
-     *
-     * 规则：
-     *
-     *     1. 首次点击：标记为待定删除目标。
-     *     2. 再次点击同一节点：确认删除。
-     *     3. 点击不同节点：切换待定目标到新节点。
-     */
-    function targetNodeForDelete(nodeId: NodeId): void {
-        const currentNodeId = uiStore.operationRuntime.pendingDeleteNodeId
-
-        if (currentNodeId === nodeId) {
-            executeDeleteNode(nodeId)
-            uiStore.clearPendingDelete()
-            return
-        }
-
-        uiStore.setPendingDeleteNode(nodeId)
-    }
-
-    /**
-     * 功能：
-     *
-     *     处理 Delete 模式下的边点击——两步确认。
-     *
-     * 规则：
-     *
-     *     1. 首次点击：标记为待定删除目标。
-     *     2. 再次点击同一条边：确认删除。
-     *     3. 点击不同边：切换待定目标到新边。
-     */
-    function targetEdgeForDelete(edgeId: EdgeId): void {
-        const currentEdgeId = uiStore.operationRuntime.pendingDeleteEdgeId
-
-        if (currentEdgeId === edgeId) {
-            executeDeleteEdge(edgeId)
-            uiStore.clearPendingDelete()
-            return
-        }
-
-        uiStore.setPendingDeleteEdge(edgeId)
-    }
-
-    /**
-     * 功能：
-     *
-     *     执行节点删除。
-     *
-     * 规则：
-     *
-     *     1. 执行前关闭可能正在编辑该节点的浮空窗。
-     *     2. 不调用 confirm()——调用方已在确认流程中。
-     */
-    function executeDeleteNode(nodeId: NodeId): void {
-        const floatingData = uiStore.floatingWindowData
-        if (floatingData && 'id' in floatingData && floatingData.id === nodeId) {
-            uiStore.closeFloatingWindow()
-        }
-
-        const result = graphStore.applyBatchToGraph(graphStore.graphView!, [{
-            type: 'delete_node',
-            nodeId,
-        }])
-
-        graphStore.lastValidationResult = result.validation
-    }
-
-    /**
-     * 功能：
-     *
-     *     执行边删除。
-     *
-     * 规则：
-     *
-     *     1. 执行前关闭可能正在编辑该边的浮空窗。
-     *     2. 不调用 confirm()——调用方已在确认流程中。
-     */
-    function executeDeleteEdge(edgeId: EdgeId): void {
-        const floatingData = uiStore.floatingWindowData
-        if (floatingData && 'id' in floatingData && floatingData.id === edgeId) {
-            uiStore.closeFloatingWindow()
-        }
-
-        const result = graphStore.applyBatchToGraph(graphStore.graphView!, [{
-            type: 'delete_edge',
-            edgeId,
-        }])
-
-        graphStore.lastValidationResult = result.validation
-    }
-
-    // ── 添加边操作 ──
-
-    /**
-     * 功能：
-     *
-     *     处理 Add Edge 流程中的节点点击。
-     *
-     * 规则：
-     *
-     *     1. tool ID 必须是 4 种边添加工具之一（kind/direction 由 tool 推导）。
-     *     2. 第一次点击记录 addEdgeSourceNodeId。
-     *     3. 第二次点击构造 EdgeData 并提 add_edge Operation。
-     */
-    function targetNodeForEdge(nodeId: NodeId): void {
-        const edgeParams = getEdgeParamsFromTool(uiStore.selectedOperationTool)
-        if (!edgeParams) {
-            return
-        }
-
-        if (!uiStore.operationRuntime.addEdgeSourceNodeId) {
-            uiStore.operationRuntime.addEdgeSourceNodeId = nodeId
-            return
-        }
-
-        if (!graphStore.graphView) {
-            return
-        }
-
-        const edge: EdgeData = {
-            id: generateEdgeId(),
-            graphId: graphStore.graphView.id,
-            source: uiStore.operationRuntime.addEdgeSourceNodeId,
-            target: nodeId,
-            kind: edgeParams.kind,
-            direction: edgeParams.direction,
-            label: '',
-        }
-
-        const result = graphStore.applyBatchToGraph(graphStore.graphView, [{
-            type: 'add_edge',
-            edge,
-        }])
-
-        graphStore.lastValidationResult = result.validation
-
-        if (result.validation.valid) {
-            uiStore.resetPendingEdge()
-        }
-    }
-
-    // ── 折叠操作 ──
-
-    /**
-     * 功能：
-     *
-     *     处理 Fold/Expand toggle。
-     *
-     * 规则：
-     *
-     *     1. 检查目标节点是否已被折叠。
-     *     2. 已折叠 → expand_dependency。
-     *     3. 未折叠 → collapse_dependency。
-     */
-    function toggleFold(nodeId: NodeId): void {
-        const foldedDeps = graphStore.graphView?.cognitiveState?.foldedDependencies ?? []
-        const isFolded = foldedDeps.some(f => f.targetNodeId === nodeId)
-
-        const operationType = isFolded ? 'expand_dependency' as const : 'collapse_dependency' as const
-
-        const result = graphStore.applyBatchToGraph(graphStore.graphView!, [{
-            type: operationType,
-            targetNodeId: nodeId,
-        }])
-
-        graphStore.lastValidationResult = result.validation
-    }
-
     // ── 公开 API ──
 
     return {
@@ -804,20 +529,9 @@ export function useGraphOperations() {
         // draft
         updateDraftNode,
         cancelDraftNode,
-        confirmDraftNode,
         // editing
         confirmExistingNodeEdit,
         confirmExistingEdgeEdit,
         closeFloatingWindow,
-        // delete
-        cancelDelete,
-        targetNodeForDelete,
-        targetEdgeForDelete,
-        executeDeleteNode,
-        executeDeleteEdge,
-        // add edge
-        targetNodeForEdge,
-        // fold
-        toggleFold,
     }
 }

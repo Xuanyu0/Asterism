@@ -3,7 +3,8 @@
  *
  * 功能：
  *
- *     纯 UI 适配层。负责交互模式/工具状态管理和语义事件路由。
+ *     纯 UI 适配层。负责交互模式管理和认知/布局操作事件路由。
+ *     工具栏工具事件已由 interactions/router 接管。
  *     不调引擎 compose、不调 graphStore.applyBatch——所有图操作委托给 graph_operations。
  *
  * 总体结构：
@@ -11,9 +12,8 @@
  *     1. 语义事件 Payload 定义
  *     2. useOperationController()：
  *        - 模式切换  — enterCognitionMode / enterArrangementMode
- *        - 工具选择  — selectOperationTool
- *        - 右键退出  — handleRightClick
- *        - 事件分派  — handleCanvasClicked / handleNodeClicked / handleEdgeClicked
+ *        - 认知操作选择  — selectCognitionAction / selectArrangementAction
+ *        - 事件分派  — handleNodeClicked / handleEdgeClicked
  *
  * 规则：
  *
@@ -24,7 +24,7 @@
  *
  * 外部如何使用：
  *
- *     Graph.vue、GraphNodeWindow.vue、GraphOperationToolbar.vue 和 GraphModeSelector.vue 调用本文件。
+ *     Graph.vue、GraphNodeWindow.vue、GraphModeSelector.vue 调用本文件。
  */
 
 import type {
@@ -32,11 +32,10 @@ import type {
     EdgeId,
     GraphPosition,
 } from '@my-project/graph-engine'
-import type { OperationTool, CognitionAction, ArrangementAction } from '@/definitions/types/ui_types'
+import type { CognitionAction, ArrangementAction } from '@/definitions/types/ui_types'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { useUIStore } from '@/ui/ui_store'
-import { useDraftStore } from '@/ui/draft_store'
 
 import { useGraphOperations } from '@/graph/graph_operations'
 
@@ -51,7 +50,6 @@ import { useGraphOperations } from '@/graph/graph_operations'
  * 规则：
  *
  *     1. 坐标来自 Cytoscape 交互适配层。
- *     2. 是否创建 DraftNode 由当前 UI Runtime 状态决定。
  */
 export type CanvasClickedPayload = GraphPosition
 
@@ -89,7 +87,8 @@ export interface EdgeClickedPayload {
 /**
  * 功能：
  *
- *     提供 UI 操作控制器——交互模式/工具状态管理和语义事件路由。
+ *     提供 UI 操作控制器——交互模式/认知操作状态管理。
+ *     工具栏工具事件已由 interactions/router 接管。
  *
  * 规则：
  *
@@ -107,7 +106,6 @@ export interface EdgeClickedPayload {
 export function useOperationController() {
     const graphStore = useGraphStore()
     const uiStore = useUIStore()
-    const draftStore = useDraftStore()
     const ops = useGraphOperations()
 
     // ── 模式入口 ──
@@ -120,16 +118,6 @@ export function useOperationController() {
         uiStore.setInteractionMode('arrangement')
     }
 
-    // ── 工具选择 ──
-
-    function selectOperationTool(tool: OperationTool | null): void {
-        uiStore.selectOperationTool(tool)
-    }
-
-    function resetOperationTool(): void {
-        uiStore.resetOperationState()
-    }
-
     // ── 认知操作选择 ──
 
     function selectCognitionAction(action: CognitionAction | null): void {
@@ -140,88 +128,18 @@ export function useOperationController() {
         uiStore.selectArrangementAction(action)
     }
 
-    // ── 右键 ──
-
-    /**
-     * 功能：
-     *
-     *     处理画布区域右键点击。
-     *
-     * 规则：
-     *
-     *     仅取消当前所选操作、放弃所有草稿编辑。不改变交互模式。
-     */
-    function handleRightClick(): void {
-        // 重置工具与运行态（含待定删除）
-        uiStore.resetOperationState()
-
-        // 清草稿
-        draftStore.clearDraftNode()
-
-        // 清认知操作选中
-        if (uiStore.selectedCognitionAction !== null) {
-            uiStore.selectCognitionAction(null)
-        }
-
-        // 清布局操作选中
-        if (uiStore.selectedArrangementAction !== null) {
-            uiStore.selectArrangementAction(null)
-        }
-    }
-
     // ── 事件分派 ──
 
     /**
      * 功能：
      *
-     *     处理画布点击——根据当前激活工具路由到对应操作。
-     *
-     * 规则：
-     *
-     *     1. 添加节点工具 + kind 已确定 → 创建 DraftNode。
-     *     2. 删除工具 → 清除待定删除目标。
-     *     3. 其他工具或无工具 → 忽略。
-     */
-    function handleCanvasClicked(
-        payload: CanvasClickedPayload,
-    ): void {
-        // 删除模式：点击空白取消待定
-        if (uiStore.selectedOperationTool === 'delete') {
-            uiStore.clearPendingDelete()
-            return
-        }
-
-        // 添加实节点模式：创建 DraftNode
-        if (uiStore.selectedOperationTool === 'add-real-node') {
-            draftStore.createDraftNode(
-                'real',
-                payload.x,
-                payload.y,
-            )
-        }
-
-        // 添加虚节点模式：创建 DraftNode
-        if (uiStore.selectedOperationTool === 'add-virtual-node') {
-            draftStore.createDraftNode(
-                'virtual',
-                payload.x,
-                payload.y,
-            )
-        }
-    }
-
-    /**
-     * 功能：
-     *
-     *     处理节点点击——根据当前激活工具或认知操作分派，无工具时打开浮空窗。
+     *     处理节点点击——认知操作分派或打开浮空窗。
+     *     工具栏工具事件由 router 转发。
      *
      * 规则：
      *
      *     1. 认知操作优先：deconstruct → 执行解构并清除选中。
-     *     2. Add 工具 → 委托 ops.targetNodeForEdge（添加边流程）。
-     *     3. Delete 工具 → 委托 ops.targetNodeForDelete（删除两步确认）。
-     *     4. Fold 工具 → 委托 ops.toggleFold。
-     *     5. 无激活工具 → 打开节点编辑浮空窗。
+     *     2. 无激活认知操作 → 打开节点编辑浮空窗。
      */
     function handleNodeClicked(
         payload: NodeClickedPayload,
@@ -233,55 +151,21 @@ export function useOperationController() {
             return
         }
 
-        const tool = uiStore.selectedOperationTool
-
-        switch (tool) {
-            case 'add-real-directed':
-            case 'add-real-undirected':
-            case 'add-virtual-directed':
-            case 'add-virtual-undirected': {
-                ops.targetNodeForEdge(payload.nodeId)
-                return
-            }
-
-            case 'delete': {
-                ops.targetNodeForDelete(payload.nodeId)
-                return
-            }
-
-            case 'fold': {
-                ops.toggleFold(payload.nodeId)
-                return
-            }
-
-            default: {
-                // 'add-real-node', 'add-virtual-node', null, or other tools
-                const node = graphStore.graphView?.nodes.find(node => node.id === payload.nodeId)
-                if (node) {
-                    uiStore.openFloatingWindow(node)
-                }
-            }
+        // 无工具/认知操作 → 打开浮空窗
+        const node = graphStore.graphView?.nodes.find(node => node.id === payload.nodeId)
+        if (node) {
+            uiStore.openFloatingWindow(node)
         }
     }
 
     /**
      * 功能：
      *
-     *     处理边点击——根据当前激活工具分派，无工具时打开浮空窗。
-     *
-     * 规则：
-     *
-     *     1. Delete 工具 → 委托 ops.targetEdgeForDelete（删除两步确认）。
-     *     2. 其他或无工具 → 打开边编辑浮空窗。
+     *     处理边点击——打开浮空窗。工具栏工具事件由 router 转发。
      */
     function handleEdgeClicked(
         payload: EdgeClickedPayload,
     ): void {
-        if (uiStore.selectedOperationTool === 'delete') {
-            ops.targetEdgeForDelete(payload.edgeId)
-            return
-        }
-
         const edge = graphStore.graphView?.edges.find(potentialEdge => potentialEdge.id === payload.edgeId)
         if (edge) {
             uiStore.openFloatingWindow(edge)
@@ -294,13 +178,9 @@ export function useOperationController() {
         // 模式入口
         enterCognitionMode,
         enterArrangementMode,
-        // 工具选择
-        selectOperationTool,
-        resetOperationTool,
+        // 认知操作选择
         selectCognitionAction,
         selectArrangementAction,
-        // 右键
-        handleRightClick,
         // 认知操作
         explore: ops.explore,
         unearth: ops.unearth,
@@ -311,19 +191,15 @@ export function useOperationController() {
         // 布局操作
         moveNode: ops.moveNode,
         // 交互事件
-        handleCanvasClicked,
         handleNodeClicked,
         handleEdgeClicked,
         // DraftNode 生命周期
         updateDraftNode: ops.updateDraftNode,
         cancelDraftNode: ops.cancelDraftNode,
-        confirmDraftNode: ops.confirmDraftNode,
         // 浮空窗编辑
         confirmExistingNodeEdit: ops.confirmExistingNodeEdit,
         confirmExistingEdgeEdit: ops.confirmExistingEdgeEdit,
         closeFloatingWindow: ops.closeFloatingWindow,
-        // 删除
-        cancelDelete: ops.cancelDelete,
 
         /**
          * 只读 UI 状态通道。包含 uiStore 的全部可读字段。

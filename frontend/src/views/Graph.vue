@@ -38,6 +38,7 @@ import { mapGraphDataToCyElements } from '@/render/cytoscape/graph_element_mappe
 import { useCytoscapeRenderer } from '@/render/cytoscape/use_cytoscape_renderer.ts'
 import { useGraphInteraction } from '@/render/cytoscape/use_graph_interaction.ts'
 import { useOperationController } from '@/ui/operation_controller'
+import { useToolRouter } from '@/interactions/router'
 
 import GraphNodeWindow from '@/components/GraphNodeWindow.vue'
 import NotificationPanel from '@/components/NotificationPanel.vue'
@@ -49,6 +50,7 @@ const cyContainer = ref<HTMLDivElement | null>(null)
 const graphStore = useGraphStore()
 const renderer = useCytoscapeRenderer(cyContainer)
 const operationController = useOperationController()
+const router = useToolRouter()
 
 /**
  * 功能：
@@ -57,40 +59,16 @@ const operationController = useOperationController()
  *
  * 规则：
  *
- *     常驻操作栏按钮激活工具时内部进入 Operation 模式。
- *     三种模式下工具均有效——光标样式不依赖 interactionMode。
+ *     工具栏工具光标由 router.activeHandler 提供。
+ *     认知操作/布局操作的光标仍由独立逻辑决定。
  */
 const containerClasses = computed(() => {
     const s = operationController.ui.state
 
-    // 删除模式：pointer 光标 + 待定目标高亮
-    if (s.selectedOperationTool === 'delete') {
-        return { 'cursor-pointer': true }
-    }
-
-    // 折叠模式：pointer 光标
-    if (s.selectedOperationTool === 'fold') {
-        return { 'cursor-pointer': true }
-    }
-
-    // 添加实节点：crosshair 光标
-    if (s.selectedOperationTool === 'add-real-node') {
-        return { 'cursor-crosshair': true }
-    }
-
-    // 添加虚节点：crosshair 光标
-    if (s.selectedOperationTool === 'add-virtual-node') {
-        return { 'cursor-crosshair': true }
-    }
-
-    // 添加边：cell 光标（仅第一次点击节点后显示，提示用户点击第二个节点）
-    if ((s.selectedOperationTool === 'add-real-directed'
-            || s.selectedOperationTool === 'add-real-undirected'
-            || s.selectedOperationTool === 'add-virtual-directed'
-            || s.selectedOperationTool === 'add-virtual-undirected')
-        && s.operationRuntime.addEdgeSourceNodeId !== null
-    ) {
-        return { 'cursor-cell': true }
+    // 工具光标：由 active handler 提供
+    const toolCursor = router.activeHandler.value?.cursorClass
+    if (toolCursor) {
+        return { [toolCursor]: true }
     }
 
     // 解构操作：crosshair 光标，提示用户选择目标节点
@@ -117,26 +95,14 @@ const canvasErrorIssues = computed(() => {
     return []
 })
 
-const showDeleteConfirm = computed(() => {
-    const state = operationController.ui.state
+const activeNotification = computed(() => router.activeHandler.value?.notification ?? null)
 
-    return state.selectedOperationTool === 'delete'
-        && (state.operationRuntime.pendingDeleteNodeId !== null || state.operationRuntime.pendingDeleteEdgeId !== null)
+const showDeleteConfirm = computed(() => {
+    return activeNotification.value?.visible ?? false
 })
 
 const deleteTargetLabel = computed(() => {
-    const state = operationController.ui.state
-
-    if (state.operationRuntime.pendingDeleteNodeId) {
-        const node = graphStore.graphView?.nodes.find(n => n.id === state.operationRuntime.pendingDeleteNodeId)
-        return node?.label ?? '此节点'
-    }
-
-    if (state.operationRuntime.pendingDeleteEdgeId) {
-        return '此边'
-    }
-
-    return ''
+    return activeNotification.value?.message ?? ''
 })
 
 onMounted(() => {
@@ -154,23 +120,35 @@ onMounted(() => {
     if (cy) {
         useGraphInteraction(cy, {
             onCanvasClicked(position) {
-                operationController.handleCanvasClicked(position)
+                router.onCanvasClick(position)
             },
 
             onNodeClicked(nodeId) {
-                operationController.handleNodeClicked({
-                    nodeId,
-                })
+                // 工具事件优先由 router 转发
+                const handledByRouter = router.activeHandler.value?.onNodeClick !== undefined
+                if (handledByRouter) {
+                    router.onNodeClick(nodeId)
+                    return
+                }
+
+                // 无工具时走 cognition/浮空窗
+                operationController.handleNodeClicked({ nodeId })
             },
 
             onEdgeClicked(edgeId) {
-                operationController.handleEdgeClicked({
-                    edgeId,
-                })
+                // 工具事件优先由 router 转发
+                const handledByRouter = router.activeHandler.value?.onEdgeClick !== undefined
+                if (handledByRouter) {
+                    router.onEdgeClick(edgeId)
+                    return
+                }
+
+                // 无工具时走浮空窗
+                operationController.handleEdgeClicked({ edgeId })
             },
 
             onRightClick() {
-                operationController.handleRightClick()
+                router.onRightClick()
             },
         })
     }
@@ -178,28 +156,30 @@ onMounted(() => {
 
 /**
  * 功能：
- *     监听待定边起点节点 ID 变化，施加/清除高亮。
+ *     监听 add-edge handler 的起点高亮，施加/清除 .edge-source-target。
+ *
+ * 规则：
+ *     1. 仅边添加工具生效——其他 handler 不设起点节点。
  */
 watch(
-    () => operationController.ui.state.operationRuntime.addEdgeSourceNodeId,
-    (nodeId, prevNodeId) => {
+    () => {
+        const handler = router.activeHandler.value
+        if (!handler) return null
+        const id = handler.id as string
+        if (!id.includes('directed') && !id.includes('undirected')) return null
+        return handler.highlightNode ?? null
+    },
+    (id, prevId) => {
         const cy = renderer.getInstance()
-        if (!cy) {
-            return
-        }
+        if (!cy) return
 
-        if (prevNodeId) {
-            const prevTarget = cy.getElementById(prevNodeId)
-            if (prevTarget.length > 0) {
-                prevTarget.removeClass('edge-source-target')
-            }
+        if (prevId) {
+            const prev = cy.getElementById(prevId)
+            if (prev.length > 0) prev.removeClass('edge-source-target')
         }
-
-        if (nodeId) {
-            const target = cy.getElementById(nodeId)
-            if (target.length > 0) {
-                target.addClass('edge-source-target')
-            }
+        if (id) {
+            const target = cy.getElementById(id)
+            if (target.length > 0) target.addClass('edge-source-target')
         }
     },
 )
@@ -261,15 +241,17 @@ function watchPendingTarget(
     )
 }
 
+// 删除目标高亮：通过 ToolHandler 接口的可选 highlightNode / highlightEdge 统一消费
 watchPendingTarget(
-    () => operationController.ui.state.operationRuntime.pendingDeleteNodeId,
+    () => router.activeHandler.value?.highlightNode ?? null,
+    'delete-target',
+)
+watchPendingTarget(
+    () => router.activeHandler.value?.highlightEdge ?? null,
     'delete-target',
 )
 
-watchPendingTarget(
-    () => operationController.ui.state.operationRuntime.pendingDeleteEdgeId,
-    'delete-target',
-)
+// watchPendingTarget 保留供未来 cognition/arrangement 高亮使用
 
 onBeforeUnmount(() => {
     renderer.destroy()
@@ -350,7 +332,7 @@ onBeforeUnmount(() => {
                 <button
                     type="button"
                     class="btn-secondary delete-cancel-btn"
-                    v-on:click.stop="operationController.cancelDelete()"
+                    v-on:click.stop="activeNotification?.onCancel()"
                 >取消</button>
             </template>
         </NotificationPanel>

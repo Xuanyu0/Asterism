@@ -8,10 +8,9 @@
  * 总体结构：
  *
  *     1. graphView  — 当前正在渲染在画布上的图
- *     2. selectedNodeId / selectedEdgeId  — 当前选中对象
- *     3. graphPath  — 当前图路径
- *     4. undoStack  — 全操作撤销栈（Step 12 将升级为 OperationLog）
- *     5. applyBatchToGraph / applyBatchToGraphs  — 所有图操作的唯一入口
+ *     2. graphPath  — 当前图路径
+ *     3. undoStack  — 全操作撤销栈（Step 12 将升级为 OperationLog）
+ *     4. applyBatchToGraph / applyBatchToGraphs  — 所有图操作的唯一入口
  *
  * 规则：
  *
@@ -33,7 +32,7 @@
 
 import { defineStore } from 'pinia'
 
-import type { EdgeId, GraphData, GraphId, GraphLookup, NodeId } from '@my-project/graph-engine'
+import type { GraphData, GraphId, GraphLookup } from '@my-project/graph-engine'
 import type { GraphOperation } from '@my-project/graph-engine'
 import type { ValidationResult } from '@my-project/graph-engine'
 
@@ -149,12 +148,6 @@ export interface GraphStoreState {
     /** 当前正在渲染在画布上的图。 */
     graphView: GraphData | null
 
-    /** 当前选中的节点 ID。 */
-    selectedNodeId: NodeId | null
-
-    /** 当前选中的边 ID。 */
-    selectedEdgeId: EdgeId | null
-
     /** 当前图路径，用于子图逐级返回。 */
     graphPath: GraphId[]
 
@@ -198,8 +191,6 @@ export interface GraphStoreState {
 export const useGraphStore = defineStore('graph_store', {
     state: (): GraphStoreState => ({
         graphView: null,
-        selectedNodeId: null,
-        selectedEdgeId: null,
         graphPath: [],
         lastValidationResult: null,
         undoStack: [],
@@ -221,7 +212,7 @@ export const useGraphStore = defineStore('graph_store', {
          *
          *     1. 替换 graphView 为新图（经 normalizeGraph 补齐默认值）。
          *     2. 重置 graphPath 为单元素 [graph.id]——新图无父图上下文。
-         *     3. 清空 selectedNodeId / selectedEdgeId / undoStack。
+         *     3. 清空 undoStack。
          *     4. 不写 registry——调用方如需跨图可见应自行 registerGraph。
          *
          * 使用：
@@ -236,8 +227,6 @@ export const useGraphStore = defineStore('graph_store', {
         setGraphView(graph: GraphData) {
             this.graphView = normalizeGraph(graph)
             this.graphPath = [graph.id]
-            this.selectedNodeId = null
-            this.selectedEdgeId = null
             this.lastValidationResult = null
             this.undoStack = []
         },
@@ -302,43 +291,6 @@ export const useGraphStore = defineStore('graph_store', {
         /**
          * 功能：
          *
-         *     设置当前选中节点。
-         *
-         * 规则：
-         *
-         *     1. 属于 Runtime UI 状态。
-         *     2. 不修改 GraphData。
-         *     3. 不参与持久化。
-         */
-        selectNode(nodeId: NodeId | null) {
-            this.selectedNodeId = nodeId
-            this.selectedEdgeId = null
-        },
-
-        /**
-         * 功能：
-         *
-         *     设置当前选中边。
-         *
-         * 规则：
-         *
-         *     1. 属于 Runtime UI 状态。
-         *     2. 不修改 GraphData。
-         *     3. 不参与持久化。
-         */
-        selectEdge(edgeId: EdgeId | null) {
-            this.selectedEdgeId = edgeId
-            this.selectedNodeId = null
-        },
-
-        clearSelection() {
-            this.selectedNodeId = null
-            this.selectedEdgeId = null
-        },
-
-        /**
-         * 功能：
-         *
          *     撤销最近一次操作。
          *
          * 规则：
@@ -359,8 +311,6 @@ export const useGraphStore = defineStore('graph_store', {
             }
 
             this.graphView = previousGraph
-            this.selectedNodeId = null
-            this.selectedEdgeId = null
 
             return true
         },
