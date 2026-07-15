@@ -4,7 +4,7 @@
  * 功能：
  *
  *     纯 UI 适配层。负责交互模式管理和认知/布局操作事件路由。
- *     工具栏工具事件已由 interactions/router 接管。
+ *     工具栏工具事件已由 tools/tool_mediator 接管。
  *     不调引擎 compose、不调 graphStore.applyBatch——所有图操作委托给 graph_operations。
  *
  * 总体结构：
@@ -88,7 +88,7 @@ export interface EdgeClickedPayload {
  * 功能：
  *
  *     提供 UI 操作控制器——交互模式/认知操作状态管理。
- *     工具栏工具事件已由 interactions/router 接管。
+ *     工具栏工具事件已由 tools/tool_mediator 接管。
  *
  * 规则：
  *

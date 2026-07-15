@@ -1,5 +1,5 @@
 /**
- * interactions/toolbar/add-node.ts
+ * tools/toolbar/add-node.ts
  *
  * 功能：
  *     添加节点工具处理器。支持实节点和虚节点两种变体。

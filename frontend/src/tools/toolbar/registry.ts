@@ -1,5 +1,5 @@
 /**
- * interactions/toolbar/registry.ts
+ * tools/toolbar/registry.ts
  *
  * 功能：
  *     工具栏按钮注册表。定义 8 个按钮的显示信息和处理器工厂。

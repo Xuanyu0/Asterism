@@ -1,5 +1,5 @@
 /**
- * interactions/toolbar/add-edge.ts
+ * tools/toolbar/add-edge.ts
  *
  * 功能：
  *     添加边工具处理器。支持实/虚边和有向/无向边四种变体。

@@ -11,6 +11,19 @@
   - 与框架无关
 - **Runtime 层**：位于前端的 GraphData 状态所有者，负责持有运行时状态（currentGraph / undoStack / registry）、编排引擎操作（调 Engine → 后处理）、实现持久化 I/O。Runtime 不负责 UI 渲染和纯函数转换，一定是框架绑定的（当前为 Pinia + Vue）
 - **Cytoscape 渲染层**：GraphData 的只读投影。接收 GraphData 渲染到画布，捕获交互事件后经 UI 适配层回流至 Runtime。禁止持有 GraphData 引用、禁止保存业务状态、禁止直接修改 GraphData
+- **工具**：前端页面中用户主动激活的状态。在此状态下，用户的画布交互（点击、拖拽）被解释为该工具特有的语义，并最终转化为对 GraphData 的修改。工具不直接操作 GraphData，通过 Runtime 层写入。目前按交互入口分为两类：
+  - 常驻操作栏工具：通过工具栏按钮激活，生命周期由 `tool_mediator.ts` 管理
+  - 模式子工具：先进入 Cogniton 或 Arrangement 模式，再选择具体操作
+  - 规则：同一时刻最多一个工具处于激活状态，多个入口共享此互斥约束
+- **工具 UI/UX 层**：用户与工具的交互通道。采用"水平分层 + 垂直自包含"混合架构，以下是其包含的内容：
+  - 水平分层（所有工具共享）：
+    - 按钮 UI 定义：`registry.ts`（图标、标签、处理器工厂）+ `GraphOperationToolbar.vue`（渲染）
+    - 生命周期管理：`tool_mediator.ts`（注册、激活/取消、互斥保证）
+    - 事件捕获与转发：`use_graph_interaction.ts`（Cytoscape 事件 → 语义事件）→ `tool_mediator.ts`（转发至活跃 handler）
+  - 垂直自包含（每个工具独立）：
+    - 工具逻辑 + 中间变量：每个工具拥有自己的激活状态、光标样式、画布点击处理、操作构造
+    - 数据修改：委托 Runtime 层 `graphStore.applyBatchToGraph`
+  - 不负责：GraphData 存储、持久化、UI 模式切换
 
 ## 项目定位
 

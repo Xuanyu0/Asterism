@@ -92,12 +92,12 @@
 import { computed, watch } from 'vue'
 import { useDraftStore } from '@/ui/draft_store'
 import { useOperationController } from '@/ui/operation_controller'
-import { useToolRouter } from '@/interactions/router'
+import { useToolMediator } from '@/tools/tool_mediator'
 import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
 
 const draftStore = useDraftStore()
 const controller = useOperationController()
-const router = useToolRouter()
+const mediator = useToolMediator()
 
 const draftNode = computed(() => draftStore.draftNode)
 
@@ -155,14 +155,14 @@ function handleDraftSummaryInput(event: Event): void {
 function handleConfirmDraftNode(): void {
     if (!draftStore.draftNode) return
 
-    router.activeHandler.value?.onConfirm?.(
+    mediator.activeHandler.value?.onConfirm?.(
         draftStore.draftNode.label,
         draftStore.draftNode.summary,
     )
 }
 
 function handleCancelDraftNode(): void {
-    router.activeHandler.value?.onCancel?.()
+    mediator.activeHandler.value?.onCancel?.()
     controller.cancelDraftNode()
 }
 

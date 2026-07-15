@@ -27,7 +27,7 @@
  */
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useToolRouter } from '@/interactions/router'
+import { useToolMediator } from '@/tools/tool_mediator'
 
 import {
     createGoldenTestGraph,
@@ -203,9 +203,9 @@ function loadDeleteUndoGraph(): void {
  *     浏览器控制台输入 window.enterAddRealNodeMode()
  */
 function enterAddRealNodeMode(): void {
-    const router = useToolRouter()
+    const mediator = useToolMediator()
 
-    router.activate('add-real-node')
+    mediator.activate('add-real-node')
 
     console.log('✅ 已进入 Add Real Node 模式')
 }
@@ -215,9 +215,9 @@ function enterAddRealNodeMode(): void {
  *     模拟用户进入 Add Virtual Node 流程。
  */
 function enterAddVirtualNodeMode(): void {
-    const router = useToolRouter()
+    const mediator = useToolMediator()
 
-    router.activate('add-virtual-node')
+    mediator.activate('add-virtual-node')
 
     console.log('✅ 已进入 Add Virtual Node 模式')
 }
@@ -227,9 +227,9 @@ function enterAddVirtualNodeMode(): void {
  *     模拟用户进入 Delete 模式。
  */
 function enterDeleteMode(): void {
-    const router = useToolRouter()
+    const mediator = useToolMediator()
 
-    router.activate('delete')
+    mediator.activate('delete')
 
     console.log('✅ 已进入 Delete 模式')
 }
@@ -239,9 +239,9 @@ function enterDeleteMode(): void {
  *     模拟用户进入 Fold 模式。
  */
 function enterFoldMode(): void {
-    const router = useToolRouter()
+    const mediator = useToolMediator()
 
-    router.activate('fold')
+    mediator.activate('fold')
 
     console.log('✅ 已进入 Fold 模式')
 }
@@ -251,9 +251,9 @@ function enterFoldMode(): void {
  *     模拟用户进入 Add Real Directed Edge 流程。
  */
 function enterAddRealDirectedMode(): void {
-    const router = useToolRouter()
+    const mediator = useToolMediator()
 
-    router.activate('add-real-directed')
+    mediator.activate('add-real-directed')
 
     console.log('✅ 已进入 Add Real Directed Edge 模式')
 }
@@ -263,9 +263,9 @@ function enterAddRealDirectedMode(): void {
  *     模拟用户进入 Add Real Undirected Edge 流程。
  */
 function enterAddRealUndirectedMode(): void {
-    const router = useToolRouter()
+    const mediator = useToolMediator()
 
-    router.activate('add-real-undirected')
+    mediator.activate('add-real-undirected')
 
     console.log('✅ 已进入 Add Real Undirected Edge 模式')
 }
@@ -275,9 +275,9 @@ function enterAddRealUndirectedMode(): void {
  *     模拟用户进入 Add Virtual Directed Edge 流程。
  */
 function enterAddVirtualDirectedMode(): void {
-    const router = useToolRouter()
+    const mediator = useToolMediator()
 
-    router.activate('add-virtual-directed')
+    mediator.activate('add-virtual-directed')
 
     console.log('✅ 已进入 Add Virtual Directed Edge 模式')
 }
@@ -287,9 +287,9 @@ function enterAddVirtualDirectedMode(): void {
  *     模拟用户进入 Add Virtual Undirected Edge 流程。
  */
 function enterAddVirtualUndirectedMode(): void {
-    const router = useToolRouter()
+    const mediator = useToolMediator()
 
-    router.activate('add-virtual-undirected')
+    mediator.activate('add-virtual-undirected')
 
     console.log('✅ 已进入 Add Virtual Undirected Edge 模式')
 }

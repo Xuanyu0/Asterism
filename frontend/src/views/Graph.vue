@@ -38,7 +38,7 @@ import { mapGraphDataToCyElements } from '@/render/cytoscape/graph_element_mappe
 import { useCytoscapeRenderer } from '@/render/cytoscape/use_cytoscape_renderer.ts'
 import { useGraphInteraction } from '@/render/cytoscape/use_graph_interaction.ts'
 import { useOperationController } from '@/ui/operation_controller'
-import { useToolRouter } from '@/interactions/router'
+import { useToolMediator } from '@/tools/tool_mediator'
 
 import GraphNodeWindow from '@/components/GraphNodeWindow.vue'
 import NotificationPanel from '@/components/NotificationPanel.vue'
@@ -50,7 +50,7 @@ const cyContainer = ref<HTMLDivElement | null>(null)
 const graphStore = useGraphStore()
 const renderer = useCytoscapeRenderer(cyContainer)
 const operationController = useOperationController()
-const router = useToolRouter()
+const mediator = useToolMediator()
 
 /**
  * 功能：
@@ -59,14 +59,14 @@ const router = useToolRouter()
  *
  * 规则：
  *
- *     工具栏工具光标由 router.activeHandler 提供。
+ *     工具栏工具光标由 mediator.activeHandler 提供。
  *     认知操作/布局操作的光标仍由独立逻辑决定。
  */
 const containerClasses = computed(() => {
     const s = operationController.ui.state
 
     // 工具光标：由 active handler 提供
-    const toolCursor = router.activeHandler.value?.cursorClass
+    const toolCursor = mediator.activeHandler.value?.cursorClass
     if (toolCursor) {
         return { [toolCursor]: true }
     }
@@ -95,7 +95,7 @@ const canvasErrorIssues = computed(() => {
     return []
 })
 
-const activeNotification = computed(() => router.activeHandler.value?.notification ?? null)
+const activeNotification = computed(() => mediator.activeHandler.value?.notification ?? null)
 
 const showDeleteConfirm = computed(() => {
     return activeNotification.value?.visible ?? false
@@ -120,14 +120,14 @@ onMounted(() => {
     if (cy) {
         useGraphInteraction(cy, {
             onCanvasClicked(position) {
-                router.onCanvasClick(position)
+                mediator.onCanvasClick(position)
             },
 
             onNodeClicked(nodeId) {
                 // 工具事件优先由 router 转发
-                const handledByRouter = router.activeHandler.value?.onNodeClick !== undefined
+                const handledByRouter = mediator.activeHandler.value?.onNodeClick !== undefined
                 if (handledByRouter) {
-                    router.onNodeClick(nodeId)
+                    mediator.onNodeClick(nodeId)
                     return
                 }
 
@@ -137,9 +137,9 @@ onMounted(() => {
 
             onEdgeClicked(edgeId) {
                 // 工具事件优先由 router 转发
-                const handledByRouter = router.activeHandler.value?.onEdgeClick !== undefined
+                const handledByRouter = mediator.activeHandler.value?.onEdgeClick !== undefined
                 if (handledByRouter) {
-                    router.onEdgeClick(edgeId)
+                    mediator.onEdgeClick(edgeId)
                     return
                 }
 
@@ -148,7 +148,7 @@ onMounted(() => {
             },
 
             onRightClick() {
-                router.onRightClick()
+                mediator.onRightClick()
             },
         })
     }
@@ -163,7 +163,7 @@ onMounted(() => {
  */
 watch(
     () => {
-        const handler = router.activeHandler.value
+        const handler = mediator.activeHandler.value
         if (!handler) return null
         const id = handler.id as string
         if (!id.includes('directed') && !id.includes('undirected')) return null
@@ -243,11 +243,11 @@ function watchPendingTarget(
 
 // 删除目标高亮：通过 ToolHandler 接口的可选 highlightNode / highlightEdge 统一消费
 watchPendingTarget(
-    () => router.activeHandler.value?.highlightNode ?? null,
+    () => mediator.activeHandler.value?.highlightNode ?? null,
     'delete-target',
 )
 watchPendingTarget(
-    () => router.activeHandler.value?.highlightEdge ?? null,
+    () => mediator.activeHandler.value?.highlightEdge ?? null,
     'delete-target',
 )
 

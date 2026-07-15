@@ -1,5 +1,5 @@
 /**
- * interactions/toolbar/delete.ts
+ * tools/toolbar/delete.ts
  *
  * 功能：
  *     删除工具处理器。支持节点和边的两步确认删除流程。

@@ -1,5 +1,5 @@
 /**
- * interactions/toolbar/fold.ts
+ * tools/toolbar/fold.ts
  *
  * 功能：
  *     折叠/展开工具处理器。

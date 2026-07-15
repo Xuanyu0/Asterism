@@ -21,8 +21,8 @@
  *
  * 总体结构：
  *
- *     按钮定义从 interactions/toolbar/registry 读取。
- *     激活/取消通过 interactions/router 转发。
+ *     按钮定义从 tools/toolbar/registry 读取。
+ *     激活/取消通过 tools/tool_mediator 转发。
  *
  * 外部如何使用：
  *
@@ -31,12 +31,12 @@
 
 import { computed, onMounted } from 'vue'
 
-import { toolbarRegistry } from '@/interactions/toolbar/registry'
-import { useToolRouter } from '@/interactions/router'
+import { toolbarRegistry } from '@/tools/toolbar/registry'
+import { useToolMediator } from '@/tools/tool_mediator'
 
-const router = useToolRouter()
+const mediator = useToolMediator()
 
-const activeToolId = computed(() => router.activeToolId.value)
+const activeToolId = computed(() => mediator.activeToolId.value)
 
 // 从注册表读取按钮定义
 const standingButtons = toolbarRegistry
@@ -45,7 +45,7 @@ const standingButtons = toolbarRegistry
 
 onMounted(() => {
     for (const config of toolbarRegistry) {
-        router.register(config.id, config.useTool())
+        mediator.register(config.id, config.useTool())
     }
 })
 
@@ -53,11 +53,11 @@ onMounted(() => {
 
 function activateTool(btn: (typeof standingButtons)[number]): void {
     if (activeToolId.value === btn.id) {
-        router.deactivate()
+        mediator.deactivate()
         return
     }
 
-    router.activate(btn.id)
+    mediator.activate(btn.id)
 }
 </script>
 

@@ -1,5 +1,5 @@
 /**
- * interactions/types.ts
+ * tools/types.ts
  *
  * 功能：
  *     工具交互架构的共享类型定义。
