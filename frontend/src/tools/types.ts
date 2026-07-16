@@ -7,7 +7,7 @@
  * 总体结构：
  *     1. ToolId — 8 种原子工具 ID（与 ui_types.OperationTool 同步）
  *     2. ToolNotification — 工具通知模型（如删除确认弹窗）
- *     3. ToolHandler — 工具处理器接口
+ *     3. ToolHandler — 工具处理器接口（DraftNode 类型由 add-node.ts 提供）
  *     4. ToolConfig — 注册表条目（按钮显示 + 处理器工厂）
  *
  * 外部如何使用：
@@ -16,7 +16,9 @@
 
 import type { Component } from 'vue'
 import type { OperationTool } from '@/definitions/types/ui_types'
-import type { KnowledgeNodeKind } from '@my-project/graph-engine'
+
+// 服务特定实现的类型
+import type { DraftNode } from './toolbar/add-node'
 
 /**
  * 功能：
@@ -32,23 +34,6 @@ export interface ToolNotification {
     visible: boolean
     message: string
     onCancel(): void
-}
-
-/**
- * 功能：
- *     表示尚未提交到 GraphData 的节点草稿。
- *
- * 规则：
- *     1. DraftNode 不属于 GraphData。
- *     2. 用户确认前允许为空字段。
- *     3. 关闭浮空窗后自动销毁。
- */
-export interface DraftNode {
-    kind: KnowledgeNodeKind
-    x: number
-    y: number
-    label: string
-    summary: string
 }
 
 /**

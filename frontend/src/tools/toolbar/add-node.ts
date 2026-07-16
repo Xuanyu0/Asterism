@@ -5,7 +5,8 @@
  *     添加节点工具处理器。支持实节点和虚节点两种变体。
  *
  * 总体结构：
- *     useAddNodeTool(kind) → ToolHandler
+ *     1. DraftNode — 节点草稿类型定义
+ *     2. useAddNodeTool(kind) → ToolHandler
  *
  * 规则：
  *     1. onCanvasClick 创建 DraftNode。
@@ -23,7 +24,24 @@ import { generateNodeId } from '@my-project/graph-engine'
 
 import type { KnowledgeNodeKind } from '@my-project/graph-engine'
 
-import type { DraftNode, ToolId, ToolHandler, ToolNotification } from '../types'
+import type { ToolId, ToolHandler, ToolNotification } from '../types'
+
+/**
+ * 功能：
+ *     表示尚未提交到 GraphData 的节点草稿。
+ *
+ * 规则：
+ *     1. DraftNode 不属于 GraphData。
+ *     2. 用户确认前允许为空字段。
+ *     3. 关闭浮空窗后自动销毁。
+ */
+export interface DraftNode {
+    kind: KnowledgeNodeKind
+    x: number
+    y: number
+    label: string
+    summary: string
+}
 
 
 export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {

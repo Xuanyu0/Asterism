@@ -27,7 +27,7 @@ import type { GraphOperation } from '@my-project/graph-engine'
 import { validateGraph } from '@my-project/graph-engine'
 import { applyBatch } from '@my-project/graph-engine'
 
-import { pushUndoSnapshot, shouldPushUndoSnapshot } from '@/graph/graph_store'
+import { pushUndoSnapshot } from '@/graph/graph_store'
 import { saveGraph, loadGraph, deleteGraph } from '@/graph/utilities/graph_persistence'
 
 import { useGraphStore } from '@/graph/graph_store'
@@ -628,25 +628,6 @@ function testUndoStack(): TestSuite {
         })
     }
 
-    // --- shouldPushUndoSnapshot ---
-    {
-        results.push({
-            name: 'delete_node 触发 undo 快照',
-            passed: shouldPushUndoSnapshot({ type: 'delete_node', nodeId: 'x' as NodeId }),
-        })
-        results.push({
-            name: 'delete_edge 触发 undo 快照',
-            passed: shouldPushUndoSnapshot({ type: 'delete_edge', edgeId: 'x' as EdgeId }),
-        })
-        results.push({
-            name: 'add_node 不触发 undo 快照',
-            passed: !shouldPushUndoSnapshot({
-                type: 'add_node',
-                node: createNode({ id: 'x' as NodeId, graphId: G, kind: 'real', label: 'X' }),
-            }),
-        })
-    }
-
     // --- limit ---
     {
         const graph = makeTwoNodeGraph()
@@ -724,26 +705,11 @@ function testGraphStoreIntegration(): TestSuite {
     const savedGraph = store.graphView
     const savedUndoStack = [...store.undoStack]
 
-    // --- setGraphView ---
-    {
-        const golden = createGoldenTestGraph()
-        store.setGraphView(golden)
-        results.push({
-            name: 'setGraphView 设置当前图',
-            passed: store.graphView?.id === 'graph-golden',
-            detail: `期望 graph-golden, 实际 ${store.graphView?.id}`,
-        })
-        results.push({
-            name: 'setGraphView 加载 6 节点',
-            passed: store.graphView?.nodes.length === 6,
-            detail: `期望 6, 实际 ${store.graphView?.nodes.length}`,
-        })
-    }
-
     // --- applyBatchToGraph 完整链路 ---
     {
         const graph = makeTwoNodeGraph()
-        store.setGraphView(graph)
+        saveGraph(graph)
+        store.loadGraphToView(graph.id)
 
         const result = store.applyBatchToGraph(store.graphView!, [{
             type: 'add_node',
@@ -776,7 +742,8 @@ function testGraphStoreIntegration(): TestSuite {
     // --- applyBatchToGraph 被校验拒绝 ---
     {
         const graph = makeTwoNodeGraph()
-        store.setGraphView(graph)
+        saveGraph(graph)
+        store.loadGraphToView(graph.id)
 
         const result = store.applyBatchToGraph(store.graphView!, [{
             type: 'delete_node',
@@ -798,7 +765,8 @@ function testGraphStoreIntegration(): TestSuite {
     // --- undoDelete ---
     {
         const graph = makeTwoNodeGraph()
-        store.setGraphView(graph)
+        saveGraph(graph)
+        store.loadGraphToView(graph.id)
 
         // 需要走 graph_store.applyBatchToGraph 来触发 undo 入栈
         // 注意：applyBatchToGraph 内部先 validate 再 pushUndo 再 execute
@@ -806,7 +774,7 @@ function testGraphStoreIntegration(): TestSuite {
 
         const afterDelete = store.graphView!.nodes.length
 
-        store.undoDelete()
+        store.undo()
 
         results.push({
             name: '删除后节点数减少',
@@ -825,7 +793,8 @@ function testGraphStoreIntegration(): TestSuite {
     }
 
     // 恢复原状态
-    store.setGraphView(savedGraph!)
+    saveGraph(savedGraph!)
+    store.loadGraphToView(savedGraph!.id)
     store.$patch({ undoStack: savedUndoStack })
 
     return suite('Graph Store 集成', results)

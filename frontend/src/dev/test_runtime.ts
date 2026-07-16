@@ -28,6 +28,7 @@
 
 import { useGraphStore } from '@/graph/graph_store'
 import { useToolMediator } from '@/tools/tool_mediator'
+import { saveGraph } from '@/graph/utilities/graph_persistence'
 
 import {
     createGoldenTestGraph,
@@ -55,7 +56,9 @@ import {
 export function initTestRuntime(): void {
     const graphStore = useGraphStore()
 
-    graphStore.setGraphView(createGoldenTestGraph())
+    const graph = createGoldenTestGraph()
+    saveGraph(graph)
+    graphStore.loadGraphToView(graph.id)
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -107,7 +110,9 @@ export function exposeTestRuntimeToWindow(): void {
 function loadGoldenGraph(): void {
     const graphStore = useGraphStore()
 
-    graphStore.setGraphView(createGoldenTestGraph())
+    const graph = createGoldenTestGraph()
+    saveGraph(graph)
+    graphStore.loadGraphToView(graph.id)
 
     console.log('✅ 已加载金牌测试图')
 }
@@ -123,7 +128,9 @@ function loadGoldenGraph(): void {
 function loadChainDAG(n?: number): void {
     const graphStore = useGraphStore()
 
-    graphStore.setGraphView(createChainDAG(n ?? 5))
+    const graph = createChainDAG(n ?? 5)
+    saveGraph(graph)
+    graphStore.loadGraphToView(graph.id)
 
     console.log(`✅ 已加载 ${n ?? 5} 节点链式 DAG`)
 }
@@ -135,7 +142,9 @@ function loadChainDAG(n?: number): void {
 function loadEdgeMatrix(): void {
     const graphStore = useGraphStore()
 
-    graphStore.setGraphView(createEdgeMatrixGraph())
+    const graph = createEdgeMatrixGraph()
+    saveGraph(graph)
+    graphStore.loadGraphToView(graph.id)
 
     console.log('✅ 已加载 2×2 边矩阵测试图')
 }
@@ -147,7 +156,9 @@ function loadEdgeMatrix(): void {
 function loadVirtualNodeGraph(): void {
     const graphStore = useGraphStore()
 
-    graphStore.setGraphView(createVirtualNodeTestGraph())
+    const graph = createVirtualNodeTestGraph()
+    saveGraph(graph)
+    graphStore.loadGraphToView(graph.id)
 
     console.log('✅ 已加载虚节点测试图')
 }
@@ -159,7 +170,9 @@ function loadVirtualNodeGraph(): void {
 function loadAbstractNodeGraph(): void {
     const graphStore = useGraphStore()
 
-    graphStore.setGraphView(createAbstractNodeTestGraph())
+    const graph = createAbstractNodeTestGraph()
+    saveGraph(graph)
+    graphStore.loadGraphToView(graph.id)
 
     console.log('✅ 已加载抽象节点测试图')
 }
@@ -171,7 +184,9 @@ function loadAbstractNodeGraph(): void {
 function loadCommunicationGraph(): void {
     const graphStore = useGraphStore()
 
-    graphStore.setGraphView(createCommunicationTestGraph())
+    const graph = createCommunicationTestGraph()
+    saveGraph(graph)
+    graphStore.loadGraphToView(graph.id)
 
     console.log('✅ 已加载沟通节点/边测试图')
 }
@@ -183,7 +198,9 @@ function loadCommunicationGraph(): void {
 function loadDeleteUndoGraph(): void {
     const graphStore = useGraphStore()
 
-    graphStore.setGraphView(createDeleteUndoTestGraph())
+    const graph = createDeleteUndoTestGraph()
+    saveGraph(graph)
+    graphStore.loadGraphToView(graph.id)
 
     console.log('✅ 已加载删除/撤销测试图')
 }
