@@ -12,8 +12,7 @@
  *     1. 认知操作  — deconstruct / induce / internalize / diverge / unearth / explore
  *     2. 编辑操作  — confirmExistingNodeEdit / confirmExistingEdgeEdit / closeFloatingWindow
  *     3. 布局操作  — moveNode / computeNodeRadiusOverrides
- *     4. 草稿操作  — updateDraftNode / cancelDraftNode
- *     5. 辅助      — findCommonLayer
+ *     4. 辅助      — findCommonLayer
  *
  * 规则：
  *
@@ -36,11 +35,8 @@ import type {
     GraphData,
     NodeRadiusMap,
 } from '@my-project/graph-engine'
-import type { DraftNode } from '@/definitions/types/draft_types'
-
 import { useGraphStore } from '@/graph/graph_store'
 import { useUIStore } from '@/ui/ui_store'
-import { useDraftStore } from '@/ui/draft_store'
 
 import { mapComposeIssues, hasErrors } from '@/graph/utilities/issue_mapper'
 
@@ -57,7 +53,6 @@ import { diverge as composeDiverge } from '@my-project/graph-engine'
 export function useGraphOperations() {
     const graphStore = useGraphStore()
     const uiStore = useUIStore()
-    const draftStore = useDraftStore()
 
     // ── 认知操作 ──
 
@@ -414,36 +409,6 @@ export function useGraphOperations() {
         return map
     }
 
-    // ── 草稿操作 ──
-
-    /**
-     * 功能：
-     *
-     *     更新当前 DraftNode。
-     *
-     * 规则：
-     *
-     *     1. 只修改 Draft Runtime。
-     *     2. 不进入 GraphData。
-     */
-    function updateDraftNode(patch: Partial<DraftNode>): void {
-        draftStore.updateDraftNode(patch)
-    }
-
-    /**
-     * 功能：
-     *
-     *     取消当前 DraftNode。
-     *
-     * 规则：
-     *
-     *     1. 只清理 Draft Runtime。
-     *     2. 不影响 GraphData。
-     */
-    function cancelDraftNode(): void {
-        draftStore.clearDraftNode()
-    }
-
     // ── 编辑操作（浮空窗确认） ──
 
     /**
@@ -526,9 +491,6 @@ export function useGraphOperations() {
         diverge,
         // arrangement
         moveNode,
-        // draft
-        updateDraftNode,
-        cancelDraftNode,
         // editing
         confirmExistingNodeEdit,
         confirmExistingEdgeEdit,

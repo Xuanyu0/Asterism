@@ -17,7 +17,7 @@
  *
  * 规则：
  *
- *     1. 可以读取 ui_store 与 draft_store。
+ *     1. 可以读取 ui_store。
  *     2. 禁止直接修改 GraphData。
  *     3. 禁止操作 Cytoscape 实例。
  *     4. 所有图操作委托给 graph_operations。
@@ -92,7 +92,7 @@ export interface EdgeClickedPayload {
  *
  * 规则：
  *
- *     1. 可以读取 ui_store 与 draft_store。
+ *     1. 可以读取 ui_store。
  *     2. 禁止直接修改 GraphData。
  *     3. 禁止操作 Cytoscape 实例。
  *     4. 所有图操作委托给 graph_operations。
@@ -193,9 +193,6 @@ export function useOperationController() {
         // 交互事件
         handleNodeClicked,
         handleEdgeClicked,
-        // DraftNode 生命周期
-        updateDraftNode: ops.updateDraftNode,
-        cancelDraftNode: ops.cancelDraftNode,
         // 浮空窗编辑
         confirmExistingNodeEdit: ops.confirmExistingNodeEdit,
         confirmExistingEdgeEdit: ops.confirmExistingEdgeEdit,

@@ -16,7 +16,7 @@
  * 规则：
  *     1. 本文件只负责 Cytoscape 生命周期与元素同步。
  *     2. 本文件不能读取或修改 GraphData。
- *     3. 本文件不能访问 graph_store、ui_store、draft_store。
+ *     3. 本文件不能访问 graph_store、ui_store。
  *     4. 本文件接收的 elements 必须已经是 CyElements 投影结果。
  *     5. Cytoscape 不是事实源，只是 GraphData 的渲染器。
  */

@@ -34,6 +34,9 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
+import type { GraphId } from '@my-project/graph-engine'
+import { saveGraph } from '@/graph/utilities/graph_persistence'
+import { createGoldenTestGraph } from '@/mock/test_case_factory'
 import { mapGraphDataToCyElements } from '@/render/cytoscape/graph_element_mapper.ts'
 import { useCytoscapeRenderer } from '@/render/cytoscape/use_cytoscape_renderer.ts'
 import { useGraphInteraction } from '@/render/cytoscape/use_graph_interaction.ts'
@@ -107,6 +110,15 @@ const deleteTargetLabel = computed(() => {
 
 onMounted(() => {
     graphStore.initRegistry()
+
+    // 确保金牌测试图存在并加载
+    const GOLDEN_ID = 'graph-golden' as GraphId
+    if (!graphStore.loadGraphToView(GOLDEN_ID)) {
+        const golden = createGoldenTestGraph()
+        saveGraph(golden)
+        graphStore.loadGraphToView(golden.id)
+    }
+
     renderer.mount()
 
     if (graphStore.graphView) {

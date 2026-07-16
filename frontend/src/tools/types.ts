@@ -16,6 +16,7 @@
 
 import type { Component } from 'vue'
 import type { OperationTool } from '@/definitions/types/ui_types'
+import type { KnowledgeNodeKind } from '@my-project/graph-engine'
 
 /**
  * 功能：
@@ -31,6 +32,23 @@ export interface ToolNotification {
     visible: boolean
     message: string
     onCancel(): void
+}
+
+/**
+ * 功能：
+ *     表示尚未提交到 GraphData 的节点草稿。
+ *
+ * 规则：
+ *     1. DraftNode 不属于 GraphData。
+ *     2. 用户确认前允许为空字段。
+ *     3. 关闭浮空窗后自动销毁。
+ */
+export interface DraftNode {
+    kind: KnowledgeNodeKind
+    x: number
+    y: number
+    label: string
+    summary: string
 }
 
 /**
@@ -63,6 +81,11 @@ export interface ToolHandler {
     readonly highlightNode?: string | null
     /** 需要 Cytoscape 高亮的目标边 ID。null 表示不高亮。可选——无高亮需求的 handler 不提供。 */
     readonly highlightEdge?: string | null
+
+    /** 工具的当前节点草稿。null 表示无草稿。可选——无草稿需求的 handler 不提供。 */
+    readonly draftNode?: DraftNode | null
+    /** 浮空窗编辑时回调。可选——无草稿编辑需求的 handler 不提供。 */
+    updateDraftNode?(patch: Partial<DraftNode>): void
 }
 
 /**

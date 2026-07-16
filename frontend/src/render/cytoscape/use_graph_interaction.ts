@@ -49,7 +49,7 @@ export interface GraphInteractionHandlers {
  * 规则：
  *     1. 只读取 Cytoscape 事件。
  *     2. 只输出项目语义事件。
- *     3. 禁止读取 ui_store / draft_store / graph_store。
+ *     3. 禁止读取 ui_store / graph_store。
  *     4. 禁止创建 GraphOperation。
  *
  * 使用：

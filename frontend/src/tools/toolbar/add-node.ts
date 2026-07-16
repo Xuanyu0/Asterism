@@ -19,25 +19,24 @@
 import { ref, computed } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useDraftStore } from '@/ui/draft_store'
 import { generateNodeId } from '@my-project/graph-engine'
 
 import type { KnowledgeNodeKind } from '@my-project/graph-engine'
 
-import type { ToolId, ToolHandler, ToolNotification } from '../types'
+import type { DraftNode, ToolId, ToolHandler, ToolNotification } from '../types'
 
 
 export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
     const graphStore = useGraphStore()
-    const draftStore = useDraftStore()
+
     const id: ToolId = (kind === 'real' ? 'add-real-node' : 'add-virtual-node')
 
     const isActive = ref(false)
+    const draftNode = ref<DraftNode | null>(null)
 
     const cursorClass = computed<string | null>(() => {
         return isActive.value ? 'cursor-crosshair' : null
     })
-
     const notification = computed<ToolNotification | null>(() => null)
 
     function activate(): void {
@@ -45,18 +44,24 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
     }
 
     function deactivate(): void {
-        draftStore.clearDraftNode()
+        draftNode.value = null
         isActive.value = false
     }
 
     // ── 不同事件的处理 ──
 
     function onCanvasClick(pos: { x: number; y: number }): void {
-        draftStore.createDraftNode(kind as KnowledgeNodeKind, pos.x, pos.y)
+        draftNode.value = {
+            kind: kind as KnowledgeNodeKind,
+            x: pos.x,
+            y: pos.y,
+            label: '',
+            summary: '',
+        }
     }
 
     function onConfirm(label: string, summary: string): void {
-        if (!draftStore.draftNode || !graphStore.graphView) {
+        if (!draftNode.value || !graphStore.graphView) {
             return
         }
 
@@ -85,8 +90,8 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
             abstractionLevel: 0,
             degree: 0,
             position: {
-                x: draftStore.draftNode.x,
-                y: draftStore.draftNode.y,
+                x: draftNode.value.x,
+                y: draftNode.value.y,
             },
         }
 
@@ -98,7 +103,23 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
         graphStore.lastValidationResult = result.validation
 
         if (result.validation.valid) {
-            draftStore.clearDraftNode()
+            draftNode.value = null
+        }
+    }
+    
+    function onCancel(): void {
+        draftNode.value = null
+    }
+    
+    // ── 草稿管理 ──
+    function updateDraftNode(patch: Partial<DraftNode>): void {
+        if (!draftNode.value) {
+            return
+        }
+
+        draftNode.value = {
+            ...draftNode.value,
+            ...patch,
         }
     }
 
@@ -109,7 +130,10 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
         deactivate,
         onCanvasClick,
         onConfirm,
+        onCancel,
         get cursorClass() { return cursorClass.value },
         get notification() { return notification.value },
+        get draftNode() { return draftNode.value },
+        updateDraftNode,
     }
 }

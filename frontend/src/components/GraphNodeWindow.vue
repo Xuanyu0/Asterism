@@ -90,16 +90,14 @@
  */
 
 import { computed, watch } from 'vue'
-import { useDraftStore } from '@/ui/draft_store'
 import { useOperationController } from '@/ui/operation_controller'
 import { useToolMediator } from '@/tools/tool_mediator'
 import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
 
-const draftStore = useDraftStore()
 const controller = useOperationController()
 const mediator = useToolMediator()
 
-const draftNode = computed(() => draftStore.draftNode)
+const draftNode = computed(() => mediator.activeHandler.value?.draftNode ?? null)
 
 const floatingData = computed(() => controller.ui.state.floatingWindowData)
 
@@ -139,7 +137,7 @@ function isEdgeData(data: NodeData | EdgeData): data is EdgeData {
 function handleDraftLabelInput(event: Event): void {
     const target = event.target as HTMLInputElement
 
-    controller.updateDraftNode({
+    mediator.activeHandler.value?.updateDraftNode?.({
         label: target.value,
     })
 }
@@ -147,23 +145,23 @@ function handleDraftLabelInput(event: Event): void {
 function handleDraftSummaryInput(event: Event): void {
     const target = event.target as HTMLTextAreaElement
 
-    controller.updateDraftNode({
+    mediator.activeHandler.value?.updateDraftNode?.({
         summary: target.value,
     })
 }
 
 function handleConfirmDraftNode(): void {
-    if (!draftStore.draftNode) return
+    const active = mediator.activeHandler.value
+    if (!active?.draftNode) return
 
-    mediator.activeHandler.value?.onConfirm?.(
-        draftStore.draftNode.label,
-        draftStore.draftNode.summary,
+    active.onConfirm?.(
+        active.draftNode.label,
+        active.draftNode.summary,
     )
 }
 
 function handleCancelDraftNode(): void {
     mediator.activeHandler.value?.onCancel?.()
-    controller.cancelDraftNode()
 }
 
 // ==================== 已有节点/边编辑 ====================
