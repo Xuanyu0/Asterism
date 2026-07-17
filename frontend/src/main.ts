@@ -7,7 +7,7 @@ import { registerTestMachine } from '@/dev/test_evaluation_machine'
 
 
 import './assets/main.css'
-import './styles/ui-components.css'
+import './assets/ui-components.css'
 
 const app = createApp(App)    // 创建 Vue 应用
 const pinia = createPinia()    // 创建 Pinia 实例

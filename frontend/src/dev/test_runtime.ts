@@ -27,8 +27,8 @@
  */
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useToolMediator } from '@/tools/tool_mediator'
-import { saveGraph } from '@/graph/utilities/graph_persistence'
+import { useToolMediator } from '@/feature-tools/mediator'
+import { saveGraph } from '@/graph/graph_persistence'
 
 import {
     createGoldenTestGraph,

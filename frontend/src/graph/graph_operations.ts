@@ -38,7 +38,7 @@ import type {
 import { useGraphStore } from '@/graph/graph_store'
 import { useUIStore } from '@/ui/ui_store'
 
-import { mapComposeIssues, hasErrors } from '@/graph/utilities/issue_mapper'
+import { mapComposeIssues, hasErrors } from '@/graph/issue_mapper'
 
 import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
 
@@ -338,7 +338,7 @@ export function useGraphOperations() {
      *
      *     在 Registry 中查找常识层图。
      */
-    function findCommonLayer(graphRegistry: import('@/graph/utilities/graph_registry').GraphRegistry): GraphData | undefined {
+    function findCommonLayer(graphRegistry: import('@/graph/graph_registry').GraphRegistry): GraphData | undefined {
         for (const [, graph] of graphRegistry) {
             if (graph.kind === 'commonLayer') {
                 return graph

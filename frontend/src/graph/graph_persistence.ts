@@ -165,7 +165,7 @@ export function listSavedGraphIds(): GraphId[] {
  *     2. Phase 3 切换 Supabase 时只需替换此对象，调用方（graph_store）无需修改。
  *
  * 使用：
- *     import { localStorageAdapter } from '@/graph/utilities/graph_persistence'
+ *     import { localStorageAdapter } from '@/graph/graph_persistence'
  *     const graphs = await localStorageAdapter.list()
  */
 export const localStorageAdapter: PersistenceAdapter = {

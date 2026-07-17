@@ -32,7 +32,7 @@ import type {
     EdgeId,
     GraphPosition,
 } from '@my-project/graph-engine'
-import type { CognitionAction, ArrangementAction } from '@/definitions/types/ui_types'
+import type { CognitionAction, ArrangementAction } from '@/types/ui_types'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { useUIStore } from '@/ui/ui_store'

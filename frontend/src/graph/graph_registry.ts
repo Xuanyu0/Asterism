@@ -16,7 +16,7 @@
  *     3. 始终以 GraphRegistry 类型名使用，禁止裸 Map<GraphId, GraphData>。
  *
  * 外部如何使用：
- *     import { createRegistry, registerGraph, lookupGraph } from '@/graph/utilities/graph_registry'
+ *     import { createRegistry, registerGraph, lookupGraph } from '@/graph/graph_registry'
  */
 
 import type { GraphData, GraphId } from '@my-project/graph-engine'

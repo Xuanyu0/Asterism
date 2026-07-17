@@ -24,7 +24,7 @@ import type {
     InteractionMode,
     CognitionAction,
     ArrangementAction,
-} from '@/definitions/types/ui_types'
+} from '@/types/ui_types'
 
 import { useGraphStore } from '@/graph/graph_store'
 

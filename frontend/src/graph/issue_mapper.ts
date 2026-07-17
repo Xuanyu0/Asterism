@@ -10,7 +10,7 @@
  *
  * 外部如何使用：
  *
- *     import { mapComposeIssues, hasErrors } from '@/graph/utilities/issue_mapper'
+ *     import { mapComposeIssues, hasErrors } from '@/graph/issue_mapper'
  */
 
 import type { ComposeIssue, ValidationIssue, ValidationTargetType } from '@my-project/graph-engine'

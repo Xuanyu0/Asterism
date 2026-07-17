@@ -40,10 +40,10 @@ import type { ValidationResult } from '@my-project/graph-engine'
 import { applyBatch } from '@my-project/graph-engine'
 import { normalizeGraph } from '@my-project/graph-engine'
 
-import type { GraphRegistry } from '@/graph/utilities/graph_registry'
-import { createRegistry, registerGraph, unregisterGraph, lookupGraph, hasGraph } from '@/graph/utilities/graph_registry'
+import type { GraphRegistry } from '@/graph/graph_registry'
+import { createRegistry, registerGraph, unregisterGraph, lookupGraph, hasGraph } from '@/graph/graph_registry'
 
-import { saveGraph, loadGraph, deleteGraph, listSavedGraphIds } from '@/graph/utilities/graph_persistence'
+import { saveGraph, loadGraph, deleteGraph, listSavedGraphIds } from '@/graph/graph_persistence'
 
 const MAX_UNDO_STACK_SIZE = 20
 

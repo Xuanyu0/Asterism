@@ -15,7 +15,7 @@
  */
 
 import type { Component } from 'vue'
-import type { OperationTool } from '@/definitions/types/ui_types'
+import type { OperationTool } from '@/types/ui_types'
 
 // 服务特定实现的类型
 import type { DraftNode } from './toolbar/add-node'

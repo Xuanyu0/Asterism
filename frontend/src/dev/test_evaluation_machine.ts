@@ -28,7 +28,7 @@ import { validateGraph } from '@my-project/graph-engine'
 import { applyBatch } from '@my-project/graph-engine'
 
 import { pushUndoSnapshot } from '@/graph/graph_store'
-import { saveGraph, loadGraph, deleteGraph } from '@/graph/utilities/graph_persistence'
+import { saveGraph, loadGraph, deleteGraph } from '@/graph/graph_persistence'
 
 import { useGraphStore } from '@/graph/graph_store'
 
