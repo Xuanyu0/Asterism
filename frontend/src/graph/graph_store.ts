@@ -37,13 +37,12 @@ import type { GraphData, GraphId, GraphLookup } from '@my-project/graph-engine'
 import type { GraphOperation } from '@my-project/graph-engine'
 import type { ValidationResult } from '@my-project/graph-engine'
 
-import { applyBatch } from '@my-project/graph-engine'
-import { normalizeGraph } from '@my-project/graph-engine'
+import { applyBatch, normalizeGraph, generateGraphId } from '@my-project/graph-engine'
 
 import type { GraphRegistry } from '@/graph/graph_registry'
 import { createRegistry, registerGraph, unregisterGraph, lookupGraph, hasGraph } from '@/graph/graph_registry'
 
-import { saveGraph, loadGraph, deleteGraph, listSavedGraphIds } from '@/graph/graph_persistence'
+import { saveGraph, loadGraph, deleteGraph, listSavedGraphIds, saveLastActiveRootId, loadLastActiveRootId } from '@/graph/graph_persistence'
 
 const MAX_UNDO_STACK_SIZE = 20
 
@@ -149,14 +148,17 @@ export const useGraphStore = defineStore('graph_store', () => {
      *
      *     从持久化存储加载图谱，切换为当前视图图。
      *
-     *     这是用户切换根图谱的唯一入口。负责 normalize + 状态重置，
-     *     以及"从 localStorage 加载"和"写入 runtime registry"。
+     *     这是用户切换图谱的唯一入口。负责 normalize + 状态重置、
+     *     "从 localStorage 加载"、"写入 runtime registry"、
+     *     以及沿 parentGraphId 回溯构建完整 graphPath（根→叶）。
      *
      * 规则：
      *
-     *     1. 找不到对应 GraphData 时不修改任何状态，返回 false。
+     *     1. 找不到对应 GraphData 时写入 lastValidationResult 错误信息并返回 false。
      *     2. 加载成功后将图写入 registry（跨图操作可见）。
-     *     3. 本函数不负责完整图校验。
+     *     3. 祖先图仅加载自身，不加载祖先图的子图。
+     *     4. 祖先图不在 registry 中时从 localStorage 惰性加载并注册。
+     *     5. 本函数不负责完整图校验。
      *
      * 使用：
      *
@@ -171,16 +173,76 @@ export const useGraphStore = defineStore('graph_store', () => {
         const graph = loadGraph(graphId)
 
         if (!graph) {
+            lastValidationResult.value = {
+                valid: false,
+                issues: [{
+                    severity: 'error',
+                    code: 'LOAD_FAILED',
+                    message: `图谱 "${graphId}" 加载失败`,
+                    targetType: 'graph',
+                    targetId: graphId,
+                }],
+            }
             return false
         }
 
         // 读取时即设置当前显示的图谱
         graphView.value = normalizeGraph(graph)
-        graphPath.value = [graph.id]
         lastValidationResult.value = null
         undoStack.value = []
 
         registerGraph(graphRegistry.value, graph)
+
+        // 沿 parentGraphId 回溯构建完整 graphPath（根→叶）
+        // 算法参考引擎 buildGraphPath，但用 loadGraph 作为 registry 未命中时的 fallback
+        const path: GraphId[] = [graph.id]
+        const visited = new Set<GraphId>([graph.id])
+        let currentGraph: GraphData = graph
+        while (currentGraph.parentGraphId) {
+            const parentId = currentGraph.parentGraphId
+
+            // 环检测：防止异常数据导致无限循环
+            if (visited.has(parentId)) {
+                break
+            }
+            visited.add(parentId)
+
+            const parentInRegistry = lookupGraph(graphRegistry.value, parentId)
+            const parent = parentInRegistry ?? loadGraph(parentId)
+
+            if (!parent) {
+                break
+            }
+
+            // 祖先图不在 registry 中时加载并注册
+            if (!parentInRegistry) {
+                registerGraph(graphRegistry.value, parent)
+            }
+
+            path.unshift(parentId)
+            currentGraph = parent
+        }
+        graphPath.value = path
+
+        // 祖先链断裂检测：while 循环因 parent 不存在或环检测而提前退出时，
+        // currentGraph.parentGraphId 仍有值（未找到对应图谱），报告 warning
+        if (currentGraph.parentGraphId) {
+            lastValidationResult.value = {
+                valid: true,
+                issues: [{
+                    severity: 'warning',
+                    code: 'ANCESTOR_CHAIN_BROKEN',
+                    message: `图谱 "${graphId}" 的父链在 "${currentGraph.id}" 处中断：祖先图谱 "${currentGraph.parentGraphId}" 不可达`,
+                    targetType: 'graph',
+                    targetId: currentGraph.parentGraphId,
+                }],
+            }
+        }
+
+        // 记录最后活跃的根图 ID：回溯链末端的图若确实是根图则写入。
+        if (currentGraph.kind === 'root') {
+            saveLastActiveRootId(currentGraph.id)
+        }
 
         return true
     }
@@ -188,12 +250,51 @@ export const useGraphStore = defineStore('graph_store', () => {
     /**
      * 功能：
      *
-     *     扫描 localStorage 中全部已保存图谱，重建多图注册表。
+     *     沿 parentGraphId 链回溯，判断 graph 是否属于指定根图树。
+     *
+     * 规则：
+     *
+     *     1. graph.id === rootId 时返回 true（根图自身）。
+     *     2. 沿 parentGraphId 逐级上溯，若某级 parentGraphId === rootId 返回 true。
+     *     3. 链中断（parentGraphId 对应的图不存在）或环检测命中返回 false。
+     *     4. 抵达其他根图（parentGraphId === undefined 但当前图不是 rootId）返回 false。
+     */
+    function isInRootTree(graph: GraphData, rootId: GraphId): boolean {
+        if (graph.id === rootId) return true
+
+        let current = graph
+        const visited = new Set<GraphId>([graph.id])
+        while (current.parentGraphId) {
+            if (current.parentGraphId === rootId) return true
+            if (visited.has(current.parentGraphId)) return false  // 环检测
+            visited.add(current.parentGraphId)
+
+            const parent = loadGraph(current.parentGraphId)
+            if (!parent) return false
+
+            current = parent
+        }
+        return false  // 抵达某根图（parentGraphId === undefined），但不是我们的根图
+    }
+
+    /**
+     * 功能：
+     *
+     *     从 lastActiveRootId 恢复工作根图及其全部子孙子图到注册表。
+     *
+     *     启动时注入根图树（根图 + 所有 parentGraphId 链终点为该根图的子图），
+     *     避免认知操作（diverge / induce）因子图未注册而触发惰性加载。
+     *
+     *     找不到 lastActiveRootId 或加载失败时注册表保持空，
+     *     由 Graph.vue 哨兵创建新根图。
      *
      * 规则：
      *
      *     1. 应用启动时调用一次。
-     *     2. 注册表中的 GraphData 对象与 graphView 可能指向同一引用（同图时）。
+     *     2. 加载 lastActiveRootId 对应的根图，再扫描全部已保存图，
+     *        用 isInRootTree 筛选属于同一树的所有子图一并注册。
+     *     3. 不属于当前根图的其他根图子树不进入注册表。
+     *     4. 注册表可能为空（首次使用或上次根图已删除），由哨兵兜底。
      *
      * 使用：
      *
@@ -204,17 +305,58 @@ export const useGraphStore = defineStore('graph_store', () => {
      *     Graph.vue onMounted
      */
     function initRegistry(): void {
-        const savedIds = listSavedGraphIds()
+        const lastRootId = loadLastActiveRootId()
+        if (!lastRootId) return
 
-        for (const graphId of savedIds) {
-            if (hasGraph(graphRegistry.value, graphId)) continue
+        const rootGraph = loadGraph(lastRootId)
+        if (!rootGraph || rootGraph.kind !== 'root') return
+        registerGraph(graphRegistry.value, rootGraph)
 
+        // 预加载当前根图树的所有子图
+        const allIds = listSavedGraphIds()
+        for (const graphId of allIds) {
+            if (graphId === lastRootId || hasGraph(graphRegistry.value, graphId)) continue
             const graph = loadGraph(graphId)
-
-            if (graph) {
-                registerGraph(graphRegistry.value, graph)
-            }
+            if (!graph) continue
+            if (!isInRootTree(graph, lastRootId)) continue
+            registerGraph(graphRegistry.value, graph)
         }
+    }
+
+    /**
+     * 功能：
+     *
+     *     创建一个新的空根图并持久化。
+     *
+     *     本函数不自动切换视图——调用方如需显示新图，需额外调用 loadGraphToView。
+     *
+     * 规则：
+     *
+     *     1. 使用引擎 generateGraphId() 生成 ID。
+     *     2. 根图的 parentGraphId 和 ownerNodeId 为 undefined。
+     *     3. 创建后立即保存到 localStorage 并注册到 registry。
+     *     4. 不修改 graphView / graphPath 等运行时状态。
+     *
+     * 使用：
+     *
+     *     const graphId = graphStore.createRootGraph('My Graph')
+     *     graphStore.loadGraphToView(graphId)
+     */
+    function createRootGraph(title: string): GraphId {
+        const id = generateGraphId()
+        const graph: GraphData = {
+            id,
+            kind: 'root',
+            title,
+            nodes: [],
+            edges: [],
+            cognitiveState: { foldedDependencies: [] },
+        }
+
+        saveGraph(graph)
+        registerGraph(graphRegistry.value, graph)
+
+        return id
     }
 
     /**
@@ -248,9 +390,7 @@ export const useGraphStore = defineStore('graph_store', () => {
      *     graph_operations（induce / internalize / diverge 调用前构造 lookupGraph 参数）
      */
     function makeLookup(): GraphLookup {
-        return (graphId: GraphId): GraphData | undefined => {
-            return graphRegistry.value.get(graphId)
-        }
+        return (graphId: GraphId): GraphData | undefined => lookupGraph(graphRegistry.value, graphId)
     }
 
     /**
@@ -505,6 +645,7 @@ export const useGraphStore = defineStore('graph_store', () => {
         // 生命周期
         loadGraphToView,
         initRegistry,
+        createRootGraph,
         
         // 内部行为
         getGraphById,

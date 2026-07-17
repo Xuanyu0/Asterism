@@ -158,6 +158,84 @@ export function listSavedGraphIds(): GraphId[] {
 
 /**
  * 功能：
+ *
+ *     扫描 localStorage 中所有已保存图谱，仅返回 kind === 'root' 的图 ID.
+ *
+ *     本函数是 initRegistry 的下层依赖。启动时注册表仅包含根图，
+ *     子图在需要时通过惰性加载（getGraphById / makeLookup）按需注册。
+ *
+ * 规则：
+ *
+ *     1. 只扫描前缀匹配 `GRAPH_STORAGE_PREFIX` 的条目。
+ *     2. 需要反序列化 GraphData 以读取 kind 字段——开销大于 listSavedGraphIds。
+ *     3. 不会注册或修改 graphRegistry。
+ *     4. 返回的 ID 列表无序。
+ *
+ * 使用：
+ *
+ *     const rootIds = listRootGraphIds()
+ *     for (const id of rootIds) {
+ *         registerGraph(graphRegistry, loadGraph(id))
+ *     }
+ */
+export function listRootGraphIds(): GraphId[] {
+    const allIds = listSavedGraphIds()
+    const rootIds: GraphId[] = []
+
+    for (const id of allIds) {
+        const graph = loadGraph(id)
+        if (graph && graph.kind === 'root') {
+            rootIds.push(id)
+        }
+    }
+
+    return rootIds
+}
+
+const LAST_ACTIVE_ROOT_KEY = 'last-active-root-id'
+
+/**
+ * 功能：
+ *
+ *     将用户最近一次使用的根图 ID 持久化到 localStorage。
+ *
+ *     启动时 initRegistry 通过此值确定注入哪个根图到注册表。
+ *
+ * 规则：
+ *
+ *     1. 只存储根图 ID，不存储子图或其它类型图的 ID。
+ *     2. 由 loadGraphToView 在加载成功后自动调用。
+ *     3. 如果同一个 rootId 已存在旧值，本函数会覆盖。
+ *
+ * 使用：
+ *
+ *     saveLastActiveRootId(rootGraphId)
+ */
+export function saveLastActiveRootId(rootId: GraphId): void {
+    localStorage.setItem(LAST_ACTIVE_ROOT_KEY, rootId)
+}
+
+/**
+ * 功能：
+ *
+ *     从 localStorage 读取用户最近一次使用的根图 ID。
+ *
+ * 规则：
+ *
+ *     1. 如果从未保存过 lastActiveRootId，返回 null。
+ *     2. 本函数只返回 ID 字符串，不校验对应的 GraphData 是否存在或合法。
+ *     3. 调用方（initRegistry）需自行 loadGraph 并验证 kind === 'root'。
+ *
+ * 使用：
+ *
+ *     const rootId = loadLastActiveRootId()
+ */
+export function loadLastActiveRootId(): GraphId | null {
+    return localStorage.getItem(LAST_ACTIVE_ROOT_KEY) as GraphId | null
+}
+
+/**
+ * 功能：
  *     localStorage 持久化适配器。实现引擎 PersistenceAdapter 接口契约。
  *
  * 规则：

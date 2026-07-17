@@ -34,9 +34,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
-import type { GraphId } from '@my-project/graph-engine'
-import { saveGraph } from '@/graph/graph_persistence'
-import { createGoldenTestGraph } from '@/mock/test_case_factory'
+
 import { mapGraphDataToCyElements } from '@/render/graph_element_mapper.ts'
 import { useCytoscapeRenderer } from '@/render/use_cytoscape_renderer.ts'
 import { useGraphInteraction } from '@/render/use_graph_interaction.ts'
@@ -109,14 +107,20 @@ const deleteTargetLabel = computed(() => {
 })
 
 onMounted(() => {
+    // 加载上次激活的根图谱
     graphStore.initRegistry()
-
-    // 确保金牌测试图存在并加载
-    const GOLDEN_ID = 'graph-golden' as GraphId
-    if (!graphStore.loadGraphToView(GOLDEN_ID)) {
-        const golden = createGoldenTestGraph()
-        saveGraph(golden)
-        graphStore.loadGraphToView(golden.id)
+    // 哨兵模式：确定要加载的根图 ID
+    let rootId = (graphStore.graphRegistry.size > 0)
+        ? graphStore.graphRegistry.keys().next().value : null
+    // 尝试加载已存在的根图
+    if (rootId && !graphStore.loadGraphToView(rootId)) {
+        // 持久化数据损坏或丢失：降级为创建新根图
+        rootId = null
+    }
+    // 无可用根图时创建默认根图
+    if (!rootId) {
+        rootId = graphStore.createRootGraph('My Graph')
+        graphStore.loadGraphToView(rootId)
     }
 
     renderer.mount()
