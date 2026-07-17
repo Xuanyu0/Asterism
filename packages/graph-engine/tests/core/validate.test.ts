@@ -127,7 +127,7 @@ describe('validate update_node', () => {
     it('合法 update_node', () => {
         // makeGraph uses assembleGraph which runs normalize+validate.
         // Construct a minimal valid node manually to avoid validateGraph overhead.
-        const g: GraphData = { id: G, kind: 'main', title: 't', nodes: [], edges: [] }
+        const g: GraphData = { id: G, kind: 'root', title: 't', nodes: [], edges: [] }
         const n0 = createNode({ id: 'n0' as NodeId, graphId: G, label: 'src' })
         const graph = { ...g, nodes: [n0] }
         const result = validateOperation(graph, {

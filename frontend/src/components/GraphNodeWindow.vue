@@ -91,7 +91,7 @@
 
 import { computed, watch } from 'vue'
 import { useOperationController } from '@/ui/operation_controller'
-import { useToolMediator } from '@/tools/tool_mediator'
+import { useToolMediator } from '@/feature-tools/mediator'
 import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
 
 const controller = useOperationController()

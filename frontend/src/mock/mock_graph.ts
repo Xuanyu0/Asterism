@@ -2,7 +2,7 @@ import type { GraphData } from '@my-project/graph-engine' // 导入 GraphData �
 
 export const mockGraph: GraphData = {
     id: 'graph-main', // 主图 ID
-    kind: 'main', // 主图类型
+    kind: 'root', // 根图谱类型
     title: '高等数学', // 图标题
 
     nodes: [

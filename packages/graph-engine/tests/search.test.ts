@@ -14,7 +14,7 @@ import type { GraphLookup } from '../src/types/infrastructure_types'
 function graph(id: string, title: string, nodes: NodeData[], parentGraphId?: string): GraphData {
     return {
         id,
-        kind: parentGraphId ? 'subgraph' : 'main',
+        kind: parentGraphId ? 'subgraph' : 'root',
         title,
         nodes,
         edges: [],

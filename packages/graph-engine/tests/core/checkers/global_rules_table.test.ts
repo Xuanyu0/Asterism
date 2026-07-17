@@ -120,7 +120,7 @@ describe('validateRealDirectedCycle', () => {
         // 手动构造含环图，绕过 assembleGraph 的 validateGraph 自检
         const graph: GraphData = {
             id: G,
-            kind: 'main',
+            kind: 'root',
             title: G,
             nodes: [
                 createNode({ id: 'n0' as NodeId, graphId: G }),
@@ -164,7 +164,7 @@ describe('validateNodeCountLimits', () => {
 
         return {
             id: G,
-            kind: 'main',
+            kind: 'root',
             title: G,
             nodes,
             edges: [],

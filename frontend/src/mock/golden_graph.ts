@@ -13,7 +13,7 @@ import type { GraphData } from '@my-project/graph-engine'
 
 export const goldenGraph: GraphData = {
     id: 'graph-golden',
-    kind: 'main',
+    kind: 'root',
     title: '金牌测试图',
     nodes: [
         {

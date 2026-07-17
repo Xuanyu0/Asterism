@@ -31,8 +31,8 @@
 
 import { computed, onMounted } from 'vue'
 
-import { toolbarRegistry } from '@/tools/toolbar/registry'
-import { useToolMediator } from '@/tools/tool_mediator'
+import { toolbarRegistry } from '@/feature-tools/toolbar/registry'
+import { useToolMediator } from '@/feature-tools/mediator'
 
 const mediator = useToolMediator()
 

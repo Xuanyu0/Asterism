@@ -94,7 +94,7 @@ export function assembleGraph(params: {
 
     const now = new Date().toISOString()
     const graph: GraphData = {
-        id: params.id, kind: params.kind ?? 'main', title: params.title ?? params.id,
+        id: params.id, kind: params.kind ?? 'root', title: params.title ?? params.id,
         nodes: params.nodes.map(node => ({ ...node, degree: degreeMap.get(node.id) ?? 0 })),
         edges: params.edges, parentGraphId: params.parentGraphId,
         ownerNodeId: params.ownerNodeId, createdAt: now, updatedAt: now,

@@ -25,7 +25,7 @@ export type GraphId = string
 export type NodeId = string
 export type EdgeId = string
 
-export type GraphKind = 'main' | 'subgraph' | 'learningBlock' | 'commonLayer'
+export type GraphKind = 'root' | 'subgraph' | 'learningBlock' | 'commonLayer'
 
 export interface GraphData {
     readonly id: GraphId

@@ -25,3 +25,4 @@ backend/venv/
 
 # 临时文件
 *.txt
+docs/copy.md

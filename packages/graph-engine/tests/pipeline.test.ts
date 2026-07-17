@@ -12,7 +12,7 @@ import type { GraphOperation } from '../src/types/atomic_operations'
 function emptyGraph(): GraphData {
     return {
         id: 'test-graph',
-        kind: 'main',
+        kind: 'root',
         title: 'Test',
         nodes: [],
         edges: [],

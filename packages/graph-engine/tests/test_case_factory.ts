@@ -179,7 +179,7 @@ export function assembleGraph(params: {
 
     const graph: GraphData = {
         id: params.id,
-        kind: params.kind ?? 'main',
+        kind: params.kind ?? 'root',
         title: params.title ?? params.id,
         nodes: nodesWithDegree,
         edges: params.edges,
