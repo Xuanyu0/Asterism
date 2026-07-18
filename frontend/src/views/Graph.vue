@@ -45,6 +45,7 @@ import GraphNodeWindow from '@/components/GraphNodeWindow.vue'
 import NotificationPanel from '@/components/NotificationPanel.vue'
 import GraphOperationToolbar from '@/components/GraphOperationToolbar.vue'
 import GraphModeSelector from '@/components/GraphModeSelector.vue'
+import GraphNavigationCard from '@/components/GraphNavigationCard.vue'
 
 const cyContainer = ref<HTMLDivElement | null>(null)
 
@@ -269,6 +270,26 @@ watchPendingTarget(
 
 // watchPendingTarget 保留供未来 cognition/arrangement 高亮使用
 
+/**
+ * 功能：
+ *     消费画布定位请求：ui_store.pendingCanvasFocusId → renderer.revealElement。
+ *
+ * 规则：
+ *     1. 消费后立即清除请求，保证同一元素可重复触发定位。
+ *     2. 本监听不修改 GraphData。
+ */
+watch(
+    () => operationController.ui.state.pendingCanvasFocusId,
+    (targetId) => {
+        if (!targetId) {
+            return
+        }
+
+        renderer.revealElement(targetId)
+        operationController.clearCanvasFocus()
+    },
+)
+
 onBeforeUnmount(() => {
     renderer.destroy()
 })
@@ -313,6 +334,18 @@ onBeforeUnmount(() => {
         -->
         <GraphOperationToolbar />
         <GraphModeSelector />
+
+        <!--
+            功能：
+                导航卡片。显示当前图谱位置（根图名称 + 子图路径），
+                提供根图谱切换 / 新建 / 逐级返回入口。
+
+            规则：
+                1. 独立于操作栏与交互模式 UI，只读 graphStore 状态。
+                2. 图谱切换经 graphStore.loadGraphToView 唯一入口。
+                3. 不直接操作 Cytoscape。
+        -->
+        <GraphNavigationCard />
 
         <!--
             功能：

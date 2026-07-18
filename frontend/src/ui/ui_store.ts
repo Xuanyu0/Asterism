@@ -8,6 +8,7 @@
  * 1. interactionMode: 当前交互模式
  * 2. selectedCognitionAction / selectedArrangementAction: 模式子工具选择
  * 3. floatingWindowData: 浮空窗显示的节点/边数据
+ * 4. pendingCanvasFocusId: 画布视口定位请求（写入 → Graph.vue 消费 → 清除）
  *
  * 外部使用方式：
  * import { useUIStore } from '@/ui/ui_store'
@@ -106,6 +107,41 @@ export const useUIStore = defineStore('ui_store', () => {
         floatingWindowData.value = null
     }
 
+    /**
+     * 功能：
+     *
+     *     画布视口定位请求。这是一笔一次性 UI 意图：
+     *     写入目标元素 ID → Graph.vue 监听并交给 renderer 执行 → 清除回 null。
+     *
+     * 规则：
+     *
+     *     1. 只表达"用户想让视口移到某元素"的意图，不携带任何 Cytoscape 对象。
+     *     2. 消费后必须清除（clearCanvasFocus），保证同一元素可重复定位。
+     */
+    const pendingCanvasFocusId = ref<string | null>(null)
+
+    /**
+     * 功能：
+     *
+     *     发起画布定位请求。
+     *
+     * 参数：
+     *
+     *     targetId — 目标节点/边的 ID，与渲染元素的 id 一致。
+     */
+    function requestCanvasFocus(targetId: string) {
+        pendingCanvasFocusId.value = targetId
+    }
+
+    /**
+     * 功能：
+     *
+     *     清除画布定位请求。由消费方（Graph.vue）在执行后调用。
+     */
+    function clearCanvasFocus() {
+        pendingCanvasFocusId.value = null
+    }
+
     return {
         interactionMode,
         selectedCognitionAction,
@@ -116,5 +152,8 @@ export const useUIStore = defineStore('ui_store', () => {
         selectArrangementAction,
         openFloatingWindow,
         closeFloatingWindow,
+        pendingCanvasFocusId,
+        requestCanvasFocus,
+        clearCanvasFocus,
     }
 })

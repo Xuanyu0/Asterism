@@ -236,6 +236,25 @@ export function loadLastActiveRootId(): GraphId | null {
 
 /**
  * 功能：
+ *
+ *     清除 localStorage 中记录的最后活跃根图 ID。
+ *
+ * 规则：
+ *
+ *     1. 由 deleteRootGraphTree 在删除根图后调用——
+ *        防止 initRegistry 启动时尝试加载已不存在的根图。
+ *     2. 本函数只清除标记，不删除任何 GraphData。
+ *
+ * 使用：
+ *
+ *     clearLastActiveRootId()
+ */
+export function clearLastActiveRootId(): void {
+    localStorage.removeItem(LAST_ACTIVE_ROOT_KEY)
+}
+
+/**
+ * 功能：
  *     localStorage 持久化适配器。实现引擎 PersistenceAdapter 接口契约。
  *
  * 规则：

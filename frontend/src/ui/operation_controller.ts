@@ -14,6 +14,7 @@
  *        - 模式切换  — enterCognitionMode / enterArrangementMode
  *        - 认知操作选择  — selectCognitionAction / selectArrangementAction
  *        - 事件分派  — handleNodeClicked / handleEdgeClicked
+ *        - 画布定位请求  — requestCanvasFocus / clearCanvasFocus
  *
  * 规则：
  *
@@ -24,7 +25,8 @@
  *
  * 外部如何使用：
  *
- *     Graph.vue、GraphNodeWindow.vue、GraphModeSelector.vue 调用本文件。
+ *     Graph.vue、GraphNodeWindow.vue、GraphModeSelector.vue、
+ *     GraphNavigationCard.vue 调用本文件。
  */
 
 import type {
@@ -172,6 +174,31 @@ export function useOperationController() {
         }
     }
 
+    // ── 画布定位请求 ──
+
+    /**
+     * 功能：
+     *
+     *     请求画布视口定位到指定元素（节点/边）。
+     *     意图写入 ui_store，由 Graph.vue 消费并交给 renderer 执行。
+     *
+     * 参数：
+     *
+     *     targetId — 目标节点/边的 ID，与渲染元素的 id 一致。
+     */
+    function requestCanvasFocus(targetId: string): void {
+        uiStore.requestCanvasFocus(targetId)
+    }
+
+    /**
+     * 功能：
+     *
+     *     清除画布定位请求。由消费方（Graph.vue）在执行后调用。
+     */
+    function clearCanvasFocus(): void {
+        uiStore.clearCanvasFocus()
+    }
+
     // ── 公开 API ──
 
     return {
@@ -193,6 +220,9 @@ export function useOperationController() {
         // 交互事件
         handleNodeClicked,
         handleEdgeClicked,
+        // 画布定位请求
+        requestCanvasFocus,
+        clearCanvasFocus,
         // 浮空窗编辑
         confirmExistingNodeEdit: ops.confirmExistingNodeEdit,
         confirmExistingEdgeEdit: ops.confirmExistingEdgeEdit,

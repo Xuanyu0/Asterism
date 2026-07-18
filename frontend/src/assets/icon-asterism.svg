@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- 星座连线（图之边） -->
+  <polyline points="3.5,8 8,15 12,6.5 16,15 20.5,8"
+    stroke="currentColor" stroke-width="1.1"
+    stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+  <!-- 星点（图之节点），中央星最大——根图谱 -->
+  <circle cx="3.5" cy="8" r="1.7" fill="currentColor"/>
+  <circle cx="8" cy="15" r="1.4" fill="currentColor"/>
+  <circle cx="12" cy="6.5" r="2" fill="currentColor"/>
+  <circle cx="16" cy="15" r="1.4" fill="currentColor"/>
+  <circle cx="20.5" cy="8" r="1.7" fill="currentColor"/>
+</svg>

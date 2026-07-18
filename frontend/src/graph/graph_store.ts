@@ -42,7 +42,7 @@ import { applyBatch, normalizeGraph, generateGraphId } from '@my-project/graph-e
 import type { GraphRegistry } from '@/graph/graph_registry'
 import { createRegistry, registerGraph, unregisterGraph, lookupGraph, hasGraph } from '@/graph/graph_registry'
 
-import { saveGraph, loadGraph, deleteGraph, listSavedGraphIds, saveLastActiveRootId, loadLastActiveRootId } from '@/graph/graph_persistence'
+import { saveGraph, loadGraph, deleteGraph, listSavedGraphIds, listRootGraphIds, saveLastActiveRootId, loadLastActiveRootId, clearLastActiveRootId } from '@/graph/graph_persistence'
 
 const MAX_UNDO_STACK_SIZE = 20
 
@@ -58,6 +58,27 @@ export interface ApplyBatchTarget {
 
     /** 对该图执行的操作序列。 */
     operations: GraphOperation[]
+}
+
+
+/**
+ * 功能：
+ *
+ *     根图谱列表项的摘要信息，供导航卡片展示根图谱列表。
+ *
+ * 规则：
+ *
+ *     1. 只包含列表展示所需的最小字段，不携带 nodes / edges。
+ */
+export interface RootGraphSummary {
+    /** 根图 ID。 */
+    id: GraphId
+
+    /** 根图标题。 */
+    title: string
+
+    /** 最近更新时间戳。引擎当前未维护此字段，保留供未来排序使用。 */
+    updatedAt?: string
 }
 
 /**
@@ -427,6 +448,97 @@ export const useGraphStore = defineStore('graph_store', () => {
     /**
      * 功能：
      *
+     *     列出 localStorage 中全部根图谱的摘要，供导航卡片展示与切换。
+     *
+     * 规则：
+     *
+     *     1. 数据来自持久化全量扫描，不经过 graphRegistry——
+     *        registry 只持有当前根图树，无法覆盖全部根图。
+     *     2. 按标题字典序排序（updatedAt 引擎未维护，不参与排序）。
+     *     3. 本函数不修改任何运行时状态。
+     *
+     * 使用：
+     *
+     *     const summaries = graphStore.listRootGraphSummaries()
+     *
+     * 消费者：
+     *
+     *     GraphNavigationCard（Expand 面板根图谱列表）
+     */
+    function listRootGraphSummaries(): RootGraphSummary[] {
+        const summaries: RootGraphSummary[] = []
+
+        for (const graphId of listRootGraphIds()) {
+            const graph = loadGraph(graphId)
+            if (!graph) continue
+            summaries.push({ id: graph.id, title: graph.title, updatedAt: graph.updatedAt })
+        }
+
+        return summaries.sort((a, b) => a.title.localeCompare(b.title, 'zh-Hans-CN'))
+    }
+
+    /**
+     * 功能：
+     *
+     *     删除一个根图及其全部子孙子图（级联删除整棵图树）。
+     *
+     * 规则：
+     *
+ *     1. 若 rootId 为当前视图所在根图，直接返回不删除——
+ *        删除活跃根图会使视图失去持久化副本。
+     *     2. 通过 isInRootTree 判定归属，防止只删根图留下孤儿子图
+     *        污染 listSavedGraphIds 的全量扫描结果。
+     *     3. 删除后同步清理指向该根图的 lastActiveRootId 标记。
+     *
+     * 参数：
+     *
+     *     rootId — 要删除的根图 ID，与其全部子孙子图一并删除。
+     *
+     * 使用：
+     *
+     *     graphStore.deleteRootGraphTree(rootId)
+     *
+     * 消费者：
+     *
+     *     GraphNavigationCard（根图谱列表删除按钮）
+     */
+    function deleteRootGraphTree(rootId: GraphId): void {
+        // 防御：禁止删除当前视图所在的根图。删除活跃根图会使视图
+        // 失去持久化副本，且 graphView 会悬挂在已不存在的图上。
+        const currentRootId = graphPath.value[0]
+        if (currentRootId !== undefined && currentRootId === rootId) {
+            return
+        }
+
+        // 第一遍：收集整棵树的成员。必须在删除前完成——isInRootTree 沿
+        // parentGraphId 逐级 loadGraph 回溯，边扫描边删除会使孙图的父链断裂，
+        // 导致深层子图被判定为"不属于本树"而漏删。
+        const treeIds: GraphId[] = []
+        for (const graphId of listSavedGraphIds()) {
+            if (graphId === rootId) {
+                treeIds.push(graphId)
+                continue
+            }
+
+            const graph = loadGraph(graphId)
+            if (!graph || !isInRootTree(graph, rootId)) continue
+
+            treeIds.push(graphId)
+        }
+
+        // 第二遍：统一删除
+        for (const graphId of treeIds) {
+            deleteSavedGraph(graphId)
+        }
+
+        if (loadLastActiveRootId() === rootId) {
+            clearLastActiveRootId()
+        }
+    }
+
+    /**
+     * 功能：
+     *
      *     对单个目标图执行批量操作。
      *
      *     本函数是 applyBatchToGraphs 的单图包装。
@@ -654,6 +766,8 @@ export const useGraphStore = defineStore('graph_store', () => {
         
         // 功能行为
         deleteSavedGraph,
+        listRootGraphSummaries,
+        deleteRootGraphTree,
         applyBatchToGraph,
         applyBatchToGraphs,
         undo,

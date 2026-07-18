@@ -7,6 +7,7 @@
  *     2. syncElements()
  *     3. destroy()
  *     4. getInstance()
+ *     5. revealElement()  — 视口定位 + 高亮提示
  *
  * 外部如何使用：
  *     Graph.vue 在组件挂载后调用 mount() 创建 Cytoscape 实例，
@@ -43,6 +44,9 @@ export function useCytoscapeRenderer(
     containerRef: Ref<HTMLElement | null>,
 ) {
     let cy: Core | null = null
+
+    /** 高亮提示的移除定时器。新一次 reveal 或 destroy 时清除。 */
+    let flashTimer: ReturnType<typeof setTimeout> | null = null
 
     /**
      * 功能：
@@ -130,8 +134,63 @@ export function useCytoscapeRenderer(
             return
         }
 
+        if (flashTimer !== null) {
+            clearTimeout(flashTimer)
+            flashTimer = null
+        }
+
         cy.destroy()
         cy = null
+    }
+
+    /**
+     * 功能：
+     *
+     *     将视口动画移动到指定元素，并施加短暂高亮提示。
+     *
+     * 规则：
+     *
+     *     1. 只操作 Cytoscape 视口与样式 class，不触碰 GraphData。
+     *     2. 元素不存在时静默返回。
+     *     3. 高亮 class 由 cytoscape_style.ts 的 .search-focus 定义，
+     *        1.2s 后自动移除。
+     *     4. 当前缩放级别低于 1 时提升到 1，保证目标元素清晰可辨；
+     *        更深的缩放保持不变，不打扰用户既有视角。
+     *
+     * 参数：
+     *
+     *     elementId — 目标节点/边的 ID，与 CyElements 中的 id 一致。
+     *
+     * 使用：
+     *
+     *     Graph.vue 消费 ui_store.pendingCanvasFocusId 时调用。
+     */
+    function revealElement(elementId: string): void {
+        if (!cy) {
+            return
+        }
+
+        const element = cy.getElementById(elementId)
+        if (element.empty()) {
+            return
+        }
+
+        cy.animate({
+            center: { eles: element },
+            zoom: Math.max(cy.zoom(), 1),
+        }, {
+            duration: 300,
+        })
+
+        if (flashTimer !== null) {
+            clearTimeout(flashTimer)
+        }
+
+        element.addClass('search-focus')
+        flashTimer = setTimeout(() => {
+            element.removeClass('search-focus')
+            flashTimer = null
+        }, 1200)
     }
 
     /**
@@ -155,5 +214,6 @@ export function useCytoscapeRenderer(
         syncElements,
         destroy,
         getInstance,
+        revealElement,
     }
 }
