@@ -8,8 +8,7 @@
  * 总体结构：
  *     1. initTestRuntime：应用启动时自动加载默认测试图
  *     2. exposeTestRuntimeToWindow：暴露测试函数到浏览器 window 对象
- *     3. P1 测试函数：切换当前图到各种拓扑
- *     4. P2 测试函数（占位）：多图层级操作
+ *     3. 测试函数：切换当前图到各种拓扑
  *
  * 使用方式：
  *     main.ts 调用 initTestRuntime() + exposeTestRuntimeToWindow()
@@ -21,24 +20,21 @@
  *         window.loadVirtualNodeGraph()
  *         window.loadAbstractNodeGraph()
  *         window.loadCommunicationGraph()
- *
- *     浏览器控制台 UI 模式快捷切换：
- *         window.enterAddRealNodeMode()
  */
-
 import { useGraphStore } from '@/graph/graph_store'
-import { useToolMediator } from '@/feature-tools/mediator'
-import { saveGraph } from '@/graph/graph_persistence'
+import { saveGraph, loadGraph } from '@/graph/graph_persistence'
 
 import {
-    createGoldenTestGraph,
+    createGoldenTestGraphV2,
+    createSilverTestGraph,
     createChainDAG,
     createEdgeMatrixGraph,
     createVirtualNodeTestGraph,
     createAbstractNodeTestGraph,
     createCommunicationTestGraph,
     createDeleteUndoTestGraph,
-} from '@/mock/test_case_factory'
+} from '@/dev/test_case_factory'
+import type { GraphId } from '@my-project/graph-engine'
 
 // ═══════════════════════════════════════════════════════════════
 // 启动时初始化
@@ -56,9 +52,10 @@ import {
 export function initTestRuntime(): void {
     const graphStore = useGraphStore()
 
-    const graph = createGoldenTestGraph()
-    saveGraph(graph)
-    graphStore.loadGraphToView(graph.id)
+    // 构造并持久化金牌测试图对（父 + 子）+ 银牌测试图对
+    const goldenGraph = createGoldenTestGraphV2()
+    saveGraph(goldenGraph)
+    graphStore.loadGraphToView(goldenGraph.id)
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -80,22 +77,13 @@ export function exposeTestRuntimeToWindow(): void {
     Object.assign(window, {
         // P1 图切换
         loadGoldenGraph,
+        loadSilverGraph,
         loadChainDAG,
         loadEdgeMatrix,
         loadVirtualNodeGraph,
         loadAbstractNodeGraph,
         loadCommunicationGraph,
         loadDeleteUndoGraph,
-
-        // UI 模式快捷切换
-        enterAddRealNodeMode,
-        enterAddVirtualNodeMode,
-        enterAddRealDirectedMode,
-        enterAddRealUndirectedMode,
-        enterAddVirtualDirectedMode,
-        enterAddVirtualUndirectedMode,
-        enterDeleteMode,
-        enterFoldMode,
     })
 }
 
@@ -110,11 +98,33 @@ export function exposeTestRuntimeToWindow(): void {
 function loadGoldenGraph(): void {
     const graphStore = useGraphStore()
 
-    const graph = createGoldenTestGraph()
+    // 一并创建金牌和银牌测试图
+    const graph = createGoldenTestGraphV2()
     saveGraph(graph)
     graphStore.loadGraphToView(graph.id)
 
-    console.log('✅ 已加载金牌测试图')
+    console.log('✅ 已加载金牌测试图（V2，含子图+银牌对）')
+}
+
+/**
+ * 功能：
+ *     加载银牌测试图（从 localStorage 读取，若不存在则构造并持久化）。
+ *
+ * 使用：
+ *     window.loadSilverGraph()
+ */
+function loadSilverGraph(): void {
+    const graphStore = useGraphStore()
+
+    // createGoldenTestGraphV2 内部已确保银牌图持久化，但若直接调 silver 需检查
+    let graph = loadGraph('graph-silver' as GraphId)
+    if (!graph) {
+        graph = createSilverTestGraph()
+        saveGraph(graph)
+    }
+    graphStore.loadGraphToView(graph.id)
+
+    console.log('✅ 已加载银牌测试图')
 }
 
 /**
@@ -205,108 +215,4 @@ function loadDeleteUndoGraph(): void {
     console.log('✅ 已加载删除/撤销测试图')
 }
 
-// ═══════════════════════════════════════════════════════════════
-// P1: UI 模式快捷切换
-// ═══════════════════════════════════════════════════════════════
 
-/**
- * 功能：
- *     模拟用户进入 Add Real Node 流程。
- *
- * 规则：
- *     1. 通过 operation_controller 设置 UI Runtime 状态，与正式 UI 交互路径一致。
- *
- * 使用：
- *     浏览器控制台输入 window.enterAddRealNodeMode()
- */
-function enterAddRealNodeMode(): void {
-    const mediator = useToolMediator()
-
-    mediator.activate('add-real-node')
-
-    console.log('✅ 已进入 Add Real Node 模式')
-}
-
-/**
- * 功能：
- *     模拟用户进入 Add Virtual Node 流程。
- */
-function enterAddVirtualNodeMode(): void {
-    const mediator = useToolMediator()
-
-    mediator.activate('add-virtual-node')
-
-    console.log('✅ 已进入 Add Virtual Node 模式')
-}
-
-/**
- * 功能：
- *     模拟用户进入 Delete 模式。
- */
-function enterDeleteMode(): void {
-    const mediator = useToolMediator()
-
-    mediator.activate('delete')
-
-    console.log('✅ 已进入 Delete 模式')
-}
-
-/**
- * 功能：
- *     模拟用户进入 Fold 模式。
- */
-function enterFoldMode(): void {
-    const mediator = useToolMediator()
-
-    mediator.activate('fold')
-
-    console.log('✅ 已进入 Fold 模式')
-}
-
-/**
- * 功能：
- *     模拟用户进入 Add Real Directed Edge 流程。
- */
-function enterAddRealDirectedMode(): void {
-    const mediator = useToolMediator()
-
-    mediator.activate('add-real-directed')
-
-    console.log('✅ 已进入 Add Real Directed Edge 模式')
-}
-
-/**
- * 功能：
- *     模拟用户进入 Add Real Undirected Edge 流程。
- */
-function enterAddRealUndirectedMode(): void {
-    const mediator = useToolMediator()
-
-    mediator.activate('add-real-undirected')
-
-    console.log('✅ 已进入 Add Real Undirected Edge 模式')
-}
-
-/**
- * 功能：
- *     模拟用户进入 Add Virtual Directed Edge 流程。
- */
-function enterAddVirtualDirectedMode(): void {
-    const mediator = useToolMediator()
-
-    mediator.activate('add-virtual-directed')
-
-    console.log('✅ 已进入 Add Virtual Directed Edge 模式')
-}
-
-/**
- * 功能：
- *     模拟用户进入 Add Virtual Undirected Edge 流程。
- */
-function enterAddVirtualUndirectedMode(): void {
-    const mediator = useToolMediator()
-
-    mediator.activate('add-virtual-undirected')
-
-    console.log('✅ 已进入 Add Virtual Undirected Edge 模式')
-}

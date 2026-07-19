@@ -2,7 +2,8 @@
  * test_case_factory.ts
  *
  * 功能：
- *     知识图谱测试数据工厂（前端副本）。与 engine __tests__ 版 API 一致。
+ *     知识图谱测试数据工厂。与 engine __tests__ 版 API 一致。
+ *     用来构造测试数据集
  *
  * 外部如何使用：
  *     import { createGoldenTestGraph } from '@/mock/test_case_factory'
@@ -26,8 +27,9 @@ import type {
 
 import { validateGraph } from '@my-project/graph-engine'
 import { normalizeGraph } from '@my-project/graph-engine'
+import { loadGraph, saveGraph } from '@/graph/graph_persistence'
 
-// ═══════════ 原子构建 ═══════════
+// ═══════════ 构造节点/边 ═══════════
 
 export function createNode(overrides: {
     id: NodeId
@@ -187,38 +189,124 @@ export function createGoldenTestGraph(graphId: GraphId = 'graph-golden' as Graph
     return assembleGraph({ id: graphId, title: '金牌测试图', nodes, edges })
 }
 
-// compose 输入图
-export function createDeconstructInputGraph(graphId: GraphId = 'graph-decon' as GraphId): GraphData {
-    const a = createNode({ id: 'decon-A' as NodeId, graphId, label: '目标原子节点' })
-    const b = createNode({ id: 'decon-B' as NodeId, graphId }), c = createNode({ id: 'decon-C' as NodeId, graphId }), d = createNode({ id: 'decon-D' as NodeId, graphId })
-    const edges: EdgeData[] = [
-        createEdge({ id: 'decon-AB' as EdgeId, graphId, source: a.id, target: b.id, kind: 'real', direction: 'undirected' }),
-        createEdge({ id: 'decon-AC' as EdgeId, graphId, source: a.id, target: c.id, kind: 'real', direction: 'directed' }),
-        createEdge({ id: 'decon-AD' as EdgeId, graphId, source: a.id, target: d.id, kind: 'real', direction: 'undirected' }),
+// ═══════════ 金牌/银牌测试图对 ═══════════
+
+/**
+ * 功能：
+ *     创建银牌测试图及其子图，持久化子图到 localStorage。
+ *
+ * 图结构：
+ *     银牌根图 (id="graph-silver") + 银牌子图 (id="sub-silver")
+ *     覆盖 real / abstract / reference（communication）节点和 directed 边。
+ *
+ * 规则：
+ *     1. 子图通过 saveGraph 持久化，根图由调用方自行 persist。
+ *     2. 本函数不校验银牌图中 reference 节点指向的金牌图是否存在；
+ *        调用方（如 createGoldenTestGraphV2）应确保金牌图已持久化。
+ *     3. 返回的银牌根图引用 sv-node-4 (reference) 指向金牌图节点 node-g1。
+ *
+ * 使用：
+ *     const silver = createSilverTestGraph()
+ *     saveGraph(silver)
+ */
+export function createSilverTestGraph(graphId?: GraphId): GraphData {
+    const gId = graphId ?? ('graph-silver' as GraphId)
+
+    // — 银牌父图 —
+    const nodes: NodeData[] = [
+        createNode({ id: 'sv-node-1' as NodeId, graphId: gId, label: '跳转目标', position: { x: 50, y: 200 } }),
+        createNode({ id: 'sv-node-2' as NodeId, graphId: gId, label: '银牌节点B', position: { x: 350, y: 200 } }),
+        createNode({ id: 'sv-node-3' as NodeId, graphId: gId, label: '抽象节点', form: 'abstract', childGraphId: 'sub-silver' as GraphId, position: { x: 650, y: 200 } }),
+        createNode({ id: 'sv-node-4' as NodeId, graphId: gId, role: 'reference', referenceKind: 'communication', label: '回金牌', sourceGraphId: 'graph-golden' as GraphId, sourceNodeId: 'node-g1' as NodeId, position: { x: 50, y: 500 } }),
+        createNode({ id: 'sv-node-5' as NodeId, graphId: gId, label: '银牌节点E', position: { x: 350, y: 500 } }),
     ]
-    return assembleGraph({ id: graphId, title: '解构输入', nodes: layoutGrid([a, b, c, d], 2, 300, 300), edges })
+    const edges: EdgeData[] = [
+        createEdge({ id: 'edge-sv12' as EdgeId, graphId: gId, source: 'sv-node-1' as NodeId, target: 'sv-node-2' as NodeId, kind: 'real', direction: 'directed' }),
+        createEdge({ id: 'edge-sv23' as EdgeId, graphId: gId, source: 'sv-node-2' as NodeId, target: 'sv-node-3' as NodeId, kind: 'real', direction: 'directed' }),
+        createEdge({ id: 'edge-sv45' as EdgeId, graphId: gId, source: 'sv-node-4' as NodeId, target: 'sv-node-5' as NodeId, kind: 'real', direction: 'directed' }),
+    ]
+    const parentGraph = assembleGraph({ id: gId, title: '银牌测试图', nodes, edges })
+
+    // — 银牌子图 —
+    const subNodes: NodeData[] = [
+        createNode({ id: 'sv-sub-1' as NodeId, graphId: 'sub-silver' as GraphId, label: '银牌子节点A', position: { x: 200, y: 200 } }),
+        createNode({ id: 'sv-sub-2' as NodeId, graphId: 'sub-silver' as GraphId, label: '银牌子节点B', position: { x: 500, y: 200 } }),
+    ]
+    const subEdges: EdgeData[] = [
+        createEdge({ id: 'edge-ss12' as EdgeId, graphId: 'sub-silver' as GraphId, source: 'sv-sub-1' as NodeId, target: 'sv-sub-2' as NodeId, kind: 'real', direction: 'directed' }),
+    ]
+    const subGraph = assembleGraph({
+        id: 'sub-silver' as GraphId, kind: 'subgraph', title: '银牌子图',
+        parentGraphId: gId, ownerNodeId: 'sv-node-3' as NodeId,
+        nodes: subNodes, edges: subEdges,
+    })
+    saveGraph(subGraph)
+
+    return parentGraph
 }
 
-export function createInduceInputGraph(graphId: GraphId = 'graph-induce' as GraphId): GraphData {
-    const a = createNode({ id: 'ind-A' as NodeId, graphId, label: '被选A' })
-    const b = createNode({ id: 'ind-B' as NodeId, graphId, label: '被选B' })
-    const c = createNode({ id: 'ind-C' as NodeId, graphId, label: '被选C' })
-    const x = createNode({ id: 'ind-X' as NodeId, graphId, label: '未选X' })
-    const y = createNode({ id: 'ind-Y' as NodeId, graphId, label: '未选Y' })
-    const edges: EdgeData[] = [
-        createEdge({ id: 'ind-AB' as EdgeId, graphId, source: a.id, target: b.id, kind: 'real', direction: 'undirected' }),
-        createEdge({ id: 'ind-BC' as EdgeId, graphId, source: b.id, target: c.id, kind: 'real', direction: 'undirected' }),
-        createEdge({ id: 'ind-AX' as EdgeId, graphId, source: a.id, target: x.id, kind: 'real', direction: 'undirected' }),
-        createEdge({ id: 'ind-BX' as EdgeId, graphId, source: b.id, target: x.id, kind: 'real', direction: 'undirected' }),
-        createEdge({ id: 'ind-AY' as EdgeId, graphId, source: a.id, target: y.id, kind: 'real', direction: 'directed' }),
-        createEdge({ id: 'ind-CY' as EdgeId, graphId, source: c.id, target: y.id, kind: 'real', direction: 'directed' }),
-        createEdge({ id: 'ind-AC' as EdgeId, graphId, source: a.id, target: c.id, kind: 'real', direction: 'undirected' }),
-    ]
-    return assembleGraph({ id: graphId, title: '归纳输入', nodes: layoutGrid([a, b, c, x, y], 3, 300, 300), edges })
-}
+/**
+ * 功能：
+ *     创建金牌测试图及其子图，side-effect：持久化子图 + 确保持久化银牌测试图。
+ *
+ * 规则：
+ *     1. 调用前金牌子图和银牌图可能不存在，本函数内部确保它们被创建并持久化。
+ *     2. 本函数先检查银牌测试图是否已持久化，若不存在则调用 createSilverTestGraph
+ *        创建并持久化（含银牌子图）。
+ *     3. 然后创建金牌子图并持久化。
+ *     4. 返回金牌父图 GraphData，调用方只需 persist 父图并 loadGraphToView。
+ *
+ * 图结构：
+ *     金牌根图 (id="graph-golden") + 金牌子图 (id="sub-golden")
+ *     覆盖 real / abstract / virtual / reference（communication）节点和 directed / undirected 边。
+ *
+ * 使用：
+ *     const golden = createGoldenTestGraphV2()
+ *     saveGraph(golden)
+ *     graphStore.loadGraphToView(golden.id)
+ */
+export function createGoldenTestGraphV2(graphId?: GraphId): GraphData {
+    const gId = graphId ?? ('graph-golden' as GraphId)
 
-export function createCommonLayerGraph(graphId: GraphId = 'graph-common' as GraphId): GraphData {
-    return assembleGraph({ id: graphId, kind: 'commonLayer', title: '常识层', nodes: [], edges: [] })
+    // 确保银牌测试图已存在（金牌引用节点指向它）
+    if (!loadGraph('graph-silver' as GraphId)) {
+        const silverGraph = createSilverTestGraph()
+        saveGraph(silverGraph)
+    }
+
+    // — 金牌父图 —
+    const nodes: NodeData[] = [
+        createNode({ id: 'node-g1' as NodeId, graphId: gId, label: '知识节点A', position: { x: 50, y: 200 } }),
+        createNode({ id: 'node-g2' as NodeId, graphId: gId, label: '知识节点B', position: { x: 350, y: 200 } }),
+        createNode({ id: 'node-g3' as NodeId, graphId: gId, label: '抽象节点', form: 'abstract', childGraphId: 'sub-golden' as GraphId, position: { x: 650, y: 200 } }),
+        createNode({ id: 'node-g4' as NodeId, graphId: gId, kind: 'virtual', label: '虚节点', position: { x: 950, y: 200 } }),
+        createNode({ id: 'node-g5' as NodeId, graphId: gId, role: 'reference', referenceKind: 'communication', label: '跳转银牌', sourceGraphId: 'graph-silver' as GraphId, sourceNodeId: 'sv-node-1' as NodeId, position: { x: 50, y: 500 } }),
+        createNode({ id: 'node-g6' as NodeId, graphId: gId, label: '知识节点C', position: { x: 350, y: 500 } }),
+    ]
+    const edges: EdgeData[] = [
+        createEdge({ id: 'edge-g12' as EdgeId, graphId: gId, source: 'node-g1' as NodeId, target: 'node-g2' as NodeId, kind: 'real', direction: 'directed' }),
+        createEdge({ id: 'edge-g23' as EdgeId, graphId: gId, source: 'node-g2' as NodeId, target: 'node-g3' as NodeId, kind: 'real', direction: 'directed' }),
+        createEdge({ id: 'edge-g46' as EdgeId, graphId: gId, source: 'node-g4' as NodeId, target: 'node-g6' as NodeId, kind: 'virtual', direction: 'undirected' }),
+        createEdge({ id: 'edge-g51' as EdgeId, graphId: gId, source: 'node-g5' as NodeId, target: 'node-g1' as NodeId, kind: 'real', direction: 'directed' }),
+    ]
+    const parentGraph = assembleGraph({ id: gId, title: '金牌测试图', nodes, edges })
+
+    // — 金牌子图 —
+    const subNodes: NodeData[] = [
+        createNode({ id: 'sub-g1' as NodeId, graphId: 'sub-golden' as GraphId, label: '子图节点A', position: { x: 200, y: 200 } }),
+        createNode({ id: 'sub-g2' as NodeId, graphId: 'sub-golden' as GraphId, label: '子图节点B', position: { x: 500, y: 200 } }),
+    ]
+    const subEdges: EdgeData[] = [
+        createEdge({ id: 'edge-sg12' as EdgeId, graphId: 'sub-golden' as GraphId, source: 'sub-g1' as NodeId, target: 'sub-g2' as NodeId, kind: 'real', direction: 'directed' }),
+    ]
+    const subGraph = assembleGraph({
+        id: 'sub-golden' as GraphId, kind: 'subgraph', title: '金牌子图',
+        parentGraphId: gId, ownerNodeId: 'node-g3' as NodeId,
+        nodes: subNodes, edges: subEdges,
+    })
+    saveGraph(subGraph)
+
+    return parentGraph
 }
 
 // 内部自检

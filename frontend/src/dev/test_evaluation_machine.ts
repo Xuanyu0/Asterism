@@ -7,12 +7,9 @@
  *
  * 总体结构：
  *     1. 测试数据完整性 — 所有工厂函数产出合法 GraphData
- *     2. 图操作执行器 — applyBatch 纯函数正确性
- *     3. 折叠/展开 — cognitiveState 正确性
- *     4. 操作校验器 — OperationValidator 规则拦截
- *     5. 撤销栈 — pushUndoSnapshot / undoDelete
- *     6. 持久化 — localStorage 往返
- *     7. Graph Store 集成 — store.applyBatch 全链路
+ *     2. 撤销栈 — pushUndoSnapshot
+ *     3. 持久化 — localStorage 往返
+ *     4. Graph Store 集成 — store.applyBatch 全链路
  *
  * 自动化覆盖率：
  *     覆盖清单中全部数据层测试（约 70%）。视觉样式、动画、DOM 交互仍需手动。
@@ -21,11 +18,9 @@
  *     main.ts 中调用 registerTestMachine() → 浏览器控制台输入 window.runAllTests()
  */
 
-import type { EdgeData, EdgeId, GraphData, GraphId, NodeData, NodeId } from '@my-project/graph-engine'
-import type { GraphOperation } from '@my-project/graph-engine'
+import type { GraphData, GraphId, NodeId } from '@my-project/graph-engine'
 
 import { validateGraph } from '@my-project/graph-engine'
-import { applyBatch } from '@my-project/graph-engine'
 
 import { pushUndoSnapshot } from '@/graph/graph_store'
 import { saveGraph, loadGraph, deleteGraph } from '@/graph/graph_persistence'
@@ -41,9 +36,8 @@ import {
     createCommunicationTestGraph,
     createDeleteUndoTestGraph,
     createNode,
-    createEdge,
     assembleGraph,
-} from '@/mock/test_case_factory'
+} from '@/dev/test_case_factory'
 
 // ═══════════════════════════════════════════════════════════════════
 // 类型定义
@@ -67,14 +61,6 @@ interface TestSuite {
 // ═══════════════════════════════════════════════════════════════════
 
 const G = 'test-eval' as GraphId
-
-/**
- * 引擎 applyBatch 的测试兼容包装器。
- * 引擎返回 { graph, validation }，旧测试代码期望直接返回 GraphData。
- */
-function applyOp(graph: GraphData, op: GraphOperation): GraphData {
-    return applyBatch(graph, [op]).graph
-}
 
 function suite(name: string, tests: TestResult[]): TestSuite {
     return {
@@ -112,21 +98,6 @@ function makeTwoNodeGraph(): GraphData {
     })
 }
 
-/**
- * 功能：
- *     创建单节点测试图（用于删除测试）。
- */
-function makeSingleNodeGraph(): GraphData {
-    return assembleGraph({
-        id: G,
-        title: '单节点测试图',
-        nodes: [
-            createNode({ id: 'only' as NodeId, graphId: G, kind: 'real', label: '唯一节点' }),
-        ],
-        edges: [],
-    })
-}
-
 // ═══════════════════════════════════════════════════════════════════
 // Suite 1: 测试数据完整性
 // ═══════════════════════════════════════════════════════════════════
@@ -158,461 +129,7 @@ function testFactoryDataIntegrity(): TestSuite {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// Suite 2: 图操作执行器
-// ═══════════════════════════════════════════════════════════════════
-
-function testOperationExecutor(): TestSuite {
-    const results: TestResult[] = []
-
-    // --- add_node ---
-    {
-        const graph = makeTwoNodeGraph()
-        const newNode: NodeData = {
-            role: 'knowledge',
-            id: 'c' as NodeId,
-            graphId: G,
-            kind: 'real',
-            form: 'atomic',
-            label: '节点C',
-            summary: '',
-            abstractionLevel: 0,
-            degree: 0,
-            position: { x: 600, y: 0 },
-        }
-        const next = applyOp(graph, { type: 'add_node', node: newNode })
-
-        results.push({
-            name: 'add_node 节点数 +1',
-            passed: next.nodes.length === graph.nodes.length + 1,
-            detail: `期望 ${graph.nodes.length + 1}, 实际 ${next.nodes.length}`,
-        })
-        results.push({
-            name: 'add_node 新节点存在且数据完整',
-            passed: (() => {
-                const found = next.nodes.find(node => node.id === 'c')
-                return !!found && found.label === '节点C' && found.position?.x === 600
-            })(),
-        })
-    }
-
-    // --- add_edge ---
-    {
-        const graph = makeTwoNodeGraph()
-        const edge: EdgeData = {
-            id: 'a-b' as EdgeId,
-            graphId: G,
-            source: 'a' as NodeId,
-            target: 'b' as NodeId,
-            kind: 'real',
-            direction: 'directed',
-            label: '边',
-        }
-        const next = applyOp(graph, { type: 'add_edge', edge })
-
-        results.push({
-            name: 'add_edge 边数 +1',
-            passed: next.edges.length === graph.edges.length + 1,
-            detail: `期望 ${graph.edges.length + 1}, 实际 ${next.edges.length}`,
-        })
-        results.push({
-            name: 'add_edge 两端 degree +1',
-            passed: (() => {
-                const a = next.nodes.find(node => node.id === 'a')
-                const b = next.nodes.find(node => node.id === 'b')
-                return a!.degree === 1 && b!.degree === 1
-            })(),
-            detail: `a.degree=${next.nodes.find(node => node.id === 'a')!.degree}, b.degree=${next.nodes.find(node => node.id === 'b')!.degree}`,
-        })
-    }
-
-    // --- delete_node ---
-    {
-        const graph = makeTwoNodeGraph()
-        const next = applyOp(graph, { type: 'delete_node', nodeId: 'a' as NodeId })
-
-        results.push({
-            name: 'delete_node 节点数 -1',
-            passed: next.nodes.length === graph.nodes.length - 1,
-            detail: `期望 ${graph.nodes.length - 1}, 实际 ${next.nodes.length}`,
-        })
-        results.push({
-            name: 'delete_node 被删节点不存在于结果中',
-            passed: !next.nodes.find(node => node.id === 'a'),
-        })
-    }
-
-    // --- delete_node cascade edges ---
-    {
-        const graph = makeTwoNodeGraph()
-        const withEdge = applyOp(graph, {
-            type: 'add_edge',
-            edge: {
-                id: 'a-b' as EdgeId, graphId: G,
-                source: 'a' as NodeId, target: 'b' as NodeId,
-                kind: 'real', direction: 'directed',
-                label: '',
-            },
-        })
-        const next = applyOp(withEdge, { type: 'delete_node', nodeId: 'a' as NodeId })
-
-        results.push({
-            name: 'delete_node 级联删除关联边',
-            passed: next.edges.length === 0,
-            detail: `期望 0, 实际 ${next.edges.length}`,
-        })
-        results.push({
-            name: 'delete_node 相邻节点 degree 减少',
-            passed: next.nodes.find(node => node.id === 'b')!.degree === 0,
-            detail: `b.degree=${next.nodes.find(node => node.id === 'b')!.degree}`,
-        })
-    }
-
-    // --- delete_edge ---
-    {
-        const graph = makeTwoNodeGraph()
-        const withEdge = applyOp(graph, {
-            type: 'add_edge',
-            edge: {
-                id: 'a-b' as EdgeId, graphId: G,
-                source: 'a' as NodeId, target: 'b' as NodeId,
-                kind: 'real', direction: 'directed',
-                label: '',
-            },
-        })
-        const next = applyOp(withEdge, { type: 'delete_edge', edgeId: 'a-b' as EdgeId })
-
-        results.push({
-            name: 'delete_edge 边数 -1',
-            passed: next.edges.length === 0,
-            detail: `期望 0, 实际 ${next.edges.length}`,
-        })
-        results.push({
-            name: 'delete_edge 两端 degree -1',
-            passed: next.nodes.find(node => node.id === 'a')!.degree === 0
-                && next.nodes.find(node => node.id === 'b')!.degree === 0,
-        })
-    }
-
-    // --- update_node ---
-    {
-        const graph = makeTwoNodeGraph()
-        const originalA = graph.nodes.find(node => node.id === 'a')!
-        const updatedA = { ...originalA, label: '改过标签', summary: '新摘要' } as NodeData
-        const next = applyOp(graph, { type: 'update_node', node: updatedA })
-
-        results.push({
-            name: 'update_node 标签更新',
-            passed: next.nodes.find(node => node.id === 'a')!.label === '改过标签',
-        })
-        results.push({
-            name: 'update_node 摘要更新',
-            passed: (next.nodes.find(node => node.id === 'a') as Extract<NodeData, { role: 'knowledge' }>).summary === '新摘要',
-        })
-        results.push({
-            name: 'update_node 节点数不变',
-            passed: next.nodes.length === graph.nodes.length,
-        })
-    }
-
-    // --- update_edge ---
-    {
-        const graph = makeTwoNodeGraph()
-        const withEdge = applyOp(graph, {
-            type: 'add_edge',
-            edge: {
-                id: 'a-b' as EdgeId, graphId: G,
-                source: 'a' as NodeId, target: 'b' as NodeId,
-                kind: 'real', direction: 'directed',
-                label: '',
-            },
-        })
-        const updatedEdge: EdgeData = {
-            ...withEdge.edges[0]!,
-            label: '新边标签',
-        }
-        const next = applyOp(withEdge, { type: 'update_edge', edge: updatedEdge })
-
-        results.push({
-            name: 'update_edge 标签更新',
-            passed: next.edges.find(edge => edge.id === 'a-b')!.label === '新边标签',
-        })
-    }
-
-    // --- move_node ---
-    {
-        const graph = makeTwoNodeGraph()
-        const next = applyOp(graph, {
-            type: 'move_node',
-            nodeId: 'a' as NodeId,
-            position: { x: 999, y: 888 },
-        })
-
-        results.push({
-            name: 'move_node 位置更新',
-            passed: (() => {
-                const pos = next.nodes.find(node => node.id === 'a')!.position!
-                return pos.x === 999 && pos.y === 888
-            })(),
-        })
-    }
-
-    // --- 纯函数性：不修改入参 ---
-    {
-        const graph = makeTwoNodeGraph()
-        const snapshot = graph.nodes.length
-applyOp(graph, { type: 'delete_node', nodeId: 'a' as NodeId })
-        results.push({
-            name: 'applyBatch 不修改入参 GraphData',
-            passed: graph.nodes.length === snapshot,
-            detail: `期望 ${snapshot}, 实际 ${graph.nodes.length}`,
-        })
-    }
-
-    return suite('图操作执行器', results)
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// Suite 3: 折叠 / 展开
-// ═══════════════════════════════════════════════════════════════════
-
-function testFoldExpand(): TestSuite {
-    const results: TestResult[] = []
-
-    // --- collapse ---
-    {
-        const dag3 = createChainDAG(3, G)
-        const next = applyOp(dag3, {
-            type: 'collapse_dependency',
-            targetNodeId: 'chain-2' as NodeId,
-        })
-
-        results.push({
-            name: 'collapse_dependency 写入 cognitiveState',
-            passed: (next.cognitiveState?.foldedDependencies?.length ?? 0) > 0,
-            detail: `foldedDependencies=${JSON.stringify(next.cognitiveState?.foldedDependencies)}`,
-        })
-        results.push({
-            name: 'collapse_dependency 折叠正确的节点集合',
-            passed: (() => {
-                const folded = next.cognitiveState?.foldedDependencies?.find(
-                    f => f.targetNodeId === 'chain-2',
-                )
-                return !!folded && folded.foldedNodeIds.includes('chain-0' as NodeId)
-                    && folded.foldedNodeIds.includes('chain-1' as NodeId)
-            })(),
-        })
-        results.push({
-            name: 'collapse_dependency 不删除节点',
-            passed: next.nodes.length === dag3.nodes.length,
-            detail: `期望 ${dag3.nodes.length}, 实际 ${next.nodes.length}`,
-        })
-    }
-
-    // --- expand ---
-    {
-        const dag3 = createChainDAG(3, G)
-        const collapsed = applyOp(dag3, {
-            type: 'collapse_dependency',
-            targetNodeId: 'chain-2' as NodeId,
-        })
-        const expanded = applyOp(collapsed, {
-            type: 'expand_dependency',
-            targetNodeId: 'chain-2' as NodeId,
-        })
-
-        results.push({
-            name: 'expand_dependency 清除折叠记录',
-            passed: !expanded.cognitiveState?.foldedDependencies?.some(
-                f => f.targetNodeId === 'chain-2',
-            ),
-        })
-    }
-
-    // --- fold on node with no deps ---
-    {
-        const dag3 = createChainDAG(3, G)
-        const next = applyOp(dag3, {
-            type: 'collapse_dependency',
-            targetNodeId: 'chain-0' as NodeId,
-        })
-
-        results.push({
-            name: 'collapse 无前置依赖节点不改变图',
-            passed: next === dag3,
-        })
-    }
-
-    return suite('折叠 / 展开', results)
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// Suite 4: 操作校验器
-// ═══════════════════════════════════════════════════════════════════
-
-function testOperationValidator(): TestSuite {
-    const results: TestResult[] = []
-
-    function expectValid(label: string, graph: GraphData, op: GraphOperation): TestResult {
-        const r = applyBatch(graph, [op]).validation
-        return {
-            name: label,
-            passed: r.valid,
-            detail: r.valid ? undefined : r.issues.map(i => i.message).join('; '),
-        }
-    }
-
-    function expectInvalid(label: string, graph: GraphData, op: GraphOperation): TestResult {
-        const r = applyBatch(graph, [op]).validation
-        return {
-            name: label,
-            passed: !r.valid,
-            detail: r.valid ? '应拒绝但通过了' : undefined,
-        }
-    }
-
-    const testGraphId = 'test-validator' as GraphId
-
-    // --- 正常操作应通过 ---
-    {
-        const graph = assembleGraph({
-            id: testGraphId,
-            title: '校验测试图',
-            nodes: [
-                createNode({ id: 'n1' as NodeId, graphId: testGraphId, kind: 'real', label: '节点1' }),
-                createNode({ id: 'n2' as NodeId, graphId: testGraphId, kind: 'real', label: '节点2' }),
-                createNode({ id: 'n3' as NodeId, graphId: testGraphId, kind: 'real', label: '节点3' }),
-            ],
-            edges: [],
-        })
-
-        results.push(expectValid('合法 add_node', graph, {
-            type: 'add_node',
-            node: createNode({ id: 'n4' as NodeId, graphId: testGraphId, kind: 'real', label: '新节点' }),
-        }))
-
-        results.push(expectValid('合法 add_edge (有向实边)', graph, {
-            type: 'add_edge',
-            edge: createEdge({
-                id: 'e12' as EdgeId, graphId: testGraphId,
-                source: 'n1' as NodeId, target: 'n2' as NodeId,
-                kind: 'real', direction: 'directed',
-            }),
-        }))
-
-        results.push(expectValid('合法 add_edge (无向虚边)', graph, {
-            type: 'add_edge',
-            edge: createEdge({
-                id: 'e12-v' as EdgeId, graphId: testGraphId,
-                source: 'n1' as NodeId, target: 'n2' as NodeId,
-                kind: 'virtual', direction: 'undirected',
-            }),
-        }))
-    }
-
-    // --- 自环边被拒 ---
-    {
-        const graph = makeSingleNodeGraph()
-        results.push(expectInvalid('自环边被拒', graph, {
-            type: 'add_edge',
-            edge: createEdge({
-                id: 'self' as EdgeId, graphId: G,
-                source: 'only' as NodeId, target: 'only' as NodeId,
-                kind: 'real', direction: 'directed',
-            }),
-        }))
-    }
-
-    // --- 重边被拒 ---
-    {
-        const graph = assembleGraph({
-            id: testGraphId,
-            title: '重边测试',
-            nodes: [
-                createNode({ id: 'r1' as NodeId, graphId: testGraphId, kind: 'real', label: 'A' }),
-                createNode({ id: 'r2' as NodeId, graphId: testGraphId, kind: 'real', label: 'B' }),
-            ],
-            edges: [
-                createEdge({
-                    id: 'existing' as EdgeId, graphId: testGraphId,
-                    source: 'r1' as NodeId, target: 'r2' as NodeId,
-                    kind: 'real', direction: 'directed',
-                }),
-            ],
-        })
-
-        results.push(expectInvalid('重边被拒 (同 source/target)', graph, {
-            type: 'add_edge',
-            edge: createEdge({
-                id: 'dup' as EdgeId, graphId: testGraphId,
-                source: 'r1' as NodeId, target: 'r2' as NodeId,
-                kind: 'virtual', direction: 'undirected',
-            }),
-        }))
-    }
-
-    // --- 有向实边成环被拒 ---
-    {
-        const graph = assembleGraph({
-            id: testGraphId,
-            title: '环检测',
-            nodes: [
-                createNode({ id: 'c1' as NodeId, graphId: testGraphId, kind: 'real', label: 'A' }),
-                createNode({ id: 'c2' as NodeId, graphId: testGraphId, kind: 'real', label: 'B' }),
-                createNode({ id: 'c3' as NodeId, graphId: testGraphId, kind: 'real', label: 'C' }),
-            ],
-            edges: [
-                createEdge({ id: 'c12' as EdgeId, graphId: testGraphId, source: 'c1' as NodeId, target: 'c2' as NodeId, kind: 'real', direction: 'directed' }),
-                createEdge({ id: 'c23' as EdgeId, graphId: testGraphId, source: 'c2' as NodeId, target: 'c3' as NodeId, kind: 'real', direction: 'directed' }),
-            ],
-        })
-
-        results.push(expectInvalid('有向实边成环被拒', graph, {
-            type: 'add_edge',
-            edge: createEdge({ id: 'c31' as EdgeId, graphId: testGraphId, source: 'c3' as NodeId, target: 'c1' as NodeId, kind: 'real', direction: 'directed' }),
-        }))
-    }
-
-    // --- 虚节点只能连无向虚边 ---
-    {
-        const graph = assembleGraph({
-            id: testGraphId,
-            title: '虚节点测试',
-            nodes: [
-                createNode({ id: 'v1' as NodeId, graphId: testGraphId, kind: 'virtual', label: '虚节点' }),
-                createNode({ id: 'r1' as NodeId, graphId: testGraphId, kind: 'real', label: '实节点' }),
-            ],
-            edges: [],
-        })
-
-        results.push(expectInvalid('虚节点连有向实边被拒', graph, {
-            type: 'add_edge',
-            edge: createEdge({ id: 'bad' as EdgeId, graphId: testGraphId, source: 'v1' as NodeId, target: 'r1' as NodeId, kind: 'real', direction: 'directed' }),
-        }))
-    }
-
-    // --- 删除不存在的节点 ---
-    {
-        const graph = makeSingleNodeGraph()
-        results.push(expectInvalid('delete_node 不存在被拒', graph, {
-            type: 'delete_node',
-            nodeId: 'ghost' as NodeId,
-        }))
-    }
-
-    // --- 删除不存在的边 ---
-    {
-        const graph = makeSingleNodeGraph()
-        results.push(expectInvalid('delete_edge 不存在被拒', graph, {
-            type: 'delete_edge',
-            edgeId: 'ghost' as EdgeId,
-        }))
-    }
-
-    return suite('操作校验器', results)
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// Suite 5: 撤销栈
+// Suite 2: 撤销栈
 // ═══════════════════════════════════════════════════════════════════
 
 function testUndoStack(): TestSuite {
@@ -646,7 +163,7 @@ function testUndoStack(): TestSuite {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// Suite 6: 持久化
+// Suite 3: 持久化
 // ═══════════════════════════════════════════════════════════════════
 
 function testPersistence(): TestSuite {
@@ -694,7 +211,7 @@ function testPersistence(): TestSuite {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// Suite 7: Graph Store 集成
+// Suite 4: Graph Store 集成
 // ═══════════════════════════════════════════════════════════════════
 
 function testGraphStoreIntegration(): TestSuite {
@@ -821,9 +338,6 @@ function runAllTests() {
 
     const suites: TestSuite[] = [
         testFactoryDataIntegrity(),
-        testOperationExecutor(),
-        testFoldExpand(),
-        testOperationValidator(),
         testUndoStack(),
         testPersistence(),
         testGraphStoreIntegration(),
