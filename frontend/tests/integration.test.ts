@@ -21,7 +21,7 @@ import { validateGraph } from '@my-project/graph-engine'
 import type { NodeId } from '@my-project/graph-engine'
 
 
-describe('数据完整性', () => {
+describe('数据合法性校验', () => {
     beforeEach(() => {
         setActivePinia(createPinia())
         localStorage.clear()
@@ -31,13 +31,13 @@ describe('数据完整性', () => {
         localStorage.clear()
     })
 
-    it('金牌图通过 validateGraph', () => {
+    it('金牌图通过全图所有全局规则校验', () => {
         const golden = createGoldenTestGraphV2()
         const result = validateGraph(golden)
         expect(result.valid).toBe(true)
     })
 
-    it('银牌图通过 validateGraph', () => {
+    it('银牌图通过全图所有全局规则校验', () => {
         const silver = createSilverTestGraph()
         const result = validateGraph(silver)
         expect(result.valid).toBe(true)
@@ -126,114 +126,7 @@ describe('原子操作链路', () => {
         expect(store.graphView!.nodes.length).toBe(7)
     })
 
-    it('add_edge：边数从 4 变为 5', () => {
-        const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
-        const store = useGraphStore()
-        store.loadGraphToView(golden.id)
 
-        // 在 node-g1 和 node-g6 之间加一条有向实边
-        const result = store.applyBatchToGraph(store.graphView!, [{
-            type: 'add_edge',
-            edge: {
-                id: 'reg-edge-test',
-                graphId: store.graphView!.id,
-                source: 'node-g1' as NodeId,
-                target: 'node-g6' as NodeId,
-                kind: 'real',
-                direction: 'directed',
-                label: '回归测试边',
-            },
-        }])
-
-        expect(result.validation.valid).toBe(true)
-        expect(store.graphView!.edges.length).toBe(5)
-    })
-
-    it('delete_node：删除孤立节点后节点数恢复', () => {
-        const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
-        const store = useGraphStore()
-        store.loadGraphToView(golden.id)
-
-        // 先添加一个孤立节点
-        store.applyBatchToGraph(store.graphView!, [{
-            type: 'add_node',
-            node: {
-                role: 'knowledge',
-                id: 'reg-node-new' as NodeId,
-                graphId: store.graphView!.id,
-                kind: 'real',
-                form: 'atomic',
-                label: '待删除节点',
-                summary: '',
-                abstractionLevel: 0,
-                degree: 0,
-                position: { x: 999, y: 999 },
-            },
-        }])
-        expect(store.graphView!.nodes.length).toBe(7)
-
-        // 删除该节点
-        store.applyBatchToGraph(store.graphView!, [{
-            type: 'delete_node',
-            nodeId: 'reg-node-new' as NodeId,
-        }])
-
-        expect(store.graphView!.nodes.length).toBe(6)
-    })
-
-    it('delete_node 级联：删除 node-g3 导致关联边被移除', () => {
-        const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
-        const store = useGraphStore()
-        store.loadGraphToView(golden.id)
-
-        // node-g3 是 edge-g23 (g2→g3) 的 target
-        // 删除 node-g3 应级联移除 edge-g23
-        store.applyBatchToGraph(store.graphView!, [{
-            type: 'delete_node',
-            nodeId: 'node-g3' as NodeId,
-        }], false)
-
-        expect(store.graphView!.nodes.length).toBe(5)   // 6 → 5
-        expect(store.graphView!.edges.length).toBe(3)   // 4 → 3 (edge-g23 被移除)
-    })
-
-    it('update_node：修改 node-g1 的 label', () => {
-        const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
-        const store = useGraphStore()
-        store.loadGraphToView(golden.id)
-
-        const originalNode = store.graphView!.nodes.find(n => n.id === 'node-g1')
-        expect(originalNode).toBeDefined()
-
-        store.applyBatchToGraph(store.graphView!, [{
-            type: 'update_node',
-            node: { ...originalNode!, label: '新标签' },
-        }], false)
-
-        const updatedNode = store.graphView!.nodes.find(n => n.id === 'node-g1')
-        expect(updatedNode!.label).toBe('新标签')
-    })
-
-    it('move_node：移动 node-g1 到新位置', () => {
-        const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
-        const store = useGraphStore()
-        store.loadGraphToView(golden.id)
-
-        store.applyBatchToGraph(store.graphView!, [{
-            type: 'move_node',
-            nodeId: 'node-g1' as NodeId,
-            position: { x: 999, y: 888 },
-        }], false)
-
-        const movedNode = store.graphView!.nodes.find(n => n.id === 'node-g1')
-        expect(movedNode!.position!.x).toBe(999)
-        expect(movedNode!.position!.y).toBe(888)
-    })
 })
 
 

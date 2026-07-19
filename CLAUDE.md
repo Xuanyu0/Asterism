@@ -1,5 +1,11 @@
 # Asterism
 
+## 外部参考文档
+
+[Vue 3 官方文档](https://cn.vuejs.org/guide/introduction.html)
+[HTML 基础 参考文档](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Structuring_content)
+[CSS 基础 参考文档](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Styling_basics)
+
 ## 核心定义
 
 - **狭义 GraphData**：`packages/graph-engine/src/types/graph_data.ts` 定义的图结构类型。
@@ -24,6 +30,15 @@
     - 工具逻辑 + 中间变量：每个工具拥有自己的激活状态、光标样式、画布点击处理、操作构造
     - 数据修改：委托 Runtime 层 `graphStore.applyBatchToGraph`
   - 不负责：GraphData 存储、持久化、UI 模式切换
+
+## 测试命令
+
+```bash
+# 跑所有前端测试
+pnpm --filter frontend test
+# 跑所有 GE 测试
+pnpm --filter @my-project/graph-engine test
+```
 
 ## 项目定位
 
@@ -344,22 +359,21 @@ GraphData 是唯一事实源。修改 GraphData 的两条合法路径：
 3. **代码按现有规范自由修改**，无需额外确认。
 4. 此规则旨在确保用户（而非 AI）是设计文档的唯一作者——AI 的产出进入对话和代码，不进设计文档。
 
-### 设计文档层级与冲突处理
+### 文档层级与冲突处理
 
 `docs/` 下三个子目录存在严格的权威层级：
 
-| 层级 | 目录 | 权威 | 内容性质 |
-|------|------|------|---------|
-| L1 | `docs/设计/` | **最高** | 用户亲手书写的设计定义、交互规则、视觉规范。最直接反映用户意志。 |
-| L2 | `docs/开发文档/` | 次高 | 开发指南、步骤规划、架构决策。服务于实现，不可违背 L1。 |
-| L3 | `docs/spec/` | 参考 | 技术规格说明，由开发过程派生，可随实现演进。 |
+| 层级 | 目录 | 角色 | 生命周期 | 内容 |
+|------|------|------|---------|------|
+| L1 | `docs/设计/` | 产品 spec | 持久 | 用户亲手书写的设计定义、交互规则、视觉规范。描述产品意图与用户体验目标。 |
+| L2 | `docs/*开发文档/` | 过程文档 | 临时（完成后归档） | 步骤文档（步骤划分、进度跟踪、难度评估、产出 commit 的引用）和发现文档（BUG / 改进 / 不确定项）。服务于实现过程，不可违背 L1。 |
+| L3 | `docs/impl-spec/` | 施工手册 | 一次性 | Agent 执行时的工程契约。包含功能需求、验收标准、scope guard、交互规则。溯源引用 L1 |
 
 **冲突处理规则**：
 
 1. 出现设计冲突时，**优先参考上级文档**。L1 > L2 > L3。
-2. 当开发文档中的技术决策与设计文档的意图矛盾时，以设计文档为准。
-3. 当 spec 中的实现细节与开发文档矛盾时，以开发文档为准。
-4. 若上级文档未覆盖某话题，下级文档的结论为有效默认值。
+2. 当施工 spec（L3）与设计文档（L1）的意图矛盾时，以设计文档为准。
+3. 若施工 spec 未覆盖某话题，开发文档的结论为有效默认值。否则就根据L1设计自行推导，最后作为不确定项向上报告
 
 ### 文档检索规范
 
