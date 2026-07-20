@@ -7,8 +7,9 @@
  *     1. 挂载 Cytoscape 容器
  *     2. 初始化 Cytoscape Renderer
  *     3. 监听 GraphData 变化并同步渲染
- *     4. 绑定 Cytoscape 语义交互事件
- *     5. 挂载 GraphNodeWindow、GraphOperationToolbar 与 GraphModeSelector
+ *     4. 绑定 Cytoscape 语义交互事件（tap / cxttap / dblclick）
+ *     5. 双击节点导航子图（引用节点→源图、抽象节点→子图、子图节点→父图）
+ *     6. 挂载 GraphNodeWindow、GraphOperationToolbar 与 GraphModeSelector
  *
  * 前端机制（Vue 3 框架行为）：
  *     - <script setup lang="ts">：
@@ -32,6 +33,7 @@
  */
 
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import type { NodeId } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
 
@@ -166,6 +168,62 @@ onMounted(() => {
 
             onRightClick() {
                 mediator.onRightClick()
+            },
+
+            onNodeDoubleClicked(nodeId: NodeId) {
+                // 步骤 A：工具激活检查 — 有工具激活时不执行导航
+                if (mediator.activeHandler.value?.onNodeClick !== undefined) {
+                    return
+                }
+
+                // 防御：graphView 为 null 时无图可操作
+                if (!graphStore.graphView) {
+                    return
+                }
+
+                // 步骤 B：查找节点数据
+                const node = graphStore.graphView.nodes.find(n => n.id === nodeId)
+                if (!node) {
+                    return
+                }
+
+                // 步骤 C：按优先级决定导航目标
+                let targetGraphId: string | undefined
+                let focusNodeId: string | undefined
+
+                // 优先级 1：引用节点 → 跳转到源节点所在图
+                // discriminated union：node.role === 'reference' 后 node 自动窄化为 ReferenceNodeData
+                if (node.role === 'reference' && node.sourceGraphId) {
+                    targetGraphId = node.sourceGraphId
+                    focusNodeId = node.sourceNodeId
+                }
+                // 优先级 2：抽象节点 → 跳转子图
+                else if (node.childGraphId) {
+                    targetGraphId = node.childGraphId
+                }
+                // 优先级 3：子图中的普通节点 → 跳转父图
+                else if (graphStore.graphView.parentGraphId) {
+                    targetGraphId = graphStore.graphView.parentGraphId
+                }
+                // 优先级 4：根图中的普通节点 → 空操作
+                else {
+                    return
+                }
+
+                // 步骤 D：清理 + 导航
+                operationController.closeFloatingWindow()
+                mediator.deactivate()
+
+                // loadGraphToView 可能失败（目标图丢失等），
+                // 失败后 graphView 保持在旧图，不执行后续 focus
+                if (!graphStore.loadGraphToView(targetGraphId)) {
+                    return
+                }
+
+                // 步骤 E：引用节点追加定位
+                if (focusNodeId) {
+                    operationController.requestCanvasFocus(focusNodeId)
+                }
             },
         })
     }

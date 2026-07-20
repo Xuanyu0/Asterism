@@ -62,12 +62,12 @@ interface CardPosition {
     y: number
 }
 
+const DEFAULT_CARD_POSITION: CardPosition = { x: 52, y: 12 }
+const CARD_POSITION_STORAGE_KEY = 'nav-card-position'
+
 const cardPosition = ref<CardPosition>(loadPersistedCardPosition())
 const cardElement = ref<HTMLElement | null>(null)
 const isDragging = ref(false)
-
-const DEFAULT_CARD_POSITION: CardPosition = { x: 52, y: 12 }
-const CARD_POSITION_STORAGE_KEY = 'nav-card-position'
 /**
  * 功能：
  *
@@ -535,7 +535,6 @@ watch(hasOpenPanel, (open) => {
 })
 
 // ── 路径截断检测：仅真正溢出时施加左端淡化 ──
-
 const pathStripElement = ref<HTMLElement | null>(null)
 const isPathTruncated = ref(false)
 
@@ -692,6 +691,8 @@ onBeforeUnmount(() => {
             >
                 <MagnifyingGlassIcon class="size-4" />
             </button>
+
+            <div class="dock-divider"></div>
 
             <button
                 type="button"

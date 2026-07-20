@@ -4,7 +4,7 @@
  *
  * 总体结构：
  *     1. GraphCanvasPosition
- *     2. GraphInteractionHandlers
+ *     2. GraphInteractionHandlers（tap / cxttap / dblclick）
  *     3. useGraphInteraction()
  *
  * 外部如何使用：
@@ -40,6 +40,7 @@ export interface GraphInteractionHandlers {
     onNodeClicked?: (nodeId: NodeId) => void
     onEdgeClicked?: (edgeId: EdgeId) => void
     onRightClick?: () => void
+    onNodeDoubleClicked?: (nodeId: NodeId) => void
 }
 
 /**
@@ -86,5 +87,15 @@ export function useGraphInteraction(
 
     cy.on('cxttap', () => {
         handlers.onRightClick?.()
+    })
+
+    cy.on('dblclick', (event: EventObject) => {
+        if (event.target.isNode()) {
+            handlers.onNodeDoubleClicked?.(
+                event.target.id() as NodeId,
+            )
+        }
+
+        // 画布双击和边双击：不处理（不调用任何 handler）
     })
 }
