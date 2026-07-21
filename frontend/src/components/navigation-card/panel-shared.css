@@ -1,0 +1,51 @@
+/* ── 浮层面板 ── */
+
+.floating-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 288px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(6px);
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.floating-panel.opens-upward {
+    top: auto;
+    bottom: calc(100% + 6px);
+}
+
+.floating-panel.align-right {
+    left: auto;
+    right: 0;
+}
+
+/* ── 输入框 ── */
+
+.text-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 5px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #1e293b;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.text-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.search-input {
+    width: 100%;
+}
