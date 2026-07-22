@@ -408,7 +408,7 @@ export const useGraphStore = defineStore('graph_store', () => {
      *
      * 消费者：
      *
-     *     graph_operations（induce / internalize / diverge 调用前构造 lookupGraph 参数）
+     *     operation_controller（induce / internalize / diverge 调用前构造 lookupGraph 参数）
      */
     function makeLookup(): GraphLookup {
         return (graphId: GraphId): GraphData | undefined => lookupGraph(graphRegistry.value, graphId)

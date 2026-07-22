@@ -90,10 +90,12 @@
  */
 
 import { computed, watch } from 'vue'
+import { useGraphStore } from '@/graph/graph_store'
 import { useOperationController } from '@/ui/operation_controller'
 import { useToolMediator } from '@/feature-tools/mediator'
 import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
 
+const graphStore = useGraphStore()
 const controller = useOperationController()
 const mediator = useToolMediator()
 
@@ -193,13 +195,67 @@ function handleFloatingSummaryInput(event: Event): void {
     editingData = { ...(editingData as KnowledgeNodeData), summary: target.value }
 }
 
+/**
+ * 功能：
+ *
+ *     确认已有节点编辑，转换为 update_node Operation。
+ *
+ * 规则：
+ *
+ *     1. 浮空窗确认后统一走 update_node operation。
+ *     2. 校验通过后关闭浮空窗。
+ */
+function confirmExistingNodeEdit(node: NodeData): void {
+    if (!graphStore.graphView) {
+        return
+    }
+
+    const result = graphStore.applyBatchToGraph(graphStore.graphView, [{
+        type: 'update_node',
+        node,
+    }])
+
+    graphStore.lastValidationResult = result.validation
+
+    if (result.validation.valid) {
+        controller.closeFloatingWindow()
+    }
+}
+
+/**
+ * 功能：
+ *
+ *     确认已有边编辑，转换为 update_edge Operation。
+ *
+ * 规则：
+ *
+ *     1. 浮空窗确认后统一走 update_edge operation。
+ *     2. 校验通过后关闭浮空窗。
+ */
+function confirmExistingEdgeEdit(edge: EdgeData): void {
+    if (!graphStore.graphView) {
+        return
+    }
+
+    const result = graphStore.applyBatchToGraph(graphStore.graphView, [{
+        type: 'update_edge',
+        edge,
+    }])
+
+    graphStore.lastValidationResult = result.validation
+
+    if (result.validation.valid) {
+        controller.closeFloatingWindow()
+    }
+}
+
 function handleFloatingConfirm(): void {
     if (!editingData) return
 
     if (isEdgeData(editingData)) {
-        controller.confirmExistingEdgeEdit(editingData)
+        confirmExistingEdgeEdit(editingData)
     } else {
-        controller.confirmExistingNodeEdit(editingData)
+        confirmExistingNodeEdit(editingData)
     }
 
     editingData = null
