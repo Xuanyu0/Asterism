@@ -3,7 +3,8 @@
  *
  * 功能：
  *
- *     通用 DOM 水平溢出检测。判断宿主元素的 scrollWidth 是否超过 clientWidth，
+ *     通用 DOM 水平溢出检测。
+ *     判断宿主元素的 scrollWidth 是否超过 clientWidth，
  *     用于触发截断/淡化等溢出视觉反馈。
  *
  * 规则：

@@ -177,7 +177,7 @@ applyBatch(graph, ops):
 
 - 动画是渲染层视觉过渡，不是数据层职责。引擎只输出最终位置，不持有时间轴状态。
 - 批量 `move_node` 逐一 `apply()` 后，渲染层 watch GraphData 变化统一触发多节点动画。
-- 当前 `use_cytoscape_renderer.ts` 中设 `autoungrabify: true`，Phase 2 进入 Arrangement 模式时改为 `cy.nodes().grabify()` 启用拖拽。
+- 当前 `use_cytoscape_renderer.ts` 中设 `autoungrabify: true`，Phase 2 进入 Arrangement 模式时改为 `cy.nodes().grabify()` 启用拾取放置。
 
 **Adjust 的连续性区分**：
 
@@ -186,7 +186,7 @@ applyBatch(graph, ops):
 | **Adjust Distance** | 连续 | `adjustDistanceStep` → `{ position, blocked }` | `adjustDistanceCommit` → `ComposeResult` |
 | **Adjust Orbit** | 离散 | `adjustOrbitStep` → `{ position, tier, angle, blocked }` | `adjustOrbitCommit` → `ComposeResult` |
 
-Adjust Orbit 融合了原 Adjust Angle 的操作语义——拖拽同时改变角度和层级（离散档位），节点的角度跟踪鼠标位置，层级吸附至最近轨道。
+Adjust Orbit 融合了原 Adjust Angle 的操作语义——拾取放置同时改变角度和层级（离散档位），节点的角度跟踪鼠标位置，层级吸附至最近轨道。
 
 **层级术语**：
 

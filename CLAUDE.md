@@ -5,6 +5,7 @@
 [Vue 3 官方文档](https://cn.vuejs.org/guide/introduction.html)
 [HTML 基础 参考文档](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Structuring_content)
 [CSS 基础 参考文档](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Styling_basics)
+[Tailwind CSS 参考文档](https://tailwindcss.zhcndoc.com/docs/styling-with-utility-classes)
 
 ## 核心定义
 

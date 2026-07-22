@@ -12,17 +12,11 @@
  *     1. 接口只定义契约，不含实现。
  *     2. 引擎核心不调用此接口——由 Pinia store 在保存 / 加载时调用。
  *     3. load / save / delete / list 均为异步操作，支持未来切换到网络存储。
+ *     4. 当前 frontend 已实现 localStorageAdapter 但 graph_store.ts 尚未接入——
+ *        后者仍直接调用 saveGraph() / loadG raph() 等同步函数。
+ *        等需要换存储（IndexedDB / Supabase）时再做同步→异步迁移，
+ *        届时 graph_store.ts 改用 localStorageAdapter 接口即可。
  *
- * 外部如何使用：
- *     import type { PersistenceAdapter } from '@my-project/graph-engine'
- *
- *     前端实现：
- *         const localStorageAdapter: PersistenceAdapter = {
- *             load: async (id) => { ... localStorage.getItem(...) ... },
- *             save: async (graph) => { ... localStorage.setItem(...) ... },
- *             delete: async (id) => { ... localStorage.removeItem(...) ... },
- *             list: async () => { ... Object.keys(localStorage).filter(...) ... },
- *         }
  */
 
 import type { GraphData, GraphId } from '../types/graph_data'
