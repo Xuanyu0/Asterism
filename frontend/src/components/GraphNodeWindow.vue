@@ -59,7 +59,7 @@
                 Confirm
             </button>
 
-            <button class="btn-secondary" v-on:click="controller.closeFloatingWindow">
+            <button class="btn-secondary" v-on:click="uiStore.closeFloatingWindow">
                 Cancel
             </button>
         </div>
@@ -91,17 +91,17 @@
 
 import { computed, watch } from 'vue'
 import { useGraphStore } from '@/graph/graph_store'
-import { useOperationController } from '@/ui/operation_controller'
+import { useUIStore } from '@/ui/ui_store'
 import { useToolMediator } from '@/feature-tools/mediator'
 import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
 
 const graphStore = useGraphStore()
-const controller = useOperationController()
+const uiStore = useUIStore()
 const mediator = useToolMediator()
 
 const draftNode = computed(() => mediator.activeHandler.value?.draftNode ?? null)
 
-const floatingData = computed(() => controller.ui.state.floatingWindowData)
+const floatingData = computed(() => uiStore.floatingWindowData)
 
 watch(floatingData, () => {
     editingData = null
@@ -218,7 +218,7 @@ function confirmExistingNodeEdit(node: NodeData): void {
     graphStore.lastValidationResult = result.validation
 
     if (result.validation.valid) {
-        controller.closeFloatingWindow()
+        uiStore.closeFloatingWindow()
     }
 }
 
@@ -245,7 +245,7 @@ function confirmExistingEdgeEdit(edge: EdgeData): void {
     graphStore.lastValidationResult = result.validation
 
     if (result.validation.valid) {
-        controller.closeFloatingWindow()
+        uiStore.closeFloatingWindow()
     }
 }
 

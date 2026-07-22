@@ -40,8 +40,9 @@ import { useGraphStore } from '@/graph/graph_store'
 import { mapGraphDataToCyElements } from '@/render/graph_element_mapper.ts'
 import { useCytoscapeRenderer } from '@/render/use_cytoscape_renderer.ts'
 import { useGraphInteraction } from '@/render/use_graph_interaction.ts'
-import { useOperationController } from '@/ui/operation_controller'
+import { useUIStore } from '@/ui/ui_store'
 import { useToolMediator } from '@/feature-tools/mediator'
+import { useDefaultTool } from '@/feature-tools/default'
 import { useDeconstructTool } from '@/feature-tools/cognition/deconstruct'
 
 import GraphNodeWindow from '@/components/GraphNodeWindow.vue'
@@ -54,7 +55,7 @@ const cyContainer = ref<HTMLDivElement | null>(null)
 
 const graphStore = useGraphStore()
 const renderer = useCytoscapeRenderer(cyContainer)
-const operationController = useOperationController()
+const uiStore = useUIStore()
 const mediator = useToolMediator()
 
 /**
@@ -117,6 +118,10 @@ onMounted(() => {
         graphStore.loadGraphToView(rootId)
     }
 
+    // 注册 default 工具——启动时激活为 baseline
+    mediator.register('default', useDefaultTool())
+    mediator.activate('default')
+
     // 注册认知工具 handler（3.0-1：deconstruct 作为原型）
     mediator.register('deconstruct', useDeconstructTool())
 
@@ -137,27 +142,13 @@ onMounted(() => {
             },
 
             onNodeClicked(nodeId) {
-                // 统一走 mediator——有活跃 handler 时转发事件
-                const activeHandler = mediator.activeHandler.value
-                if (activeHandler?.onNodeClick) {
-                    mediator.onNodeClick(nodeId)
-                    return
-                }
-
-                // 无活跃 handler 时回退浮空窗
-                operationController.handleNodeClicked({ nodeId })
+                // 统一走 mediator——活跃 handler 或 default 工具 fallback 自动处理
+                mediator.onNodeClick(nodeId)
             },
 
             onEdgeClicked(edgeId) {
-                // 统一走 mediator——有活跃 handler 时转发事件
-                const activeHandler = mediator.activeHandler.value
-                if (activeHandler?.onEdgeClick) {
-                    mediator.onEdgeClick(edgeId)
-                    return
-                }
-
-                // 无活跃 handler 时回退浮空窗
-                operationController.handleEdgeClicked({ edgeId })
+                // 统一走 mediator——活跃 handler 或 default 工具 fallback 自动处理
+                mediator.onEdgeClick(edgeId)
             },
 
             onRightClick() {
@@ -165,8 +156,9 @@ onMounted(() => {
             },
 
             onNodeDoubleClicked(nodeId: NodeId) {
-                // 步骤 A：工具激活检查 — 有工具激活时不执行导航
-                if (mediator.activeHandler.value?.onNodeClick) {
+                // 步骤 A：工具激活检查 — 有非默认工具激活时不执行导航
+                const activeToolId = mediator.activeToolId.value
+                if (activeToolId !== null && activeToolId !== 'default') {
                     return
                 }
 
@@ -205,7 +197,7 @@ onMounted(() => {
                 }
 
                 // 步骤 D：清理 + 导航
-                operationController.closeFloatingWindow()
+                uiStore.closeFloatingWindow()
                 mediator.deactivate()
 
                 // loadGraphToView 可能失败（目标图丢失等），
@@ -216,7 +208,7 @@ onMounted(() => {
 
                 // 步骤 E：引用节点追加定位
                 if (focusNodeId) {
-                    operationController.requestCanvasFocus(focusNodeId)
+                    uiStore.requestCanvasFocus(focusNodeId)
                 }
             },
         })
@@ -331,14 +323,14 @@ watchPendingTarget(
  *     2. 本监听不修改 GraphData。
  */
 watch(
-    () => operationController.ui.state.pendingCanvasFocusId,
+    () => uiStore.pendingCanvasFocusId,
     (targetId) => {
         if (!targetId) {
             return
         }
 
         renderer.revealElement(targetId)
-        operationController.clearCanvasFocus()
+        uiStore.clearCanvasFocus()
     },
 )
 

@@ -73,8 +73,12 @@ function createRouter() {
         if (activeHandler.value) {
             activeHandler.value.deactivate()
         }
-        activeToolId.value = null
-        activeHandler.value = null
+
+        // 恢复 default 工具作为 baseline
+        const defaultHandler = registry.get('default')!
+        defaultHandler.activate()
+        activeToolId.value = 'default'
+        activeHandler.value = defaultHandler
     }
 
     // ── 事件转发 ──

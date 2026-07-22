@@ -31,6 +31,17 @@ beforeEach(() => {
     saveGraph(golden)
     const store = useGraphStore()
     store.loadGraphToView(golden.id)
+    // 注册 mock default 工具（`deactivate()` 需要 restore default）
+    const mediator = useToolMediator()
+    const mockDefault: ToolHandler = {
+        id: 'default',
+        isActive: false,
+        activate() { (mockDefault as any).isActive = true },
+        deactivate() { (mockDefault as any).isActive = false },
+        cursorClass: null,
+        notification: null,
+    }
+    mediator.register('default', mockDefault)
 })
 
 
@@ -79,14 +90,15 @@ describe('useToolMediator', () => {
         expect(mediator.activeToolId.value).toBeNull()
     })
 
-    it('deactivate 取消', () => {
+    it('deactivate 取消并恢复 default', () => {
         const handler = useAddNodeTool('real')
         mediator.register('add-real-node', handler)
         mediator.activate('add-real-node')
         expect(mediator.activeToolId.value).toBe('add-real-node')
 
         mediator.deactivate()
-        expect(mediator.activeToolId.value).toBeNull()
+        // deactivate() 自动恢复 default 工具
+        expect(mediator.activeToolId.value).toBe('default')
     })
 
     it('事件转发到 activeHandler', () => {
@@ -112,13 +124,14 @@ describe('useToolMediator', () => {
         expect(capturedPos).toEqual({ x: 150, y: 250 })
     })
 
-    it('onRightClick 取消活跃工具', () => {
+    it('onRightClick 取消活跃工具并恢复 default', () => {
         const handler = useAddNodeTool('real')
         mediator.register('add-real-node', handler)
         mediator.activate('add-real-node')
         expect(mediator.activeToolId.value).toBe('add-real-node')
 
         mediator.onRightClick()
-        expect(mediator.activeToolId.value).toBeNull()
+        // onRightClick → deactivate() → 自动恢复 default
+        expect(mediator.activeToolId.value).toBe('default')
     })
 })

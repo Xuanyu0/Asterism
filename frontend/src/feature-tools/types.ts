@@ -73,7 +73,7 @@ export type ArrangementTool =
  * 功能：
  *     全工具联合类型。包含所有可激活的工具 ID。
  */
-export type ToolId = OperationTool | CognitionTool | ArrangementTool
+export type ToolId = OperationTool | CognitionTool | ArrangementTool | 'default'
 
 /**
  * 功能：

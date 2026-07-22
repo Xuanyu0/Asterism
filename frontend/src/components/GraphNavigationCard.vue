@@ -31,7 +31,7 @@ import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { GraphId } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useOperationController } from '@/ui/operation_controller'
+import { useUIStore } from '@/ui/ui_store'
 import { useToolMediator } from '@/feature-tools/mediator'
 import { useDragPosition } from '@/composables/useDragPosition'
 import { useAutoFade } from '@/composables/useAutoFade'
@@ -42,7 +42,7 @@ import NavigationPanel from '@/components/navigation-card/NavigationPanel.vue'
 import SearchPanel from '@/components/navigation-card/SearchPanel.vue'
 
 const graphStore = useGraphStore()
-const controller = useOperationController()
+const uiStore = useUIStore()
 const mediator = useToolMediator()
 
 // ── 拖拽 ──
@@ -110,7 +110,7 @@ const currentRootId = computed(() => graphStore.graphPath[0] ?? null)
 const isAtRoot = computed(() => graphStore.graphPath.length <= 1)
 
 function switchGraphTo(graphId: GraphId): void {
-    controller.closeFloatingWindow()
+    uiStore.closeFloatingWindow()
     mediator.deactivate()
     graphStore.loadGraphToView(graphId)
 }
@@ -224,7 +224,7 @@ onBeforeUnmount(() => {
                 key="search"
                 v-bind:panel-opens-upward="panelOpensUpward"
                 v-bind:panel-align-right="panelAlignRight"
-                v-on:focus-element="(id: string) => controller.requestCanvasFocus(id)"
+                v-on:focus-element="(id: string) => uiStore.requestCanvasFocus(id)"
                 v-on:close="closePanels"
             />
         </Transition>

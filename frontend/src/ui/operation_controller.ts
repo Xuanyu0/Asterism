@@ -3,18 +3,17 @@
  *
  * 功能：
  *
- *     纯 UI 适配层。负责事件路由回退和认知/布局操作编排。
+ *     纯 UI 适配层。负责认知/布局操作编排。
  *     工具栏工具事件已由 tools/tool_mediator 接管。
  *     模式管理已由 tools/tool_mediator 统一接管（3.0-1）。
+ *     默认路由已由 feature-tools/default.ts 接管（3.0-2）。
  *
  * 总体结构：
  *
- *     1. 语义事件 Payload 定义
+ *     1. 私有辅助函数
  *     2. useOperationController()：
  *        - 认知操作  — induce / internalize / diverge / explore / unearth
  *        - 布局操作  — moveNode
- *        - 事件分派  — handleNodeClicked / handleEdgeClicked（无工具时打开浮空窗）
- *        - 画布定位请求  — requestCanvasFocus / clearCanvasFocus
  *
  * 规则：
  *
@@ -25,14 +24,12 @@
  *
  * 外部如何使用：
  *
- *     Graph.vue、GraphNodeWindow.vue、GraphModeSelector.vue、
- *     GraphNavigationCard.vue 调用本文件。
+ *     GraphModeSelector.vue 调用本文件。
  */
 
 import type {
     NodeId,
     EdgeId,
-    GraphPosition,
     GraphData,
     NodeRadiusMap,
 } from '@my-project/graph-engine'
@@ -51,48 +48,6 @@ import { moveNode as composeMoveNode } from '@my-project/graph-engine'
 import { induce as composeInduce } from '@my-project/graph-engine'
 import { internalize as composeInternalize } from '@my-project/graph-engine'
 import { diverge as composeDiverge } from '@my-project/graph-engine'
-
-
-// ── 语义事件 Payload ──
-
-/**
- * 功能：
- *
- *     画布点击语义事件。
- *
- * 规则：
- *
- *     1. 坐标来自 Cytoscape 交互适配层。
- */
-export type CanvasClickedPayload = GraphPosition
-
-/**
- * 功能：
- *
- *     节点点击语义事件。
- *
- * 规则：
- *
- *     1. 只表达用户点击了哪个节点。
- *     2. 不携带 Cytoscape 原始事件。
- */
-export interface NodeClickedPayload {
-    nodeId: NodeId
-}
-
-/**
- * 功能：
- *
- *     边点击语义事件。
- *
- * 规则：
- *
- *     1. 只表达用户点击了哪条边。
- *     2. 不携带 Cytoscape 原始事件。
- */
-export interface EdgeClickedPayload {
-    edgeId: EdgeId
-}
 
 
 // ── 模块级私有辅助函数 ──
@@ -136,9 +91,10 @@ function findCommonLayer(graphRegistry: GraphRegistry): GraphData | undefined {
 /**
  * 功能：
  *
- *     提供 UI 操作控制器——认知/布局操作编排和事件路由回退。
+ *     提供 UI 操作控制器——认知/布局操作编排。
  *     工具栏工具事件已由 tools/tool_mediator 接管。
  *     模式管理已由 tools/tool_mediator 统一接管（3.0-1）。
+ *     默认路由已由 feature-tools/default.ts 接管（3.0-2）。
  *
  * 规则：
  *
@@ -150,7 +106,7 @@ function findCommonLayer(graphRegistry: GraphRegistry): GraphData | undefined {
  * 使用：
  *
  *     const controller = useOperationController()
- *     controller.handleNodeClicked({ nodeId: '...' })
+ *     controller.induce(nodeIds)
  */
 export function useOperationController() {
     const graphStore = useGraphStore()
@@ -422,88 +378,10 @@ export function useOperationController() {
         graphStore.lastValidationResult = batchResult.validation
     }
 
-    // ── 浮空窗关闭 ──
-
-    /**
-     * 功能：
-     *
-     *     关闭浮空窗并清理校验结果。
-     *
-     * 规则：
-     *
-     *     1. 不影响 GraphData。
-     *     2. 不取消 DraftNode。
-     */
-    function closeFloatingWindow(): void {
-        uiStore.closeFloatingWindow()
-    }
-
-    // ── 事件分派 ──
-
-    /**
-     * 功能：
-     *
-     *     处理节点点击——打开浮空窗。
-     *     工具栏工具和认知/布局工具事件由 mediator 转发。
-     *
-     * 规则：
-     *
-     *     1. 本函数仅为画布上无工具激活时的默认回退行为。
-     *     2. 有工具激活时事件由 mediator 转发至 activeHandler。
-     */
-    function handleNodeClicked(
-        payload: NodeClickedPayload,
-    ): void {
-        // 默认行为：打开节点编辑浮空窗
-        const node = graphStore.graphView?.nodes.find(node => node.id === payload.nodeId)
-        if (node) {
-            uiStore.openFloatingWindow(node)
-        }
-    }
-
-    /**
-     * 功能：
-     *
-     *     处理边点击——打开浮空窗。工具栏工具事件由 router 转发。
-     */
-    function handleEdgeClicked(
-        payload: EdgeClickedPayload,
-    ): void {
-        const edge = graphStore.graphView?.edges.find(potentialEdge => potentialEdge.id === payload.edgeId)
-        if (edge) {
-            uiStore.openFloatingWindow(edge)
-        }
-    }
-
-    // ── 画布定位请求 ──
-
-    /**
-     * 功能：
-     *
-     *     请求画布视口定位到指定元素（节点/边）。
-     *     意图写入 ui_store，由 Graph.vue 消费并交给 renderer 执行。
-     *
-     * 参数：
-     *
-     *     targetId — 目标节点/边的 ID，与渲染元素的 id 一致。
-     */
-    function requestCanvasFocus(targetId: string): void {
-        uiStore.requestCanvasFocus(targetId)
-    }
-
-    /**
-     * 功能：
-     *
-     *     清除画布定位请求。由消费方（Graph.vue）在执行后调用。
-     */
-    function clearCanvasFocus(): void {
-        uiStore.clearCanvasFocus()
-    }
-
     // ── 公开 API ──
 
     return {
-        // 认知操作（3.0-1 待迁移至 ToolHandler：induce / internalize / diverge）
+        // 认知操作
         explore,
         unearth,
         induce,
@@ -511,32 +389,5 @@ export function useOperationController() {
         diverge,
         // 布局操作
         moveNode,
-        // 交互事件
-        handleNodeClicked,
-        handleEdgeClicked,
-        // 画布定位请求
-        requestCanvasFocus,
-        clearCanvasFocus,
-        // 浮空窗关闭
-        closeFloatingWindow,
-
-        /**
-         * 只读 UI 状态通道。包含 uiStore 的全部可读字段。
-         *
-         * 规则：
-         *
-         *     1. 组件读取 UI 状态必须通过 `controller.ui.state.xxx`。
-         *     2. 禁止通过本通道执行 uiStore 的写操作。
-         *     3. 所有 UI 状态写入必须调用 controller 的公开方法。
-         *
-         * 注意：
-         *
-         *     本约束是架构规约而非编译器保护——
-         *     组件层仍可直接 import { useUIStore } 绕过。
-         *     ui.state 是在代码中做视觉提醒，不是安全屏障。
-         */
-        ui: {
-            state: uiStore,
-        },
     }
 }
