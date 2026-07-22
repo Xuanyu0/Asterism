@@ -348,23 +348,39 @@ export const useGraphStore = defineStore('graph_store', () => {
      * 功能：
      *
      *     创建一个新的空根图并持久化。
+     *     若提供 id 且该 id 对应的图已存在，则跳过创建直接返回 id（幂等）。
      *
      *     本函数不自动切换视图——调用方如需显示新图，需额外调用 loadGraphToView。
      *
      * 规则：
      *
-     *     1. 使用引擎 generateGraphId() 生成 ID。
-     *     2. 根图的 parentGraphId 和 ownerNodeId 为 undefined。
-     *     3. 创建后立即保存到 localStorage 并注册到 registry。
-     *     4. 不修改 graphView / graphPath 等运行时状态。
+     *     1. 默认使用引擎 generateGraphId() 生成 ID。
+     *     2. 可通过 opts.id 指定固定 ID——幂等保证，图已存在则跳过创建。
+     *     3. 根图的 parentGraphId 和 ownerNodeId 为 undefined。
+     *     4. 创建后立即保存到 localStorage 并注册到 registry。
+     *     5. 不修改 graphView / graphPath 等运行时状态。
+     *
+     * 参数：
+     *
+     *     title — 根图名称
+     *     opts  — 可选。opts.id 指定固定 GraphId（幂等——已存在则跳过）
      *
      * 使用：
      *
      *     const graphId = graphStore.createRootGraph('My Graph')
      *     graphStore.loadGraphToView(graphId)
+     *
+     *     // 固定 ID——幂等，反复调用不会覆盖已有数据：
+     *     const graphId = graphStore.createRootGraph('金牌测试图', { id: 'graph-golden' })
      */
-    function createRootGraph(title: string): GraphId {
-        const id = generateGraphId()
+    function createRootGraph(title: string, opts?: { id?: GraphId }): GraphId {
+        const id = opts?.id ?? generateGraphId()
+
+        // 幂等：若指定了 ID 且图已存在，直接返回，不覆盖
+        if (opts?.id && loadGraph(opts.id)) {
+            return id
+        }
+
         const graph: GraphData = {
             id,
             kind: 'root',

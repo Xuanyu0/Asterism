@@ -16,13 +16,13 @@
                     class="mode-selector-list"
                 >
                     <button
-                        v-bind:class="{ active: uiStore.interactionMode === 'cognition' }"
+                        v-bind:class="{ active: activeMode === 'cognition' }"
                         v-on:click="setMode('cognition')"
                     >
                         Cognition
                     </button>
                     <button
-                        v-bind:class="{ active: uiStore.interactionMode === 'arrangement' }"
+                        v-bind:class="{ active: activeMode === 'arrangement' }"
                         v-on:click="setMode('arrangement')"
                     >
                         Arrangement
@@ -33,7 +33,7 @@
             <!-- Cognition 子操作 -->
             <Transition name="slide-left">
                 <div
-                    v-if="!showModeSelector && uiStore.interactionMode === 'cognition'"
+                    v-if="!showModeSelector && activeMode === 'cognition'"
                     class="cognition-action-list"
                 >
                     <button v-on:click="controller.explore()">
@@ -43,10 +43,8 @@
                         Unearth
                     </button>
                     <button
-                        v-bind:class="{ active: uiStore.selectedCognitionAction === 'deconstruct' }"
-                        v-on:click="controller.selectCognitionAction(
-                            uiStore.selectedCognitionAction === 'deconstruct' ? null : 'deconstruct'
-                        )"
+                        v-bind:class="{ active: mediator.activeToolId.value === 'deconstruct' }"
+                        v-on:click="mediator.activate('deconstruct')"
                     >
                         Deconstruct
                     </button>
@@ -60,7 +58,7 @@
             </Transition>
 
             <!-- Arrangement 占位 -->
-            <div v-if="!showModeSelector && uiStore.interactionMode === 'arrangement'">
+            <div v-if="!showModeSelector && activeMode === 'arrangement'">
                 <span class="placeholder-text">Arrangement — Phase 2</span>
             </div>
         </div>
@@ -82,32 +80,27 @@
  *
  * 前端机制（Vue 3 框架行为）：
  *     - computed：Vue 响应式计算属性。依赖的值变化时自动重新计算，且有缓存。
- *     - watch：响应式观察者。interactionMode 变化时自动关闭模式选择列。
+ *     - 模式列显隐通过本地 activeMode ref 管理。
  *
  * 外部如何使用：
  *     Graph.vue 挂载本组件。
  */
 
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 
 import { useOperationController } from '@/ui/operation_controller'
+import { useToolMediator } from '@/feature-tools/mediator'
 
 const controller = useOperationController()
-const uiStore = controller.ui.state
+const mediator = useToolMediator()
 
 const showModeSelector = ref(false)
 
-// 未来这里需要进行优化
-const modeButtonLabel = computed(() => {
-    switch (uiStore.interactionMode) {
-        case 'cognition': return 'C'
-        case 'arrangement': return 'A'
-        default: return 'C'
-    }
-})
+// 当前展开的模式列。本地状态管理，替代已移除的 uiStore.interactionMode。
+const activeMode = ref<'cognition' | 'arrangement' | null>('cognition')
 
-watch(() => uiStore.interactionMode, () => {
-    showModeSelector.value = false
+const modeButtonLabel = computed(() => {
+    return activeMode.value === 'arrangement' ? 'A' : 'C'
 })
 
 function toggleModeSelector(): void {
@@ -115,8 +108,8 @@ function toggleModeSelector(): void {
 }
 
 function setMode(mode: 'cognition' | 'arrangement'): void {
-    if (mode === 'cognition') controller.enterCognitionMode()
-    else controller.enterArrangementMode()
+    mediator.deactivate()
+    activeMode.value = mode
     showModeSelector.value = false
 }
 </script>

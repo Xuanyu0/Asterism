@@ -2,16 +2,16 @@
  * test_runtime.ts
  *
  * 功能：
- *     开发期测试运行入口。通过 test_case_factory 生成测试数据并加载到 graph_store。
- *     所有测试图均经过全量 schema 校验（GraphValidator.validateGraph）。
+ *     开发期测试运行入口。金牌图构造逻辑已迁入 bootstrap.ts（graphStore 操作路径）。
+ *     本文件仅保留浏览器控制台 API（window.loadXXX）和各测试图的重载函数。
  *
  * 总体结构：
- *     1. initTestRuntime：应用启动时自动加载默认测试图
+ *     1. initTestRuntime：空函数（构造逻辑已迁入 bootstrap.ts）
  *     2. exposeTestRuntimeToWindow：暴露测试函数到浏览器 window 对象
- *     3. 测试函数：切换当前图到各种拓扑
+ *     3. 测试函数：从 localStorage 重载各测试图
  *
  * 使用方式：
- *     main.ts 调用 initTestRuntime() + exposeTestRuntimeToWindow()
+ *     bootstrap.ts 中 inline 构造金牌图并调用 exposeTestRuntimeToWindow()
  *     浏览器控制台：
  *         window.loadGoldenGraph()
  *         window.loadChainDAG(5)
@@ -25,7 +25,6 @@ import { useGraphStore } from '@/graph/graph_store'
 import { saveGraph, loadGraph } from '@/graph/graph_persistence'
 
 import {
-    createGoldenTestGraphV2,
     createSilverTestGraph,
     createChainDAG,
     createEdgeMatrixGraph,
@@ -37,25 +36,16 @@ import {
 import type { GraphId } from '@my-project/graph-engine'
 
 // ═══════════════════════════════════════════════════════════════
-// 启动时初始化
+// 启动时初始化（现为空函数——构造逻辑已迁入 bootstrap.ts）
 // ═══════════════════════════════════════════════════════════════
 
 /**
  * 功能：
- *     应用启动时加载默认测试图。
- *
- * 规则：
- *     1. Pinia 必须已安装（createPinia + app.use(pinia) 在 main.ts 中先执行）。
- *     2. 当前默认使用金牌测试图（覆盖所有已实现节点/边类型）。
- *     3. 如需换图，修改此处调用即可。
+ *     应用启动时初始化函数。金牌图构造逻辑已迁入 bootstrap.ts，
+ *     本函数保留为空以保持 API 兼容。
  */
 export function initTestRuntime(): void {
-    const graphStore = useGraphStore()
-
-    // 构造并持久化金牌测试图对（父 + 子）+ 银牌测试图对
-    const goldenGraph = createGoldenTestGraphV2()
-    saveGraph(goldenGraph)
-    graphStore.loadGraphToView(goldenGraph.id)
+    // 构造逻辑已迁移至 bootstrap.ts -> bootstrapDevTools()
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -93,17 +83,18 @@ export function exposeTestRuntimeToWindow(): void {
 
 /**
  * 功能：
- *     加载金牌测试图（冒烟测试，覆盖所有节点/边类型）。
+ *     从 localStorage 重载金牌测试图（bootstrap.ts 已预先构造并持久化）。
  */
 function loadGoldenGraph(): void {
     const graphStore = useGraphStore()
 
-    // 一并创建金牌和银牌测试图
-    const graph = createGoldenTestGraphV2()
-    saveGraph(graph)
-    graphStore.loadGraphToView(graph.id)
-
-    console.log('✅ 已加载金牌测试图（V2，含子图+银牌对）')
+    const graph = loadGraph('graph-golden' as GraphId)
+    if (graph) {
+        graphStore.loadGraphToView(graph.id)
+        console.log('✅ 已加载金牌测试图（含子图+银牌对）')
+    } else {
+        console.error('❌ 金牌测试图未找到。请通过 bootstrapDevTools() 构造。')
+    }
 }
 
 /**
@@ -116,7 +107,6 @@ function loadGoldenGraph(): void {
 function loadSilverGraph(): void {
     const graphStore = useGraphStore()
 
-    // createGoldenTestGraphV2 内部已确保银牌图持久化，但若直接调 silver 需检查
     let graph = loadGraph('graph-silver' as GraphId)
     if (!graph) {
         graph = createSilverTestGraph()
@@ -214,5 +204,3 @@ function loadDeleteUndoGraph(): void {
 
     console.log('✅ 已加载删除/撤销测试图')
 }
-
-

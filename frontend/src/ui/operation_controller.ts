@@ -3,16 +3,17 @@
  *
  * 功能：
  *
- *     纯 UI 适配层。负责交互模式管理、认知/布局操作编排和事件路由。
+ *     纯 UI 适配层。负责事件路由回退和认知/布局操作编排。
  *     工具栏工具事件已由 tools/tool_mediator 接管。
+ *     模式管理已由 tools/tool_mediator 统一接管（3.0-1）。
  *
  * 总体结构：
  *
  *     1. 语义事件 Payload 定义
  *     2. useOperationController()：
- *        - 模式切换  — enterCognitionMode / enterArrangementMode
- *        - 认知操作选择  — selectCognitionAction / selectArrangementAction
- *        - 事件分派  — handleNodeClicked / handleEdgeClicked
+ *        - 认知操作  — induce / internalize / diverge / explore / unearth
+ *        - 布局操作  — moveNode
+ *        - 事件分派  — handleNodeClicked / handleEdgeClicked（无工具时打开浮空窗）
  *        - 画布定位请求  — requestCanvasFocus / clearCanvasFocus
  *
  * 规则：
@@ -35,7 +36,6 @@ import type {
     GraphData,
     NodeRadiusMap,
 } from '@my-project/graph-engine'
-import type { CognitionAction, ArrangementAction } from '@/types/ui_types'
 import type { GraphRegistry } from '@/graph/graph_registry'
 
 import { useGraphStore } from '@/graph/graph_store'
@@ -48,7 +48,6 @@ import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
 // compose — arrangement
 import { moveNode as composeMoveNode } from '@my-project/graph-engine'
 // compose — cognitive
-import { deconstruct as composeDeconstruct } from '@my-project/graph-engine'
 import { induce as composeInduce } from '@my-project/graph-engine'
 import { internalize as composeInternalize } from '@my-project/graph-engine'
 import { diverge as composeDiverge } from '@my-project/graph-engine'
@@ -137,8 +136,9 @@ function findCommonLayer(graphRegistry: GraphRegistry): GraphData | undefined {
 /**
  * 功能：
  *
- *     提供 UI 操作控制器——交互模式/认知操作状态管理。
+ *     提供 UI 操作控制器——认知/布局操作编排和事件路由回退。
  *     工具栏工具事件已由 tools/tool_mediator 接管。
+ *     模式管理已由 tools/tool_mediator 统一接管（3.0-1）。
  *
  * 规则：
  *
@@ -150,7 +150,6 @@ function findCommonLayer(graphRegistry: GraphRegistry): GraphData | undefined {
  * 使用：
  *
  *     const controller = useOperationController()
- *     controller.enterCognitionMode()
  *     controller.handleNodeClicked({ nodeId: '...' })
  */
 export function useOperationController() {
@@ -182,44 +181,6 @@ export function useOperationController() {
      */
     function unearth(_targetNodeId?: NodeId, _targetEdgeId?: EdgeId): void {
         // TODO: Phase 3 — AI Runtime 发掘入口
-    }
-
-    /**
-     * 功能：
-     *
-     *     解构——单个原子实节点转换为抽象节点 + 空子图 + 沟通节点。
-     *
-     * 规则：
-     *
-     *     1. 委托引擎 composeDeconstruct 产出 operations。
-     *     2. applyBatchToGraph 统一提交到 graphView。
-     *     3. add_graph 操作由 graphStore 统一注册并持久化新子图。
-     */
-    function deconstruct(nodeId: NodeId): void {
-        if (!graphStore.graphView || !nodeId) {
-            return
-        }
-
-        const result = composeDeconstruct({
-            nodeId,
-            parentGraph: graphStore.graphView,
-        })
-
-        if (hasErrors(result.issues)) {
-            graphStore.lastValidationResult = {
-                valid: false,
-                issues: mapComposeIssues(result.issues, 'node', nodeId),
-            }
-
-            return
-        }
-
-        const batchResult = graphStore.applyBatchToGraph(
-            graphStore.graphView,
-            result.operations,
-        )
-
-        graphStore.lastValidationResult = batchResult.validation
     }
 
     /**
@@ -477,48 +438,23 @@ export function useOperationController() {
         uiStore.closeFloatingWindow()
     }
 
-    // ── 模式入口 ──
-
-    function enterCognitionMode(): void {
-        uiStore.setInteractionMode('cognition')
-    }
-    function enterArrangementMode(): void {
-        uiStore.setInteractionMode('arrangement')
-    }
-
-    // ── 认知操作选择 ──
-
-    function selectCognitionAction(action: CognitionAction | null): void {
-        uiStore.selectCognitionAction(action)
-    }
-    function selectArrangementAction(action: ArrangementAction | null): void {
-        uiStore.selectArrangementAction(action)
-    }
-
     // ── 事件分派 ──
 
     /**
      * 功能：
      *
-     *     处理节点点击——认知操作分派或打开浮空窗。
-     *     工具栏工具事件由 router 转发。
+     *     处理节点点击——打开浮空窗。
+     *     工具栏工具和认知/布局工具事件由 mediator 转发。
      *
      * 规则：
      *
-     *     1. 认知操作优先：deconstruct → 执行解构并清除选中。
-     *     2. 无激活认知操作 → 打开节点编辑浮空窗。
+     *     1. 本函数仅为画布上无工具激活时的默认回退行为。
+     *     2. 有工具激活时事件由 mediator 转发至 activeHandler。
      */
     function handleNodeClicked(
         payload: NodeClickedPayload,
     ): void {
-        // 认知操作优先——用户先点了工具栏的 Deconstruct，再点击节点
-        if (uiStore.selectedCognitionAction === 'deconstruct') {
-            deconstruct(payload.nodeId)
-            uiStore.selectCognitionAction(null)
-            return
-        }
-
-        // 无工具/认知操作 → 打开浮空窗
+        // 默认行为：打开节点编辑浮空窗
         const node = graphStore.graphView?.nodes.find(node => node.id === payload.nodeId)
         if (node) {
             uiStore.openFloatingWindow(node)
@@ -567,16 +503,9 @@ export function useOperationController() {
     // ── 公开 API ──
 
     return {
-        // 模式入口
-        enterCognitionMode,
-        enterArrangementMode,
-        // 认知操作选择
-        selectCognitionAction,
-        selectArrangementAction,
-        // 认知操作
+        // 认知操作（3.0-1 待迁移至 ToolHandler：induce / internalize / diverge）
         explore,
         unearth,
-        deconstruct,
         induce,
         internalize,
         diverge,
@@ -597,7 +526,7 @@ export function useOperationController() {
          * 规则：
          *
          *     1. 组件读取 UI 状态必须通过 `controller.ui.state.xxx`。
-         *     2. 禁止通过本通道执行 uiStore 的写操作（setInteractionMode 等）。
+         *     2. 禁止通过本通道执行 uiStore 的写操作。
          *     3. 所有 UI 状态写入必须调用 controller 的公开方法。
          *
          * 注意：

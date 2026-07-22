@@ -25,7 +25,6 @@
 import { ref, shallowRef, type ShallowRef, type Ref } from 'vue'
 
 import type { ToolId, ToolHandler } from './types'
-import { useUIStore } from '@/ui/ui_store'
 
 
 // ── 模块级单例 ──
@@ -34,8 +33,6 @@ let singleton: ReturnType<typeof createRouter> | null = null
 
 
 function createRouter() {
-    const uiStore = useUIStore()
-
     // ── 状态 ──
 
     const activeToolId: Ref<ToolId | null> = ref(null)
@@ -96,12 +93,6 @@ function createRouter() {
 
     function onRightClick(): void {
         deactivate()
-        if (uiStore.selectedCognitionAction !== null) {
-            uiStore.selectCognitionAction(null)
-        }
-        if (uiStore.selectedArrangementAction !== null) {
-            uiStore.selectArrangementAction(null)
-        }
     }
 
     return {

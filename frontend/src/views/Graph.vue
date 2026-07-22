@@ -42,6 +42,7 @@ import { useCytoscapeRenderer } from '@/render/use_cytoscape_renderer.ts'
 import { useGraphInteraction } from '@/render/use_graph_interaction.ts'
 import { useOperationController } from '@/ui/operation_controller'
 import { useToolMediator } from '@/feature-tools/mediator'
+import { useDeconstructTool } from '@/feature-tools/cognition/deconstruct'
 
 import GraphNodeWindow from '@/components/GraphNodeWindow.vue'
 import NotificationPanel from '@/components/NotificationPanel.vue'
@@ -63,23 +64,13 @@ const mediator = useToolMediator()
  *
  * 规则：
  *
- *     工具栏工具光标由 mediator.activeHandler 提供。
- *     认知操作/布局操作的光标仍由独立逻辑决定。
+ *     所有工具光标由 mediator.activeHandler 的 cursorClass 统一提供。
  */
 const containerClasses = computed(() => {
-    const s = operationController.ui.state
-
-    // 工具光标：由 active handler 提供
     const toolCursor = mediator.activeHandler.value?.cursorClass
     if (toolCursor) {
         return { [toolCursor]: true }
     }
-
-    // 解构操作：crosshair 光标，提示用户选择目标节点
-    if (s.selectedCognitionAction === 'deconstruct') {
-        return { 'cursor-deconstruct': true }
-    }
-
     return {}
 })
 
@@ -126,6 +117,9 @@ onMounted(() => {
         graphStore.loadGraphToView(rootId)
     }
 
+    // 注册认知工具 handler（3.0-1：deconstruct 作为原型）
+    mediator.register('deconstruct', useDeconstructTool())
+
     renderer.mount()
 
     if (graphStore.graphView) {
@@ -143,26 +137,26 @@ onMounted(() => {
             },
 
             onNodeClicked(nodeId) {
-                // 工具事件优先由 router 转发
-                const handledByRouter = mediator.activeHandler.value?.onNodeClick !== undefined
-                if (handledByRouter) {
+                // 统一走 mediator——有活跃 handler 时转发事件
+                const activeHandler = mediator.activeHandler.value
+                if (activeHandler?.onNodeClick) {
                     mediator.onNodeClick(nodeId)
                     return
                 }
 
-                // 无工具时走 cognition/浮空窗
+                // 无活跃 handler 时回退浮空窗
                 operationController.handleNodeClicked({ nodeId })
             },
 
             onEdgeClicked(edgeId) {
-                // 工具事件优先由 router 转发
-                const handledByRouter = mediator.activeHandler.value?.onEdgeClick !== undefined
-                if (handledByRouter) {
+                // 统一走 mediator——有活跃 handler 时转发事件
+                const activeHandler = mediator.activeHandler.value
+                if (activeHandler?.onEdgeClick) {
                     mediator.onEdgeClick(edgeId)
                     return
                 }
 
-                // 无工具时走浮空窗
+                // 无活跃 handler 时回退浮空窗
                 operationController.handleEdgeClicked({ edgeId })
             },
 
@@ -172,7 +166,7 @@ onMounted(() => {
 
             onNodeDoubleClicked(nodeId: NodeId) {
                 // 步骤 A：工具激活检查 — 有工具激活时不执行导航
-                if (mediator.activeHandler.value?.onNodeClick !== undefined) {
+                if (mediator.activeHandler.value?.onNodeClick) {
                     return
                 }
 

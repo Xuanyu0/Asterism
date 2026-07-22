@@ -5,26 +5,75 @@
  *     工具交互架构的共享类型定义。
  *
  * 总体结构：
- *     1. ToolId — 8 种原子工具 ID（与 ui_types.OperationTool 同步）
- *     2. ToolNotification — 工具通知模型（如删除确认弹窗）
- *     3. ToolHandler — 工具处理器接口（DraftNode 类型由 add-node.ts 提供）
- *     4. ToolConfig — 注册表条目（按钮显示 + 处理器工厂）
+ *     1. OperationTool — 8 种原子工具 ID
+ *     2. CognitionTool — 认知演化操作 ID
+ *     3. ArrangementTool — 布局操作 ID
+ *     4. ToolId — 全工具联合类型
+ *     5. ToolNotification — 工具通知模型
+ *     6. ToolHandler — 工具处理器接口
+ *     7. ToolConfig — 注册表条目
  *
  * 外部如何使用：
- *     所有 handler 模块和 router 从本文件导入类型。
+ *     所有 handler 模块从本文件导入类型。
  */
 
 import type { Component } from 'vue'
-import type { OperationTool } from '@/types/ui_types'
 
 // 服务特定实现的类型
 import type { DraftNode } from './toolbar/add-node'
 
 /**
  * 功能：
- *     原子工具 ID。与 ui_types.ts 中 OperationTool 保持同步。
+ *     定义常驻工具栏下平铺的 8 种原子工具。
  */
-export type ToolId = OperationTool
+export type OperationTool =
+    | 'add-real-node'
+    | 'add-virtual-node'
+    | 'add-real-directed'
+    | 'add-real-undirected'
+    | 'add-virtual-directed'
+    | 'add-virtual-undirected'
+    | 'delete'
+    | 'fold'
+
+/**
+ * 功能：
+ *     定义 Cognition 模式下的认知演化操作。
+ *
+ * 规则：
+ *     1. CognitionTool 不直接等于图 CRUD。
+ *     2. 这些操作未来通常会进入 Graph Transform Runtime 或 AI Runtime。
+ */
+export type CognitionTool =
+    | 'explore'    // 探索
+    | 'unearth'    // 发掘
+    | 'deconstruct'    // 解构
+    | 'induce'    // 归纳
+    | 'internalize'    // 内化 / 常识化
+    | 'diverge'    // 发散
+
+/**
+ * 功能：
+ *     定义 Arrangement 模式下的布局操作。
+ *
+ * 规则：
+ *     1. 每种操作有独立的选择 → 预览 → 确认流程。
+ *     2. move 为单节点拖拽，不需要多选。
+ *     3. orbit / path 需要选择中心/轴心 + 多个目标节点。
+ *     4. adjustDistance / adjustOrbit 为连续微调操作。
+ */
+export type ArrangementTool =
+    | 'move'    // 单节点移动
+    | 'orbit'    // 环绕布局
+    | 'path'    // 路径布局
+    | 'adjustDistance'    // 调整距离
+    | 'adjustOrbit'    // 调整轨道
+
+/**
+ * 功能：
+ *     全工具联合类型。包含所有可激活的工具 ID。
+ */
+export type ToolId = OperationTool | CognitionTool | ArrangementTool
 
 /**
  * 功能：
