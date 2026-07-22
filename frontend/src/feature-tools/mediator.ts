@@ -25,6 +25,7 @@
 import { ref, shallowRef, type ShallowRef, type Ref } from 'vue'
 
 import type { ToolId, ToolHandler } from './types'
+import { useUIStore } from '@/ui/ui_store'
 
 
 // ── 模块级单例 ──
@@ -38,6 +39,7 @@ function createRouter() {
     const activeToolId: Ref<ToolId | null> = ref(null)
     const activeHandler: ShallowRef<ToolHandler | null> = shallowRef(null)
     const registry: Map<ToolId, ToolHandler> = new Map()
+    const uiStore = useUIStore()
 
     // ── 注册 ──
 
@@ -67,6 +69,9 @@ function createRouter() {
         handler.activate()
         activeToolId.value = id
         activeHandler.value = handler
+
+        // 切换工具时自动关闭浮空窗，避免旧浮空窗在非 default 工具下 Confirm 静默失败
+        uiStore.closeFloatingWindow()
     }
 
     function deactivate(): void {
