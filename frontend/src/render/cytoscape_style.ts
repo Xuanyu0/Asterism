@@ -126,6 +126,13 @@ export function createCytoscapeStyle() {
                 'border-style': 'double',
             },
         },
+        // 移动工具：碰撞冲突高亮
+        {
+            selector: '.move-collision',
+            style: {
+                'border-color': '#ef4444',
+            },
+        },
         // 搜索定位提示（revealElement 施加，1.2s 后移除）
         {
             selector: 'node.search-focus',

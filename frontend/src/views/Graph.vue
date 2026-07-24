@@ -93,14 +93,6 @@ const canvasErrorIssues = computed(() => {
 
 const activeNotification = computed(() => mediator.activeHandler.value?.notification ?? null)
 
-const showDeleteConfirm = computed(() => {
-    return activeNotification.value?.visible ?? false
-})
-
-const deleteTargetLabel = computed(() => {
-    return activeNotification.value?.message ?? ''
-})
-
 onMounted(() => {
     // 加载上次激活的根图谱
     graphStore.initRegistry()
@@ -412,15 +404,14 @@ onBeforeUnmount(() => {
 
         <!--
             功能：
-                删除确认面板。删除工具激活并选择了待定目标时显示。
+                工具通知面板。由活跃 handler 的 notification 字段驱动，
+                渲染 handler 自包含的完整消息文本。
         -->
         <NotificationPanel
-            v-bind:visible="showDeleteConfirm"
+            v-bind:visible="activeNotification?.visible ?? false"
             accent="red"
         >
-            <span>
-                再次点击将删除：<strong>{{ deleteTargetLabel }}</strong>
-            </span>
+            <span v-if="activeNotification">{{ activeNotification.message }}</span>
             <template #actions>
                 <button
                     type="button"

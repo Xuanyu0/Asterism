@@ -13,7 +13,6 @@
  *     1. 私有辅助函数
  *     2. useOperationController()：
  *        - 认知操作  — induce / internalize / diverge / explore / unearth
- *        - 布局操作  — moveNode
  *
  * 规则：
  *
@@ -31,19 +30,15 @@ import type {
     NodeId,
     EdgeId,
     GraphData,
-    NodeRadiusMap,
 } from '@my-project/graph-engine'
 import type { GraphRegistry } from '@/graph/graph_registry'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { useUIStore } from '@/ui/ui_store'
 
+import { computeNodeRadiusOverrides } from '@/graph/node_radius'
 import { mapComposeIssues, hasErrors } from '@/graph/issue_mapper'
 
-import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
-
-// compose — arrangement
-import { moveNode as composeMoveNode } from '@my-project/graph-engine'
 // compose — cognitive
 import { induce as composeInduce } from '@my-project/graph-engine'
 import { internalize as composeInternalize } from '@my-project/graph-engine'
@@ -51,25 +46,6 @@ import { diverge as composeDiverge } from '@my-project/graph-engine'
 
 
 // ── 模块级私有辅助函数 ──
-
-/**
- * 功能：
- *
- *     计算当前图全部节点的外接圆半径。
- *
- * 规则：
- *
- *     半径公式 r = r₀ · √(1 + degree)。
- */
-function computeNodeRadiusOverrides(graph: GraphData): NodeRadiusMap {
-    const map: NodeRadiusMap = new Map()
-
-    for (const node of graph.nodes) {
-        map.set(node.id, DEFAULT_LAYOUT_RULES.r0 * Math.sqrt(1 + node.degree))
-    }
-
-    return map
-}
 
 /**
  * 功能：
@@ -336,48 +312,6 @@ export function useOperationController() {
         graphStore.lastValidationResult = batchResult.validation
     }
 
-    // ── 布局操作 ──
-
-    /**
-     * 功能：
-     *
-     *     单节点移动。委托引擎 moveNode compose 函数做碰撞检测并产出 operations。
-     *
-     * 规则：
-     *
-     *     1. 引擎 moveNode 纯函数——返回 { drafts, issues, operations }。
-     *     2. 碰撞检测在引擎侧完成，前端根据 issues 判断是否可提交。
-     *     3. 当前直接执行——草稿预览 UI 在 Phase 2b 实现。
-     */
-    function moveNode(nodeId: NodeId, position: { x: number; y: number }): void {
-        if (!graphStore.graphView) {
-            return
-        }
-
-        const result = composeMoveNode({
-            nodeId,
-            desiredPosition: position,
-            allNodes: graphStore.graphView.nodes,
-            nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.graphView),
-        })
-
-        if (hasErrors(result.issues)) {
-            graphStore.lastValidationResult = {
-                valid: false,
-                issues: mapComposeIssues(result.issues, 'node', nodeId),
-            }
-
-            return
-        }
-
-        const batchResult = graphStore.applyBatchToGraph(
-            graphStore.graphView,
-            result.operations,
-        )
-
-        graphStore.lastValidationResult = batchResult.validation
-    }
-
     // ── 公开 API ──
 
     return {
@@ -387,7 +321,5 @@ export function useOperationController() {
         induce,
         internalize,
         diverge,
-        // 布局操作
-        moveNode,
     }
 }

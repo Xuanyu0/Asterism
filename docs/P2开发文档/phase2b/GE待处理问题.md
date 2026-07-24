@@ -27,6 +27,12 @@
   - 建议：标注 `@reserved` 或移除。裸露无行为的字段会腐蚀类型的可信度
   - 状态：待评估
 
+- **`hasCollisionAt` 仅返回布尔值，不暴露距离/临近信息**
+  - 位置：`packages/graph-engine/src/infrastructure/collision.ts:111`
+  - 描述：碰撞检测只返回"碰了 / 没碰"两个状态，前端实时预览时（move 工具 mousemove 每帧检测）红色高亮突然出现/消失，UX 不够平滑。若能区分"安全距离"、"接近（黄色预警）"、"碰撞（红色）"三级信息，交互体验更自然
+  - 建议：`hasCollisionAt` 返回 `{ blocked: boolean; clearance?: number }` 或新增 `hasProximityWarning` 函数
+  - 状态：待评估
+
 ## 已知隐患（已标记但尚未解决）
 
 | 发现 | 位置 | 影响范围 | 状态 |

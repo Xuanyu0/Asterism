@@ -47,15 +47,15 @@ export function useDeleteTool(): ToolHandler {
         }
 
         const nodeId = pendingDeleteNodeId.value
-        let message = '此边'
+        let targetLabel = '此边'
         if (nodeId !== null) {
             const node = graphStore.graphView?.nodes.find(n => n.id === nodeId)
-            message = node?.label ?? '此节点'
+            targetLabel = node?.label ?? '此节点'
         }
 
         return {
             visible: true,
-            message,
+            message: `再次点击将删除："${targetLabel}"`,
             onCancel: clearPending,
         }
     })

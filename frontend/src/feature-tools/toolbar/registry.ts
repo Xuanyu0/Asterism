@@ -19,6 +19,7 @@ import {
     MinusIcon,
     TrashIcon,
     ChevronDownIcon,
+    ArrowsPointingOutIcon,
 } from '@heroicons/vue/24/outline'
 
 import VirtualNodeIcon from '@/assets/icon-virtual-node.svg?component'
@@ -29,6 +30,7 @@ import { useAddNodeTool } from './add-node'
 import { useAddEdgeTool } from './add-edge'
 import { useDeleteTool } from './delete'
 import { useFoldTool } from './fold'
+import { useMoveNodeTool } from './move_node'
 
 import type { ToolConfig } from '../types'
 
@@ -53,4 +55,6 @@ export const toolbarRegistry: ToolConfig[] = [
     // ── 工具组 ──
     { id: 'delete',                icon: TrashIcon,                   label: '删除',         useTool: () => useDeleteTool() },
     { id: 'fold',                  icon: ChevronDownIcon,             label: '折叠',         useTool: () => useFoldTool() },
+    // ── 工具组 ──
+    { id: 'move',                  icon: ArrowsPointingOutIcon,      label: '移动节点',     useTool: () => useMoveNodeTool() },
 ]

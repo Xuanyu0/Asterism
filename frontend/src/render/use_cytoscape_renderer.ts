@@ -28,6 +28,28 @@ import type { Ref } from 'vue'
 import type { CyElements } from './graph_element_mapper'
 import { createCytoscapeStyle } from './cytoscape_style'
 
+
+// ── 模块级 Cytoscape 实例引用 ──
+
+let cyInstance: Core | null = null
+
+/**
+ * 功能：
+ *     获取当前 Cytoscape 实例（模块级）。
+ *
+ * 规则：
+ *     1. mount() 创建实例后，本函数可获取该实例。
+ *     2. destroy() 调用后返回 null。
+ *     3. 供 move_node 等工具直接操作 Cy 视觉层（不写 GraphData）。
+ *
+ * 使用：
+ *     import { getCy } from '@/render/use_cytoscape_renderer'
+ *     const cy = getCy()
+ */
+export function getCyInstance(): Core | null {
+    return cyInstance
+}
+
 /**
  * 功能：
  *     创建 Cytoscape 渲染器运行时。
@@ -83,6 +105,8 @@ export function useCytoscapeRenderer(
 
         cy.resize()
         cy.fit()
+
+        cyInstance = cy
     }
 
     /**
@@ -141,6 +165,7 @@ export function useCytoscapeRenderer(
 
         cy.destroy()
         cy = null
+        cyInstance = null
     }
 
     /**

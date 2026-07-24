@@ -19,17 +19,17 @@
 - **Runtime 层**：位于前端的 GraphData 状态所有者，负责持有运行时状态（currentGraph / undoStack / registry）、编排引擎操作（调 Engine → 后处理）、实现持久化 I/O。Runtime 不负责 UI 渲染和纯函数转换，一定是框架绑定的（当前为 Pinia + Vue）
 - **Cytoscape 渲染层**：GraphData 的只读投影。接收 GraphData 渲染到画布，捕获交互事件后经 UI 适配层回流至 Runtime。禁止持有 GraphData 引用、禁止保存业务状态、禁止直接修改 GraphData
 - **工具**：前端页面中用户主动激活的状态。在此状态下，用户的画布交互（点击、拖拽）被解释为该工具特有的语义，并最终转化为对 GraphData 的修改。工具不直接操作 GraphData，通过 Runtime 层写入。目前按交互入口分为两类：
-  - 常驻操作栏工具：通过工具栏按钮激活，生命周期由 `tool_mediator.ts` 管理
-  - 模式子工具：先进入 Cogniton 或 Arrangement 模式，再选择具体操作
+  - 常驻操作栏工具：通过工具栏按钮激活，生命周期由 `feature-tools/mediator.ts` 管理
+  - 模式工具：先进入 Cogniton 或 Arrangement 模式，再选择具体操作
   - 规则：同一时刻最多一个工具处于激活状态，多个入口共享此互斥约束
-- **工具 UI/UX 层**：用户与工具的交互通道。采用"水平分层 + 垂直自包含"混合架构，以下是其包含的内容：
+- **交互逻辑层**：用户与工具的交互通道。采用"水平分层 + 垂直自包含"混合架构，以下是其包含的内容：
   - 水平分层（所有工具共享）：
-    - 按钮 UI 定义：`registry.ts`（图标、标签、处理器工厂）+ `GraphOperationToolbar.vue`（渲染）
-    - 生命周期管理：`tool_mediator.ts`（注册、激活/取消、互斥保证）
-    - 事件捕获与转发：`use_graph_interaction.ts`（Cytoscape 事件 → 语义事件）→ `tool_mediator.ts`（转发至活跃 handler）
+    - 按钮 UI 定义：`feature-tools/toolbar/registry.ts`（图标、标签、处理器工厂）+ `GraphOperationToolbar.vue`（渲染）
+    - 生命周期管理：`feature-tools/mediator.ts`（注册、激活/取消、互斥保证）
+    - 事件捕获与转发：`use_graph_interaction.ts`（Cytoscape 事件 → 语义事件）→ `feature-tools/mediator.ts`（转发至活跃 handler）
   - 垂直自包含（每个工具独立）：
     - 工具逻辑 + 中间变量：每个工具拥有自己的激活状态、光标样式、画布点击处理、操作构造
-    - 数据修改：委托 Runtime 层 `graphStore.applyBatchToGraph`
+    - 数据修改：委托 Runtime 层 `graphStore.applyBatch`
   - 不负责：GraphData 存储、持久化、UI 模式切换
 
 ## 测试命令
@@ -81,15 +81,31 @@ pnpm --filter @my-project/graph-engine test
 ```
 用户交互 (DOM)
     ↓
-UI 适配层 (operation_controller.ts / ui_store / draft_store)
-    ↓ 事件路由 + 模式/工具状态
-Runtime (graph_store.ts + graph_operations.ts + graph_persistence.ts)
-    ↓ 委托 Engine 纯函数转换 + 后处理
+交互逻辑层 (feature-tools/)
+    ├── mediator.ts         — 工具注册/激活/事件路由/互斥
+    ├── types.ts            — ToolHandler 接口
+    ├── toolbar/            — 常驻工具 handler（add-node, add-edge, delete, fold）
+    └── cognition/          — 认知工具 handler（deconstruct）
+    ↓  事件路由 via mediator
+Runtime (graph/)
+    ├── graph_store.ts      — Pinia store（currentGraph / undoStack / applyBatch）
+    ├── graph_persistence.ts— localStorage 持久化
+    └── graph_registry.ts   — 多图注册表（GraphId → GraphData）
+    ↓  委托纯函数
 GraphEngine (@my-project/graph-engine)
-    ↓ watch(currentGraph)
-渲染投影层 (graph_element_mapper.ts)
-    ↓ CyElements
-Cytoscape Renderer (use_cytoscape_renderer.ts)
+    ├── types/              — 类型定义
+    ├── core/               — validate / execute / replay / reversal
+    ├── compose/            — 认知编排 + 布局编排
+    ├── infrastructure/     — 碰撞检测 / 位置放置 / 搜索
+    └── spi/                — 持久化适配器接口
+    ↓  watch(currentGraph)
+渲染投影层 (render/)
+    ├── graph_element_mapper.ts  — GraphData → CyElements（只读）
+    ├── cytoscape_style.ts       — 视觉样式配置
+    └── use_graph_interaction.ts — Cytoscape 事件 → 语义事件
+    ↓  CyElements
+Cytoscape Renderer
+    └── use_cytoscape_renderer.ts — 挂载/同步/销毁
 ```
 
 ## 前端架构设计
@@ -99,17 +115,16 @@ Cytoscape Renderer (use_cytoscape_renderer.ts)
 - 对于 UX，代码中的状态设计应当遵循用户在交互时可感知的最小**交互单元**
 - 对于 UI 的架构设计，应当满足用户在页面上可见的最小可分类的**视觉单元**
 
-## 三个 Pinia Store
+## 两个 Pinia Store
 
 | Store | 职责 | 禁止 |
 |-------|------|------|
 | graph_store | GraphData 唯一事实源，当前图 / undoStack / registry 状态持有者 | Draft/Cytoscape 禁止进入 |
-| ui_store | 用户 UI 意图（交互模式、选中工具、浮空窗） | 不保存 GraphData |
-| draft_store | 临时草稿（DraftNode/DraftEdge），互斥 | 不直接进入 GraphData |
+| ui_store | 用户 UI 意图（浮窗状态、画布焦点） | 不保存 GraphData |
 
 ## 开发策略
 
-**Graph Engine 是整个项目的底层核心系统**，已作为独立、框架无关的 `@my-project/graph-engine` 包实现。前端通过 `graph_store.ts` + `graph_operations.ts` 调用引擎 API。
+**Graph Engine 是整个项目的底层核心系统**，已作为独立、框架无关的 `@my-project/graph-engine` 包实现。前端通过 `graph_store.ts` 直接调用引擎 API（`applyBatch` / compose 函数）。
 
 ## 开发阶段总览
 
@@ -119,7 +134,7 @@ Cytoscape Renderer (use_cytoscape_renderer.ts)
 
 1. **NodeWindow Runtime** — 统一 DraftNode 与 ExistingNode 编辑
 2. **OperationToolbar Runtime** — 完善 Add Edge / Delete / Fold
-3. **OperationController 收口** — 彻底封死 ui_store/draft_store 对外暴露
+3. **OperationController 收口** — 后期逐步剥离职责至 feature-tools/（后 draft_store 移除、OperationController 缩小为仅编排编排操作，待进一步清理）
 4. **Node Type 收口** — 引入 `NodeRole` 第一层判别，消除 `'normal'` 占位符，TS discriminated union
 
 ### Phase 2a：Graph Engine（架构核心层） ✅
@@ -136,7 +151,7 @@ Cytoscape Renderer (use_cytoscape_renderer.ts)
 - 操作回放：replayGraph / replayToStep
 - 前端已切到引擎全部 API，冗余代码已清理
 
-**Phase 2a 完成标志**：引擎作为独立的 `@my-project/graph-engine` 包运行，框架无关。前端仅通过 graph_store + graph_operations 两个文件（非 types import）调引擎，所有 import 指向引擎包。
+**Phase 2a 完成标志**：引擎作为独立的 `@my-project/graph-engine` 包运行，框架无关。前端仅通过 graph_store 调引擎（非 types import），所有 import 指向引擎包。
 
 ---
 
@@ -145,21 +160,6 @@ Cytoscape Renderer (use_cytoscape_renderer.ts)
 GE 的全部功能在前端完全落地，使 Cognition（除 explore / unearth）和 Arrangement 全部操作可用。
 
 **目标**：用户可以实质性地使用 Asterism 进行学习，完整支持图谱本地持久化和操作回溯。
-
-| 分类 | 任务 | 说明 |
-|------|------|------|
-| **Cognition** | induce / internalize 多选 UI | 用户在画布上框选或多个节点 → 执行归纳或内化 |
-| | diverge 跨图搜索 UI | 搜索浮空窗选择跨图节点 → 创建启发节点 + 有向虚边 |
-| | deconstruct 入口完善 | 已完成链路，确保 edge case 覆盖 |
-| **Arrangement** | moveNode 拖拽移动 | 画布上拖拽节点 → 引擎碰撞检测 → 确认写入 |
-| | orbit 环绕布局 | 选择中心 + 环绕节点 → 预览 → 确认写入 |
-| | path 路径布局 | 选择轴心 + 路径节点 → 预览 → 确认写入 |
-| | adjust distance / orbit | 连续调整节点位置，实时碰撞预览 |
-| **数据完整性** | 哨兵加载 | 启动时自动加载上次使用的图或新建空图，保证画布非空 |
-| | 图谱保存/加载 UI | saveCurrentGraph / loadGraphToCurrent 端到端链路 |
-| **操作回溯** | 操作日志 + undo | `undoStack` 升级为 `OperationLog`（树形操作树） |
-| | 回溯按钮（←） | 左下角 undo 按钮，cursor 边界灰掉。redo 延后 |
-| **错误反馈** | lastOperationValidation 读取端 | NodeWindow / KnowledgeGraph 中渲染 error message |
 
 **Phase 2b 完成标志 = MVP 交付**：
 
@@ -303,7 +303,7 @@ export interface XXX { }
 
 GraphData 是唯一事实源。修改 GraphData 的两条合法路径：
 1. **原子操作**：`graphStore.applyBatch([operation])`（单个 add/delete/update/move/fold/expand 包装为单元素数组）
-2. **编排操作**：`graph_operations.ts` → Engine applyBatch → `graphStore.currentGraph = ...`（deconstruct/induce/internalize/diverge 等认知操作）
+2. **编排操作**：Engine compose 函数返回新 GraphData → `graphStore.currentGraph = ...`（deconstruct / induce / internalize / diverge 等认知和布局操作）
 
 ### Import 组织规范
 
@@ -329,6 +329,18 @@ GraphData 是唯一事实源。修改 GraphData 的两条合法路径：
 | 纯函数辅助逻辑，只调 1 次 | ❌ 内联加注释 |
 | 纯函数辅助逻辑，被 ≥2 个函数调用 | ✅ 拆为辅助函数 |
 | export 为公开 API | ✅ 独立函数及文档注释 |
+
+### 私有函数放在文件末尾
+
+模块内部辅助函数（不 export）按调用链从公开到私有的顺序排列，即私有函数放在文件末尾。阅读者自上而下先看到公开 API，按需跳转到末尾的私有实现。
+
+```ts
+// 推荐的顺序
+export function publicApi() { ... }          // 公开函数在前
+
+function helperA() { ... }                   // 私有辅助在末尾
+function helperB() { ... }
+```
 
 ### Vue 模板语法规范
 

@@ -124,14 +124,14 @@ describe('useToolMediator', () => {
         expect(capturedPos).toEqual({ x: 150, y: 250 })
     })
 
-    it('onRightClick 取消活跃工具并恢复 default', () => {
+    it('onRightClick 执行 deactivate 并恢复 default', () => {
         const handler = useAddNodeTool('real')
         mediator.register('add-real-node', handler)
         mediator.activate('add-real-node')
         expect(mediator.activeToolId.value).toBe('add-real-node')
 
         mediator.onRightClick()
-        // onRightClick → deactivate() → 自动恢复 default
+        // 右键始终触发 deactivate，恢复 default
         expect(mediator.activeToolId.value).toBe('default')
     })
 })

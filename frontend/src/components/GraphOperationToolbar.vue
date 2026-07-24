@@ -104,7 +104,7 @@ function activateTool(btn: (typeof standingButtons)[number]): void {
     border-color: #3b82f6;
 }
 
-/* 组间间距（第3个=边组起点，第7个=工具组起点） */
+/* 组间间距 */
 .standing-toolbar > button:nth-child(3),
 .standing-toolbar > button:nth-child(7) {
     margin-left: 8px;

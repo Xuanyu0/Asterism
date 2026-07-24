@@ -128,7 +128,7 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
     function onCancel(): void {
         draftNode.value = null
     }
-    
+
     // ── 草稿管理 ──
     function updateDraftNode(patch: Partial<DraftNode>): void {
         if (!draftNode.value) {
