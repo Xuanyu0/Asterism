@@ -6,7 +6,7 @@
  *     1. createCytoscapeStyle()
  *
  * 外部如何使用：
- *     use_cytoscape_renderer.ts 调用本文件获取 Cytoscape 样式。
+ *     useRenderer.ts 调用本文件获取 Cytoscape 样式。
  *
  */
 
@@ -131,6 +131,13 @@ export function createCytoscapeStyle() {
             selector: '.move-collision',
             style: {
                 'border-color': '#ef4444',
+            },
+        },
+        // 移动工具：已拾取节点半透明
+        {
+            selector: '.move-picked',
+            style: {
+                'opacity': 0.4,
             },
         },
         // 搜索定位提示（revealElement 施加，1.2s 后移除）

@@ -26,7 +26,7 @@ import { useGraphStore } from '@/graph/graph_store'
 import { computeNodeRadiusOverrides } from '@/graph/node_radius'
 import { hasErrors } from '@/graph/issue_mapper'
 import { moveNode as composeMoveNode } from '@my-project/graph-engine'
-import { getCyInstance } from '@/render/use_cytoscape_renderer'
+import { getCyInstance } from '@/cytoscape/useRenderer'
 
 import type { NodeId } from '@my-project/graph-engine'
 

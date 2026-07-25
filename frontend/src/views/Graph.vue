@@ -37,9 +37,9 @@ import type { NodeId } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
 
-import { mapGraphDataToCyElements } from '@/render/graph_element_mapper.ts'
-import { useCytoscapeRenderer } from '@/render/use_cytoscape_renderer.ts'
-import { useGraphInteraction } from '@/render/use_graph_interaction.ts'
+import { mapGraphDataToCyElements } from '@/cytoscape/graph_element_mapper.ts'
+import { useRenderer } from '@/cytoscape/useRenderer.ts'
+import { bindCyEvents } from '@/cytoscape/graph_interaction.ts'
 import { useUIStore } from '@/ui/ui_store'
 import { useToolMediator } from '@/feature-tools/mediator'
 import { useDefaultTool } from '@/feature-tools/default'
@@ -54,7 +54,7 @@ import GraphNavigationCard from '@/components/GraphNavigationCard.vue'
 const cyContainer = ref<HTMLDivElement | null>(null)
 
 const graphStore = useGraphStore()
-const renderer = useCytoscapeRenderer(cyContainer)
+const renderer = useRenderer(cyContainer)
 const uiStore = useUIStore()
 const mediator = useToolMediator()
 
@@ -128,80 +128,28 @@ onMounted(() => {
     const cy = renderer.getInstance()
 
     if (cy) {
-        useGraphInteraction(cy, {
+        bindCyEvents(cy, {
             onCanvasClicked(position) {
                 mediator.onCanvasClick(position)
             },
-
             onNodeClicked(nodeId) {
-                // 统一走 mediator——活跃 handler 或 default 工具 fallback 自动处理
                 mediator.onNodeClick(nodeId)
             },
-
             onEdgeClicked(edgeId) {
-                // 统一走 mediator——活跃 handler 或 default 工具 fallback 自动处理
                 mediator.onEdgeClick(edgeId)
             },
-
             onRightClick() {
                 mediator.onRightClick()
             },
-
             onNodeDoubleClicked(nodeId: NodeId) {
                 // 步骤 A：工具激活检查 — 有非默认工具激活时不执行导航
                 const activeToolId = mediator.activeToolId.value
-                if (activeToolId !== null && activeToolId !== 'default') {
-                    return
-                }
+                if (activeToolId !== null && activeToolId !== 'default') return
 
-                // 防御：graphView 为 null 时无图可操作
-                if (!graphStore.graphView) {
-                    return
-                }
-
-                // 步骤 B：查找节点数据
-                const node = graphStore.graphView.nodes.find(n => n.id === nodeId)
-                if (!node) {
-                    return
-                }
-
-                // 步骤 C：按优先级决定导航目标
-                let targetGraphId: string | undefined
-                let focusNodeId: string | undefined
-
-                // 优先级 1：引用节点 → 跳转到源节点所在图
-                // discriminated union：node.role === 'reference' 后 node 自动窄化为 ReferenceNodeData
-                if (node.role === 'reference' && node.sourceGraphId) {
-                    targetGraphId = node.sourceGraphId
-                    focusNodeId = node.sourceNodeId
-                }
-                // 优先级 2：抽象节点 → 跳转子图
-                else if (node.childGraphId) {
-                    targetGraphId = node.childGraphId
-                }
-                // 优先级 3：子图中的普通节点 → 跳转父图
-                else if (graphStore.graphView.parentGraphId) {
-                    targetGraphId = graphStore.graphView.parentGraphId
-                }
-                // 优先级 4：根图中的普通节点 → 空操作
-                else {
-                    return
-                }
-
-                // 步骤 D：清理 + 导航
+                // 步骤 B：清理 + 导航（委托 mediator 转发至 default handler）
                 uiStore.closeFloatingWindow()
                 mediator.deactivate()
-
-                // loadGraphToView 可能失败（目标图丢失等），
-                // 失败后 graphView 保持在旧图，不执行后续 focus
-                if (!graphStore.loadGraphToView(targetGraphId)) {
-                    return
-                }
-
-                // 步骤 E：引用节点追加定位
-                if (focusNodeId) {
-                    uiStore.requestCanvasFocus(focusNodeId)
-                }
+                mediator.onNodeDoubleClick(nodeId)
             },
         })
     }
@@ -243,7 +191,7 @@ watch(
  *
  * 规则：
  *     1. Graph.vue 只负责组合 Runtime。
- *     2. GraphData 必须先通过 graph_element_mapper.ts 投影为 CyElements。
+ *     2. GraphData 必须先通过 graph_element_mapper.ts 映射为 CyElements。
  *     3. Renderer 只接收 CyElements，不直接接收 GraphData。
  *     4. 本监听不负责修改 GraphData。
  *     5. 本监听不负责决定图谱视角策略。

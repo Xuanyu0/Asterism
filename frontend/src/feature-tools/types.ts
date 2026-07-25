@@ -104,6 +104,7 @@ export interface ToolHandler {
     onCanvasClick?(pos: { x: number; y: number }): void
     onNodeClick?(nodeId: string): void
     onEdgeClick?(edgeId: string): void
+    onNodeDoubleClick?(nodeId: string): void
 
     onConfirm?(label: string, summary: string): void
     onCancel?(): void

@@ -5,7 +5,7 @@
  * 总体结构：
  *     1. GraphCanvasPosition
  *     2. GraphInteractionHandlers（tap / cxttap / dblclick）
- *     3. useGraphInteraction()
+ *     3. bindCyEvents()
  *
  * 外部如何使用：
  *     Graph.vue 在 renderer mount 后传入 cy 实例与语义事件回调。
@@ -52,33 +52,28 @@ export interface GraphInteractionHandlers {
  *     2. 只输出项目语义事件。
  *     3. 禁止读取 ui_store / graph_store。
  *     4. 禁止创建 GraphOperation。
+ *     5. 借用 vue 组合式函数的功能，但非真正的组合式函数
  *
  * 使用：
- *     useGraphInteraction(cy, handlers)
+ *     bindCyEvents(cy, handlers)
  */
-export function useGraphInteraction(
+export function bindCyEvents(
     cy: Core,
     handlers: GraphInteractionHandlers,
-): void {
+): { destroy(): void } {
     cy.on('tap', (event: EventObject) => {
         if (event.target === cy) {
             handlers.onCanvasClicked?.({
                 x: event.position.x,
                 y: event.position.y,
             })
-
-            return
         }
-
-        if (event.target.isNode()) {
+        else if (event.target.isNode()) {
             handlers.onNodeClicked?.(
                 event.target.id() as NodeId,
             )
-
-            return
         }
-
-        if (event.target.isEdge()) {
+        else if (event.target.isEdge()) {
             handlers.onEdgeClicked?.(
                 event.target.id() as EdgeId,
             )
@@ -98,4 +93,12 @@ export function useGraphInteraction(
 
         // 画布双击和边双击：不处理（不调用任何 handler）
     })
+
+    return {
+        destroy(): void {
+            cy.off('tap')
+            cy.off('cxttap')
+            cy.off('dblclick')
+        },
+    }
 }

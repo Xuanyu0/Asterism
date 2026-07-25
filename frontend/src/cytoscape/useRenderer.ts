@@ -11,14 +11,14 @@
  *
  * 外部如何使用：
  *     Graph.vue 在组件挂载后调用 mount() 创建 Cytoscape 实例，
- *     在 GraphData 投影结果变化后调用 syncElements() 同步渲染内容，
+ *     在 GraphData 映射结果变化后调用 syncElements() 同步渲染内容，
  *     在组件卸载前调用 destroy() 销毁 Cytoscape 实例。
  *
  * 规则：
  *     1. 本文件只负责 Cytoscape 生命周期与元素同步。
  *     2. 本文件不能读取或修改 GraphData。
  *     3. 本文件不能访问 graph_store、ui_store。
- *     4. 本文件接收的 elements 必须已经是 CyElements 投影结果。
+ *     4. 本文件接收的 elements 必须已经是 CyElements 映射结果。
  *     5. Cytoscape 不是事实源，只是 GraphData 的渲染器。
  */
 
@@ -43,8 +43,8 @@ let cyInstance: Core | null = null
  *     3. 供 move_node 等工具直接操作 Cy 视觉层（不写 GraphData）。
  *
  * 使用：
- *     import { getCy } from '@/render/use_cytoscape_renderer'
- *     const cy = getCy()
+ *     import { getCyInstance } from '@/cytoscape/useRenderer'
+ *     const cy = getCyInstance()
  */
 export function getCyInstance(): Core | null {
     return cyInstance
@@ -60,9 +60,9 @@ export function getCyInstance(): Core | null {
  *     3. 不在创建阶段立即初始化 Cytoscape，必须由 mount() 显式创建。
  *
  * 使用：
- *     const renderer = useCytoscapeRenderer(cyContainer)
+ *     const renderer = useRenderer(cyContainer)
  */
-export function useCytoscapeRenderer(
+export function useRenderer(
     containerRef: Ref<HTMLElement | null>,
 ) {
     let cy: Core | null = null
@@ -100,12 +100,10 @@ export function useCytoscapeRenderer(
             userPanningEnabled: true,
             userZoomingEnabled: true,
             autoungrabify: true,
-
         })
 
         cy.resize()
         cy.fit()
-
         cyInstance = cy
     }
 
@@ -115,7 +113,7 @@ export function useCytoscapeRenderer(
      *
      * 规则：
      *     1. elements 必须来自 graph_element_mapper.ts。
-     *     2. 本函数只接收投影结果，不接收 GraphData。
+     *     2. 本函数只接收映射结果，不接收 GraphData。
      *     3. 本函数不判断图规则合法性。
      *     4. 本函数不修改 graph_store。
      *

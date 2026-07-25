@@ -100,6 +100,10 @@ function createRouter() {
         activeHandler.value?.onEdgeClick?.(edgeId)
     }
 
+    function onNodeDoubleClick(nodeId: string): void {
+        activeHandler.value?.onNodeDoubleClick?.(nodeId)
+    }
+
     function onRightClick(): void {
         deactivate()
     }
@@ -114,6 +118,7 @@ function createRouter() {
         onCanvasClick,
         onNodeClick,
         onEdgeClick,
+        onNodeDoubleClick,
         onRightClick,
     }
 }

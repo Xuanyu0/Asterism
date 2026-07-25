@@ -6,6 +6,7 @@
 [HTML 基础 参考文档](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Structuring_content)
 [CSS 基础 参考文档](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Styling_basics)
 [Tailwind CSS 参考文档](https://tailwindcss.zhcndoc.com/docs/styling-with-utility-classes)
+[Cytoscape 参考文档](frontend/src/render)
 
 ## 核心定义
 
@@ -224,8 +225,14 @@ GE 的全部功能在前端完全落地，使 Cognition（除 explore / unearth�
 - ✅ `graph_store.ts`, `ui_store.ts`, `graph_operation_types.ts`, `graph_persistence.ts`
 - ❌ `GraphStore.ts`, `graphStore.ts`, `Graph_Store.ts`
 
-Vue 组件文件例外：统一 **PascalCase**（Vue 生态约定）：
-- ✅ `KnowledgeGraph.vue`, `NodeWindow.vue`, `OperationToolbar.vue`
+其他两类：
+
+1. **Vue 组件文件**（`.vue`）：统一 **PascalCase**（Vue 生态约定）
+   - ✅ `KnowledgeGraph.vue`, `NodeWindow.vue`, `OperationToolbar.vue`
+
+2. **Vue 组合式函数**（以 `use` 开头的 `.ts` 文件）：统一 **camelCase**（Vue 生态约定 + 区分于普通工具函数）
+   - ✅ `useRenderer.ts`, `useDragPosition.ts`, `useOverflowDetection.ts`
+   - ❌ `use_renderer.ts`, `useDrag_Position.ts`
 
 ### 缩进规范
 

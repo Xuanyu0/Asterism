@@ -82,6 +82,56 @@ export function useDefaultTool(): ToolHandler {
         }
     }
 
+    /**
+     * 功能：
+     *     处理节点双击——按优先级导航到关联图谱。
+     *
+     * 规则：
+     *     1. 引用节点（role === 'reference'）→ 跳转到源节点所在图。
+     *     2. 抽象节点（有 childGraphId）→ 跳转子图。
+     *     3. 子图中普通节点 → 跳转父图。
+     *     4. 根图普通节点 → 无操作。
+     *     5. 打开目标图后若有 focusNodeId，请求画布聚焦该节点。
+     *     6. 本函数不检查 activeToolId——由 Graph.vue 的调用者完成。
+     *     7. 本函数不调 mediator.deactivate()——由 Graph.vue 的调用者在调用前自行处理。
+     */
+    function onNodeDoubleClick(nodeId: string): void {
+        if (!graphStore.graphView) return
+
+        const node = graphStore.graphView.nodes.find(n => n.id === nodeId)
+        if (!node) return
+
+        // 按优先级决定导航目标
+        let targetGraphId: string | undefined
+        let focusNodeId: string | undefined
+
+        // 优先级 1：引用节点 → 跳转到源节点所在图
+        if (node.role === 'reference' && node.sourceGraphId) {
+            targetGraphId = node.sourceGraphId
+            focusNodeId = node.sourceNodeId
+        }
+        // 优先级 2：抽象节点 → 跳转子图
+        else if (node.childGraphId) {
+            targetGraphId = node.childGraphId
+        }
+        // 优先级 3：子图中的普通节点 → 跳转父图
+        else if (graphStore.graphView.parentGraphId) {
+            targetGraphId = graphStore.graphView.parentGraphId
+        }
+        // 优先级 4：根图中的普通节点 → 无操作
+        else {
+            return
+        }
+
+        uiStore.closeFloatingWindow()
+
+        if (!graphStore.loadGraphToView(targetGraphId)) return
+
+        if (focusNodeId) {
+            uiStore.requestCanvasFocus(focusNodeId)
+        }
+    }
+
     // ── 浮空窗确认 ──
 
     /**
@@ -144,6 +194,7 @@ export function useDefaultTool(): ToolHandler {
         deactivate,
         onNodeClick,
         onEdgeClick,
+        onNodeDoubleClick,
         onConfirm,
         get cursorClass() { return null },
         get notification() { return null },
