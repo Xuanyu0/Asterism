@@ -6,7 +6,7 @@
 [HTML 基础 参考文档](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Structuring_content)
 [CSS 基础 参考文档](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Styling_basics)
 [Tailwind CSS 参考文档](https://tailwindcss.zhcndoc.com/docs/styling-with-utility-classes)
-[Cytoscape 参考文档](frontend/src/render)
+[Cytoscape 参考文档](frontend/src/cytoscape)
 
 ## 核心定义
 
@@ -27,7 +27,7 @@
   - 水平分层（所有工具共享）：
     - 按钮 UI 定义：`feature-tools/toolbar/registry.ts`（图标、标签、处理器工厂）+ `GraphOperationToolbar.vue`（渲染）
     - 生命周期管理：`feature-tools/mediator.ts`（注册、激活/取消、互斥保证）
-    - 事件捕获与转发：`use_graph_interaction.ts`（Cytoscape 事件 → 语义事件）→ `feature-tools/mediator.ts`（转发至活跃 handler）
+    - 事件捕获与转发：`graph_interaction.ts`（Cytoscape 事件 → 语义事件）→ `feature-tools/mediator.ts`（转发至活跃 handler）
   - 垂直自包含（每个工具独立）：
     - 工具逻辑 + 中间变量：每个工具拥有自己的激活状态、光标样式、画布点击处理、操作构造
     - 数据修改：委托 Runtime 层 `graphStore.applyBatch`
@@ -100,10 +100,10 @@ GraphEngine (@my-project/graph-engine)
     ├── infrastructure/     — 碰撞检测 / 位置放置 / 搜索
     └── spi/                — 持久化适配器接口
     ↓  watch(currentGraph)
-渲染投影层 (render/)
+渲染投影层 (cytoscape/)
     ├── graph_element_mapper.ts  — GraphData → CyElements（只读）
     ├── cytoscape_style.ts       — 视觉样式配置
-    └── use_graph_interaction.ts — Cytoscape 事件 → 语义事件
+    └── graph_interaction.ts     — Cytoscape 事件 → 语义事件
     ↓  CyElements
 Cytoscape Renderer
     └── use_cytoscape_renderer.ts — 挂载/同步/销毁
@@ -387,7 +387,7 @@ function helperB() { ... }
 |------|------|------|---------|------|
 | L1 | `docs/设计/` | 产品 spec | 持久 | 用户亲手书写的设计定义、交互规则、视觉规范。描述产品意图与用户体验目标。 |
 | L2 | `docs/*开发文档/` | 过程文档 | 临时（完成后归档） | 步骤文档（步骤划分、进度跟踪、难度评估、产出 commit 的引用）和发现文档（BUG / 改进 / 不确定项）。服务于实现过程，不可违背 L1。 |
-| L3 | `docs/impl-spec/` | 施工手册 | 一次性 | Agent 执行时的工程契约。包含功能需求、验收标准、scope guard、交互规则。溯源引用 L1 |
+| L3 | `*开发文档/提示词/` | 施工手册 | 一次性 | Agent 执行时的工程契约。包含功能需求、验收标准、scope guard、交互规则。溯源引用 L1 |
 
 **冲突处理规则**：
 
