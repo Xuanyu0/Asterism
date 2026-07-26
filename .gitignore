@@ -29,3 +29,8 @@ docs/临时文档/
 
 # 个人配置
 .opencode/oh-my-opencode-slim/
+# 只暴露 planning-with-files
+.opencode/*
+!.opencode/skills/
+.opencode/skills/*
+!.opencode/skills/planning-with-files/
