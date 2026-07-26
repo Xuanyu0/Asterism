@@ -34,3 +34,4 @@ docs/临时文档/
 !.opencode/skills/
 .opencode/skills/*
 !.opencode/skills/planning-with-files/
+.claude/
