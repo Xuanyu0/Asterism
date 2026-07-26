@@ -24,9 +24,10 @@
  *       生命周期钩子。onMounted ≈ 构造函数（DOM 已挂载），
  *       onBeforeUnmount ≈ 析构函数（组件销毁前清理）。注意 onMounted 之前 ref 为空。
  *
- *     - watch(source, callback, { deep: true })：
+ *     - watch(source, callback)：
  *       响应式观察者。source 中访问的响应式值变化时触发 callback。
- *       deep: true 递归监听嵌套属性。C++ 类比：Observer + 自动深比较 + 自动注册/注销。
+ *       浅层监听：仅 source 返回的引用变化时触发。GraphData 走引用替换，无需 deep。
+ *       C++ 类比：Observer + 引用比较 + 自动注册/注销。
  *
  * 外部如何使用：
  *     App.vue 直接挂载本组件。
@@ -37,9 +38,7 @@ import type { NodeId } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
 
-import { mapGraphDataToCyElements } from '@/cytoscape/graph_element_mapper.ts'
 import { useRenderer } from '@/cytoscape/useRenderer.ts'
-import { bindCyEvents } from '@/cytoscape/graph_interaction.ts'
 import { useUIStore } from '@/ui/ui_store'
 import { useToolMediator } from '@/feature-tools/mediator'
 import { useDefaultTool } from '@/feature-tools/default'
@@ -117,41 +116,33 @@ onMounted(() => {
     // 注册认知工具 handler（3.0-1：deconstruct 作为原型）
     mediator.register('deconstruct', useDeconstructTool())
 
-    renderer.mount()
+    renderer.mount({
+        onCanvasClicked(position) {
+            mediator.onCanvasClick(position)
+        },
+        onNodeClicked(nodeId) {
+            mediator.onNodeClick(nodeId)
+        },
+        onEdgeClicked(edgeId) {
+            mediator.onEdgeClick(edgeId)
+        },
+        onRightClick() {
+            mediator.onRightClick()
+        },
+        onNodeDoubleClicked(nodeId: NodeId) {
+            // 步骤 A：工具激活检查 — 有非默认工具激活时不执行导航
+            const activeToolId = mediator.activeToolId.value
+            if (activeToolId !== null && activeToolId !== 'default') return
+
+            // 步骤 B：清理 + 导航（委托 mediator 转发至 default handler）
+            uiStore.closeFloatingWindow()
+            mediator.deactivate()
+            mediator.onNodeDoubleClick(nodeId)
+        },
+    })
 
     if (graphStore.graphView) {
-        renderer.syncElements(
-            mapGraphDataToCyElements(graphStore.graphView),
-        )
-    }
-
-    const cy = renderer.getInstance()
-
-    if (cy) {
-        bindCyEvents(cy, {
-            onCanvasClicked(position) {
-                mediator.onCanvasClick(position)
-            },
-            onNodeClicked(nodeId) {
-                mediator.onNodeClick(nodeId)
-            },
-            onEdgeClicked(edgeId) {
-                mediator.onEdgeClick(edgeId)
-            },
-            onRightClick() {
-                mediator.onRightClick()
-            },
-            onNodeDoubleClicked(nodeId: NodeId) {
-                // 步骤 A：工具激活检查 — 有非默认工具激活时不执行导航
-                const activeToolId = mediator.activeToolId.value
-                if (activeToolId !== null && activeToolId !== 'default') return
-
-                // 步骤 B：清理 + 导航（委托 mediator 转发至 default handler）
-                uiStore.closeFloatingWindow()
-                mediator.deactivate()
-                mediator.onNodeDoubleClick(nodeId)
-            },
-        })
+        renderer.syncFromGraphData(graphStore.graphView)
     }
 })
 
@@ -161,8 +152,9 @@ onMounted(() => {
  *
  * 规则：
  *     1. 仅边添加工具生效——其他 handler 不设起点节点。
+ *     2. 通过 renderer.bindHighlight 反应式管理 class。
  */
-watch(
+renderer.bindHighlight(
     () => {
         const handler = mediator.activeHandler.value
         if (!handler) return null
@@ -170,19 +162,7 @@ watch(
         if (!id.includes('directed') && !id.includes('undirected')) return null
         return handler.highlightNode ?? null
     },
-    (id, prevId) => {
-        const cy = renderer.getInstance()
-        if (!cy) return
-
-        if (prevId) {
-            const prev = cy.getElementById(prevId)
-            if (prev.length > 0) prev.removeClass('edge-source-target')
-        }
-        if (id) {
-            const target = cy.getElementById(id)
-            if (target.length > 0) target.addClass('edge-source-target')
-        }
-    },
+    'edge-source-target',
 )
 
 /**
@@ -191,10 +171,9 @@ watch(
  *
  * 规则：
  *     1. Graph.vue 只负责组合 Runtime。
- *     2. GraphData 必须先通过 graph_element_mapper.ts 映射为 CyElements。
- *     3. Renderer 只接收 CyElements，不直接接收 GraphData。
- *     4. 本监听不负责修改 GraphData。
- *     5. 本监听不负责决定图谱视角策略。
+ *     2. Renderer 内部完成 GraphData → CyElements 映射。
+ *     3. 本监听不负责修改 GraphData。
+ *     4. 本监听不负责决定图谱视角策略。
  */
 watch(
     () => graphStore.graphView,
@@ -203,60 +182,23 @@ watch(
             return
         }
 
-        renderer.syncElements(
-            mapGraphDataToCyElements(newGraph),
-        )
-    },
-    {
-        deep: true,
+        renderer.syncFromGraphData(newGraph)
     },
 )
 
-/**
- * 功能：
- *     创建监听待定目标 ID 变化的 watcher，施加/清除 Cytoscape 高亮 class。
- *
- * 规则：
- *     1. 适用于 operationRuntime.pendingDeleteNodeId / pendingDeleteEdgeId 等 ID 字段。
- *     2. getter 返回 ID 或 null，watcher 自动管理 class 增删。
- */
-function watchPendingTarget(
-    getter: () => string | null,
-    className: string,
-): void {
-    watch(
-        getter,
-        (id, prevId) => {
-            const cy = renderer.getInstance()
-            if (!cy) return
-
-            if (prevId) {
-                const prev = cy.getElementById(prevId)
-                if (prev.length > 0) prev.removeClass(className)
-            }
-            if (id) {
-                const target = cy.getElementById(id)
-                if (target.length > 0) target.addClass(className)
-            }
-        },
-    )
-}
-
 // 删除目标高亮：通过 ToolHandler 接口的可选 highlightNode / highlightEdge 统一消费
-watchPendingTarget(
+renderer.bindHighlight(
     () => mediator.activeHandler.value?.highlightNode ?? null,
     'delete-target',
 )
-watchPendingTarget(
+renderer.bindHighlight(
     () => mediator.activeHandler.value?.highlightEdge ?? null,
     'delete-target',
 )
 
-// watchPendingTarget 保留供未来 cognition/arrangement 高亮使用
-
 /**
  * 功能：
- *     消费画布定位请求：ui_store.pendingCanvasFocusId → renderer.revealElement。
+ *     消费画布定位请求：ui_store.pendingCanvasFocusId → renderer.centerOnElement。
  *
  * 规则：
  *     1. 消费后立即清除请求，保证同一元素可重复触发定位。
@@ -269,7 +211,7 @@ watch(
             return
         }
 
-        renderer.revealElement(targetId)
+        renderer.centerOnElement(targetId)
         uiStore.clearCanvasFocus()
     },
 )

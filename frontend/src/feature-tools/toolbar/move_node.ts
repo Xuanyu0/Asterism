@@ -26,7 +26,7 @@ import { useGraphStore } from '@/graph/graph_store'
 import { computeNodeRadiusOverrides } from '@/graph/node_radius'
 import { hasErrors } from '@/graph/issue_mapper'
 import { moveNode as composeMoveNode } from '@my-project/graph-engine'
-import { getCyInstance } from '@/cytoscape/useRenderer'
+import { useRenderer } from '@/cytoscape/useRenderer'
 
 import type { NodeId } from '@my-project/graph-engine'
 
@@ -41,28 +41,33 @@ import type { ToolId, ToolHandler, ToolNotification } from '../types'
  *
  * 规则：
  *     1. 内部维护拾取放置状态机（idle ↔ picked）。
- *     2. 鼠标追踪通过 DOM mousemove 事件绑定在 cy.container() 上。
+ *     2. 鼠标追踪通过 renderer 的 trackCursor 完成坐标转换。
  *     3. 碰撞检测委托引擎 composeMoveNode。
  *     4. 碰撞错误通过 notification 暴露供视图消费。
  *     5. 右键返回 true 阻止 mediator 默认 deactivate，由本 handler 内部处理取消。
  */
 export function useMoveNodeTool(): ToolHandler {
     const graphStore = useGraphStore()
+    const {
+        setNodePosition,
+        getNodePosition,
+        resetNodePosition,
+        addNodeClass,
+        removeNodeClass,
+        clearAllPreviews,
+        trackCursor,
+    } = useRenderer()
     const id: ToolId = 'move'
 
     // ── 命令式变量 ──
     /** 已拾取节点的 ID。 */
     let pickedNodeId: string | null = null
 
-    /** 已拾取节点的原始位置（用于取消时弹回）。 */
-    let originalPosition: { x: number; y: number } | null = null
+    /** trackCursor 返回的 stop 句柄。 */
+    let tracking: { stop(): void } | null = null
 
-    /** DOM mousemove 监听函数的引用（仅用于解绑）。 */
-    let mousemoveHandler: ((event: MouseEvent) => void) | null = null
-
-    /** 最后已知的鼠标容器坐标（clientX/Y 格式），用于点击时立即吸附。 */
-    let lastMouseClientX = 0
-    let lastMouseClientY = 0
+    /** 最后已知的模型坐标（用于点击拾取时立即吸附）。已拾取状态下每帧由 trackCursor 更新。 */
+    let lastModelPos: { x: number; y: number } | null = null
 
     // ── 响应式状态 ──
     /** 工具是否激活。 */
@@ -97,17 +102,43 @@ export function useMoveNodeTool(): ToolHandler {
      *     激活工具。进入待拾取状态。
      *
      * 规则：
-     *     1. 注册 DOM mousemove 监听（状态守卫仅在 picked 时生效）。
+     *     1. 通过 trackCursor 注册光标追踪（状态守卫仅在 picked 时生效）。
      *     2. 光标通过 cursorClass 暴露为 cursor-crosshair。
      */
     function activate(): void {
         isActive.value = true
         isPicked.value = false
         pickedNodeId = null
-        originalPosition = null
         collisionMessage.value = null
+        lastModelPos = null
 
-        bindMousemove()
+        tracking = trackCursor((modelPos) => {
+            // 始终记录最后已知模型坐标（即使未拾取），
+            // 用于 onNodeClick 中点击时立即吸附至光标。
+            lastModelPos = modelPos
+
+            if (!isPicked.value || pickedNodeId === null) return
+
+            // 更新节点位置（仅视觉层）
+            setNodePosition(pickedNodeId, modelPos)
+
+            // 实时碰撞检测：每帧跑 composeMoveNode，碰撞即红色高亮。
+            // 复杂度 O(n)；节点数 < 100 时 60fps 无压力；数百节点后可能掉帧。
+            const graphView = graphStore.graphView
+            if (graphView) {
+                const collisionResult = composeMoveNode({
+                    nodeId: pickedNodeId as NodeId,
+                    desiredPosition: modelPos,
+                    allNodes: graphView.nodes,
+                    nodeRadiusOverrides: computeNodeRadiusOverrides(graphView),
+                })
+                if (hasErrors(collisionResult.issues)) {
+                    addNodeClass(pickedNodeId, 'move-collision', 'move')
+                } else {
+                    removeNodeClass(pickedNodeId, 'move-collision', 'move')
+                }
+            }
+        })
     }
 
     /**
@@ -115,14 +146,18 @@ export function useMoveNodeTool(): ToolHandler {
      *     取消激活工具。
      *
      * 规则：
-     *     1. 卸载 mousemove 监听。
+     *     1. 停止光标追踪。
      *     2. 已拾取状态下弹回节点到原位。
-     *     3. 重置全部状态。
+     *     3. 清理本工具施加的全部 class。
+     *     4. 重置全部状态。
      */
     function deactivate(): void {
-        unbindMousemove()
+        if (tracking) {
+            tracking.stop()
+            tracking = null
+        }
 
-        // 已拾取则弹回节点
+        // cancelPick 内部调 resetNodePosition + clearAllPreviews('move')，同时覆盖已拾取回退和 class 清理
         if (isPicked.value) {
             cancelPick()
         }
@@ -130,7 +165,6 @@ export function useMoveNodeTool(): ToolHandler {
         isActive.value = false
         isPicked.value = false
         pickedNodeId = null
-        originalPosition = null
         collisionMessage.value = null
     }
 
@@ -141,43 +175,26 @@ export function useMoveNodeTool(): ToolHandler {
      *     处理节点点击事件。
      *
      * 规则：
-     *     待拾取 → 进入已拾取：记录 nodeId + originalPosition，节点开始跟随光标。
+     *     待拾取 → 进入已拾取：记录 nodeId，节点开始跟随光标。
      *     已拾取 → 放置尝试（与 onCanvasClick 相同行为）。
      */
     function onNodeClick(nodeId: string): void {
-        const cy = getCyInstance()
-        if (!cy) return
-
         if (!isPicked.value) {
             // ── 进入已拾取 ──
 
-            const cyNode = cy.getElementById(nodeId)
-            if (cyNode.length === 0) return
+            const pos = getNodePosition(nodeId)
+            if (!pos) return
 
-            // 记录原始位置
-            const pos = cyNode.position()
-            originalPosition = { x: pos.x, y: pos.y }
-
-            // 记录已拾取节点
+            // 记录已拾取节点（取消时通过 resetNodePosition 恢复至最近一次 sync 记录的位置）
             pickedNodeId = nodeId
             isPicked.value = true
 
             // 拾取后节点以半透明草稿形式跟随光标（视觉预览）。
-            cyNode.style('opacity', 0.4)
+            addNodeClass(nodeId, 'move-picked', 'move')
 
-            // 立即将节点吸附至当前光标位置（利用 mousemove 监听器持续追踪的最后坐标）
-            const container = cy.container()
-            if (container && lastMouseClientX !== 0) {
-                // 转换坐标系（虽然目前 cy 的 DOMrect 为全屏，留着也可）
-                const rect = container.getBoundingClientRect()
-                const renderedPos = {
-                    x: lastMouseClientX - rect.left,
-                    y: lastMouseClientY - rect.top,
-                }
-                cyNode.position({
-                    x: (renderedPos.x - cy.pan().x) / cy.zoom(),
-                    y: (renderedPos.y - cy.pan().y) / cy.zoom(),
-                })
+            // 立即将节点吸附至当前光标位置（利用 trackCursor 持续追踪的最后模型坐标）
+            if (lastModelPos) {
+                setNodePosition(nodeId, lastModelPos)
             }
             return
         }
@@ -200,124 +217,27 @@ export function useMoveNodeTool(): ToolHandler {
         }
     }
 
-        // ── 鼠标追踪 ──
-
-    /**
-     * 功能：
-     *     绑定 DOM mousemove 事件到 Cy 容器。
-     *
-     * 规则：
-     *     1. handler 内部按 isPicked 守卫，仅在已拾取状态生效。
-     *     2. 每帧将 Cy 节点位置更新至光标位置（仅视觉层，不写 GraphData）。
-     *     3. 清除碰撞红色高亮（如有）。
-     */
-    function bindMousemove(): void {
-        const cy = getCyInstance()
-        if (!cy) return
-
-        const handler = (event: MouseEvent) => {
-            // 始终记录最后已知鼠标位置（即使未拾取），
-            // 用于 onNodeClick 中点击时立即吸附至光标。
-            lastMouseClientX = event.clientX
-            lastMouseClientY = event.clientY
-
-            if (!isPicked.value || pickedNodeId === null) return
-
-            const cyNode = cy.getElementById(pickedNodeId)
-            if (cyNode.length === 0) return
-
-            // 转换 DOM 鼠标坐标到 Cy 画布坐标系（考虑 zoom + pan）
-            const container = cy.container()
-            if (!container) return
-            const rect = container.getBoundingClientRect()
-            const renderedPos = {
-                x: event.clientX - rect.left,
-                y: event.clientY - rect.top,
-            }
-            const modelPos = {
-                x: (renderedPos.x - cy.pan().x) / cy.zoom(),
-                y: (renderedPos.y - cy.pan().y) / cy.zoom(),
-            }
-
-            // 更新节点位置（仅视觉层）
-            cyNode.position(modelPos)
-
-            // 实时碰撞检测：每帧跑 composeMoveNode，碰撞即红色高亮。
-            // 复杂度 O(n)；节点数 < 100 时 60fps 无压力；数百节点后可能掉帧。
-            const graphView = graphStore.graphView
-            if (graphView) {
-                const collisionResult = composeMoveNode({
-                    nodeId: pickedNodeId as NodeId,
-                    desiredPosition: modelPos,
-                    allNodes: graphView.nodes,
-                    nodeRadiusOverrides: computeNodeRadiusOverrides(graphView),
-                })
-                if (hasErrors(collisionResult.issues)) {
-                    cyNode.addClass('move-collision')
-                } else {
-                    cyNode.removeClass('move-collision')
-                }
-            }
-        }
-
-        const container = cy.container()
-        if (container) {
-            container.addEventListener('mousemove', handler)
-        }
-        mousemoveHandler = handler
-    }
-
-    /**
-     * 功能：
-     *     解绑 DOM mousemove 事件。
-     *
-     * 规则：
-     *     1. deactivate() 和取消拾取时必须调用。
-     *     2. handler 引用为 null 时静默返回。
-     */
-    function unbindMousemove(): void {
-        if (mousemoveHandler === null) return
-
-        const cy = getCyInstance()
-        if (cy) {
-            const container = cy.container()
-            if (container) {
-                container.removeEventListener('mousemove', mousemoveHandler)
-            }
-        }
-
-        mousemoveHandler = null
-    }
-
     // ── 取消拾取 ──
 
     /**
      * 功能：
-     *     取消当前拾取，弹回节点到原始位置。
+     *     取消当前拾取，弹回节点到最近一次 syncFromGraphData 记录的位置。
      *
      * 规则：
-     *     1. 清除碰撞高亮。
-     *     2. 清除碰撞通知。
+     *     1. 恢复节点到最近一次 syncFromGraphData 记录的位置（通过 resetNodePosition）。
+     *     2. 清除本工具施加的全部 class（碰撞红、半透明）。
      *     3. 回到待拾取（idle）状态。
-     *     4. 不卸载 mousemove 监听（继续监听，下次 idle → picked 无需重新绑定）。
+     *     4. 不停止 trackCursor（继续追踪，下次 idle → picked 无需重新绑定）。
      */
     function cancelPick(): void {
-        if (pickedNodeId === null || originalPosition === null) return
+        if (pickedNodeId === null) return
 
-        const cy = getCyInstance()
-        if (cy) {
-            const cyNode = cy.getElementById(pickedNodeId)
-            if (cyNode.length > 0) {
-                // 弹回原始位置 + 清除碰撞高亮 + 恢复透明度
-                cyNode.position(originalPosition)
-                cyNode.removeClass('move-collision')
-                cyNode.style('opacity', '')
-            }
-        }
+        // 弹回原始位置 + 清除本工具施加的全部 class
+        resetNodePosition(pickedNodeId)
+        clearAllPreviews('move')
 
         // 重置状态
         pickedNodeId = null
-        originalPosition = null
         isPicked.value = false
         collisionMessage.value = null
     }
@@ -335,16 +255,15 @@ export function useMoveNodeTool(): ToolHandler {
      *     4. 有碰撞 → 节点红色高亮 + notification → 保持 picked（不弹回）。
      */
     function placeAttempt(): void {
-        if (!graphStore.graphView || pickedNodeId === null) return
+        if (!graphStore.graphView || pickedNodeId === null) {
+            return
+        }
 
-        const cy = getCyInstance()
-        if (!cy) return
+        const currentPos = getNodePosition(pickedNodeId)
+        if (!currentPos) {
+            return
+        }
 
-        const cyNode = cy.getElementById(pickedNodeId)
-        if (cyNode.length === 0) return
-
-        // 获取当前视觉位置
-        const currentPos = cyNode.position()
         const desiredPosition = { x: currentPos.x, y: currentPos.y }
 
         // 调引擎 composeMoveNode 做碰撞检测
@@ -358,7 +277,7 @@ export function useMoveNodeTool(): ToolHandler {
         // 有碰撞 → 拒绝放置
         if (hasErrors(result.issues)) {
             // 红色高亮（后续 mousemove 会自动清除）
-            cyNode.addClass('move-collision')
+            addNodeClass(pickedNodeId, 'move-collision', 'move')
             // 显示碰撞通知
             collisionMessage.value = '节点在目标位置与已有节点碰撞，无法放置。'
             return
@@ -371,12 +290,11 @@ export function useMoveNodeTool(): ToolHandler {
         )
 
         if (batchResult.validation.valid) {
-            // 清除 opacity override，回退到样式表默认不透明
-            cyNode.removeStyle('opacity')
+            // 清除透明度 preview
+            removeNodeClass(pickedNodeId, 'move-picked', 'move')
 
             // 重置状态
             pickedNodeId = null
-            originalPosition = null
             isPicked.value = false
             collisionMessage.value = null
         }
