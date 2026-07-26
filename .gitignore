@@ -24,5 +24,8 @@ venv/
 backend/venv/
 
 # 临时文件
-*.txt
-docs/copy.md
+git_log.txt
+docs/临时文档/
+
+# 个人配置
+.opencode/oh-my-opencode-slim/
