@@ -6,7 +6,7 @@
 [HTML 基础 参考文档](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Structuring_content)
 [CSS 基础 参考文档](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Styling_basics)
 [Tailwind CSS 参考文档](https://tailwindcss.zhcndoc.com/docs/styling-with-utility-classes)
-[Cytoscape 参考文档](frontend/src/cytoscape)
+[Cytoscape 参考文档](https://js.cytoscape.org/)
 
 ## 核心定义
 
@@ -74,8 +74,12 @@ pnpm --filter @my-project/graph-engine test
 
 1. **GraphData 是唯一事实源（Single Source of Truth）**
 2. **Cytoscape 只是 Renderer**，永远不是事实源
-
 3. **Local First** — 当前用 localStorage 持久化
+4. **禁止 `watch` 使用 `deep: true`**：
+   - GraphData 变更永远走引用替换（引擎返回新对象），浅层 watch 足够
+   - Pinia reactive proxy + `deep: true` 在高频读取时产生误触发反馈环
+   - 替代方案：去掉 `deep`，或窄化到具体叶子属性：`watch(() => store.x.y, cb)`
+   - 理由：有经过测试的未知非预期行为
 
 ## 架构分层（严格单向数据流）
 
