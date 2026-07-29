@@ -1,12 +1,10 @@
 /**
- * test_case_factory.ts
- *
  * 功能：
- *     知识图谱测试数据工厂。与 engine __tests__ 版 API 一致。
- *     用来构造测试数据集
+ *     知识图谱测试数据工厂。构造 V2 金牌/银牌图供 Vitest 集成测试使用。
  *
  * 外部如何使用：
- *     import { createGoldenTestGraph } from '@/mock/test_case_factory'
+ *     import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
+ *     import { createSilverTestGraph } from '@/dev/test_case_factory'
  */
 
 import type {
@@ -105,88 +103,6 @@ export function assembleGraph(params: {
     const normalized = normalizeGraph(graph)
     validateOrThrow(normalized)
     return normalized
-}
-
-// ═══════════ 布局辅助 ═══════════
-
-export function layoutChain(nodes: NodeData[], spacing = 300, startX = 50, y = 120): NodeData[] {
-    return nodes.map((node, i) => ({ ...node, position: { x: startX + i * spacing, y } }))
-}
-
-export function layoutGrid(nodes: NodeData[], cols = 3, spacingX = 300, spacingY = 400, startX = 50, startY = 120): NodeData[] {
-    return nodes.map((node, i) => ({ ...node, position: { x: startX + (i % cols) * spacingX, y: startY + Math.floor(i / cols) * spacingY } }))
-}
-
-// ═══════════ 基础拓扑生成器 ═══════════
-
-const G = 'graph-test' as GraphId
-
-export function createChainDAG(n = 3, graphId: GraphId = G): GraphData {
-    const nodes: NodeData[] = []
-    for (let i = 0; i < n; i++) nodes.push(createNode({ id: `chain-${i}` as NodeId, graphId }))
-    const edges: EdgeData[] = []
-    for (let i = 0; i < n - 1; i++) edges.push(createEdge({ id: `chain-${i}-${i + 1}` as EdgeId, graphId, source: nodes[i]!.id, target: nodes[i + 1]!.id, kind: 'real', direction: 'directed' }))
-    return assembleGraph({ id: graphId, title: `链式 DAG (${n} 节点)`, nodes: layoutChain(nodes), edges })
-}
-
-export function createEdgeMatrixGraph(graphId: GraphId = G): GraphData {
-    const [n0, n1, n2, n3] = [createNode({ id: 'mx-0' as NodeId, graphId }), createNode({ id: 'mx-1' as NodeId, graphId }), createNode({ id: 'mx-2' as NodeId, graphId }), createNode({ id: 'mx-3' as NodeId, graphId })]
-    const edges: EdgeData[] = [
-        createEdge({ id: 'mx-real-dir' as EdgeId, graphId, source: n0.id, target: n1.id, kind: 'real', direction: 'directed' }),
-        createEdge({ id: 'mx-real-undir' as EdgeId, graphId, source: n1.id, target: n2.id, kind: 'real', direction: 'undirected' }),
-        createEdge({ id: 'mx-virt-dir' as EdgeId, graphId, source: n2.id, target: n3.id, kind: 'virtual', direction: 'directed' }),
-        createEdge({ id: 'mx-virt-undir' as EdgeId, graphId, source: n0.id, target: n3.id, kind: 'virtual', direction: 'undirected' }),
-    ]
-    return assembleGraph({ id: graphId, title: '2×2 边矩阵', nodes: layoutGrid([n0, n1, n2, n3], 2), edges })
-}
-
-export function createVirtualNodeTestGraph(graphId: GraphId = G): GraphData {
-    const v0 = createNode({ id: 'vrt-0' as NodeId, graphId, kind: 'virtual' }), v1 = createNode({ id: 'vrt-1' as NodeId, graphId, kind: 'virtual' })
-    const r0 = createNode({ id: 'vrt-r0' as NodeId, graphId }), r1 = createNode({ id: 'vrt-r1' as NodeId, graphId })
-    const edges: EdgeData[] = [
-        createEdge({ id: 'vrt-0-a' as EdgeId, graphId, source: v0.id, target: r0.id, kind: 'virtual', direction: 'undirected' }),
-        createEdge({ id: 'vrt-0-b' as EdgeId, graphId, source: v0.id, target: r1.id, kind: 'virtual', direction: 'undirected' }),
-        createEdge({ id: 'vrt-1-a' as EdgeId, graphId, source: v1.id, target: r0.id, kind: 'virtual', direction: 'undirected' }),
-    ]
-    return assembleGraph({ id: graphId, title: '虚节点连接规则测试', nodes: layoutGrid([v0, v1, r0, r1], 2), edges })
-}
-
-export function createAbstractNodeTestGraph(graphId: GraphId = G): GraphData {
-    const abs = createNode({ id: 'abs-0' as NodeId, graphId, form: 'abstract', childGraphId: 'sub-abs-0' as GraphId })
-    const real = createNode({ id: 'abs-1' as NodeId, graphId })
-    return assembleGraph({ id: graphId, title: '抽象节点测试', nodes: layoutChain([abs, real], 300), edges: [createEdge({ id: 'abs-edge' as EdgeId, graphId, source: abs.id, target: real.id, kind: 'real', direction: 'directed' })] })
-}
-
-export function createCommunicationTestGraph(graphId: GraphId = G): GraphData {
-    const real = createNode({ id: 'comm-real' as NodeId, graphId })
-    const comm = createNode({ id: 'comm-node' as NodeId, graphId, role: 'reference', referenceKind: 'communication', sourceGraphId: 'graph-parent' as GraphId, sourceNodeId: 'src-node' as NodeId })
-    return assembleGraph({ id: graphId, title: '沟通节点/边测试', nodes: layoutChain([real, comm]), edges: [createEdge({ id: 'comm-edge' as EdgeId, graphId, source: comm.id, target: real.id, kind: 'real', direction: 'directed' })] })
-}
-
-export function createDeleteUndoTestGraph(graphId: GraphId = G): GraphData {
-    const [d0, d1, d2] = [createNode({ id: 'del-0' as NodeId, graphId }), createNode({ id: 'del-1' as NodeId, graphId }), createNode({ id: 'del-2' as NodeId, graphId })]
-    return assembleGraph({ id: graphId, title: '删除/撤销测试', nodes: layoutChain([d0, d1, d2]), edges: [
-        createEdge({ id: 'del-0-1' as EdgeId, graphId, source: d0.id, target: d1.id, kind: 'real', direction: 'directed' }),
-        createEdge({ id: 'del-1-2' as EdgeId, graphId, source: d1.id, target: d2.id, kind: 'real', direction: 'directed' }),
-    ]})
-}
-
-export function createGoldenTestGraph(graphId: GraphId = 'graph-golden' as GraphId): GraphData {
-    const nodes: NodeData[] = [
-        createNode({ id: 'node-1' as NodeId, graphId, label: '节点1', position: { x: 50, y: 120 } }),
-        createNode({ id: 'node-2' as NodeId, graphId, label: '节点2', position: { x: 350, y: 120 } }),
-        createNode({ id: 'node-3' as NodeId, graphId, label: '抽象节点3', form: 'abstract', childGraphId: 'graph-sub-3' as GraphId, position: { x: 650, y: 120 } }),
-        createNode({ id: 'node-4' as NodeId, graphId, kind: 'virtual', label: '虚节点4', position: { x: 950, y: 120 } }),
-        createNode({ id: 'node-5' as NodeId, graphId, role: 'reference', referenceKind: 'communication', label: '沟通节点5', sourceGraphId: 'graph-golden' as GraphId, sourceNodeId: 'node-1' as NodeId, position: { x: 50, y: 520 } }),
-        createNode({ id: 'node-6' as NodeId, graphId, label: '节点6', position: { x: 150, y: 520 } }),
-    ]
-    const edges: EdgeData[] = [
-        createEdge({ id: 'edge-1-2' as EdgeId, graphId, source: 'node-1' as NodeId, target: 'node-2' as NodeId, kind: 'real', direction: 'directed' }),
-        createEdge({ id: 'edge-2-3' as EdgeId, graphId, source: 'node-2' as NodeId, target: 'node-3' as NodeId, kind: 'real', direction: 'directed' }),
-        createEdge({ id: 'edge-4-6' as EdgeId, graphId, source: 'node-4' as NodeId, target: 'node-6' as NodeId, kind: 'virtual', direction: 'undirected' }),
-        createEdge({ id: 'edge-5-2' as EdgeId, graphId, source: 'node-5' as NodeId, target: 'node-2' as NodeId, kind: 'real', direction: 'directed' }),
-    ]
-    return assembleGraph({ id: graphId, title: '金牌测试图', nodes, edges })
 }
 
 // ═══════════ 金牌/银牌测试图对 ═══════════
