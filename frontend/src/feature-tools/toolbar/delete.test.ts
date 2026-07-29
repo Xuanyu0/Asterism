@@ -10,7 +10,6 @@
  *     2. 每个测试独立环境（beforeEach 重置 Pinia 和 localStorage）。
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 
 import { useGraphStore } from '@/graph/graph_store'
@@ -37,16 +36,16 @@ describe('useDeleteTool', () => {
         handler.activate()
     })
 
-    it('激活后 isActive 为 true', () => {
+    test('激活后 isActive 为 true', () => {
         expect(handler.isActive).toBe(true)
     })
 
-    it('首次 onNodeClick 标记待定', () => {
+    test('首次 onNodeClick 标记待定', () => {
         handler.onNodeClick!('node-g1')
         expect(handler.highlightNode).toBe('node-g1')
     })
 
-    it('两次点击同一节点确认删除', () => {
+    test('两次点击同一节点确认删除', () => {
         handler.onNodeClick!('node-g1')
         expect(handler.highlightNode).toBe('node-g1')
         handler.onNodeClick!('node-g1')
@@ -55,7 +54,7 @@ describe('useDeleteTool', () => {
         expect(store.graphView!.nodes.length).toBe(5)
     })
 
-    it('删除节点级联删除关联边', () => {
+    test('删除节点级联删除关联边', () => {
         handler.onNodeClick!('node-g3')
         handler.onNodeClick!('node-g3')
 
@@ -65,21 +64,21 @@ describe('useDeleteTool', () => {
         expect(store.graphView!.edges.length).toBe(3)  // 4 → 3 (edge-g23 被级联移除)
     })
 
-    it('两次点击不同节点切换目标', () => {
+    test('两次点击不同节点切换目标', () => {
         handler.onNodeClick!('node-g1')
         expect(handler.highlightNode).toBe('node-g1')
         handler.onNodeClick!('node-g2')
         expect(handler.highlightNode).toBe('node-g2')
     })
 
-    it('deactivate 清空 pending 状态', () => {
+    test('deactivate 清空 pending 状态', () => {
         handler.onNodeClick!('node-g1')
         handler.deactivate()
         expect(handler.highlightNode).toBeNull()
         expect(handler.isActive).toBe(false)
     })
 
-    it('notification 状态', () => {
+    test('notification 状态', () => {
         // 未激活时（handler 已在 beforeEach 中 activate）
         expect(handler.notification).toBeNull()
         // 激活但未标记

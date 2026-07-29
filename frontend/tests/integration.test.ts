@@ -12,7 +12,6 @@
  *     3. 每个 describe 独立环境，beforeEach 清零。
  */
 
-import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useGraphStore } from '@/graph/graph_store'
 import { saveGraph, loadGraph, deleteGraph, listRootGraphIds } from '@/graph/graph_persistence'
@@ -31,13 +30,13 @@ describe('数据合法性校验', () => {
         localStorage.clear()
     })
 
-    it('金牌图通过全图所有全局规则校验', () => {
+    test('金牌图通过全图所有全局规则校验', () => {
         const golden = createGoldenTestGraphV2()
         const result = validateGraph(golden)
         expect(result.valid).toBe(true)
     })
 
-    it('银牌图通过全图所有全局规则校验', () => {
+    test('银牌图通过全图所有全局规则校验', () => {
         const silver = createSilverTestGraph()
         const result = validateGraph(silver)
         expect(result.valid).toBe(true)
@@ -55,7 +54,7 @@ describe('Store 加载', () => {
         localStorage.clear()
     })
 
-    it('保存并加载金牌图后 graphView 不为 null', () => {
+    test('保存并加载金牌图后 graphView 不为 null', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
         const store = useGraphStore()
@@ -64,7 +63,7 @@ describe('Store 加载', () => {
         expect(store.graphView).not.toBeNull()
     })
 
-    it('金牌图节点数 === 6', () => {
+    test('金牌图节点数 === 6', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
         const store = useGraphStore()
@@ -72,7 +71,7 @@ describe('Store 加载', () => {
         expect(store.graphView!.nodes.length).toBe(6)
     })
 
-    it('金牌图边数 === 4', () => {
+    test('金牌图边数 === 4', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
         const store = useGraphStore()
@@ -80,7 +79,7 @@ describe('Store 加载', () => {
         expect(store.graphView!.edges.length).toBe(4)
     })
 
-    it('graphPath 长度 === 1', () => {
+    test('graphPath 长度 === 1', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
         const store = useGraphStore()
@@ -100,7 +99,7 @@ describe('原子操作链路', () => {
         localStorage.clear()
     })
 
-    it('add_node：节点数从 6 变为 7', () => {
+    test('add_node：节点数从 6 变为 7', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
         const store = useGraphStore()
@@ -140,7 +139,7 @@ describe('fold/expand + undo', () => {
         localStorage.clear()
     })
 
-    it('fold：折叠 node-g2 后 foldedDependencies 非空', () => {
+    test('fold：折叠 node-g2 后 foldedDependencies 非空', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
         const store = useGraphStore()
@@ -154,7 +153,7 @@ describe('fold/expand + undo', () => {
         expect(store.graphView!.cognitiveState?.foldedDependencies.length).toBeGreaterThan(0)
     })
 
-    it('undo：撤销折叠后 foldedDependencies 为空', () => {
+    test('undo：撤销折叠后 foldedDependencies 为空', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
         const store = useGraphStore()
@@ -174,7 +173,7 @@ describe('fold/expand + undo', () => {
         expect(folded?.length).toBe(0)
     })
 
-    it('非法操作拒绝：delete 不存在的节点', () => {
+    test('非法操作拒绝：delete 不存在的节点', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
         const store = useGraphStore()
@@ -201,7 +200,7 @@ describe('持久化', () => {
         localStorage.clear()
     })
 
-    it('save → load 往返：节点数不变', () => {
+    test('save → load 往返：节点数不变', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
 
@@ -210,7 +209,7 @@ describe('持久化', () => {
         expect(loaded!.nodes.length).toBe(6)
     })
 
-    it('delete → load 返回 null', () => {
+    test('delete → load 返回 null', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
         deleteGraph(golden.id)
@@ -218,7 +217,7 @@ describe('持久化', () => {
         expect(loaded).toBeNull()
     })
 
-    it('listRootGraphIds 包含金牌图 ID', () => {
+    test('listRootGraphIds 包含金牌图 ID', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
         const ids = listRootGraphIds()

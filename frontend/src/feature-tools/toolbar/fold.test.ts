@@ -10,7 +10,6 @@
  *     2. 每个测试独立环境（beforeEach 重置 Pinia 和 localStorage）。
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 
 import { useGraphStore } from '@/graph/graph_store'
@@ -37,18 +36,18 @@ describe('useFoldTool', () => {
         handler.activate()
     })
 
-    it('激活后 isActive 为 true', () => {
+    test('激活后 isActive 为 true', () => {
         expect(handler.isActive).toBe(true)
     })
 
-    it('onNodeClick 折叠节点', () => {
+    test('onNodeClick 折叠节点', () => {
         handler.onNodeClick!('node-g2')
 
         const store = useGraphStore()
         expect(store.graphView!.cognitiveState?.foldedDependencies.length).toBeGreaterThan(0)
     })
 
-    it('再次点击同一节点展开', () => {
+    test('再次点击同一节点展开', () => {
         handler.onNodeClick!('node-g2')
 
         const store = useGraphStore()
@@ -60,7 +59,7 @@ describe('useFoldTool', () => {
         expect(store.graphView!.cognitiveState?.foldedDependencies.length).toBe(0)
     })
 
-    it('折叠非依赖节点不改变 foldedDependencies', () => {
+    test('折叠非依赖节点不改变 foldedDependencies', () => {
         const store = useGraphStore()
         const before = store.graphView!.cognitiveState?.foldedDependencies.length ?? 0
         handler.onNodeClick!('node-g6')
@@ -68,7 +67,7 @@ describe('useFoldTool', () => {
         expect(after).toBe(before)
     })
 
-    it('deactivate 取消激活', () => {
+    test('deactivate 取消激活', () => {
         handler.deactivate()
         expect(handler.isActive).toBe(false)
     })

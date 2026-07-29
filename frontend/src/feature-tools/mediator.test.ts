@@ -11,7 +11,6 @@
  *     3. 中介者模块级单例在同一文件测试间共享，各测试通过重新注册 handler 隔离。
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 
 import { useGraphStore } from '@/graph/graph_store'
@@ -52,13 +51,13 @@ describe('useToolMediator', () => {
         mediator = useToolMediator()
     })
 
-    it('获取单例：两次调用返回同一实例', () => {
+    test('获取单例：两次调用返回同一实例', () => {
         const m1 = useToolMediator()
         const m2 = useToolMediator()
         expect(m1).toBe(m2)
     })
 
-    it('注册 handler 后可激活', () => {
+    test('注册 handler 后可激活', () => {
         const handler = useAddNodeTool('real')
         mediator.register('add-real-node', handler)
         mediator.activate('add-real-node')
@@ -66,7 +65,7 @@ describe('useToolMediator', () => {
         expect(mediator.activeHandler.value).not.toBeNull()
     })
 
-    it('激活新工具自动取消旧工具', () => {
+    test('激活新工具自动取消旧工具', () => {
         const handlerA = useAddNodeTool('real')
         const handlerB = useFoldTool()
         mediator.register('add-real-node', handlerA)
@@ -80,7 +79,7 @@ describe('useToolMediator', () => {
         expect(handlerB.isActive).toBe(true)
     })
 
-    it('activate(null) 取消所有', () => {
+    test('activate(null) 取消所有', () => {
         const handler = useAddNodeTool('real')
         mediator.register('add-real-node', handler)
         mediator.activate('add-real-node')
@@ -90,7 +89,7 @@ describe('useToolMediator', () => {
         expect(mediator.activeToolId.value).toBeNull()
     })
 
-    it('deactivate 取消并恢复 default', () => {
+    test('deactivate 取消并恢复 default', () => {
         const handler = useAddNodeTool('real')
         mediator.register('add-real-node', handler)
         mediator.activate('add-real-node')
@@ -101,7 +100,7 @@ describe('useToolMediator', () => {
         expect(mediator.activeToolId.value).toBe('default')
     })
 
-    it('事件转发到 activeHandler', () => {
+    test('事件转发到 activeHandler', () => {
         let canvasCalled = false
         let capturedPos = { x: 0, y: 0 }
 
@@ -124,7 +123,7 @@ describe('useToolMediator', () => {
         expect(capturedPos).toEqual({ x: 150, y: 250 })
     })
 
-    it('onRightClick 执行 deactivate 并恢复 default', () => {
+    test('onRightClick 执行 deactivate 并恢复 default', () => {
         const handler = useAddNodeTool('real')
         mediator.register('add-real-node', handler)
         mediator.activate('add-real-node')

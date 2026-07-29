@@ -22,5 +22,28 @@ export default defineConfigWithVueTs(
 
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),
 
+  // Vitest 测试规范：强制使用 test() 而非 it()
+  {
+    name: 'vitest/prefer-test',
+    files: ['**/*.test.ts'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        {
+          name: 'it',
+          message: '使用 test() 替代 it()',
+        },
+        {
+          name: 'xit',
+          message: '使用 test.skip() 替代 xit()',
+        },
+        {
+          name: 'fit',
+          message: '使用 test.only() 替代 fit()',
+        },
+      ],
+    },
+  },
+
   skipFormatting,
 )

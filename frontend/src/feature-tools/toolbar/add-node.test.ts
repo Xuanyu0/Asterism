@@ -10,7 +10,6 @@
  *     2. 每个测试独立环境（beforeEach 重置 Pinia 和 localStorage）。
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 
 import { useGraphStore } from '@/graph/graph_store'
@@ -37,11 +36,11 @@ describe('useAddNodeTool', () => {
         handler.activate()
     })
 
-    it('激活后 isActive 为 true', () => {
+    test('激活后 isActive 为 true', () => {
         expect(handler.isActive).toBe(true)
     })
 
-    it('onCanvasClick 创建 DraftNode', () => {
+    test('onCanvasClick 创建 DraftNode', () => {
         handler.onCanvasClick!({ x: 100, y: 200 })
         expect(handler.draftNode).not.toBeNull()
         expect(handler.draftNode!.x).toBe(100)
@@ -49,7 +48,7 @@ describe('useAddNodeTool', () => {
         expect(handler.draftNode!.kind).toBe('real')
     })
 
-    it('onConfirm 提交节点到 store', () => {
+    test('onConfirm 提交节点到 store', () => {
         // 使用远离所有已有节点的位置以避免碰撞
         handler.onCanvasClick!({ x: 999, y: 999 })
         handler.onConfirm!('测试标签', '摘要')
@@ -58,7 +57,7 @@ describe('useAddNodeTool', () => {
         expect(store.graphView!.nodes.length).toBe(7)
     })
 
-    it('空 label 拒绝', () => {
+    test('空 label 拒绝', () => {
         handler.onCanvasClick!({ x: 999, y: 999 })
         handler.onConfirm!('', '摘要')
 
@@ -68,14 +67,14 @@ describe('useAddNodeTool', () => {
         expect(store.lastValidationResult!.valid).toBe(false)
     })
 
-    it('deactivate 清除草稿', () => {
+    test('deactivate 清除草稿', () => {
         handler.onCanvasClick!({ x: 100, y: 200 })
         handler.deactivate()
         expect(handler.draftNode).toBeNull()
         expect(handler.isActive).toBe(false)
     })
 
-    it('onCancel 清除草稿', () => {
+    test('onCancel 清除草稿', () => {
         handler.onCanvasClick!({ x: 100, y: 200 })
         handler.onCancel!()
         expect(handler.draftNode).toBeNull()

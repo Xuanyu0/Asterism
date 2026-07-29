@@ -42,6 +42,11 @@ pnpm --filter frontend test
 pnpm --filter @my-project/graph-engine test
 ```
 
+### 测试文件约定
+
+- vitest `globals: true` 已启用。`test` / `describe` / `expect` / `beforeEach` / `afterAll` / `vi` 均为全局函数，`.test.ts` 文件中**禁止** `import { ... } from 'vitest'`。
+- 使用 `test()`，禁止 `it()`（ESLint `no-restricted-globals` 已配置）。
+
 ## 项目定位
 
 - **Graph Engine 开发目标**：让用户当前的学习 / 认知 / 研究状态可视化、可形式化表达。
@@ -77,8 +82,7 @@ pnpm --filter @my-project/graph-engine test
 3. **Local First** — 当前用 localStorage 持久化
 4. **禁止 `watch` 使用 `deep: true`**：
    - GraphData 变更永远走引用替换（引擎返回新对象），浅层 watch 足够
-   - Pinia reactive proxy + `deep: true` 在高频读取时产生误触发反馈环
-   - 替代方案：去掉 `deep`，或窄化到具体叶子属性：`watch(() => store.x.y, cb)`
+   - 必要时的替代方案：去掉 `deep`，或窄化到具体叶子属性：`watch(() => store.x.y, cb)`
    - 理由：有经过测试的未知非预期行为
 
 ## 架构分层（严格单向数据流）
