@@ -56,7 +56,7 @@ export interface NodeRules {
 }
 
 export const DEFAULT_LAYOUT_RULES: LayoutRules = {
-    r0: 56,
+    r0: 42,
     collisionGap: 2,
 }
 
