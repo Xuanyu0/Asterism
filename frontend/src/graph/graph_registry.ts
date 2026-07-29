@@ -55,11 +55,4 @@ export function unregisterGraph(registry: GraphRegistry, graphId: GraphId): bool
     return registry.delete(graphId)
 }
 
-/**
- * 功能：
- *
- *     列出注册表中全部 graphId。调用方按需通过 lookupGraph 获取 GraphData。
- */
-export function listGraphIds(registry: GraphRegistry): GraphId[] {
-    return Array.from(registry.keys())
-}
+

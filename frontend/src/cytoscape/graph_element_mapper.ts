@@ -37,7 +37,7 @@ import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
  *     1. 仅包含 Cy 渲染所需的最小字段。
  *     2. 禁止直接保存完整 NodeData 引用。
  */
-export interface CyNodeData {
+interface CyNodeData {
     id: NodeId
     label: string
     /** 节点渲染直径 = 2·r₀·√(1 + degree)。r₀ = DEFAULT_LAYOUT_RULES.r0。 */
@@ -54,7 +54,7 @@ export interface CyNodeData {
  *     1. 仅包含 Cy 渲染所需的最小字段。
  *     2. 禁止直接保存完整 EdgeData 引用。
  */
-export interface CyEdgeData {
+interface CyEdgeData {
     id: EdgeId
     source: NodeId
     target: NodeId
@@ -72,7 +72,7 @@ export interface CyEdgeData {
  *     2. position 来自 GraphData.position。
  *     3. 没有 position 时不交给自动布局决定长期位置。
  */
-export interface CyNodeElement {
+interface CyNodeElement {
     group: 'nodes'
     data: CyNodeData
     position?: NodePosition
@@ -87,7 +87,7 @@ export interface CyNodeElement {
  *     1. group 固定为 edges。
  *     2. data 只能使用 CyEdgeData 映射结构。
  */
-export interface CyEdgeElement {
+interface CyEdgeElement {
     group: 'edges'
     data: CyEdgeData
     classes?: string[]
@@ -114,7 +114,7 @@ export interface CyElements {
  *     1. 只读取节点字段。
  *     2. 不修改节点数据。
  */
-export function getNodeClasses(node: NodeData, foldedParentIds?: Set<NodeId>): string[] {
+function getNodeClasses(node: NodeData, foldedParentIds?: Set<NodeId>): string[] {
     const classes: string[] = []
 
     if (node.role === 'knowledge') {
@@ -140,7 +140,7 @@ export function getNodeClasses(node: NodeData, foldedParentIds?: Set<NodeId>): s
  *     1. 只读取边字段。
  *     2. 不修改边数据。
  */
-export function getEdgeClasses(edge: EdgeData): string[] {
+function getEdgeClasses(edge: EdgeData): string[] {
     // 沟通边的视觉样式（一端半悬空/淡化）不由 viewRole 字段驱动，
     // 而是渲染层根据端点节点类型推导：
     // 若 edge.source 或 edge.target 对应的节点为 communication 节点，

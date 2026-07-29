@@ -104,41 +104,6 @@ export function pushUndoSnapshot(undoStack: GraphData[], graph: GraphData): Grap
 /**
  * 功能：
  *
- *     Graph Runtime 状态定义。
- *
- * 规则：
- *
- *     1. graphView 是当前渲染视图的事实源。
- *     2. Draft 数据禁止进入本 Store。
- *     3. Cytoscape Runtime 禁止进入本 Store。
- *
- * 消费者：
- *
- *     useGraphStore（state 初始化）
- */
-export interface GraphStoreState {
-    /** 当前正在渲染在画布上的图。 */
-    graphView: GraphData | null
-
-    /** 当前图路径，用于子图逐级返回。 */
-    graphPath: GraphId[]
-
-    /** 最近一次操作校验结果。操作执行后由 applyBatchToGraph / applyBatchToGraphs 写入。 */
-    lastValidationResult: ValidationResult | null
-
-    /** 全操作撤销栈，刷新网页后自然清空。 */
-    undoStack: GraphData[]
-
-    /** 最近一次成功保存当前图谱的时间戳。 */
-    lastSaveTime: number | null
-
-    /** 多图注册表，由 localStorage 中全部已保存 GraphData 重建的运行时索引。 */
-    graphRegistry: GraphRegistry
-}
-
-/**
- * 功能：
- *
  *     创建 Graph Store 实例，管理 GraphData 状态与图操作。
  *     GraphData 唯一事实源，所有图数据修改必须经过本 Store。
  *
