@@ -8,7 +8,7 @@
  *     2. 初始化 Cytoscape Renderer
  *     3. 监听 GraphData 变化并同步渲染
  *     4. 绑定 Cytoscape 语义交互事件（tap / cxttap / dblclick）
- *     5. 双击节点导航子图（引用节点→源图、抽象节点→子图、子图节点→父图）
+ *     5. 双击节点导航（引用节点→源图、抽象节点→子图）
  *     6. 挂载 GraphNodeWindow、GraphOperationToolbar 与 GraphModeSelector
  *
  * 前端机制（Vue 3 框架行为）：
