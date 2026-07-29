@@ -12,13 +12,9 @@
  *        构造，与用户实际操作路径一致。
  */
 
-import { useGraphStore } from '@/graph/graph_store'
-
-import { exposeTestRuntimeToWindow } from './test_runtime'
-import { registerTestMachine } from './test_evaluation_machine'
-
 import type { GraphId, NodeId, EdgeId } from '@my-project/graph-engine'
 
+import { useGraphStore } from '@/graph/graph_store'
 
 export function bootstrapDevTools(): void {
     const graphStore = useGraphStore()
@@ -327,9 +323,4 @@ export function bootstrapDevTools(): void {
 
     // 切回金图视图（bootstrap 完成后画布默认显示金图）
     graphStore.loadGraphToView(GOLDEN_ID)
-
-    // ═══════ 暴露浏览器控制台 API ═══════
-
-    exposeTestRuntimeToWindow()
-    registerTestMachine()
 }
