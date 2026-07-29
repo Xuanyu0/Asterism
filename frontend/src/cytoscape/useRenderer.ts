@@ -8,6 +8,7 @@
  *     3. useRenderer(containerRef?) → RendererAPI
  *        - 首次调用（传 containerRef）：创建闭包状态，返回完整 API
  *        - 后续调用（无参）：返回同一个 API 对象
+ *     4. drawDotGrid() — 私有辅助：在 canvas overlay 上绘制格点背景
  *
  * 外部如何使用：
  *     Graph.vue 首次调用： useRenderer(cyContainer)
@@ -23,16 +24,22 @@
  */
 
 import cytoscape from 'cytoscape'
+import cytoscapeCanvas from 'cytoscape-canvas'
 import type { Core } from 'cytoscape'
 import type { Ref } from 'vue'
 import { watch } from 'vue'
 
 import type { GraphData, NodePosition } from '@my-project/graph-engine'
+import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
+
 import type { GraphInteractionHandlers } from './graph_interaction'
 
 import { mapGraphDataToCyElements } from './graph_element_mapper'
 import { bindCyEvents } from './graph_interaction'
 import { createCytoscapeStyle } from './cytoscape_style'
+
+// 注册 cytoscape-canvas 扩展（底层 canvas layer 用于格点背景）
+cytoscape.use(cytoscapeCanvas)
 
 
 // ── 接口定义 ──
@@ -153,6 +160,11 @@ export function useRenderer(
     let eventsDestroy: (() => void) | null = null
 
     /**
+     * 格点背景 canvas layer 引用。destroy() 时置 null。
+     */
+    let gridLayer: ReturnType<Core['cyCanvas']> | null = null
+
+    /**
      * 节点在最近一次 syncFromGraphData 中记录的 GraphData 位置。
      * key = nodeId，value = 模型坐标。供 resetNodePosition 恢复到"最后一次同步时的位置"。
      */
@@ -179,6 +191,7 @@ export function useRenderer(
      *     3. layout 必须使用 preset，避免自动布局覆盖 GraphData.position。
      *     4. 样式必须来自 createCytoscapeStyle()。
      *     5. 内部调用 bindCyEvents 将语义事件绑定到 Cy 实例。
+     *     6. 挂载完成后初始化画布格点背景，并随视口变化同步偏移。
      *
      * 使用：
      *     onMounted(() => {
@@ -186,12 +199,13 @@ export function useRenderer(
      *     })
      */
     function mount(handlers: GraphInteractionHandlers): void {
-        if (!containerRef?.value) {
+        const container = containerRef?.value
+        if (!container) {
             return
         }
 
         cy = cytoscape({
-            container: containerRef.value,
+            container,
             elements: [],
             style: createCytoscapeStyle(),
             layout: {
@@ -208,6 +222,12 @@ export function useRenderer(
         // 绑定交互事件
         const events = bindCyEvents(cy, handlers)
         eventsDestroy = events.destroy
+
+        // 初始化离散格点背景（上层 canvas layer，透明背景，仅绘制圆点）
+        gridLayer = cy.cyCanvas({ zIndex: 0 })  // zIndex == 0 刚好不会被遮蔽
+        gridLayer.getCanvas().style.pointerEvents = 'none'
+        cy.on('render cyCanvas.resize', drawDotGrid)
+        drawDotGrid()
     }
 
     /**
@@ -217,7 +237,8 @@ export function useRenderer(
      * 规则：
      *     1. 组件卸载前必须调用。
      *     2. 销毁后 cy 必须恢复为 null。
-     *     3. 清除瞬态状态缓存（位置缓存、class 记录、定时器）。
+     *     3. 先解绑格点背景事件，再销毁 cy 实例。
+     *     4. 清除瞬态状态缓存（位置缓存、class 记录、定时器）。
      *
      * 使用：
      *     onBeforeUnmount(() => {
@@ -233,6 +254,11 @@ export function useRenderer(
         if (eventsDestroy !== null) {
             eventsDestroy()
             eventsDestroy = null
+        }
+
+        if (gridLayer && cy) {
+            cy.off('render cyCanvas.resize', drawDotGrid)
+            gridLayer = null
         }
 
         if (cy) {
@@ -622,6 +648,58 @@ export function useRenderer(
                 }
             },
         )
+    }
+
+
+    // ── 私有辅助：格点背景 ──
+
+    /**
+     * 功能：
+     *     在 canvas overlay 上绘制离散格点背景。
+     *
+     * 规则：
+     *     1. 格点间距 = DEFAULT_LAYOUT_RULES.r0。
+     *     2. layer.setTransform() 自动对齐 Cytoscape 的模型坐标系（缩放 + 平移）。
+     *     3. 每次 render / cyCanvas.resize 事件触发时重绘，保证格点随视口同步刷新。
+     *     4. 只画可视范围内的格点，避免 N² 全图遍历。
+     */
+    function drawDotGrid(): void {
+        if (!gridLayer || !cy) {
+            return
+        }
+
+        const ctx = gridLayer.getCanvas().getContext('2d')
+        if (!ctx) {
+            return
+        }
+
+        // 清除上一帧
+        gridLayer.resetTransform(ctx)
+        gridLayer.clear(ctx)
+
+        // 切换到模型坐标系（自动跟随 zoom / pan）
+        gridLayer.setTransform(ctx)
+
+        const r0 = DEFAULT_LAYOUT_RULES.r0
+        const dotRadius = 1.4  // 模型空间圆点半径，zoom=1 时对应 1.4 CSS px
+
+        // 可视范围（模型坐标）
+        const extent = cy.extent()
+
+        const startX = Math.floor(extent.x1 / r0) * r0
+        const startY = Math.floor(extent.y1 / r0) * r0
+        const endX = Math.ceil(extent.x2 / r0) * r0
+        const endY = Math.ceil(extent.y2 / r0) * r0
+        ctx.fillStyle = 'rgba(100, 116, 139, 0.22)'
+        for (let x = startX; x <= endX; x += r0) {
+            for (let y = startY; y <= endY; y += r0) {
+                ctx.beginPath()
+                // 画圆周
+                ctx.arc(x, y, dotRadius, 0, 2 * Math.PI)
+                // 给圆填色
+                ctx.fill()
+            }
+        }
     }
 
 
