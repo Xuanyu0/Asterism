@@ -29,6 +29,8 @@ import type { GraphData, NodeId, NodePosition } from '../../types/graph_data'
 import type { ComposeIssue } from '../../types/compose_types'
 import type { GraphOperation } from '../../types/atomic_operations'
 import { generateGraphId, generateNodeId } from '../../core/id'
+import { DEFAULT_LAYOUT_RULES } from '../../core/rules'
+import { positionOnCircle } from '../../infrastructure/placement'
 
 // ═══════════ 参数类型 ═══════════
 
@@ -128,20 +130,34 @@ export function deconstruct(params: DeconstructParams): {
     const childGraphId = generateGraphId()
     const now = new Date().toISOString()
 
-    const communicationNodes = neighbors.map(neighbor => ({
-        id: generateNodeId(),
-        graphId: childGraphId,
-        role: 'reference' as const,
-        referenceKind: 'communication' as const,
-        label: neighbor.label,
-        sourceGraphId: parentGraph.id,
-        sourceNodeId: neighbor.id,
-        position: { x: 0, y: 0 } as NodePosition,
-        abstractionLevel: 0,
-        degree: 0,
-        createdAt: now,
-        updatedAt: now,
-    }))
+    // 沟通节点均匀分布在圆周上，避免堆叠
+    const communicationCenter: NodePosition = { x: 0, y: 0 }
+    const neighborCount = neighbors.length
+    // 半径：确保相邻节点不重叠（每个节点直径 2*r0，圆周上 n 个节点均匀分布）
+    const orbitRadius = neighborCount > 0
+        ? Math.max(DEFAULT_LAYOUT_RULES.r0 * 2, neighborCount * DEFAULT_LAYOUT_RULES.r0 / Math.PI)
+        : 0
+
+    const communicationNodes = neighbors.map((neighbor, index) => {
+        const angle = neighborCount > 0
+            ? (2 * Math.PI * index) / neighborCount
+            : 0
+
+        return {
+            id: generateNodeId(),
+            graphId: childGraphId,
+            role: 'reference' as const,
+            referenceKind: 'communication' as const,
+            label: neighbor.label,
+            sourceGraphId: parentGraph.id,
+            sourceNodeId: neighbor.id,
+            position: positionOnCircle(communicationCenter, orbitRadius, angle),
+            abstractionLevel: 0,
+            degree: 0,
+            createdAt: now,
+            updatedAt: now,
+        }
+    })
 
     const childGraph: GraphData = {
         id: childGraphId,
