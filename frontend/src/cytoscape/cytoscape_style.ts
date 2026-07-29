@@ -29,9 +29,9 @@ export function createCytoscapeStyle() {
         {
             selector: 'node',
             style: {
-                'width': DEFAULT_NODE_RULES.nodeDiameter,
-                'height': DEFAULT_NODE_RULES.nodeDiameter,
-                'font-size': `${DEFAULT_NODE_RULES.fontSize}px`,
+                'width': 'data(nodeDiameter)',
+                'height': 'data(nodeDiameter)',
+                'font-size': 'data(fontSize)',
                 'background-color': `#f0f0f0`,
                 'border-color': '#3d3d3d',
                 'border-width': 2,
@@ -54,7 +54,7 @@ export function createCytoscapeStyle() {
         {
             selector: 'edge',
             style: {
-                width: 2,
+                width: 'data(edgeWidth)',
                 'line-color': '#ccc',
                 'curve-style': 'bezier',
             },

@@ -1,16 +1,22 @@
 /**
  * 功能：
- *     将 GraphData 映射为 Cytoscape 可渲染的元素结构（映射样式，拷贝有效Data）。
+ *     将 GraphData 转换为 Cytoscape 渲染元素。负责两类工作：
+ *     1. 语义映射：GraphData 字段 → CSS class（role、kind、form → node-real/node-virtual/…）
+ *     2. 视觉属性计算：根据设计文档公式，从 degree/distance 派生节点直径、字号、边粗细
  *
  * 总体结构：
- *     1. CyNodeData / CyEdgeData
+ *     1. CyNodeData / CyEdgeData     — 渲染层最小数据契约
  *     2. CyNodeElement / CyEdgeElement / CyElements
- *     3. getNodeClasses()
- *     4. getEdgeClasses()
- *     5. mapGraphDataToCyElements()
+ *     3. getNodeClasses() / getEdgeClasses() — 样式类语义映射
+ *     4. mapGraphDataToCyElements() — 入口：计算全部视觉属性后产出 CyElements
+ *
+ * 设计公式：
+ *     节点直径     = 2·r₀·√(1+degree)
+ *     字号         = r₀/4·√(1+degree)
+ *     边粗细       = 4·r₀·(1+d₁)(1+d₂) / dist，区间为 [1, 8] px
  *
  * 外部如何使用：
- *     Graph.vue 或 Cytoscape Renderer 调用 mapGraphDataToCyElements(graph)。
+ *     renderer 的 syncFromGraphData() 调用 mapGraphDataToCyElements(graph)。
  */
 
 import type {
@@ -21,6 +27,7 @@ import type {
     NodeId,
     NodePosition,
 } from '@my-project/graph-engine'
+import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
 
 /**
  * 功能：
@@ -33,6 +40,10 @@ import type {
 export interface CyNodeData {
     id: NodeId
     label: string
+    /** 节点渲染直径 = 2·r₀·√(1 + degree)。r₀ = DEFAULT_LAYOUT_RULES.r0。 */
+    nodeDiameter: number
+    /** 推荐字号 = r₀/4 · √(1 + degree)。与半径等比缩放，保证标签始终适应节点圆内切范围。 */
+    fontSize: number
 }
 
 /**
@@ -48,6 +59,8 @@ export interface CyEdgeData {
     source: NodeId
     target: NodeId
     label?: string
+    /** 边宽度 = k · (1+d₁)(1+d₂) / dist。k = 4·r₀。 */
+    edgeWidth: number
 }
 
 /**
@@ -148,11 +161,15 @@ export function getEdgeClasses(edge: EdgeData): string[] {
  *     2. position 允许作为普通值传入，但不能由 Cytoscape 反向直接修改 GraphData。
  */
 function mapNodeToCyElement(node: NodeData, foldedParentIds: Set<NodeId>): CyNodeElement {
+    const scale = Math.sqrt(1 + node.degree)
+
     return {
         group: 'nodes',
         data: {
             id: node.id,
             label: node.label,
+            nodeDiameter: Math.round(2 * DEFAULT_LAYOUT_RULES.r0 * scale),
+            fontSize: Math.round((DEFAULT_LAYOUT_RULES.r0 / 4) * scale),
         },
         position: node.position,
         classes: getNodeClasses(node, foldedParentIds),
@@ -167,7 +184,27 @@ function mapNodeToCyElement(node: NodeData, foldedParentIds: Set<NodeId>): CyNod
  *     1. 禁止把完整 EdgeData 作为 data 传给 Cytoscape。
  *     2. 只传递 Cytoscape 渲染边所需的连接关系和显示字段。
  */
-function mapEdgeToCyElement(edge: EdgeData): CyEdgeElement {
+function mapEdgeToCyElement(
+    edge: EdgeData,
+    nodeLookup: Map<NodeId, { mass: number; position?: NodePosition }>,
+): CyEdgeElement {
+
+    // 映射边宽
+    // 边宽度：w = k · (1+d₁)(1+d₂) / dist
+    // k = 4·r₀：使得两个 degree=0、距离 2·r₀ 的节点间边宽为 2px
+    const k = 4 * DEFAULT_LAYOUT_RULES.r0
+    const src = nodeLookup.get(edge.source)
+    const tgt = nodeLookup.get(edge.target)
+    let edgeWidth = 2
+    if (src?.position && tgt?.position) {
+        const dx = tgt.position.x - src.position.x
+        const dy = tgt.position.y - src.position.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist > 0) {
+            edgeWidth = Math.round(k * src.mass * tgt.mass / dist)
+        }
+    }
+
     return {
         group: 'edges',
         data: {
@@ -175,6 +212,7 @@ function mapEdgeToCyElement(edge: EdgeData): CyEdgeElement {
             source: edge.source,
             target: edge.target,
             label: edge.label,
+            edgeWidth: Math.max(1, Math.min(8, edgeWidth)),
         },
         classes: getEdgeClasses(edge),
     }
@@ -195,6 +233,15 @@ export function mapGraphDataToCyElements(graph: GraphData): CyElements {
     const foldedNodeIds = new Set(foldedDeps.flatMap((state) => state.foldedNodeIds))
     const foldedParentIds = new Set(foldedDeps.map((state) => state.targetNodeId))
 
+    // 构建节点查找表——边宽度计算需要两端节点的大小与坐标
+    const nodeLookup = new Map<NodeId, { mass: number; position?: NodePosition }>()
+    for (const node of graph.nodes) {
+        nodeLookup.set(node.id, {
+            mass: 1 + node.degree,
+            position: node.position,
+        })
+    }
+
     return {
         nodes: graph.nodes
             .filter((node) => !foldedNodeIds.has(node.id))
@@ -202,6 +249,6 @@ export function mapGraphDataToCyElements(graph: GraphData): CyElements {
 
         edges: graph.edges
             .filter((edge) => !foldedNodeIds.has(edge.source) && !foldedNodeIds.has(edge.target))
-            .map((edge) => mapEdgeToCyElement(edge)),
+            .map((edge) => mapEdgeToCyElement(edge, nodeLookup)),
     }
 }
