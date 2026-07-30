@@ -109,8 +109,7 @@ onMounted(() => {
         graphStore.loadGraphToView(rootId)
     }
 
-    // 注册 default 工具——启动时激活为 baseline
-    mediator.register('default', useDefaultTool())
+    // 激活 default（mediator 启动时自动注册）
     mediator.activate('default')
 
     // 注册认知工具 handler（3.0-1：deconstruct 作为原型）

@@ -30,7 +30,7 @@ beforeEach(() => {
     saveGraph(golden)
     const store = useGraphStore()
     store.loadGraphToView(golden.id)
-    // 注册 mock default 工具（`deactivate()` 需要 restore default）
+    // 用 mock 替换自动注册的 default 工具（测试需要可控的 isActive 状态）
     const mediator = useToolMediator()
     const mockDefault: ToolHandler = {
         id: 'default',

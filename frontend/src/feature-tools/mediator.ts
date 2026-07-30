@@ -14,6 +14,7 @@ import { ref, shallowRef, type ShallowRef, type Ref } from 'vue'
 
 import type { ToolId, ToolHandler } from './types'
 import { useUIStore } from '@/ui/ui_store'
+import { useDefaultTool } from './default_tool'
 
 
 // ── 模块级单例 ──
@@ -42,6 +43,9 @@ function createMediator() {
     const activeHandler: ShallowRef<ToolHandler | null> = shallowRef(null)
     const handlerRegistry: Map<ToolId, ToolHandler> = new Map()
     const uiStore = useUIStore()
+
+    // 自动注册 default 兜底 handler（mediator 启动时注册，调用方无需关心）
+    handlerRegistry.set('default', useDefaultTool())
 
     // ── 注册 ──
 
@@ -81,7 +85,7 @@ function createMediator() {
             activeHandler.value.deactivate()
         }
 
-        // 恢复 default 工具作为 baseline
+        // 恢复 default 工具作为 baseline（createMediator 已注册，保证存在）
         const defaultHandler = handlerRegistry.get('default')!
         defaultHandler.activate()
         activeToolId.value = 'default'
