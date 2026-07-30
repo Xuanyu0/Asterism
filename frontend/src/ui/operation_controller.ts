@@ -123,7 +123,7 @@ export function useOperationController() {
      * 规则：
      *
      *     1. 委托引擎 composeInduce 产出跨图 operations。
-     *     2. applyBatchToGraphs 批量提交父图和子图。
+     *     2. commitBatchToGraphs 批量提交父图和子图。
      *     3. 任一图失败则整批丢弃。
      */
     function induce(nodeIds: NodeId[]): void {
@@ -164,7 +164,7 @@ export function useOperationController() {
             })
         }
 
-        const batchResult = graphStore.applyBatchToGraphs(targets)
+        const batchResult = graphStore.commitBatchToGraphs(targets)
 
         graphStore.lastValidationResult = batchResult.validation
     }
@@ -177,7 +177,7 @@ export function useOperationController() {
      * 规则：
      *
      *     1. 委托引擎 composeInternalize 产出跨图 operations。
-     *     2. applyBatchToGraphs 批量提交父图和常识层。
+     *     2. commitBatchToGraphs 批量提交父图和常识层。
      *     3. 当前 registry 中未找到常识层图时拒绝执行。
      *
      * 注意：
@@ -240,7 +240,7 @@ export function useOperationController() {
             })
         }
 
-        const batchResult = graphStore.applyBatchToGraphs(targets)
+        const batchResult = graphStore.commitBatchToGraphs(targets)
 
         graphStore.lastValidationResult = batchResult.validation
     }
@@ -255,7 +255,7 @@ export function useOperationController() {
      *     1. 委托引擎 composeDiverge 产出跨图 operations。
      *     2. heuristicPosition 为 null 时两节点直连（同图）。
      *        heuristicPosition 非 null 时在点击位置创建启发节点（跨图）。
-     *     3. applyBatchToGraphs 批量提交 current 与 peer。
+     *     3. commitBatchToGraphs 批量提交 current 与 peer。
      */
     function diverge(sourceNodeId: NodeId, targetNodeId: NodeId, heuristicPosition: { x: number; y: number } | null): void {
         if (!graphStore.graphView) {
@@ -307,7 +307,7 @@ export function useOperationController() {
             }
         }
 
-        const batchResult = graphStore.applyBatchToGraphs(targets)
+        const batchResult = graphStore.commitBatchToGraphs(targets)
 
         graphStore.lastValidationResult = batchResult.validation
     }

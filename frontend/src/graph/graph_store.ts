@@ -10,7 +10,7 @@
  *     1. graphView  — 当前正在渲染在画布上的图
  *     2. graphPath  — 当前图路径
  *     3. undoStack  — 全操作撤销栈（Step 12 将升级为 OperationLog）
- *     4. applyBatchToGraph / applyBatchToGraphs  — 所有图操作的唯一入口
+ *     4. commitBatchToGraph / commitBatchToGraphs  — 所有图操作的唯一入口
  *
  * 规则：
  *
@@ -23,8 +23,8 @@
  *     import { useGraphStore } from '@/graph/graph_store'
  *     const graphStore = useGraphStore()
  *     graphStore.loadGraphToView(graphId)
- *     graphStore.applyBatchToGraph(graph, [operation])
- *     graphStore.applyBatchToGraphs([
+ *     graphStore.commitBatchToGraph(graph, [operation])
+ *     graphStore.commitBatchToGraphs([
  *         { graph: parentGraph, operations: parentOps },
  *         { graph: childGraph, operations: childOps },
  *     ])
@@ -47,18 +47,6 @@ import { saveGraph, loadGraph, deleteGraph, listSavedGraphIds, listRootGraphIds,
 const MAX_UNDO_STACK_SIZE = 20
 
 
-/**
- * 功能：
- *
- *     多图批量操作的目标单元。
- */
-export interface ApplyBatchTarget {
-    /** 目标图。 */
-    graph: GraphData
-
-    /** 对该图执行的操作序列。 */
-    operations: GraphOperation[]
-}
 
 
 /**
@@ -92,7 +80,7 @@ export interface RootGraphSummary {
  *
  * 消费者：
  *
- *     applyBatchToGraphs（undo snapshot）
+ *     commitBatchToGraphs（undo snapshot）
  */
 export function pushUndoSnapshot(undoStack: GraphData[], graph: GraphData): GraphData[] {
     const snapshot: GraphData = JSON.parse(JSON.stringify(graph))
@@ -110,14 +98,14 @@ export function pushUndoSnapshot(undoStack: GraphData[], graph: GraphData): Grap
  * 总体结构：
  *
  *     1. 状态  — 当前图数据、选中状态、撤销栈
- *     2. API  — 图操作入口（loadGraphToView / applyBatchToGraph / applyBatchToGraphs 等）
+ *     2. API  — 图操作入口（loadGraphToView / commitBatchToGraph / commitBatchToGraphs 等）
  *
  * 规则：
  *
  *     1. Draft 数据与 Cytoscape Runtime 禁止进入本 Store。
- *     2. UI Runtime 可通过 feature-tools handler 直接调 applyBatchToGraph，不经过 operation_controller。
+ *     2. UI Runtime 可通过 feature-tools handler 直接调 commitBatchToGraph，不经过 operation_controller。
  *     3. 所有修改委托引擎 applyBatch 执行 validate + execute。
- *     4. applyBatchToGraph / applyBatchToGraphs 可传入持久化参数每次修改时自动持久化。
+ *     4. commitBatchToGraph / commitBatchToGraphs 每次修改时自动持久化。
  *
  */
 export const useGraphStore = defineStore('graph_store', () => {
@@ -522,33 +510,30 @@ export const useGraphStore = defineStore('graph_store', () => {
      *
      *     对单个目标图执行批量操作。
      *
-     *     本函数是 applyBatchToGraphs 的单图包装。
+     *     本函数是 commitBatchToGraphs 的单图包装。
      *
      * 规则：
      *
-     *     1. 委托 applyBatchToGraphs 执行统一的事务管理。
+     *     1. 委托 commitBatchToGraphs 执行统一的事务管理。
      *     2. 目标图是 graphView 时更新视图并记录 undo snapshot。
      *     3. 目标图是 registry 中图时更新 registry。
-     *     4. 默认自动持久化结果图。
+     *     4. 自动持久化结果图。
      *
      * 参数：
      *
      *     targetGraph — 要操作的目标图
      *     operations  — 操作序列
-     *     persist     — 是否持久化结果图。默认 true。
      *
      * 使用：
      *
-     *     graphStore.applyBatchToGraph(graphView, [op])
+     *     graphStore.commitBatchToGraph(graphView, [op])
      */
-    function applyBatchToGraph(
+    function commitBatchToGraph(
         targetGraph: GraphData,
         operations: GraphOperation[],
-        persist?: boolean,
     ): { validation: ValidationResult } {
-        const result = applyBatchToGraphs(
+        const result = commitBatchToGraphs(
             [{ graph: targetGraph, operations }],
-            persist,
         )
         lastValidationResult.value = result.validation
 
@@ -558,38 +543,32 @@ export const useGraphStore = defineStore('graph_store', () => {
     /**
      * 功能：
      *
-     *     对多个目标图批量执行操作，保证跨图事务原子性。
-     *
-     *     所有目标图按数组顺序执行；任一目标失败则整批丢弃，不修改任何 state；
-     *     全部成功后统一更新 state 并持久化。
+     *     对多个目标图批量执行操作，顺手执行持久化。
      *
      * 规则：
      *
      *     1. 全部目标先执行，失败即返回。
      *     2. 成功后才统一更新 graphView / registry。
      *     3. graphView 的 undo snapshot 在批量开始前只拍一次。
-     *     4. 支持同一图在 targets 中出现多次，后续 target 读取前面 target 的结果图。
-     *     5. 默认自动持久化所有结果图。
+     *     4. 支持同一图在 operationBatch 中出现多次，后续项读取前面项的结果图。
+     *     5. 自动持久化所有结果图。
      *
      * 参数：
      *
-     *     targets — 目标图与操作序列的配对数组
-     *     persist  — 是否持久化所有结果图。默认 true。
+     *     operationBatch — 图与操作序列的配对数组，整批统一提交
      *
      * 使用：
      *
-     *     graphStore.applyBatchToGraphs([
+     *     graphStore.commitBatchToGraphs([
      *         { graph: parentGraph, operations: parentOps },
      *         { graph: childGraph, operations: childOps },
      *     ])
      */
-    function applyBatchToGraphs(
-        targets: ApplyBatchTarget[],
-        persist?: boolean,
+    function commitBatchToGraphs(
+        operationBatch: { graph: GraphData; operations: GraphOperation[] }[],
     ): { validation: ValidationResult } {
-        persist = persist ?? true
 
-        if (targets.length === 0) {
+        if (operationBatch.length === 0) {
             const emptyValidation: ValidationResult = { valid: true, issues: [] }
 
             lastValidationResult.value = emptyValidation
@@ -597,13 +576,13 @@ export const useGraphStore = defineStore('graph_store', () => {
             return { validation: emptyValidation }
         }
 
-        // 第一阶段：按顺序执行所有 target，用 latestGraphs 跟踪同一图的中间状态
+        // 第一阶段：按顺序执行所有项，用 latestGraphs 跟踪同一图的中间状态
         const latestGraphs = new Map<GraphId, GraphData>()
         const allIssues = []
 
-        for (const target of targets) {
-            const inputGraph = latestGraphs.get(target.graph.id) ?? target.graph
-            const { graph: resultGraph, validation } = applyBatch(inputGraph, target.operations)
+        for (const item of operationBatch) {
+            const inputGraph = latestGraphs.get(item.graph.id) ?? item.graph
+            const { graph: resultGraph, validation } = applyBatch(inputGraph, item.operations)
 
             if (!validation.valid) {
                 lastValidationResult.value = validation
@@ -611,15 +590,15 @@ export const useGraphStore = defineStore('graph_store', () => {
                 return { validation }
             }
 
-            latestGraphs.set(target.graph.id, resultGraph)
+            latestGraphs.set(item.graph.id, resultGraph)
             allIssues.push(...validation.issues)
         }
 
         // 全部成功后：为 graphView 拍 undo snapshot（只拍一次，记录批量操作前状态）。
         // 所有修改 GraphData 的操作都需要撤销支持。
-        const hasGraphViewTarget = targets.some(target => target.graph.id === graphView.value?.id)
+        const hasGraphViewTarget = operationBatch.some(item => item.graph.id === graphView.value?.id)
         const needsUndoSnapshot = hasGraphViewTarget
-            && targets.some(target => target.operations.some((op) => {
+            && operationBatch.some(item => item.operations.some((op) => {
                 // 仅对修改 GraphData 的操作拍 undo snapshot，非修改操作不需要。
                 switch (op.type) {
                     case 'add_node':
@@ -658,36 +637,28 @@ export const useGraphStore = defineStore('graph_store', () => {
         // 引擎 execute 层对 add_graph / delete_graph 是静默的（它们不修改 GraphData），
         // 这些操作是 compose→Runtime 的信号。graphStore 作为统一执行入口，负责把信号
         // 兑现为 registry 和持久化的副作用。
-        for (const target of targets) {
-            for (const operation of target.operations) {
+        for (const item of operationBatch) {
+            for (const operation of item.operations) {
                 if (operation.type === 'add_graph') {
                     registerGraph(graphRegistry.value, operation.graph)
-
-                    if (persist) {
-                        saveGraph(operation.graph)
-                    }
+                    saveGraph(operation.graph)
                 }
 
                 if (operation.type === 'delete_graph') {
                     unregisterGraph(graphRegistry.value, operation.graphId)
-
-                    if (persist) {
-                        deleteGraph(operation.graphId)
-                    }
+                    deleteGraph(operation.graphId)
                 }
             }
         }
 
         // 第四阶段：统一持久化结果图
-        if (persist) {
-            for (const resultGraph of latestGraphs.values()) {
-                saveGraph(resultGraph)
-            }
+        for (const resultGraph of latestGraphs.values()) {
+            saveGraph(resultGraph)
+        }
 
-            // 若当前视图图被持久化，记录最近一次保存时间。
-            if (hasGraphViewTarget) {
-                lastSaveTime.value = Date.now()
-            }
+        // 若当前视图图被持久化，记录最近一次保存时间。
+        if (hasGraphViewTarget) {
+            lastSaveTime.value = Date.now()
         }
 
         const validation: ValidationResult = {
@@ -749,8 +720,8 @@ export const useGraphStore = defineStore('graph_store', () => {
         deleteSavedGraph,
         listRootGraphSummaries,
         deleteRootGraphTree,
-        applyBatchToGraph,
-        applyBatchToGraphs,
+        commitBatchToGraph,
+        commitBatchToGraphs,
         undo,
     }
 })

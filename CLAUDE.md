@@ -45,7 +45,7 @@ pnpm --filter @my-project/graph-engine test
 ### 测试文件约定
 
 - vitest `globals: true` 已启用。`test` / `describe` / `expect` / `beforeEach` / `afterAll` / `vi` 均为全局函数，`.test.ts` 文件中**禁止** `import { ... } from 'vitest'`。
-- 使用 `test()`，禁止 `it()`（ESLint `no-restricted-globals` 已配置）。
+- 使用 `test()`，禁止 `it()`。
 
 ## 项目定位
 
@@ -141,26 +141,21 @@ Cytoscape Renderer
 
 ### Phase 1：前端 Runtime 完成 ✅
 
-1. **NodeWindow Runtime** — 统一 DraftNode 与 ExistingNode 编辑
-2. **OperationToolbar Runtime** — 完善 Add Edge / Delete / Fold
-3. **OperationController 收口** — 后期逐步剥离职责至 feature-tools/（后 draft_store 移除、OperationController 缩小为仅编排编排操作，待进一步清理）
-4. **Node Type 收口** — 引入 `NodeRole` 第一层判别，消除 `'normal'` 占位符，TS discriminated union
+- **NodeWindow Runtime** — 统一 DraftNode 与 ExistingNode 编辑
+- **OperationToolbar Runtime** — 完善 Add Edge / Delete / Fold
+- **OperationController 收口** 
+- **Node Type 收口** — 引入 discriminated union，消除 `'normal'` 占位符
 
 ### Phase 2a：Graph Engine（架构核心层） ✅
 
-将 `operation_executor.ts` / `operation_validator.ts` / `graph_utils.ts` 等前端职责聚合代码下沉为独立引擎包 `@my-project/graph-engine`：
-
+将前端职责聚合代码下沉为独立引擎包 `@my-project/graph-engine`：
 - 框架无关（不依赖 Pinia / Vue）
-- 单步操作（11 种原子操作）：apply + validate + execute + createReversal
-- 批量事务：applyBatch（validate-all-first → execute-all 或整批丢弃）
-- 认知编排：deconstruct / induce / internalize / diverge（compose/cognitive/）
-- 布局编排：moveNode / adjustDistance / adjustOrbit / orbit / pathLayout（compose/arrangement/）
-- 基础设施：碰撞检测、位置放置、跨图搜索、ID 生成
-- 操作日志类型层：OperationLog / OperationLogEntry / State（树形操作树，支持 undo）
-- 操作回放：replayGraph / replayToStep
-- 前端已切到引擎全部 API，冗余代码已清理
-
-**Phase 2a 完成标志**：引擎作为独立的 `@my-project/graph-engine` 包运行，框架无关。前端仅通过 graph_store 调引擎（非 types import），所有 import 指向引擎包。
+- 11 种原子操作的 validate + execute + createReversal
+- 批量事务 applyBatch（全量验证 → 全部执行或整批丢弃）
+- 认知编排（deconstruct / induce / internalize / diverge）与布局编排（move / orbit / path 等）
+- 碰撞检测、位置放置、跨图搜索、ID 生成等基础设施
+- 操作日志（OperationLog / State）与回放（replayGraph / replayToStep）
+- 前端已全部切到引擎 API，冗余代码已清理
 
 ---
 
@@ -207,7 +202,6 @@ GE 的全部功能在前端完全落地，使 Cognition（除 explore / unearth�
 
 - FastAPI 后端
 - Supabase 集成
-- Auto Save / IndexedDB
 
 ## 设计文档
 
@@ -225,7 +219,8 @@ GE 的全部功能在前端完全落地，使 Cognition（除 explore / unearth�
 
 ### 变量命名规则
 
-禁止变量单字母简写。
+* 长度随作用域变化（即：局部变量短小即可）
+* 模块级作用域或对象内部跨多个函数体的共享变量命名必须明确，可以被检索
 
 ### 文件命名（snake_case）
 

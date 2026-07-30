@@ -22,9 +22,6 @@ import { getNodeClasses, getEdgeClasses } from './mapper-utils/class_mapper'
 import { computeNodeDiameter, computeFontSize, computeEdgeWidth, buildNodeMassLookup, calcEdgeDistance } from './mapper-utils/visual_mapper'
 import { extractFoldFilter } from './mapper-utils/fold_filter'
 
-/**
- * Cytoscape 节点元素。
- */
 interface CyNodeElement {
     group: 'nodes'
     data: {
@@ -37,9 +34,6 @@ interface CyNodeElement {
     classes?: string[]
 }
 
-/**
- * Cytoscape 边元素。
- */
 interface CyEdgeElement {
     group: 'edges'
     data: {

@@ -137,7 +137,7 @@ export function useDefaultTool(): ToolHandler {
             // 边编辑
             const edge: EdgeData = { ...original, label }
 
-            const result = graphStore.applyBatchToGraph(
+            const result = graphStore.commitBatchToGraph(
                 graphStore.graphView,
                 [{ type: 'update_edge', edge }],
             )
@@ -153,7 +153,7 @@ export function useDefaultTool(): ToolHandler {
                 (node as KnowledgeNodeData).summary = summary
             }
 
-            const result = graphStore.applyBatchToGraph(
+            const result = graphStore.commitBatchToGraph(
                 graphStore.graphView,
                 [{ type: 'update_node', node }],
             )

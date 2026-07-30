@@ -76,7 +76,7 @@ export function useAddEdgeTool(
             label: '',
         }
 
-        const result = graphStore.applyBatchToGraph(graphStore.graphView, [{
+        const result = graphStore.commitBatchToGraph(graphStore.graphView, [{
             type: 'add_edge',
             edge,
         }])

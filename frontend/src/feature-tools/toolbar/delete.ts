@@ -116,7 +116,7 @@ export function useDeleteTool(): ToolHandler {
             uiStore.closeFloatingWindow()
         }
 
-        const result = graphStore.applyBatchToGraph(graphStore.graphView, [{
+        const result = graphStore.commitBatchToGraph(graphStore.graphView, [{
             type: 'delete_node',
             nodeId,
         }])
@@ -132,7 +132,7 @@ export function useDeleteTool(): ToolHandler {
             uiStore.closeFloatingWindow()
         }
 
-        const result = graphStore.applyBatchToGraph(graphStore.graphView, [{
+        const result = graphStore.commitBatchToGraph(graphStore.graphView, [{
             type: 'delete_edge',
             edgeId,
         }])

@@ -242,7 +242,7 @@ describe('picked → idle 无碰撞放置', () => {
         // （setNodePosition 将 lastModelPos 写入 nodePositionsMap）
     })
 
-    test('无碰撞放置后 applyBatchToGraph 被调用', () => {
+    test('无碰撞放置后 commitBatchToGraph 被调用', () => {
         const store = useGraphStore()
         const nodeBefore = store.graphView!.nodes.find(
             n => n.id === 'node-g1',

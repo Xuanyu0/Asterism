@@ -8,7 +8,7 @@
  * 规则：
  *     1. 调用前必须已挂载 Pinia（app.use(pinia)），因为内部 useGraphStore。
  *     2. 路由挂载先后不影响——本函数只挂 window 对象 + 加载测试数据，不依赖路由。
- *     3. 金图与银图均通过 graphStore 操作路径（createRootGraph → applyBatchToGraph × 3）
+ *     3. 金图与银图均通过 graphStore 操作路径（createRootGraph → commitBatchToGraph × 3）
  *        构造，与用户实际操作路径一致。
  */
 
@@ -30,7 +30,7 @@ export function bootstrapDevTools(): void {
         const gId = graphStore.graphView!.id
 
         // — 金图节点（6 个，一批） —
-        graphStore.applyBatchToGraph(
+        graphStore.commitBatchToGraph(
             graphStore.graphView!,
             [
                 {
@@ -100,7 +100,7 @@ export function bootstrapDevTools(): void {
         )
 
         // — 金图边（4 条，单独 batch——节点必须已存在） —
-        graphStore.applyBatchToGraph(
+        graphStore.commitBatchToGraph(
             graphStore.graphView!,
             [
                 {
@@ -139,7 +139,7 @@ export function bootstrapDevTools(): void {
         )
 
         // — 金图子图（add_graph 信号操作） —
-        graphStore.applyBatchToGraph(
+        graphStore.commitBatchToGraph(
             graphStore.graphView!,
             [
                 {
@@ -189,7 +189,7 @@ export function bootstrapDevTools(): void {
         const sId = graphStore.graphView!.id
 
         // — 银图节点（5 个，一批） —
-        graphStore.applyBatchToGraph(
+        graphStore.commitBatchToGraph(
             graphStore.graphView!,
             [
                 {
@@ -249,7 +249,7 @@ export function bootstrapDevTools(): void {
         )
 
         // — 银图边（3 条，单独 batch——节点必须已存在） —
-        graphStore.applyBatchToGraph(
+        graphStore.commitBatchToGraph(
             graphStore.graphView!,
             [
                 {
@@ -280,7 +280,7 @@ export function bootstrapDevTools(): void {
         )
 
         // — 银子图（add_graph 信号操作） —
-        graphStore.applyBatchToGraph(
+        graphStore.commitBatchToGraph(
             graphStore.graphView!,
             [
                 {

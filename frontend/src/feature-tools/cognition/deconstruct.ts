@@ -49,7 +49,7 @@ export function useDeconstructTool(): ToolHandler {
      * 规则：
      *
      *     1. 委托引擎 composeDeconstruct 产出 operations。
-     *     2. applyBatchToGraph 统一提交到 graphView。
+     *     2. commitBatchToGraph 统一提交到 graphView。
      *     3. 操作完成后自动调用 mediator.deactivate() 取消自身。
      */
     function onNodeClick(nodeId: string): void {
@@ -71,7 +71,7 @@ export function useDeconstructTool(): ToolHandler {
             return
         }
 
-        const batchResult = graphStore.applyBatchToGraph(
+        const batchResult = graphStore.commitBatchToGraph(
             graphStore.graphView,
             result.operations,
         )

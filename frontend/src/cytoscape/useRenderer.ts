@@ -34,7 +34,7 @@ import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
 
 import type { CyInteractionHandlers } from './cy_interaction'
 
-import { mapGraphDataToCyElements } from './graph_element_mapper'
+import { mapGraphDataToCyElements } from './cy_element_mapper'
 import { bindCyEvents } from './cy_interaction'
 import { createCytoscapeStyle } from './cy_style'
 
@@ -52,7 +52,7 @@ cytoscape.use(cytoscapeCanvas)
  *     1. 所有方法在 composable 闭包内访问私有 cy。
  *     2. 外部无法通过此 API 获取裸 Cytoscape 实例。
  */
-export interface RendererAPI {
+interface RendererAPI {
     /** 创建 Cytoscape 实例并挂载到 DOM 容器，同时绑定交互事件。 */
     mount(handlers: CyInteractionHandlers): void
 

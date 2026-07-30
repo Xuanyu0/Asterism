@@ -13,7 +13,7 @@
  *     3. 已拾取状态下点击 → 放置尝试。
  *     4. 放置碰撞 → 红色高亮 + notification，保持已拾取。
  *     5. 右键取消拾取 → 弹回原位。
- *     6. 禁止直接修改 GraphData；所有写入通过 graphStore.applyBatchToGraph。
+ *     6. 禁止直接修改 GraphData；所有写入通过 graphStore.commitBatchToGraph。
  *     7. 中间位置不写 GraphData，只更新 Cy 视觉层。
  *
  * 外部如何使用：
@@ -63,8 +63,8 @@ export function useMoveNodeTool(): ToolHandler {
     /** 已拾取节点的 ID。 */
     let pickedNodeId: string | null = null
 
-    /** trackCursor 返回的 stop 句柄。 */
-    let tracking: { stop(): void } | null = null
+    /** trackCursor 返回的 stop 句柄（handle）。 */
+    let stopCursorTracking: { stop(): void } | null = null
 
     /** 最后已知的模型坐标（用于点击拾取时立即吸附）。已拾取状态下每帧由 trackCursor 更新。 */
     let lastModelPos: { x: number; y: number } | null = null
@@ -112,7 +112,7 @@ export function useMoveNodeTool(): ToolHandler {
         collisionMessage.value = null
         lastModelPos = null
 
-        tracking = trackCursor((modelPos) => {
+        stopCursorTracking = trackCursor((modelPos) => {
             // 始终记录最后已知模型坐标（即使未拾取），
             // 用于 onNodeClick 中点击时立即吸附至光标。
             lastModelPos = modelPos
@@ -152,9 +152,9 @@ export function useMoveNodeTool(): ToolHandler {
      *     4. 重置全部状态。
      */
     function deactivate(): void {
-        if (tracking) {
-            tracking.stop()
-            tracking = null
+        if (stopCursorTracking) {
+            stopCursorTracking.stop()
+            stopCursorTracking = null
         }
 
         // cancelPick 内部调 resetNodePosition + clearAllPreviews('move')，同时覆盖已拾取回退和 class 清理
@@ -251,7 +251,7 @@ export function useMoveNodeTool(): ToolHandler {
      * 规则：
      *     1. 读取 Cy 节点当前视觉位置作为 desiredPosition。
      *     2. 调引擎 composeMoveNode 做碰撞检测。
-     *     3. 无碰撞 → applyBatchToGraph 写入 GraphData → 回到 idle。
+     *     3. 无碰撞 → commitBatchToGraph 写入 GraphData → 回到 idle。
      *     4. 有碰撞 → 节点红色高亮 + notification → 保持 picked（不弹回）。
      */
     function placeAttempt(): void {
@@ -284,7 +284,7 @@ export function useMoveNodeTool(): ToolHandler {
         }
 
         // 无碰撞 → 写入 GraphData
-        const batchResult = graphStore.applyBatchToGraph(
+        const batchResult = graphStore.commitBatchToGraph(
             graphStore.graphView,
             result.operations,
         )

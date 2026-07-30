@@ -10,7 +10,7 @@
  *
  * 规则：
  *     1. onCanvasClick 创建 DraftNode。
- *     2. onConfirm 校验 label → 构造 NodeData → applyBatchToGraph → 清 draft → deactivate。
+ *     2. onConfirm 校验 label → 构造 NodeData → commitBatchToGraph → 清 draft → deactivate。
  *     3. deactivate 时清除草稿。
  *
  * 外部如何使用：
@@ -113,7 +113,7 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
             },
         }
 
-        const result = graphStore.applyBatchToGraph(graphStore.graphView, [{
+        const result = graphStore.commitBatchToGraph(graphStore.graphView, [{
             type: 'add_node',
             node,
         }])

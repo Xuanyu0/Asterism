@@ -105,7 +105,7 @@ describe('原子操作链路', () => {
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
-        const result = store.applyBatchToGraph(store.graphView!, [{
+        const result = store.commitBatchToGraph(store.graphView!, [{
             type: 'add_node',
             node: {
                 role: 'knowledge',
@@ -145,10 +145,10 @@ describe('fold/expand + undo', () => {
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
-        store.applyBatchToGraph(store.graphView!, [{
+        store.commitBatchToGraph(store.graphView!, [{
             type: 'collapse_dependency',
             targetNodeId: 'node-g2' as NodeId,
-        }], false)
+        }])
 
         expect(store.graphView!.cognitiveState?.foldedDependencies.length).toBeGreaterThan(0)
     })
@@ -159,10 +159,10 @@ describe('fold/expand + undo', () => {
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
-        store.applyBatchToGraph(store.graphView!, [{
+        store.commitBatchToGraph(store.graphView!, [{
             type: 'collapse_dependency',
             targetNodeId: 'node-g2' as NodeId,
-        }], false)
+        }])
 
         expect(store.graphView!.cognitiveState?.foldedDependencies.length).toBeGreaterThan(0)
 
@@ -179,10 +179,10 @@ describe('fold/expand + undo', () => {
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
-        const result = store.applyBatchToGraph(store.graphView!, [{
+        const result = store.commitBatchToGraph(store.graphView!, [{
             type: 'delete_node',
             nodeId: 'non-existent-node' as NodeId,
-        }], false)
+        }])
 
         expect(result.validation.valid).toBe(false)
         expect(store.graphView!.nodes.length).toBe(6)

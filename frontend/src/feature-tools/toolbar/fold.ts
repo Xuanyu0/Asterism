@@ -60,7 +60,7 @@ export function useFoldTool(): ToolHandler {
             ? ('expand_dependency' as const)
             : ('collapse_dependency' as const)
 
-        const result = graphStore.applyBatchToGraph(graphStore.graphView, [{
+        const result = graphStore.commitBatchToGraph(graphStore.graphView, [{
             type: operationType,
             targetNodeId: nodeId as NodeId,
         }])
