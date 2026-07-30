@@ -9,7 +9,7 @@
  *               → 添加无向实边 → 添加有向虚边 → 添加无向虚边
  *               → 删除 → 折叠
  * 外部如何使用：
- *     GraphOperationToolbar.vue 读取本数组渲染按钮。
+ *     GraphPermanentToolbar.vue 读取本数组渲染按钮。
  *     Graph.vue 遍历本数组调用 useTool() 注册处理器。
  */
 

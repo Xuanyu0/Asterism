@@ -25,7 +25,7 @@
   - 规则：同一时刻最多一个工具处于激活状态，多个入口共享此互斥约束
 - **交互逻辑层**：用户与工具的交互通道。采用"水平分层 + 垂直自包含"混合架构，以下是其包含的内容：
   - 水平分层（所有工具共享）：
-    - 按钮 UI 定义：`feature-tools/toolbar/registry.ts`（图标、标签、处理器工厂）+ `GraphOperationToolbar.vue`（渲染）
+    - 按钮 UI 定义：`feature-tools/toolbar/registry.ts`（图标、标签、处理器工厂）+ `GraphPermanentToolbar.vue`（渲染）
     - 生命周期管理：`feature-tools/mediator.ts`（注册、激活/取消、互斥保证）
     - 事件捕获与转发：`graph_interaction.ts`（Cytoscape 事件 → 语义事件）→ `feature-tools/mediator.ts`（转发至活跃 handler）
   - 垂直自包含（每个工具独立）：

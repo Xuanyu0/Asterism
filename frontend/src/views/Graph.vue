@@ -9,7 +9,7 @@
  *     3. 监听 GraphData 变化并同步渲染
  *     4. 绑定 Cytoscape 语义交互事件（tap / cxttap / dblclick）
  *     5. 双击节点导航（引用节点→源图、抽象节点→子图）
- *     6. 挂载 GraphNodeWindow、GraphOperationToolbar 与 GraphModeSelector
+ *     6. 挂载 GraphNodeWindow、GraphPermanentToolbar 与 GraphModeSelector
  *
  * 前端机制（Vue 3 框架行为）：
  *     - <script setup lang="ts">：
@@ -46,7 +46,7 @@ import { useDeconstructTool } from '@/feature-tools/cognition/deconstruct'
 
 import GraphNodeWindow from '@/components/GraphNodeWindow.vue'
 import NotificationPanel from '@/components/NotificationPanel.vue'
-import GraphOperationToolbar from '@/components/GraphOperationToolbar.vue'
+import GraphPermanentToolbar from '@/components/GraphPermanentToolbar.vue'
 import GraphModeSelector from '@/components/GraphModeSelector.vue'
 import GraphNavigationCard from '@/components/GraphNavigationCard.vue'
 
@@ -251,14 +251,14 @@ onBeforeUnmount(() => {
 
         <!--
             功能：
-                操作工具栏。
+                常驻操作栏。
 
             规则：
                 1. 负责修改 UI Runtime 的用户意图。
                 2. 不直接修改 GraphData。
                 3. 不直接操作 Cytoscape。
         -->
-        <GraphOperationToolbar />
+        <GraphPermanentToolbar />
         <GraphModeSelector />
 
         <!--

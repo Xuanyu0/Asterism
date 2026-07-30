@@ -129,7 +129,7 @@ export interface ToolHandler {
  *
  * 使用：
  *     toolbar/registry.ts 输出 ToolConfig[]。
- *     GraphOperationToolbar.vue 读取 icon/label 渲染按钮。
+ *     GraphPermanentToolbar.vue 读取 icon/label 渲染按钮。
  *     Graph.vue 调用 useTool() 创建 handler 并注册到 router。
  */
 export interface ToolConfig {

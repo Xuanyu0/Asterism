@@ -1,8 +1,8 @@
 <template>
     <!-- 常驻操作栏（顶部中央） -->
-    <div class="standing-toolbar">
+    <div class="permanent-toolbar">
         <button
-            v-for="btn in standingButtons"
+            v-for="btn in permanentButtons"
             v-bind:key="btn.id"
             v-bind:class="{ active: activeToolId === btn.id }"
             v-bind:title="btn.label"
@@ -31,7 +31,7 @@
 
 import { computed, onMounted } from 'vue'
 
-import { toolbarRegistry } from '@/feature-tools/toolbar/registry'
+import { toolbarRegistry } from '@/feature-tools/toolbar/toolbar_registry'
 import { useToolMediator } from '@/feature-tools/mediator'
 
 const mediator = useToolMediator()
@@ -39,7 +39,7 @@ const mediator = useToolMediator()
 const activeToolId = computed(() => mediator.activeToolId.value)
 
 // 从注册表读取按钮定义
-const standingButtons = toolbarRegistry
+const permanentButtons = toolbarRegistry
 
 // ── 注册所有处理器 ──
 
@@ -51,7 +51,7 @@ onMounted(() => {
 
 // ── 工具激活/取消 ──
 
-function activateTool(btn: (typeof standingButtons)[number]): void {
+function activateTool(btn: (typeof permanentButtons)[number]): void {
     if (activeToolId.value === btn.id) {
         mediator.deactivate()
         return
@@ -64,7 +64,7 @@ function activateTool(btn: (typeof standingButtons)[number]): void {
 <style scoped>
 /* ── 常驻操作栏（顶部中央）── */
 
-.standing-toolbar {
+.permanent-toolbar {
     position: absolute;
     top: 12px;
     left: 50%;
@@ -82,7 +82,7 @@ function activateTool(btn: (typeof standingButtons)[number]): void {
     z-index: 999;
 }
 
-.standing-toolbar button {
+.permanent-toolbar button {
     padding: 3px 8px;
     border: 1px solid #cbd5e1;
     background: white;
@@ -93,20 +93,20 @@ function activateTool(btn: (typeof standingButtons)[number]): void {
     transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
 }
 
-.standing-toolbar button:hover {
+.permanent-toolbar button:hover {
     background: #f1f5f9;
     transform: translateY(-1px);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.standing-toolbar button.active {
+.permanent-toolbar button.active {
     background: #bfdbfe;
     border-color: #3b82f6;
 }
 
 /* 组间间距 */
-.standing-toolbar > button:nth-child(3),
-.standing-toolbar > button:nth-child(7) {
+.permanent-toolbar > button:nth-child(3),
+.permanent-toolbar > button:nth-child(7) {
     margin-left: 8px;
 }
 

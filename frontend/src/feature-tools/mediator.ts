@@ -30,21 +30,35 @@ import { useUIStore } from '@/ui/ui_store'
 
 // ── 模块级单例 ──
 
-let singleton: ReturnType<typeof createRouter> | null = null
+let singleton: ReturnType<typeof createMediator> | null = null
 
+/**
+ * 功能：
+ *     获取全局唯一工具中介者实例（懒创建）。
+ *
+ * 规则：
+ *     1. 必须在 Pinia 安装后调用（setup 内或之后）。
+ *     2. 后续调用返回同一实例。
+ */
+export function useToolMediator(): ReturnType<typeof createMediator> {
+    if (!singleton) {
+        singleton = createMediator()
+    }
+    return singleton
+}
 
-function createRouter() {
+function createMediator() {
     // ── 状态 ──
 
     const activeToolId: Ref<ToolId | null> = ref(null)
     const activeHandler: ShallowRef<ToolHandler | null> = shallowRef(null)
-    const registry: Map<ToolId, ToolHandler> = new Map()
+    const handlerRegistry: Map<ToolId, ToolHandler> = new Map()
     const uiStore = useUIStore()
 
     // ── 注册 ──
 
     function register(id: ToolId, handler: ToolHandler): void {
-        registry.set(id, handler)
+        handlerRegistry.set(id, handler)
     }
 
     // ── 激活/取消 ──
@@ -61,7 +75,7 @@ function createRouter() {
             return
         }
 
-        const handler = registry.get(id)
+        const handler = handlerRegistry.get(id)
         if (!handler) {
             return
         }
@@ -80,7 +94,7 @@ function createRouter() {
         }
 
         // 恢复 default 工具作为 baseline
-        const defaultHandler = registry.get('default')!
+        const defaultHandler = handlerRegistry.get('default')!
         defaultHandler.activate()
         activeToolId.value = 'default'
         activeHandler.value = defaultHandler
@@ -111,7 +125,7 @@ function createRouter() {
     return {
         activeToolId,
         activeHandler,
-        registry,
+        registry: handlerRegistry,
         register,
         activate,
         deactivate,
@@ -121,20 +135,4 @@ function createRouter() {
         onNodeDoubleClick,
         onRightClick,
     }
-}
-
-
-/**
- * 功能：
- *     获取全局唯一工具中介者实例（懒创建）。
- *
- * 规则：
- *     1. 必须在 Pinia 安装后调用（setup 内或之后）。
- *     2. 后续调用返回同一实例。
- */
-export function useToolMediator(): ReturnType<typeof createRouter> {
-    if (!singleton) {
-        singleton = createRouter()
-    }
-    return singleton
 }
