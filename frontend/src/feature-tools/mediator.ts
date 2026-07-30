@@ -1,21 +1,9 @@
 /**
- * tools/tool_mediator.ts
- *
  * 功能：
- *     全局单例工具中介者（Mediator）。负责工具注册、激活/取消、互斥保证、事件转发。
- *
- * 总体结构：
- *     1. 模块级单例状态
- *     2. createRouter() — 创建中介者实例
- *     3. useToolMediator() — 获取/创建单例
- *
- * 规则：
- *     1. 同一时刻最多一个工具处于激活状态。
- *     2. 激活新工具前自动取消当前工具。
- *     3. 事件通过 handler 的可选方法转发。
+ *     全局单例工具中介者。负责工具注册、激活/取消、互斥保证、事件转发。
  *
  * 外部如何使用：
- *     import { useToolMediator } from '@/tools/tool_mediator'
+ *     import { useToolMediator } from '@/feature-tools/mediator'
  *     const mediator = useToolMediator()
  *     mediator.activate('add-real-node')
  *     mediator.onNodeClick(nodeId)

@@ -10,10 +10,7 @@
  *     3. getNodeClasses() / getEdgeClasses() — 样式类语义映射
  *     4. mapGraphDataToCyElements() — 入口：计算全部视觉属性后产出 CyElements
  *
- * 设计公式：
- *     节点直径     = 2·r₀·√(1+degree)
- *     字号         = r₀/4·√(1+degree)
- *     边粗细       = 4·r₀·(1+d₁)(1+d₂) / dist，区间为 [1, 8] px
+ * 设计公式见 docs/设计/ 相关文档。
  *
  * 外部如何使用：
  *     renderer 的 syncFromGraphData() 调用 mapGraphDataToCyElements(graph)。
@@ -42,7 +39,7 @@ interface CyNodeData {
     label: string
     /** 节点渲染直径 = 2·unitDistance·√(1 + degree)。unitDistance = DEFAULT_LAYOUT_RULES.unitDistance。 */
     nodeDiameter: number
-    /** 推荐字号 = r₀/4 · √(1 + degree)。与半径等比缩放，保证标签始终适应节点圆内切范围。 */
+    /** 推荐字号，公式见设计文档。与节点直径等比缩放，保证标签始终适应节点圆内切范围。 */
     fontSize: number
 }
 
@@ -59,7 +56,7 @@ interface CyEdgeData {
     source: NodeId
     target: NodeId
     label?: string
-    /** 边宽度 = k · (1+d₁)(1+d₂) / dist。k = 4·r₀。 */
+    /** 边宽度公式见设计文档。 */
     edgeWidth: number
 }
 
@@ -190,8 +187,7 @@ function mapEdgeToCyElement(
 ): CyEdgeElement {
 
     // 映射边宽
-    // 边宽度：w = k · (1+d₁)(1+d₂) / dist
-    // k = 4·r₀：使得两个 degree=0、距离 2·r₀ 的节点间边宽为 2px
+    // 边宽度：公式见设计文档。k 值保证两个 degree=0、相距 2·unitDistance 的节点间边宽为 2px
     const k = 4 * DEFAULT_LAYOUT_RULES.unitDistance
     const src = nodeLookup.get(edge.source)
     const tgt = nodeLookup.get(edge.target)

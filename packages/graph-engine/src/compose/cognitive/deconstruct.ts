@@ -29,7 +29,7 @@ import type { GraphData, NodeId, NodePosition } from '../../types/graph_data'
 import type { ComposeIssue } from '../../types/compose_types'
 import type { GraphOperation } from '../../types/atomic_operations'
 import { generateGraphId, generateNodeId } from '../../core/id'
-import { DEFAULT_LAYOUT_RULES } from '../../core/rules'
+import { DEFAULT_LAYOUT_RULES } from '../../core/layout_rules'
 import { positionOnCircle } from '../../infrastructure/placement'
 
 // ═══════════ 参数类型 ═══════════

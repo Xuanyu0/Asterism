@@ -13,7 +13,7 @@
  *     const overrides = computeNodeRadiusOverrides(graphView)
  *
  * 规则：
- *     半径公式 r = r₀ · √(1 + degree)。
+ *     半径公式以 unitDistance 为基准缩放，公式见设计文档。
  */
 
 import type { GraphData, NodeRadiusMap } from '@my-project/graph-engine'
@@ -25,7 +25,7 @@ import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
  *     计算当前图全部节点的外接圆半径覆盖表。
  *
  * 规则：
- *     半径公式 r = r₀ · √(1 + degree)。
+ *     半径公式以 unitDistance 为基准缩放，公式见设计文档。
  *
  * 参数：
  *     graphView — 当前图的 GraphData 实例。

@@ -1,5 +1,4 @@
 /**
- * global_rules_table.ts
  *
  * 功能：
  *
@@ -21,7 +20,7 @@
  *
  * 外部如何使用：
  *
- *     import { GLOBAL_RULES, DEFAULT_GLOBAL_RULES_TABLE } from './checkers/global_rules_table'
+ *     import { GLOBAL_RULES, DEFAULT_GLOBAL_RULES_TABLE } from './validators/global_rules'
  *     const issues = GLOBAL_RULES.flatMap(rule => rule.check(graph))
  */
 

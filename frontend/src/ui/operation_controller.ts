@@ -4,9 +4,9 @@
  * 功能：
  *
  *     纯 UI 适配层。负责认知/布局操作编排。
- *     工具栏工具事件已由 tools/tool_mediator 接管。
- *     模式管理已由 tools/tool_mediator 统一接管（3.0-1）。
- *     默认路由已由 feature-tools/default.ts 接管（3.0-2）。
+ *     工具栏工具事件已由 feature-tools/mediator 接管。
+ *     模式管理已由 feature-tools/mediator 统一接管。
+ *     默认路由已由 feature-tools/default_tool.ts 接管。
  *
  * 总体结构：
  *

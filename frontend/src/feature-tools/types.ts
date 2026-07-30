@@ -1,17 +1,6 @@
 /**
- * tools/types.ts
- *
  * 功能：
  *     工具交互架构的共享类型定义。
- *
- * 总体结构：
- *     1. OperationTool — 8 种原子工具 ID
- *     2. CognitionTool — 认知演化操作 ID
- *     3. ArrangementTool — 布局操作 ID
- *     4. ToolId — 全工具联合类型
- *     5. ToolNotification — 工具通知模型
- *     6. ToolHandler — 工具处理器接口
- *     7. ToolConfig — 注册表条目
  *
  * 外部如何使用：
  *     所有 handler 模块从本文件导入类型。
@@ -20,7 +9,7 @@
 import type { Component } from 'vue'
 
 // 服务特定实现的类型
-import type { DraftNode } from './toolbar/add-node'
+import type { DraftNode } from './toolbar/add_node'
 
 /**
  * 功能：

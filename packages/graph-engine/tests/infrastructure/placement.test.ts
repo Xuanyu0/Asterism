@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest'
 import type { NodeId } from '../../src/types/graph_data'
 import { positionOnCircle, snapOrbit, distributeOnTiers, distributeOnLine, scatterInCircle, computeTierSpacing } from '../../src/infrastructure/placement'
 import { distance } from '../../src/infrastructure/geometry'
-import { DEFAULT_LAYOUT_RULES } from '../../src/core/rules'
+import { DEFAULT_LAYOUT_RULES } from '../../src/core/layout_rules'
 
 const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
 

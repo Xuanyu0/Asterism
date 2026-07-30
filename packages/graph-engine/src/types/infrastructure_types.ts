@@ -43,7 +43,7 @@ export interface SearchResult {
 /**
  * 节点半径特例覆盖。
  *
- * 碰撞检测默认按 r = r₀ · √(1 + degree) 计算半径。
+ * 碰撞检测默认按公式计算半径（公式见设计文档）。
  * 此 Map 中注册的节点使用指定半径，覆盖公式计算结果。
  */
 export type NodeRadiusMap = Map<NodeId, number>

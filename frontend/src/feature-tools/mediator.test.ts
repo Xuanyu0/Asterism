@@ -17,7 +17,7 @@ import { useGraphStore } from '@/graph/graph_store'
 import { saveGraph } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 import { useToolMediator } from './mediator'
-import { useAddNodeTool } from './toolbar/add-node'
+import { useAddNodeTool } from './toolbar/add_node'
 import { useFoldTool } from './toolbar/fold'
 
 import type { ToolHandler } from './types'

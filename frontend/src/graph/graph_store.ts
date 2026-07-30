@@ -115,7 +115,7 @@ export function pushUndoSnapshot(undoStack: GraphData[], graph: GraphData): Grap
  * 规则：
  *
  *     1. Draft 数据与 Cytoscape Runtime 禁止进入本 Store。
- *     2. UI Runtime 必须通过 operation_controller 间接调用本 Store。
+ *     2. UI Runtime 可通过 feature-tools handler 直接调 applyBatchToGraph，不经过 operation_controller。
  *     3. 所有修改委托引擎 applyBatch 执行 validate + execute。
  *     4. applyBatchToGraph / applyBatchToGraphs 可传入持久化参数每次修改时自动持久化。
  *

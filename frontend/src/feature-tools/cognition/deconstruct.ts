@@ -1,21 +1,15 @@
 /**
- * tools/cognition/deconstruct.ts
- *
  * 功能：
  *     解构（Deconstruct）工具处理器。实现 ToolHandler 接口。
  *     用户激活后点击画布节点执行解构操作。
  *
- * 总体结构：
- *     1. useDeconstructTool() → ToolHandler
- *
  * 规则：
  *     1. 单次操作完成后自动退出（自取消）。
- *     2. 自包含 compose 逻辑——不依赖 operation_controller。
+ *     2. 不依赖 operation_controller。
  *     3. 仅支持单节点、单图操作，无草稿、无预览。
  *
  * 外部如何使用：
- *     Graph.vue 的 onMounted 注册到 mediator：
- *     mediator.register('deconstruct', useDeconstructTool())
+ *     Graph.vue 注册到 mediator：mediator.register('deconstruct', useDeconstructTool())
  */
 
 import { ref, computed } from 'vue'

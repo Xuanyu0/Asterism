@@ -15,7 +15,7 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useGraphStore } from '@/graph/graph_store'
 import { saveGraph } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
-import { useAddNodeTool } from './add-node'
+import { useAddNodeTool } from './add_node'
 
 
 beforeEach(() => {

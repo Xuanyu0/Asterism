@@ -1,21 +1,10 @@
 /**
- * feature-tools/default.ts
- *
  * 功能：
- *     默认工具 ToolHandler。作为 mediator 的 baseline——无其他工具激活时自动生效，
- *     处理画布点击事件——打开节点/边浮空窗，以及浮空窗确认写入 GraphData。
- *
- * 总体结构：
- *     1. useDefaultTool() → ToolHandler
- *
- * 规则：
- *     1. activate / deactivate 由 mediator 调用以反映当前激活状态。
- *     2. cursorClass 为 null（默认指针）。
- *     3. onNodeClick / onEdgeClick 打开浮空窗。
- *     4. onConfirm 将浮空窗编辑结果写入 GraphData。
+ *     默认工具 ToolHandler。作为 mediator 的 baseline——无其他工具激活时自动生效。
+ *     处理画布点击事件——打开浮空窗，确认后写入 GraphData。
  *
  * 外部如何使用：
- *     Graph.vue 在 onMounted 中注册：mediator.register('default', useDefaultTool())
+ *     Graph.vue 注册：mediator.register('default', useDefaultTool())
  */
 
 import { ref } from 'vue'

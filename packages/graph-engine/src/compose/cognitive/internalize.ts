@@ -35,7 +35,7 @@ import type { GraphOperation } from '../../types/atomic_operations'
 import { generateNodeId } from '../../core/id'
 import { scatterInCircle } from '../../infrastructure/placement'
 import { hasCollisionAt, hasCollisionInDrafts } from '../../infrastructure/collision'
-import { DEFAULT_LAYOUT_RULES } from '../../core/rules'
+import { DEFAULT_LAYOUT_RULES } from '../../core/layout_rules'
 
 // ═══════════ 常量 ═══════════
 

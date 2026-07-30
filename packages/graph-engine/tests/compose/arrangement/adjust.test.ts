@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest'
 import type { GraphId, NodeId, NodeRadiusMap } from '../../../src/types/graph_data'
 import { adjustDistance, adjustOrbit } from '../../../src/compose/arrangement/adjust'
 import { createNode, assembleGraph } from '../../test_case_factory'
-import { DEFAULT_LAYOUT_RULES } from '../../../src/core/rules'
+import { DEFAULT_LAYOUT_RULES } from '../../../src/core/layout_rules'
 
 const G = 'test-adj' as GraphId
 const R = new Map() as NodeRadiusMap

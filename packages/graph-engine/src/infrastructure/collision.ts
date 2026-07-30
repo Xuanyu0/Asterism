@@ -11,7 +11,7 @@
  *
  * 规则：
  *     1. 所有节点视为外接圆。正多边形与圆形统一用外接圆半径。
- *     2. 半径公式：r = r₀ · √(1 + degree)。
+ *     2. 半径以 unitDistance 为基准缩放，公式见设计文档。
  *     3. NodeRadiusMap 为特例覆盖，缺失时按公式计算。
  *
  * 外部如何使用：
@@ -20,7 +20,7 @@
 
 import type { NodeData, NodeId, NodePosition } from '../types/graph_data'
 import type { NodeRadiusMap } from '../types/infrastructure_types'
-import { DEFAULT_LAYOUT_RULES } from '../core/rules'
+import { DEFAULT_LAYOUT_RULES } from '../core/layout_rules'
 import { squaredDistance } from './geometry'
 
 // ═══════════ 常量 ═══════════
@@ -49,7 +49,7 @@ interface CollisionTarget {
  *
  *     nodeId               — 目标节点 ID
  *     allNodes             — 待搜索的节点集（含目标节点自身）
- *     nodeRadiusOverrides  — 节点半径覆盖表。缺失项按公式 r = r₀·√(1 + degree) 计算
+ *     nodeRadiusOverrides  — 节点半径覆盖表。缺失项按默认公式计算。
  */
 function getTarget(
     nodeId: NodeId,
@@ -69,8 +69,8 @@ function getTarget(
  * 功能：
  *
  *     返回节点的外接圆半径。nodeRadiusOverrides 中有自定义值时优先使用，
- *     否则按默认公式 r = r₀·√(1 + degree) 计算。
- *     degree = 0 时半径为 r₀（√1 = 1），保证孤立节点仍占可视空间。
+ *     否则按默认公式计算。
+ *     degree = 0 时半径为 unitDistance，保证孤立节点仍占可视空间。
  */
 function getRadius(node: NodeData, nodeRadiusOverrides: NodeRadiusMap): number {
     const custom = nodeRadiusOverrides.get(node.id)
@@ -104,7 +104,7 @@ function getRadius(node: NodeData, nodeRadiusOverrides: NodeRadiusMap): number {
  *     position             — 待检测的目标位置
  *     allNodes             — 当前图中所有节点（含待检测节点自身，内部自动排除）
  *     nodeRadiusOverrides  — 节点半径覆盖表。键 = 节点 ID，值 = 自定义外接圆半径。
- *                             缺失的节点按公式 r = r₀·√(1 + degree) 计算
+ *                             缺失的节点按默认公式计算
  *     extraExcludedIds     — [可选] 额外排除的节点 ID 集合。用于批量草稿场景
  *                            （hasCollisionInDrafts 传入同伴 ID，排除其旧位置）
  */
@@ -157,14 +157,14 @@ export function hasCollisionAt(
  *
  *     1. 草稿互可见——两两之间以各自外接圆半径判定碰撞。
  *     2. 所有草稿节点 ID 在"草稿 vs 已有节点"检测中集体排除。
- *     3. 不在 allNodes 中的草稿（新建节点），半径回退为 r₀。
+ *     3. 不在 allNodes 中的草稿（新建节点），半径回退为 unitDistance。
  *
  * 参数：
  *
  *     drafts               — 草稿列表。每项 { nodeId: 节点 ID, position: 候选位置 }
  *     allNodes             — 当前 GraphData 中的节点快照。草稿节点可能已存在其中
  *                            （持有旧位置，当前被移位），也可能不在其中（当前新建的节点）。
- *     nodeRadiusOverrides  — 节点半径覆盖表。缺失项按公式 r = r₀·√(1 + degree) 计算
+ *     nodeRadiusOverrides  — 节点半径覆盖表。缺失项按默认公式计算。
  */
 export function hasCollisionInDrafts(
     drafts: { nodeId: NodeId; position: NodePosition }[],

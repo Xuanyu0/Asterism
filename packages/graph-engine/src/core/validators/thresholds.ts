@@ -1,8 +1,6 @@
 /**
- * rules.ts
- *
  * 功能：
- *     定义知识图谱系统的校验规则常量。
+ *     校验阈值常量。标签长度约束、图规模上限等。
  *
  * 总体结构：
  *     1. LabelRules：标签/摘要长度约束
@@ -10,9 +8,9 @@
  *     3. GraphRules：校验规则聚合
  *     4. DEFAULT_LABEL_RULES / DEFAULT_SCALE_RULES / DEFAULT_GRAPH_RULES
  *
- * 与 core/rules.ts 的关系：
- *     - core/rules.ts 存放布局几何规则（r₀）
- *     - 本文件存放校验规则（标签长度、节点数阈值）
+ * 与 core/layout_rules.ts 的关系：
+ *     - layout_rules.ts 存放布局几何参数
+ *     - 本文件存放校验阈值
  *     - 两者独立，各子系统按需引用
  *
  * 外部如何使用：

@@ -35,7 +35,7 @@ import { distributeOnTiers, scatterInCircle } from '../../infrastructure/placeme
 import type { TierAssignment } from '../../infrastructure/placement'
 import { hasCollisionInDrafts, hasCollisionAt } from '../../infrastructure/collision'
 import { distance } from '../../infrastructure/geometry'
-import { DEFAULT_LAYOUT_RULES } from '../../core/rules'
+import { DEFAULT_LAYOUT_RULES } from '../../core/layout_rules'
 
 // ═══════════ 常量 ═══════════
 

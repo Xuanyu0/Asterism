@@ -16,7 +16,7 @@
  *
  * 规则：
  *
- *     - execute / validate / sync / checkers / collision / placement / geometry 不导出
+ *     - execute / validate / sync / validators / collision / placement / geometry 不导出
  *     - compose 函数只产出 operations，不执行——执行统一经 apply / applyBatch
  *
  * 外部如何使用：
@@ -42,7 +42,7 @@ export type {
 } from './types/infrastructure_types'
 
 /** 消费者：引擎内部 & 前端渲染层。 */
-export type { LayoutRules } from './core/rules'
+export type { LayoutRules } from './core/layout_rules'
 
 /** 消费者：graph_store.applyBatch / operation_controller / 操作日志。 */
 export type {
@@ -243,7 +243,7 @@ export { normalizeGraph } from './core/normalize'
  *     const result = validateGraph(graph)
  *     if (!result.valid) { ... }  // 拒绝加载
  */
-export { validateGraph } from './core/checkers/whole_graph_validator'
+export { validateGraph } from './core/validators/whole_graph_validator'
 
 /**
  * 功能：
@@ -262,18 +262,4 @@ export { validateGraph } from './core/checkers/whole_graph_validator'
  */
 export { generateNodeId, generateEdgeId, generateGraphId } from './core/id'
 
-/**
- * 功能：
- *
- *     引擎默认规则常量。布局半径、度数计算、标签长度等。
- *
- * 消费者：
- *
- *     引擎内部 & 前端渲染层（节点外接圆半径公式 r = r₀ · √(1+degree)）。
- *
- * 使用：
- *
- *     import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
- *     const radius = DEFAULT_LAYOUT_RULES.unitDistance * Math.sqrt(1 + node.degree)
- */
-export { DEFAULT_LAYOUT_RULES } from './core/rules'
+export { DEFAULT_LAYOUT_RULES } from './core/layout_rules'

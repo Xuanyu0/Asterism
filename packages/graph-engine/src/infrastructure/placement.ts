@@ -23,7 +23,7 @@
  * 概念（层级）：
  *
  *     - 层级是离散的轨道半径档位。层级 n 的轨道半径 = (n+1) · D₀。
- *     - D₀ = centerRadius + maxSatelliteRadius + r₀。
+ *     - D₀ = centerRadius + maxSatelliteRadius + unitDistance。
  *     - 约束 A（中心 ↔ 层级 0）：由 D₀ 定义保证。
  *     - 约束 B（层级间）：因 centerRadius ≥ maxSatelliteRadius，D₀ 定义自动满足。
  *     - 约束 C（层内）：distributeOnTiers 内部自动扩展 D₀ 至层内弦距 ≥ 2r。
@@ -37,7 +37,7 @@
  *     } from '@my-project/graph-engine'
  */
 
-import { DEFAULT_LAYOUT_RULES } from '../core/rules'
+import { DEFAULT_LAYOUT_RULES } from '../core/layout_rules'
 import type { NodeId, NodePosition } from '../types/graph_data'
 import { length } from './geometry'
 
@@ -93,13 +93,13 @@ export function positionOnCircle(
  *
  * 规则：
  *
- *     D₀ = centerRadius + maxSatelliteRadius + r₀。
- *     satelliteRadii 为空时默认取 r₀。
+ *     D₀ = centerRadius + maxSatelliteRadius + unitDistance。
+ *     satelliteRadii 为空时默认取 unitDistance。
  *
  * 参数：
  *
  *     centerRadius   — 中心节点的外接圆半径
- *     satelliteRadii — 所有卫星节点的外接圆半径列表。为空时 maxSatelliteRadius 默认为 r₀
+ *     satelliteRadii — 所有卫星节点的外接圆半径列表。为空时 maxSatelliteRadius 默认为 unitDistance
  *
  * 使用：
  *
@@ -212,8 +212,8 @@ export function snapOrbit(
  *
  * 规则：
  *
- *     1. D₀ = centerRadius + maxSatelliteRadius + r₀（约束 A + B）。
- *     2. 各层弦距自动满足 ≥ 2·tierMaxRadius + r₀（约束 C）——若不足则扩展 D₀。
+ *     1. D₀ = centerRadius + maxSatelliteRadius + unitDistance（约束 A + B）。
+ *     2. 各层弦距自动满足 ≥ 2·tierMaxRadius + unitDistance（约束 C）——若不足则扩展 D₀。
  *     3. 层内 N 个节点均分圆周（N = 1 时取 startAngle）。
  *     4. 不判定碰撞（层级间距已保证）。
  *

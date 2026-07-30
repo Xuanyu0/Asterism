@@ -25,7 +25,7 @@ import type { GraphData, NodeData, EdgeData, NodeId } from '../types/graph_data'
 import type { GraphOperation } from '../types/atomic_operations'
 import type { ValidationIssue, ValidationResult } from '../types/validation'
 import { collectDependencyNodeIds } from './traversal'
-import { DEFAULT_GRAPH_RULES } from './checkers/thresholds'
+import { DEFAULT_GRAPH_RULES } from './validators/thresholds'
 import { hasCollisionAt } from '../infrastructure/collision'
 
 // ═══════════ 工具函数 ═══════════

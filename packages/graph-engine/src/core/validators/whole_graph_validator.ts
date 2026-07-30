@@ -1,9 +1,7 @@
 /**
- * graph_validator.ts
- *
  * 功能：
  *
- *     对完整 GraphData 做全图体检。复用 global_rules_table.ts 中的全局规则列表。
+ *     对完整 GraphData 做全图体检。复用 global_rules.ts 中的全局规则列表。
  *
  * 总体结构：
  *

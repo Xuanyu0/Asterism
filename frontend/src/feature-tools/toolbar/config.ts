@@ -1,13 +1,7 @@
 /**
- * tools/toolbar/registry.ts
- *
  * 功能：
- *     工具栏按钮注册表。定义 8 个按钮的显示信息和处理器工厂。
+ *     工具栏按钮配置数组。定义按钮的显示信息和处理器工厂。
  *
- * 总体结构：
- *     顺序排列：添加实节点 → 添加虚节点 → 添加有向实边 
- *               → 添加无向实边 → 添加有向虚边 → 添加无向虚边
- *               → 删除 → 折叠
  * 外部如何使用：
  *     GraphPermanentToolbar.vue 读取本数组渲染按钮。
  *     Graph.vue 遍历本数组调用 useTool() 注册处理器。
@@ -26,8 +20,8 @@ import VirtualNodeIcon from '@/assets/icon-virtual-node.svg?component'
 import VirtualDirectedIcon from '@/assets/icon-virtual-directed.svg?component'
 import VirtualUndirectedIcon from '@/assets/icon-virtual-undirected.svg?component'
 
-import { useAddNodeTool } from './add-node'
-import { useAddEdgeTool } from './add-edge'
+import { useAddNodeTool } from './add_node'
+import { useAddEdgeTool } from './add_edge'
 import { useDeleteTool } from './delete'
 import { useFoldTool } from './fold'
 import { useMoveNodeTool } from './move_node'
