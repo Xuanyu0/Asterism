@@ -82,7 +82,6 @@ describe('hasCollisionInDrafts', () => {
             { nodeId: 'a', position: pos(0, 0) },
             { nodeId: 'b', position: pos(30, 0) },
         ]
-        // r₀ = 56, minDist = 112, d = 30 → 碰撞
         expect(hasCollisionInDrafts(
             drafts, [], emptyMap,
         )).toBe(true)
@@ -101,7 +100,6 @@ describe('hasCollisionInDrafts', () => {
     it('detects draft vs existing node collision', () => {
         const nodes = [kn('b', pos(50, 0))]
         const drafts = [{ nodeId: 'a', position: pos(60, 0) }]
-        // r₀ = 56 两边，minDist = 112, d = 10 → 碰撞
         expect(hasCollisionInDrafts(
             drafts, nodes, emptyMap,
         )).toBe(true)
@@ -135,9 +133,8 @@ describe('hasCollisionInDrafts', () => {
         const nodes = [kn('a', pos(0, 0), /* degree = */ 3)]
         const drafts = [
             { nodeId: 'a', position: pos(100, 0) },
-            { nodeId: 'b', position: pos(50, 0) },  // 半径回退为 R0=56
+            { nodeId: 'b', position: pos(50, 0) },  // 半径回退为 unitDistance
         ]
-        // a 的 r = 56·√4 = 112, b 的 r = 56, minDist = 168, d = 50 → 碰撞
         expect(hasCollisionInDrafts(
             drafts, nodes, emptyMap,
         )).toBe(true)

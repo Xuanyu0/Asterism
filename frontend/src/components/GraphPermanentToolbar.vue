@@ -2,7 +2,7 @@
     <!-- 常驻操作栏（顶部中央） -->
     <div class="permanent-toolbar">
         <button
-            v-for="btn in permanentButtons"
+            v-for="btn in permanentToolbar"
             v-bind:key="btn.id"
             v-bind:class="{ active: activeToolId === btn.id }"
             v-bind:title="btn.label"
@@ -31,7 +31,7 @@
 
 import { computed, onMounted } from 'vue'
 
-import { toolbarRegistry } from '@/feature-tools/toolbar/toolbar_registry'
+import { toolbarConfig } from '@/feature-tools/toolbar/toolbar_config'
 import { useToolMediator } from '@/feature-tools/mediator'
 
 const mediator = useToolMediator()
@@ -39,19 +39,19 @@ const mediator = useToolMediator()
 const activeToolId = computed(() => mediator.activeToolId.value)
 
 // 从注册表读取按钮定义
-const permanentButtons = toolbarRegistry
+const permanentToolbar = toolbarConfig
 
 // ── 注册所有处理器 ──
 
 onMounted(() => {
-    for (const config of toolbarRegistry) {
+    for (const config of toolbarConfig) {
         mediator.register(config.id, config.useTool())
     }
 })
 
 // ── 工具激活/取消 ──
 
-function activateTool(btn: (typeof permanentButtons)[number]): void {
+function activateTool(btn: (typeof permanentToolbar)[number]): void {
     if (activeToolId.value === btn.id) {
         mediator.deactivate()
         return

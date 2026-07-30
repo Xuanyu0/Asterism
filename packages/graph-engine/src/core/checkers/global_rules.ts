@@ -27,7 +27,7 @@
 
 import type { GraphData, NodeData, EdgeData } from '../../types/graph_data'
 import type { ValidationIssue } from '../../types/validation'
-import { DEFAULT_GRAPH_RULES } from './rules'
+import { DEFAULT_GRAPH_RULES } from './thresholds'
 
 // ═══════════ 规则开关表 ═══════════
 

@@ -36,7 +36,7 @@ export function computeNodeRadiusOverrides(graphView: GraphData): NodeRadiusMap 
     for (const node of graphView.nodes) {
         overrides.set(
             node.id,
-            DEFAULT_LAYOUT_RULES.r0 * Math.sqrt(1 + node.degree),
+            DEFAULT_LAYOUT_RULES.unitDistance * Math.sqrt(1 + node.degree),
         )
     }
 

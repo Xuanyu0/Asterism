@@ -11,7 +11,7 @@ import { positionOnCircle, snapOrbit, distributeOnTiers, distributeOnLine, scatt
 import { distance } from '../../src/infrastructure/geometry'
 import { DEFAULT_LAYOUT_RULES } from '../../src/core/rules'
 
-const R0 = DEFAULT_LAYOUT_RULES.r0
+const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
 
 describe('positionOnCircle', () => {
     it('角度 0 时在 x 轴正方向', () => {
@@ -30,12 +30,12 @@ describe('positionOnCircle', () => {
 describe('snapOrbit', () => {
     it('吸附至最近层级', () => {
         const center = { x: 0, y: 0 }
-        // 距离 2.5 * R0 的 cursor 应吸附至 tier 1 (轨道半径 = 2*R0) 而非 tier 0 (半径=R0)
-        const cursor = { x: 2.5 * R0, y: 0 }
-        const snapped = snapOrbit(center, cursor, R0, 3)
+        // 距离 2.5 * unitDistance 的 cursor 应吸附至 tier 1 (轨道半径 = 2*unitDistance) 而非 tier 0 (半径=unitDistance)
+        const cursor = { x: 2.5 * unitDistance, y: 0 }
+        const snapped = snapOrbit(center, cursor, unitDistance, 3)
         expect(snapped.tier).toBe(1)
         const dist = distance(center, snapped.position)
-        expect(dist).toBeCloseTo(2 * R0, 0)
+        expect(dist).toBeCloseTo(2 * unitDistance, 0)
     })
 })
 
@@ -53,7 +53,7 @@ describe('distributeOnTiers', () => {
         // 三个点在同一圆上
         for (const draft of result) {
             const d = distance(center.position, draft.position)
-            expect(d).toBeCloseTo(10 + 5 + R0, 0) // D0 = centerRadius + maxSatR + R0
+            expect(d).toBeCloseTo(10 + 5 + unitDistance, 0) // D0 = centerRadius + maxSatR + unitDistance
         }
     })
 })
@@ -80,13 +80,13 @@ describe('scatterInCircle', () => {
 })
 
 describe('computeTierSpacing', () => {
-    it('D0 = centerRadius + maxSatR + R0', () => {
+    it('D0 = centerRadius + maxSatR + unitDistance', () => {
         const D0 = computeTierSpacing(10, [5, 3, 7])
-        expect(D0).toBe(10 + 7 + R0)
+        expect(D0).toBe(10 + 7 + unitDistance)
     })
 
-    it('空 radii 时默认 maxSatR = R0', () => {
+    it('空 radii 时默认 maxSatR = unitDistance', () => {
         const D0 = computeTierSpacing(10, [])
-        expect(D0).toBe(10 + R0 + R0)
+        expect(D0).toBe(10 + unitDistance + unitDistance)
     })
 })

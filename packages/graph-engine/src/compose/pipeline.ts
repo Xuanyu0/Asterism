@@ -44,8 +44,8 @@ import type { GraphOperation } from '../types/atomic_operations'
 import type { ValidationResult } from '../types/validation'
 import { validateOperation } from '../core/validate'
 import { executeOperation } from '../core/execute'
-import type { GlobalRulesTable } from '../core/checkers/global_rules_table'
-import { DEFAULT_GLOBAL_RULES_TABLE, runGlobalRules } from '../core/checkers/global_rules_table'
+import type { GlobalRulesTable } from '../core/checkers/global_rules'
+import { DEFAULT_GLOBAL_RULES_TABLE, runGlobalRules } from '../core/checkers/global_rules'
 
 /**
  * 功能：

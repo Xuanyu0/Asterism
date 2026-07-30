@@ -23,7 +23,7 @@
 
 import type { GraphData } from '../../types/graph_data'
 import type { ValidationResult } from '../../types/validation'
-import { runGlobalRules } from './global_rules_table'
+import { runGlobalRules } from './global_rules'
 
 export function validateGraph(graph: GraphData): ValidationResult {
     const issues = runGlobalRules(graph)

@@ -42,7 +42,7 @@ export type {
 } from './types/infrastructure_types'
 
 /** 消费者：引擎内部 & 前端渲染层。 */
-export type { LayoutRules, NodeRules } from './core/rules'
+export type { LayoutRules } from './core/rules'
 
 /** 消费者：graph_store.applyBatch / operation_controller / 操作日志。 */
 export type {
@@ -243,7 +243,7 @@ export { normalizeGraph } from './core/normalize'
  *     const result = validateGraph(graph)
  *     if (!result.valid) { ... }  // 拒绝加载
  */
-export { validateGraph } from './core/checkers/graph_validator'
+export { validateGraph } from './core/checkers/whole_graph_validator'
 
 /**
  * 功能：
@@ -274,6 +274,6 @@ export { generateNodeId, generateEdgeId, generateGraphId } from './core/id'
  * 使用：
  *
  *     import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
- *     const radius = DEFAULT_LAYOUT_RULES.r0 * Math.sqrt(1 + node.degree)
+ *     const radius = DEFAULT_LAYOUT_RULES.unitDistance * Math.sqrt(1 + node.degree)
  */
-export { DEFAULT_LAYOUT_RULES, DEFAULT_NODE_RULES } from './core/rules'
+export { DEFAULT_LAYOUT_RULES } from './core/rules'

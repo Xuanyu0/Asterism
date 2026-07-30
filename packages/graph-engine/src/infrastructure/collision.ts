@@ -25,8 +25,8 @@ import { squaredDistance } from './geometry'
 
 // ═══════════ 常量 ═══════════
 
-/** 基准外接圆半径 r₀。 */
-const R0 = DEFAULT_LAYOUT_RULES.r0
+/** 基准单位距离。 */
+const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
 
 // ═══════════ 内部：节点辅助 ═══════════
 
@@ -77,7 +77,7 @@ function getRadius(node: NodeData, nodeRadiusOverrides: NodeRadiusMap): number {
 
     if (custom !== undefined) return custom
 
-    return R0 * Math.sqrt(1 + node.degree)  // √(1+d)：degree=0 时 r = r₀，不为 0
+    return unitDistance * Math.sqrt(1 + node.degree)
 }
 
 // ═══════════ 公开 API ═══════════
@@ -88,7 +88,7 @@ function getRadius(node: NodeData, nodeRadiusOverrides: NodeRadiusMap): number {
  *
  *     判断节点放置在目标位置是否会与已有节点发生碰撞。
  *
- *     目标节点可能不在 allNodes 中（新建节点）：此时半径回退为覆盖值或 R0，
+     *     目标节点可能不在 allNodes 中（新建节点）：此时半径回退为覆盖值或 unitDistance，
  *     但仍正常检测该位置与已有节点的碰撞。
  *
  * 规则：
@@ -118,10 +118,10 @@ export function hasCollisionAt(
     const target = getTarget(nodeId, allNodes, nodeRadiusOverrides)
 
     // 目标节点不在 allNodes 中（新建节点）：无法通过 node 计算半径，
-    // 回退为覆盖值或 R0，但仍需检测该位置与已有节点的碰撞。
+    // 回退为覆盖值或 unitDistance，但仍需检测该位置与已有节点的碰撞。
     const targetRadius = target
         ? target.radius
-        : (nodeRadiusOverrides.get(nodeId) ?? R0)
+        : (nodeRadiusOverrides.get(nodeId) ?? unitDistance)
 
     for (const node of allNodes) {
         if (node.id === nodeId) continue
@@ -174,13 +174,13 @@ export function hasCollisionInDrafts(
     if (drafts.length <= 1 && allNodes.length === 0) return false
 
     // 组装草稿的半径信息。草稿自身可能不在 allNodes 中（新建节点）：
-    // 先查 nodeRadiusOverrides，无覆盖再回退为 R0。
+    // 先查 nodeRadiusOverrides，无覆盖再回退为 unitDistance。
     const draftItems = drafts.map(draft => {
         const existing = allNodes.find(node => node.id === draft.nodeId)
         if (existing) {
             return { draft, radius: getRadius(existing, nodeRadiusOverrides) }
         }
-        return { draft, radius: nodeRadiusOverrides.get(draft.nodeId) ?? R0 }
+        return { draft, radius: nodeRadiusOverrides.get(draft.nodeId) ?? unitDistance }
     })
 
     // 草稿 vs 草稿：两两检查

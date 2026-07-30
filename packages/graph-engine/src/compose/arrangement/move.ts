@@ -45,7 +45,7 @@ import { hasCollisionAt } from '../../infrastructure/collision'
  *
  *     1. 碰撞检测使用 hasCollisionAt——只查草稿位置是否与已有节点重叠。
  *        不存在草稿互碰（单节点）。
- *     2. 目标节点不在 allNodes 中时，hasCollisionAt 内部用 R0 回退。
+     *     2. 目标节点不在 allNodes 中时，hasCollisionAt 内部用 unitDistance 回退。
  *
  * 参数：
  *

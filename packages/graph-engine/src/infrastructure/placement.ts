@@ -43,8 +43,8 @@ import { length } from './geometry'
 
 // ═══════════ 常量 ═══════════
 
-/** 基准外接圆半径。层级间距以此为缩放因子，保证层间可容纳一个孤立节点。 */
-const R0 = DEFAULT_LAYOUT_RULES.r0
+/** 基准单位距离。层级间距以此为缩放因子，保证层间可容纳一个孤立节点。 */
+const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
 
 // ═══════════ 公开 API ═══════════
 
@@ -111,9 +111,9 @@ export function computeTierSpacing(
 ): number {
     const maxSatR = satelliteRadii.length > 0
         ? Math.max(...satelliteRadii)
-        : DEFAULT_LAYOUT_RULES.r0
+        : DEFAULT_LAYOUT_RULES.unitDistance
 
-    return centerRadius + maxSatR + R0
+    return centerRadius + maxSatR + unitDistance
 }
 
 /**
@@ -237,24 +237,24 @@ export function distributeOnTiers(
     const satMap = new Map(satellites.map(satellite => [satellite.id, satellite]))
 
     const allSatRadii = tiers.flatMap(
-        tier => tier.nodeIds.map(id => satMap.get(id)?.radius ?? DEFAULT_LAYOUT_RULES.r0),
+        tier => tier.nodeIds.map(id => satMap.get(id)?.radius ?? DEFAULT_LAYOUT_RULES.unitDistance),
     )
-    const maxSatR = allSatRadii.length > 0 ? Math.max(...allSatRadii) : DEFAULT_LAYOUT_RULES.r0
+    const maxSatR = allSatRadii.length > 0 ? Math.max(...allSatRadii) : DEFAULT_LAYOUT_RULES.unitDistance
 
-    // D₀ 基础值（约束 A + B）。层间留 R0 间隙，保证可容纳一个孤立节点。
-    let D0 = center.radius + maxSatR + R0
+    // D₀ 基础值（约束 A + B）。层间留 unitDistance 间隙，保证可容纳一个孤立节点。
+    let D0 = center.radius + maxSatR + unitDistance
 
-    // 约束 C：各层弦距 >= 同一层最大半径的两倍 + R0
+    // 约束 C：各层弦距 >= 同一层最大半径的两倍 + unitDistance
     for (const tier of tiers) {
         const N = tier.nodeIds.length
         if (N <= 1) continue
 
-        const tierRadii = tier.nodeIds.map(id => satMap.get(id)?.radius ?? DEFAULT_LAYOUT_RULES.r0)
+        const tierRadii = tier.nodeIds.map(id => satMap.get(id)?.radius ?? DEFAULT_LAYOUT_RULES.unitDistance)
         const tierMaxR = Math.max(...tierRadii)
         const orbitRadius = (tier.tier + 1) * D0
 
-        if (2 * orbitRadius * Math.sin(Math.PI / N) < 2 * tierMaxR + R0) {
-            const minOrbitRadius = (2 * tierMaxR + R0) / (2 * Math.sin(Math.PI / N))
+        if (2 * orbitRadius * Math.sin(Math.PI / N) < 2 * tierMaxR + unitDistance) {
+            const minOrbitRadius = (2 * tierMaxR + unitDistance) / (2 * Math.sin(Math.PI / N))
             D0 = Math.max(D0, minOrbitRadius / (tier.tier + 1))
         }
     }

@@ -16,7 +16,7 @@ import {
     validateNodeCountSoftLimit,
     validateNodeCountWarningLimit,
     validateNodeCountHardLimit,
-} from '../../../src/core/checkers/global_rules_table'
+} from '../../../src/core/checkers/global_rules'
 import { createNode, createEdge, assembleGraph } from '../../test_case_factory'
 
 const G = 'test-grt' as GraphId

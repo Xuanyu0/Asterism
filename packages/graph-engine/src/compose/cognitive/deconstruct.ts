@@ -133,9 +133,9 @@ export function deconstruct(params: DeconstructParams): {
     // 沟通节点均匀分布在圆周上，避免堆叠
     const communicationCenter: NodePosition = { x: 0, y: 0 }
     const neighborCount = neighbors.length
-    // 半径：确保相邻节点不重叠（每个节点直径 2*r0，圆周上 n 个节点均匀分布）
+    // 半径：确保相邻节点不重叠（每个节点直径 2*unitDistance，圆周上 n 个节点均匀分布）
     const orbitRadius = neighborCount > 0
-        ? Math.max(DEFAULT_LAYOUT_RULES.r0 * 2, neighborCount * DEFAULT_LAYOUT_RULES.r0 / Math.PI)
+        ? Math.max(DEFAULT_LAYOUT_RULES.unitDistance * 2, neighborCount * DEFAULT_LAYOUT_RULES.unitDistance / Math.PI)
         : 0
 
     const communicationNodes = neighbors.map((neighbor, index) => {

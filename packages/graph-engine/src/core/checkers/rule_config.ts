@@ -11,7 +11,7 @@
  *     import { DEFAULT_RULES } from '@my-project/graph-engine'
  */
 
-export const DEFAULT_RULES: Record<string, boolean> = {
+export const DEFAULT_RULES_CONFIG: Record<string, boolean> = {
     validateNodeLabel: true,
     validateNodeSummary: true,
     validateEdgeLabel: true,

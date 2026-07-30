@@ -12,7 +12,7 @@ import { DEFAULT_LAYOUT_RULES } from '../../../src/core/rules'
 
 const G = 'test-adj' as GraphId
 const R = new Map() as NodeRadiusMap
-const R0 = DEFAULT_LAYOUT_RULES.r0
+const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
 
 describe('adjustDistance', () => {
     it('连续距离调整', () => {
@@ -41,7 +41,7 @@ describe('adjustOrbit', () => {
             nodeId: 'a' as NodeId,
             center: { x: 0, y: 0 },
             cursor: { x: 300, y: 0 },
-            D0: R0 * 5,
+            D0: unitDistance * 5,
             tierCount: 3,
             allNodes: graph.nodes,
             nodeRadiusOverrides: R,

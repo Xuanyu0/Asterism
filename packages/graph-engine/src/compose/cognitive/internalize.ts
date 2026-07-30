@@ -39,7 +39,7 @@ import { DEFAULT_LAYOUT_RULES } from '../../core/rules'
 
 // ═══════════ 常量 ═══════════
 
-const R0 = DEFAULT_LAYOUT_RULES.r0
+const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
 
 // ═══════════ 参数类型 ═══════════
 
@@ -238,7 +238,7 @@ export function internalize(params: InternalizeParams): {
 
     for (const item of toMove) {
         let nodePosition: NodePosition | null = null
-        let radius = R0
+        let radius = unitDistance
 
         while (true) {
             const candidate = scatterInCircle({ x: 0, y: 0 }, radius)
@@ -267,7 +267,7 @@ export function internalize(params: InternalizeParams): {
                 break
             }
 
-            radius += R0
+            radius += unitDistance
         }
 
         placedDrafts.push({ nodeId: item.node.id, position: nodePosition })

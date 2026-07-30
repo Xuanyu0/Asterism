@@ -39,7 +39,7 @@ import { DEFAULT_LAYOUT_RULES } from '../../core/rules'
 
 // ═══════════ 常量 ═══════════
 
-const R0 = DEFAULT_LAYOUT_RULES.r0
+const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
 
 /** 碰撞重试最大次数。 */
 const MAX_RETRIES = 20
@@ -202,12 +202,12 @@ export function induce(params: InduceParams): {
     // ── 半径辅助 ──
 
     function getNodeRadius(node: { id: NodeId; degree: number }): number {
-        return nodeRadiusOverrides.get(node.id) ?? R0 * Math.sqrt(1 + node.degree)
+        return nodeRadiusOverrides.get(node.id) ?? unitDistance * Math.sqrt(1 + node.degree)
     }
 
     // ── 确定沟通节点位置（碰撞则迭代） ──
 
-    const maxCommRadius = R0  // 沟通节点 degree = 0，radius = R0
+    const maxCommRadius = unitDistance  // 沟通节点 degree = 0，radius = unitDistance
 
     let commDrafts: { nodeId: NodeId; position: NodePosition }[] = []
     let commPositionsFound = false
@@ -225,8 +225,8 @@ export function induce(params: InduceParams): {
         const satelliteSpecs = neighbors.map((_neighbor, i) => ({ id: commNodeIds[i]!, radius: maxCommRadius }))
         const tiers: TierAssignment[] = [{ tier: 0, nodeIds: commNodeIds }]
 
-        // 最远被选节点距形心的距离。distributeOnTiers 内部 D0 = centerRadius + maxSatR + R0，
-        // 将 centerRadius 设为此值即得 idealOrbitRadius = maxSelectedDist + maxCommRadius + R0。
+        // 最远被选节点距形心的距离。distributeOnTiers 内部 D0 = centerRadius + maxSatR + unitDistance，
+        // 将 centerRadius 设为此值即得 idealOrbitRadius = maxSelectedDist + maxCommRadius + unitDistance。
         let centerRadius = Math.max(
             ...selectedNodes.map(node => {
                 if (!node.position) return 0
@@ -244,7 +244,7 @@ export function induce(params: InduceParams): {
                 break
             }
 
-            centerRadius += R0
+            centerRadius += unitDistance
         }
 
         if (!commPositionsFound) {
@@ -381,7 +381,7 @@ export function induce(params: InduceParams): {
             return { operations: { child: [], parent: [] }, childGraphData: null!, issues }
         }
 
-        abstractPosition = scatterInCircle(centroid, R0 * (attempt + 1))
+        abstractPosition = scatterInCircle(centroid, unitDistance * (attempt + 1))
     }
 
     // 回填 childGraph 的 ownerNodeId

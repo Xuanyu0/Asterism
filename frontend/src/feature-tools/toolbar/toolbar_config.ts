@@ -43,7 +43,7 @@ import type { ToolConfig } from '../types'
  *     1. 按钮顺序决定工具栏显示顺序。
  *     2. 第 3 个和第 7 个按钮在 CSS 中有左边距（分组视觉分隔）。
  */
-export const toolbarRegistry: ToolConfig[] = [
+export const toolbarConfig: ToolConfig[] = [
     // ── 节点组 ──
     { id: 'add-real-node',         icon: PlusCircleIcon,              label: '添加实节点',   useTool: () => useAddNodeTool('real') },
     { id: 'add-virtual-node',      icon: VirtualNodeIcon,             label: '添加虚节点',   useTool: () => useAddNodeTool('virtual') },
@@ -55,6 +55,5 @@ export const toolbarRegistry: ToolConfig[] = [
     // ── 工具组 ──
     { id: 'delete',                icon: TrashIcon,                   label: '删除',         useTool: () => useDeleteTool() },
     { id: 'fold',                  icon: ChevronDownIcon,             label: '折叠',         useTool: () => useFoldTool() },
-    // ── 工具组 ──
     { id: 'move',                  icon: ArrowsPointingOutIcon,      label: '移动节点',     useTool: () => useMoveNodeTool() },
 ]

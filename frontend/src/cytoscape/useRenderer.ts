@@ -36,7 +36,7 @@ import type { GraphInteractionHandlers } from './graph_interaction'
 
 import { mapGraphDataToCyElements } from './graph_element_mapper'
 import { bindCyEvents } from './graph_interaction'
-import { createCytoscapeStyle } from './cytoscape_style'
+import { createCytoscapeStyle } from './cy_style'
 
 // 注册 cytoscape-canvas 扩展（底层 canvas layer 用于格点背景）
 cytoscape.use(cytoscapeCanvas)
@@ -658,7 +658,7 @@ export function useRenderer(
      *     在 canvas overlay 上绘制离散格点背景。
      *
      * 规则：
-     *     1. 格点间距 = DEFAULT_LAYOUT_RULES.r0。
+     *     1. 格点间距 = DEFAULT_LAYOUT_RULES.unitDistance。
      *     2. layer.setTransform() 自动对齐 Cytoscape 的模型坐标系（缩放 + 平移）。
      *     3. 每次 render / cyCanvas.resize 事件触发时重绘，保证格点随视口同步刷新。
      *     4. 只画可视范围内的格点，避免 N² 全图遍历。
@@ -680,19 +680,19 @@ export function useRenderer(
         // 切换到模型坐标系（自动跟随 zoom / pan）
         gridLayer.setTransform(ctx)
 
-        const r0 = DEFAULT_LAYOUT_RULES.r0
+        const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
         const dotRadius = 1.4  // 模型空间圆点半径，zoom=1 时对应 1.4 CSS px
 
         // 可视范围（模型坐标）
         const extent = cy.extent()
 
-        const startX = Math.floor(extent.x1 / r0) * r0
-        const startY = Math.floor(extent.y1 / r0) * r0
-        const endX = Math.ceil(extent.x2 / r0) * r0
-        const endY = Math.ceil(extent.y2 / r0) * r0
+        const startX = Math.floor(extent.x1 / unitDistance) * unitDistance
+        const startY = Math.floor(extent.y1 / unitDistance) * unitDistance
+        const endX = Math.ceil(extent.x2 / unitDistance) * unitDistance
+        const endY = Math.ceil(extent.y2 / unitDistance) * unitDistance
         ctx.fillStyle = 'rgba(100, 116, 139, 0.22)'
-        for (let x = startX; x <= endX; x += r0) {
-            for (let y = startY; y <= endY; y += r0) {
+        for (let x = startX; x <= endX; x += unitDistance) {
+            for (let y = startY; y <= endY; y += unitDistance) {
                 ctx.beginPath()
                 // 画圆周
                 ctx.arc(x, y, dotRadius, 0, 2 * Math.PI)

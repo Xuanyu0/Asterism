@@ -40,7 +40,7 @@ import type {
 } from '../src/types/graph_data'
 
 import { normalizeGraph } from '../src/core/normalize'
-import { validateGraph } from '../src/core/checkers/graph_validator'
+import { validateGraph } from '../src/core/checkers/whole_graph_validator'
 
 // ═══════════ 类型工具 ═══════════
 

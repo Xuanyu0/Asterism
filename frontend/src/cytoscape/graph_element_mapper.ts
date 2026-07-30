@@ -40,7 +40,7 @@ import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
 interface CyNodeData {
     id: NodeId
     label: string
-    /** 节点渲染直径 = 2·r₀·√(1 + degree)。r₀ = DEFAULT_LAYOUT_RULES.r0。 */
+    /** 节点渲染直径 = 2·unitDistance·√(1 + degree)。unitDistance = DEFAULT_LAYOUT_RULES.unitDistance。 */
     nodeDiameter: number
     /** 推荐字号 = r₀/4 · √(1 + degree)。与半径等比缩放，保证标签始终适应节点圆内切范围。 */
     fontSize: number
@@ -168,8 +168,8 @@ function mapNodeToCyElement(node: NodeData, foldedParentIds: Set<NodeId>): CyNod
         data: {
             id: node.id,
             label: node.label,
-            nodeDiameter: Math.round(2 * DEFAULT_LAYOUT_RULES.r0 * scale),
-            fontSize: Math.round((DEFAULT_LAYOUT_RULES.r0 / 4) * scale),
+            nodeDiameter: Math.round(2 * DEFAULT_LAYOUT_RULES.unitDistance * scale),
+            fontSize: Math.round((DEFAULT_LAYOUT_RULES.unitDistance / 4) * scale),
         },
         position: node.position,
         classes: getNodeClasses(node, foldedParentIds),
@@ -192,7 +192,7 @@ function mapEdgeToCyElement(
     // 映射边宽
     // 边宽度：w = k · (1+d₁)(1+d₂) / dist
     // k = 4·r₀：使得两个 degree=0、距离 2·r₀ 的节点间边宽为 2px
-    const k = 4 * DEFAULT_LAYOUT_RULES.r0
+    const k = 4 * DEFAULT_LAYOUT_RULES.unitDistance
     const src = nodeLookup.get(edge.source)
     const tgt = nodeLookup.get(edge.target)
     let edgeWidth = 2
