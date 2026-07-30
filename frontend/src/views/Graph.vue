@@ -41,7 +41,7 @@ import { useGraphStore } from '@/graph/graph_store'
 import { useRenderer } from '@/cytoscape/useRenderer.ts'
 import { useUIStore } from '@/ui/ui_store'
 import { useToolMediator } from '@/feature-tools/mediator'
-import { useDefaultTool } from '@/feature-tools/default'
+import { useDefaultTool } from '@/feature-tools/default_tool'
 import { useDeconstructTool } from '@/feature-tools/cognition/deconstruct'
 
 import GraphNodeWindow from '@/components/GraphNodeWindow.vue'

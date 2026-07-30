@@ -68,9 +68,9 @@ function findCommonLayer(graphRegistry: GraphRegistry): GraphData | undefined {
  * 功能：
  *
  *     提供 UI 操作控制器——认知/布局操作编排。
- *     工具栏工具事件已由 tools/tool_mediator 接管。
- *     模式管理已由 tools/tool_mediator 统一接管（3.0-1）。
- *     默认路由已由 feature-tools/default.ts 接管（3.0-2）。
+ *     工具栏工具事件已由 feature-tools/mediator 接管。
+ *     模式管理已由 feature-tools/mediator 统一接管。
+ *     默认路由已由 feature-tools/default_tool.ts 接管。
  *
  * 规则：
  *

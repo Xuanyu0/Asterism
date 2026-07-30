@@ -32,10 +32,10 @@ import { watch } from 'vue'
 import type { GraphData, NodePosition } from '@my-project/graph-engine'
 import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
 
-import type { GraphInteractionHandlers } from './graph_interaction'
+import type { CyInteractionHandlers } from './cy_interaction'
 
 import { mapGraphDataToCyElements } from './graph_element_mapper'
-import { bindCyEvents } from './graph_interaction'
+import { bindCyEvents } from './cy_interaction'
 import { createCytoscapeStyle } from './cy_style'
 
 // 注册 cytoscape-canvas 扩展（底层 canvas layer 用于格点背景）
@@ -54,7 +54,7 @@ cytoscape.use(cytoscapeCanvas)
  */
 export interface RendererAPI {
     /** 创建 Cytoscape 实例并挂载到 DOM 容器，同时绑定交互事件。 */
-    mount(handlers: GraphInteractionHandlers): void
+    mount(handlers: CyInteractionHandlers): void
 
     /** 销毁当前 Cytoscape 实例并释放引用。 */
     destroy(): void
@@ -198,7 +198,7 @@ export function useRenderer(
      *         renderer.mount(handlers)
      *     })
      */
-    function mount(handlers: GraphInteractionHandlers): void {
+    function mount(handlers: CyInteractionHandlers): void {
         const container = containerRef?.value
         if (!container) {
             return

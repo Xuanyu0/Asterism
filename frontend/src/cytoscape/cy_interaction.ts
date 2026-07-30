@@ -3,8 +3,8 @@
  *     将 Cytoscape 原始事件翻译为项目语义事件。
  *
  * 总体结构：
- *     1. GraphCanvasPosition
- *     2. GraphInteractionHandlers（tap / cxttap / dblclick）
+ *     1. CyCanvasPosition
+ *     2. CyInteractionHandlers（tap / cxttap / dblclick）
  *     3. bindCyEvents()
  *
  * 外部如何使用：
@@ -22,7 +22,7 @@ import type { NodeId, EdgeId } from '@my-project/graph-engine'
  *     1. 坐标来自 Cytoscape renderedPosition。
  *     2. 后续是否写入 GraphData 由 operation_controller 决定。
  */
-export interface GraphCanvasPosition {
+export interface CyCanvasPosition {
     x: number
     y: number
 }
@@ -35,8 +35,8 @@ export interface GraphCanvasPosition {
  *     1. 本接口只表达用户行为。
  *     2. 不表达业务操作结果。
  */
-export interface GraphInteractionHandlers {
-    onCanvasClicked?: (position: GraphCanvasPosition) => void
+export interface CyInteractionHandlers {
+    onCanvasClicked?: (position: CyCanvasPosition) => void
     onNodeClicked?: (nodeId: NodeId) => void
     onEdgeClicked?: (edgeId: EdgeId) => void
     onRightClick?: () => void
@@ -59,7 +59,7 @@ export interface GraphInteractionHandlers {
  */
 export function bindCyEvents(
     cy: Core,
-    handlers: GraphInteractionHandlers,
+    handlers: CyInteractionHandlers,
 ): { destroy(): void } {
     cy.on('tap', (event: EventObject) => {
         if (event.target === cy) {
