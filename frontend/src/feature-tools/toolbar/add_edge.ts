@@ -2,18 +2,18 @@
  * tools/toolbar/add-edge.ts
  *
  * 功能：
+ *
  *     添加边工具处理器。支持实/虚边和有向/无向边四种变体。
  *
  * 总体结构：
+ *
  *     useAddEdgeTool(kind, direction) → ToolHandler
  *
  * 规则：
+ *
  *     1. onNodeClick 两次点击流程：第一次记录 sourceNodeId，第二次构建 EdgeData 并提交。
  *     2. 成功后清空 sourceNodeId 但保持工具激活，可继续添加下一条边。
  *     3. deactivate 时清空 sourceNodeId。
- *
- * 外部如何使用：
- *     toolbar/registry.ts 调用 useAddEdgeTool('real', 'directed') 等。
  */
 
 import { ref, computed } from 'vue'

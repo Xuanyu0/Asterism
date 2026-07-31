@@ -14,16 +14,6 @@
  *        （1px 容差吸收亚像素舍入）。
  *     3. 调用方在 onMounted、watch(数据源)、onWindowResize 中自行调 measure()。
  *     4. 接口不绑定路径、截断等语义——diverge 搜索浮窗等水平溢出场景可复用。
- *
- * 外部如何使用：
- *
- *     const pathStrip = ref<HTMLElement | null>(null)
- *     const { isOverflowing, measure } = useOverflowDetection(pathStrip)
- *
- *     onMounted(() => { void measure() })
- *     watch(pathSegments, () => { void measure() })
- *
- *     <div ref="pathStrip" v-bind:class="{ truncated: isOverflowing }">...</div>
  */
 
 import { ref, nextTick } from 'vue'

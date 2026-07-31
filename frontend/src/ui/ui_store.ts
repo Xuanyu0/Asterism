@@ -2,17 +2,14 @@
  * ui_store.ts
  *
  * 功能：
- * 使用 Pinia 管理前端 UI 纯展示状态（浮空窗、画布视口定位）。
- * 工具激活状态已由 tools/tool_mediator 统一管理。
+ *
+ *     使用 Pinia 管理前端 UI 纯展示状态（浮空窗、画布视口定位）。
+ *     工具激活状态已由 tools/tool_mediator 统一管理。
  *
  * 总体结构：
- * 1. floatingWindowData: 浮空窗显示的节点/边数据
- * 2. pendingCanvasFocusId: 画布视口定位请求（写入 → Graph.vue 消费 → 清除）
  *
- * 外部使用方式：
- * import { useUIStore } from '@/ui/ui_store'
- * const uiStore = useUIStore()
- * uiStore.openFloatingWindow(data)
+ *     1. floatingWindowData: 浮空窗显示的节点/边数据
+ *     2. pendingCanvasFocusId: 画布视口定位请求（写入 → Graph.vue 消费 → 清除）
  */
 
 import { defineStore } from 'pinia'
@@ -24,19 +21,17 @@ import { useGraphStore } from '@/graph/graph_store'
 
 /**
  * 功能：
+ *
  *     创建 UI Store 实例，管理纯展示状态。
  *
  * 总体结构：
+ *
  *     1. 状态: UIStoreState — 浮空窗数据、画布定位请求
  *     2. API: 浮空窗操作、画布定位
  *
  * 规则：
- *     1. 本状态只描述用户当前 UI 意图，不保存 GraphData。
  *
- * 使用：
- *     import { useUIStore } from '@/ui/ui_store'
- *     const uiStore = useUIStore()
- *     uiStore.openFloatingWindow(data)
+ *     1. 本状态只描述用户当前 UI 意图，不保存 GraphData。
  */
 export const useUIStore = defineStore('ui_store', () => {
     const floatingWindowData = ref<NodeData | EdgeData | null>(null)

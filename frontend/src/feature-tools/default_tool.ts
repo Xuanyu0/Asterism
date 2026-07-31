@@ -1,10 +1,12 @@
 /**
  * 功能：
+ *
  *     默认工具 ToolHandler。作为 mediator 的 baseline——无其他工具激活时自动生效。
  *     处理画布点击事件——打开浮空窗，确认后写入 GraphData。
  *
- * 外部如何使用：
- *     Graph.vue 注册：mediator.register('default', useDefaultTool())
+ * 总体结构：
+ *
+ *     1. useDefaultTool() → ToolHandler（生命周期 / 画布事件 / 浮空窗确认）
  */
 
 import { ref } from 'vue'
@@ -18,17 +20,15 @@ import type { ToolHandler, ToolId } from './types'
 
 /**
  * 功能：
+ *
  *     创建默认工具 handler。
  *
  * 规则：
+ *
  *     1. 通过 mediator 的 `activate()` 激活（启动时 + `deactivate` 恢复机制）。
  *     2. onNodeClick 在 graphView 中查找节点 → uiStore.openFloatingWindow。
  *     3. onEdgeClick 在 graphView 中查找边 → uiStore.openFloatingWindow。
  *     4. onConfirm 读取 uiStore.floatingWindowData 获取原实体，用 label/summary 覆盖后构造 operation 并 applyBatch。
- *
- * 使用：
- *     const handler = useDefaultTool()
- *     mediator.register('default', handler)
  */
 export function useDefaultTool(): ToolHandler {
     const graphStore = useGraphStore()
@@ -51,6 +51,7 @@ export function useDefaultTool(): ToolHandler {
 
     /**
      * 功能：
+     *
      *     处理节点点击——在 graphView 中查找节点并打开浮空窗。
      */
     function onNodeClick(nodeId: string): void {
@@ -62,6 +63,7 @@ export function useDefaultTool(): ToolHandler {
 
     /**
      * 功能：
+     *
      *     处理边点击——在 graphView 中查找边并打开浮空窗。
      */
     function onEdgeClick(edgeId: string): void {
@@ -73,9 +75,11 @@ export function useDefaultTool(): ToolHandler {
 
     /**
      * 功能：
+     *
      *     处理节点双击——按优先级导航到关联图谱。
      *
      * 规则：
+     *
      *     1. 引用节点（role === 'reference'）→ 跳转到源节点所在图。
      *     2. 抽象节点（有 childGraphId）→ 跳转子图。
      *     3. 其余节点 → 无操作。
@@ -120,10 +124,12 @@ export function useDefaultTool(): ToolHandler {
 
     /**
      * 功能：
+     *
      *     将浮空窗编辑结果写入 GraphData。读取 uiStore.floatingWindowData 获取原实体，
      *     用 label/summary 覆盖后构造 update_node / update_edge operation 并 applyBatch。
      *
      * 规则：
+     *
      *     1. 校验通过后关闭浮空窗。
      *     2. 校验失败时浮空窗保留。
      */

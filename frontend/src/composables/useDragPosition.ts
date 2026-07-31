@@ -15,18 +15,6 @@
  *     3. pointerup 时若提供 snap 参数，执行边缘吸附 → 触发 onDragEnd 回调
  *        → 若提供 storageKey 则持久化到 localStorage。
  *     4. 接口不包含拖拽 DOM 结构之外的任何领域概念。
- *
- * 外部如何使用：
- *
- *     const { position, isDragging, elementRef, handlers, clampToViewport }
- *         = useDragPosition({ defaultPosition: { x: 52, y: 12 } })
- *
- *     <div ref="elementRef" v-bind:style="{ left: position.x + 'px', top: position.y + 'px' }">
- *         <div v-on:pointerdown="handlers.onPointerdown"
- *              v-on:pointermove="handlers.onPointermove"
- *              v-on:pointerup="handlers.onPointerup"
- *              v-on:pointercancel="handlers.onPointerup">...</div>
- *     </div>
  */
 
 import type { Ref } from 'vue'

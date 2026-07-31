@@ -1,5 +1,6 @@
 /**
  * 功能：
+ *
  *     cytoscape-canvas 扩展的 TS 类型声明。
  */
 

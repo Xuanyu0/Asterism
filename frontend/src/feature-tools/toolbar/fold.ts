@@ -2,17 +2,17 @@
  * tools/toolbar/fold.ts
  *
  * 功能：
+ *
  *     折叠/展开工具处理器。
  *
  * 总体结构：
+ *
  *     useFoldTool() → ToolHandler
  *
  * 规则：
+ *
  *     1. 检查目标节点是否已被折叠。
  *     2. 已折叠 → expand_dependency；未折叠 → collapse_dependency。
- *
- * 外部如何使用：
- *     toolbar/registry.ts 调用 useFoldTool()。
  */
 
 import { ref, computed } from 'vue'

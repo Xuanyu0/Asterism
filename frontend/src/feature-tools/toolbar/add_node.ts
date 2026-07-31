@@ -2,19 +2,19 @@
  * tools/toolbar/add-node.ts
  *
  * 功能：
+ *
  *     添加节点工具处理器。支持实节点和虚节点两种变体。
  *
  * 总体结构：
+ *
  *     1. DraftNode — 节点草稿类型定义
  *     2. useAddNodeTool(kind) → ToolHandler
  *
  * 规则：
+ *
  *     1. onCanvasClick 创建 DraftNode。
  *     2. onConfirm 校验 label → 构造 NodeData → commitBatchToGraph → 清 draft → deactivate。
  *     3. deactivate 时清除草稿。
- *
- * 外部如何使用：
- *     toolbar/registry.ts 调用 useAddNodeTool('real') / useAddNodeTool('virtual')。
  */
 
 import { ref, computed } from 'vue'
@@ -28,9 +28,11 @@ import type { ToolId, ToolHandler, ToolNotification } from '../types'
 
 /**
  * 功能：
+ *
  *     表示尚未提交到 GraphData 的节点草稿。
  *
  * 规则：
+ *
  *     1. DraftNode 不属于 GraphData。
  *     2. 用户确认前允许为空字段。
  *     3. 关闭浮空窗后自动销毁。

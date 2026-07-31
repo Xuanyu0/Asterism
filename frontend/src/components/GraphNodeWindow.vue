@@ -75,18 +75,6 @@
  *     1. DraftNode 编辑入口（新建节点草稿）
  *     2. 已有节点/边编辑入口（浮空窗修改）
  *     3. 两种模式互斥显示
- *
- * 前端机制（Vue 3 框架行为）：
- *     - computed：
- *       Vue 响应式计算属性。依赖的值变化时自动重新计算，且有缓存。
- *       C++ 类比：缓存的 getter，依赖追踪自动失效。
- *
- *     - v-if / v-else-if：
- *       条件渲染。DraftNode 和 floatingWindowData 互斥，同时只有一个显示。
- *       C++ 类比：if-else 分支，但框架在依赖变化时自动重新评估。
- *
- * 外部如何使用：
- *     Graph.vue 挂载本组件。
  */
 
 import { computed, watch } from 'vue'

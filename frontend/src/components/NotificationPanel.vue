@@ -40,9 +40,6 @@ import { computed } from 'vue'
  *     2. 通过 accent 切换左侧强调色。
  *     3. 通过 closable 控制是否显示关闭按钮。
  *     4. 默认插槽承载主内容，actions 插槽承载操作按钮行。
- *
- * 外部如何使用：
- *     导入组件后，绑定 visible / accent / closable，监听 close 事件。
  */
 
 // 输入：父组件传入 visible / accent / closable

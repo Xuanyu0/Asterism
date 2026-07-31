@@ -1,10 +1,7 @@
 /**
  * 功能：
- *     知识图谱测试数据工厂。构造 V2 金牌/银牌图供 Vitest 集成测试使用。
  *
- * 外部如何使用：
- *     import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
- *     import { createSilverTestGraph } from '@/dev/test_case_factory'
+ *     知识图谱测试数据工厂。构造 V2 金牌/银牌图供 Vitest 集成测试使用。
  */
 
 import type {
@@ -109,21 +106,20 @@ export function assembleGraph(params: {
 
 /**
  * 功能：
+ *
  *     创建银牌测试图及其子图，持久化子图到 localStorage。
  *
  * 图结构：
+ *
  *     银牌根图 (id="graph-silver") + 银牌子图 (id="sub-silver")
  *     覆盖 real / abstract / reference（communication）节点和 directed 边。
  *
  * 规则：
+ *
  *     1. 子图通过 saveGraph 持久化，根图由调用方自行 persist。
  *     2. 本函数不校验银牌图中 reference 节点指向的金牌图是否存在；
  *        调用方（如 createGoldenTestGraphV2）应确保金牌图已持久化。
  *     3. 返回的银牌根图引用 sv-node-4 (reference) 指向金牌图节点 node-g1。
- *
- * 使用：
- *     const silver = createSilverTestGraph()
- *     saveGraph(silver)
  */
 export function createSilverTestGraph(graphId?: GraphId): GraphData {
     const gId = graphId ?? ('graph-silver' as GraphId)
@@ -163,23 +159,21 @@ export function createSilverTestGraph(graphId?: GraphId): GraphData {
 
 /**
  * 功能：
+ *
  *     创建金牌测试图及其子图，side-effect：持久化子图 + 确保持久化银牌测试图。
  *
+ * 图结构：
+ *
+ *     金牌根图 (id="graph-golden") + 金牌子图 (id="sub-golden")
+ *     覆盖 real / abstract / virtual / reference（communication）节点和 directed / undirected 边。
+ *
  * 规则：
+ *
  *     1. 调用前金牌子图和银牌图可能不存在，本函数内部确保它们被创建并持久化。
  *     2. 本函数先检查银牌测试图是否已持久化，若不存在则调用 createSilverTestGraph
  *        创建并持久化（含银牌子图）。
  *     3. 然后创建金牌子图并持久化。
  *     4. 返回金牌父图 GraphData，调用方只需 persist 父图并 loadGraphToView。
- *
- * 图结构：
- *     金牌根图 (id="graph-golden") + 金牌子图 (id="sub-golden")
- *     覆盖 real / abstract / virtual / reference（communication）节点和 directed / undirected 边。
- *
- * 使用：
- *     const golden = createGoldenTestGraphV2()
- *     saveGraph(golden)
- *     graphStore.loadGraphToView(golden.id)
  */
 export function createGoldenTestGraphV2(graphId?: GraphId): GraphData {
     const gId = graphId ?? ('graph-golden' as GraphId)

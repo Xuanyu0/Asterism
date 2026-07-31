@@ -18,14 +18,6 @@
  *     3. 删除需二次点击确认；当前根图不显示删除按钮。
  *     4. 笔记库 / 常识层 / 设置为占位按钮，功能延后。
  *     5. 本组件自管理 rootSummaries / newRootTitle / armedDeleteId 状态。
- *
- * 外部如何使用：
- *
- *     <NavigationPanel
- *         v-bind:current-root-id="currentRootId"
- *         v-on:switch-root-graph="(id) => switchGraphTo(id)"
- *         v-on:close="closePanels"
- *     />
  */
 
 import { ref, computed, onMounted } from 'vue'

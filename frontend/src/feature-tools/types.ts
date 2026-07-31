@@ -1,9 +1,12 @@
 /**
  * 功能：
+ *
  *     工具交互架构的共享类型定义。
  *
- * 外部如何使用：
- *     所有 handler 模块从本文件导入类型。
+ * 总体结构：
+ *
+ *     1. 工具 ID 类型 — OperationTool / CognitionTool / ArrangementTool / ToolId
+ *     2. 共享模型 — ToolNotification / ToolHandler / ToolConfig
  */
 
 import type { Component } from 'vue'
@@ -13,6 +16,7 @@ import type { DraftNode } from './toolbar/add_node'
 
 /**
  * 功能：
+ *
  *     定义常驻工具栏下平铺的 8 种原子工具。
  */
 export type OperationTool =
@@ -27,9 +31,11 @@ export type OperationTool =
 
 /**
  * 功能：
+ *
  *     定义 Cognition 模式下的认知演化操作。
  *
  * 规则：
+ *
  *     1. CognitionTool 不直接等于图 CRUD。
  *     2. 这些操作未来通常会进入 Graph Transform Runtime 或 AI Runtime。
  */
@@ -43,9 +49,11 @@ export type CognitionTool =
 
 /**
  * 功能：
+ *
  *     定义 Arrangement 模式下的布局操作。
  *
  * 规则：
+ *
  *     1. 每种操作有独立的选择 → 预览 → 确认流程。
  *     2. move 为单节点拖拽，不需要多选。
  *     3. orbit / path 需要选择中心/轴心 + 多个目标节点。
@@ -60,12 +68,14 @@ export type ArrangementTool =
 
 /**
  * 功能：
+ *
  *     全工具联合类型。包含所有可激活的工具 ID。
  */
 export type ToolId = OperationTool | CognitionTool | ArrangementTool | 'default'
 
 /**
  * 功能：
+ *
  *     工具通知模型。用于展示删除确认等交互提示。
  */
 export interface ToolNotification {
@@ -76,9 +86,11 @@ export interface ToolNotification {
 
 /**
  * 功能：
+ *
  *     工具处理器接口。每个自包含的工具栏工具实现本接口。
  *
  * 规则：
+ *
  *     1. 每个 handler 独立管理内部状态。
  *     2. 事件通过 router 转发到 activeHandler。
  *     3. cursorClass / notification 暴露为计算属性让视图层消费。
@@ -114,12 +126,8 @@ export interface ToolHandler {
 
 /**
  * 功能：
- *     注册表条目。描述按钮显示信息与处理器工厂。
  *
- * 使用：
- *     toolbar/registry.ts 输出 ToolConfig[]。
- *     GraphPermanentToolbar.vue 读取 icon/label 渲染按钮。
- *     Graph.vue 调用 useTool() 创建 handler 并注册到 router。
+ *     注册表条目。描述按钮显示信息与处理器工厂。
  */
 export interface ToolConfig {
     id: ToolId

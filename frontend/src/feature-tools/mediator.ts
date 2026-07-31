@@ -1,13 +1,12 @@
 /**
  * 功能：
+ *
  *     全局单例工具中介者。负责工具注册、激活/取消、互斥保证、事件转发。
  *
- * 外部如何使用：
- *     import { useToolMediator } from '@/feature-tools/mediator'
- *     const mediator = useToolMediator()
- *     mediator.activate('add-real-node')
- *     mediator.onNodeClick(nodeId)
- *     mediator.onRightClick()
+ * 总体结构：
+ *
+ *     1. useToolMediator() — 获取全局唯一中介者实例（懒创建）
+ *     2. createMediator() — 创建中介者（注册 / 激活 / 事件转发）
  */
 
 import { ref, shallowRef, type ShallowRef, type Ref } from 'vue'
@@ -23,9 +22,11 @@ let singleton: ReturnType<typeof createMediator> | null = null
 
 /**
  * 功能：
+ *
  *     获取全局唯一工具中介者实例（懒创建）。
  *
  * 规则：
+ *
  *     1. 必须在 Pinia 安装后调用（setup 内或之后）。
  *     2. 后续调用返回同一实例。
  */

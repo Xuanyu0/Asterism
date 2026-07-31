@@ -7,10 +7,6 @@
  *
  *     1. mapComposeIssues — compose 层 issue 到校验层 issue 的映射
  *     2. hasErrors        — 判断 issue 列表是否含 error 级问题
- *
- * 外部如何使用：
- *
- *     import { mapComposeIssues, hasErrors } from '@/graph/issue_mapper'
  */
 
 import type { ComposeIssue, ValidationIssue, ValidationTargetType } from '@my-project/graph-engine'

@@ -77,13 +77,6 @@
  *     2. 模式选择子列表（Cognition / Arrangement）
  *     3. Cognition 子操作列表（Explore / Unearth / Deconstruct / Induce / Internalize）
  *     4. Arrangement 占位
- *
- * 前端机制（Vue 3 框架行为）：
- *     - computed：Vue 响应式计算属性。依赖的值变化时自动重新计算，且有缓存。
- *     - 模式列显隐通过本地 activeMode ref 管理。
- *
- * 外部如何使用：
- *     Graph.vue 挂载本组件。
  */
 
 import { ref, computed } from 'vue'

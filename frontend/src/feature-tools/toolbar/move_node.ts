@@ -2,12 +2,15 @@
  * feature-tools/toolbar/move_node.ts
  *
  * 功能：
+ *
  *     移动节点工具处理器。实现拾取放置交互（pick-and-place）。
  *
  * 总体结构：
+ *
  *     useMoveNodeTool() → ToolHandler
  *
  * 规则：
+ *
  *     1. 两种状态：待拾取（idle）和已拾取（picked）。
  *     2. 待拾取状态下点击节点 → 已拾取，节点跟随光标。
  *     3. 已拾取状态下点击 → 放置尝试。
@@ -15,9 +18,6 @@
  *     5. 右键取消拾取 → 弹回原位。
  *     6. 禁止直接修改 GraphData；所有写入通过 graphStore.commitBatchToGraph。
  *     7. 中间位置不写 GraphData，只更新 Cy 视觉层。
- *
- * 外部如何使用：
- *     toolbar/registry.ts 调用 useMoveNodeTool()。
  */
 
 import { ref, computed } from 'vue'

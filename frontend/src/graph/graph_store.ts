@@ -17,17 +17,6 @@
  *     1. graphView 是当前渲染视图的事实源，不是操作目标的唯一绑定。
  *     2. Draft 数据禁止进入本 Store。
  *     3. Cytoscape Runtime 禁止进入本 Store。
- *
- * 外部如何使用：
- *
- *     import { useGraphStore } from '@/graph/graph_store'
- *     const graphStore = useGraphStore()
- *     graphStore.loadGraphToView(graphId)
- *     graphStore.commitBatchToGraph(graph, [operation])
- *     graphStore.commitBatchToGraphs([
- *         { graph: parentGraph, operations: parentOps },
- *         { graph: childGraph, operations: childOps },
- *     ])
  */
 
 import { defineStore } from 'pinia'
@@ -133,11 +122,6 @@ export const useGraphStore = defineStore('graph_store', () => {
      *     3. 祖先图仅加载自身，不加载祖先图的子图。
      *     4. 祖先图不在 registry 中时从 localStorage 惰性加载并注册。
      *     5. 本函数不负责完整图校验。
-     *
-     * 使用：
-     *
-     *     const success = graphStore.loadGraphToView(graphId)
-     *     注意：未来由图谱列表 UI 调用
      *
      * 消费者：
      *
@@ -270,8 +254,6 @@ export const useGraphStore = defineStore('graph_store', () => {
      *     3. 不属于当前根图的其他根图子树不进入注册表。
      *     4. 注册表可能为空（首次使用或上次根图已删除），由哨兵兜底。
      *
-     * 使用：
-     *
      *     graph_store 首次创建后，由 Graph.vue onMounted 触发。
      *
      * 消费者：
@@ -317,14 +299,6 @@ export const useGraphStore = defineStore('graph_store', () => {
      *
      *     title — 根图名称
      *     opts  — 可选。opts.id 指定固定 GraphId（幂等——已存在则跳过）
-     *
-     * 使用：
-     *
-     *     const graphId = graphStore.createRootGraph('My Graph')
-     *     graphStore.loadGraphToView(graphId)
-     *
-     *     // 固定 ID——幂等，反复调用不会覆盖已有数据：
-     *     const graphId = graphStore.createRootGraph('金牌测试图', { id: 'graph-golden' })
      */
     function createRootGraph(title: string, opts?: { id?: GraphId }): GraphId {
         const id = opts?.id ?? generateGraphId()
@@ -353,8 +327,6 @@ export const useGraphStore = defineStore('graph_store', () => {
      * 功能：
      *
      *     按 ID 从多图注册表中查找图。
-     *
-     * 使用：
      *
      *     认知操作（diverge、induce）等跨图场景前，前端通过此函数获取目标图。
      *
@@ -404,10 +376,6 @@ export const useGraphStore = defineStore('graph_store', () => {
      *     1. 不影响当前运行中的 graphView。
      *     2. 只删除本地存储中的记录。
      *     3. 如果删除的是当前图谱的持久化副本，当前内存中的图谱仍然保留。
-     *
-     * 使用：
-     *
-     *     graphStore.deleteSavedGraph(graphId)
      */
     function deleteSavedGraph(graphId: GraphId): void {
         deleteGraph(graphId)
@@ -425,10 +393,6 @@ export const useGraphStore = defineStore('graph_store', () => {
      *        registry 只持有当前根图树，无法覆盖全部根图。
      *     2. 按标题字典序排序（updatedAt 引擎未维护，不参与排序）。
      *     3. 本函数不修改任何运行时状态。
-     *
-     * 使用：
-     *
-     *     const summaries = graphStore.listRootGraphSummaries()
      *
      * 消费者：
      *
@@ -453,8 +417,8 @@ export const useGraphStore = defineStore('graph_store', () => {
      *
      * 规则：
      *
- *     1. 若 rootId 为当前视图所在根图，直接返回不删除——
- *        删除活跃根图会使视图失去持久化副本。
+     *     1. 若 rootId 为当前视图所在根图，直接返回不删除——
+     *        删除活跃根图会使视图失去持久化副本。
      *     2. 通过 isInRootTree 判定归属，防止只删根图留下孤儿子图
      *        污染 listSavedGraphIds 的全量扫描结果。
      *     3. 删除后同步清理指向该根图的 lastActiveRootId 标记。
@@ -462,10 +426,6 @@ export const useGraphStore = defineStore('graph_store', () => {
      * 参数：
      *
      *     rootId — 要删除的根图 ID，与其全部子孙子图一并删除。
-     *
-     * 使用：
-     *
-     *     graphStore.deleteRootGraphTree(rootId)
      *
      * 消费者：
      *
@@ -523,10 +483,6 @@ export const useGraphStore = defineStore('graph_store', () => {
      *
      *     targetGraph — 要操作的目标图
      *     operations  — 操作序列
-     *
-     * 使用：
-     *
-     *     graphStore.commitBatchToGraph(graphView, [op])
      */
     function commitBatchToGraph(
         targetGraph: GraphData,
@@ -556,13 +512,6 @@ export const useGraphStore = defineStore('graph_store', () => {
      * 参数：
      *
      *     operationBatch — 图与操作序列的配对数组，整批统一提交
-     *
-     * 使用：
-     *
-     *     graphStore.commitBatchToGraphs([
-     *         { graph: parentGraph, operations: parentOps },
-     *         { graph: childGraph, operations: childOps },
-     *     ])
      */
     function commitBatchToGraphs(
         operationBatch: { graph: GraphData; operations: GraphOperation[] }[],
@@ -681,10 +630,6 @@ export const useGraphStore = defineStore('graph_store', () => {
      *     1. 恢复完整 GraphData Snapshot。
      *     2. 覆盖所有修改操作（add / delete / update / move / fold / expand）。
      *     3. 刷新网页后 Undo 自动失效。
-     *
-     * 使用：
-     *
-     *     operation_controller.undo() 调此方法。
      */
     function undo(): boolean {
         const previousGraph = undoStack.value.pop()

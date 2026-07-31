@@ -1,12 +1,10 @@
 /**
  * 功能：
+ *
  *     将 GraphData 转换为 Cytoscape 渲染元素。纯编排：
  *     1. 折叠过滤——隐藏被折叠的节点和边
  *     2. 调用 visual_mapper 计算节点直径、字号、边宽
  *     3. 调用 class_mapper 派生 CSS class
- *
- * 外部如何使用：
- *     renderer 的 syncFromGraphData() 调用 mapGraphDataToCyElements(graph)。
  */
 
 import type {
@@ -56,9 +54,11 @@ export interface CyElements {
 
 /**
  * 功能：
+ *
  *     将 GraphData 映射为 Cytoscape elements。
  *
  * 规则：
+ *
  *     1. GraphData 是唯一事实源。
  *     2. Cytoscape 只能接收映射数据。
  *     3. 被依赖折叠隐藏的节点和相关边不进入渲染结果。

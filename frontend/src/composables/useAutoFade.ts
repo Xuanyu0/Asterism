@@ -12,14 +12,6 @@
  *     2. 监听 preventFade 变化：变为 true 时清除计时器并撤销淡化；
  *        变为 false 时若指针不在区域内，重新启动淡化计时器。
  *     3. 指针在区域内时，preventFade 的变化不会错误启动计时器。
- *
- * 外部如何使用：
- *
- *     const { isFaded, onPointerEnter, onPointerLeave }
- *         = useAutoFade({ preventFade: computed(() => panelOpen) })
- *
- *     <div v-on:pointerenter="onPointerEnter" v-on:pointerleave="onPointerLeave"
- *          v-bind:class="{ faded: isFaded }">...</div>
  */
 
 import { ref, watch } from 'vue'

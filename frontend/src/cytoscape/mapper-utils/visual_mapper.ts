@@ -1,12 +1,10 @@
 /**
  * 功能：
+ *
  *     GraphData 逻辑属性 → 视觉渲染属性的纯计算函数。
  *
  *     输入 degree / distance / unitDistance，输出节点直径、字号、边宽。
  *     公式见 docs/设计/ 相关文档。
- *
- * 外部如何使用：
- *     被 graph_element_mapper.ts 调用。
  */
 
 import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
@@ -15,6 +13,7 @@ import type { NodeId, NodePosition } from '@my-project/graph-engine'
 
 /**
  * 功能：
+ *
  *     计算节点渲染直径。
  */
 export function computeNodeDiameter(degree: number): number {
@@ -24,6 +23,7 @@ export function computeNodeDiameter(degree: number): number {
 
 /**
  * 功能：
+ *
  *     计算节点推荐字号。
  */
 export function computeFontSize(degree: number): number {
@@ -33,6 +33,7 @@ export function computeFontSize(degree: number): number {
 
 /**
  * 功能：
+ *
  *     计算边渲染宽度。
  */
 export function computeEdgeWidth(
@@ -48,6 +49,7 @@ export function computeEdgeWidth(
 
 /**
  * 功能：
+ *
  *     构建节点质量查找表，供 computeEdgeWidth 调用。
  *     mass = 1 + degree。
  */
@@ -66,6 +68,7 @@ export function buildNodeMassLookup(
 
 /**
  * 功能：
+ *
  *     计算两端节点之间的欧几里得距离。任一节点无 position 时返回 0。
  */
 export function calcEdgeDistance(

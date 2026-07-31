@@ -7,9 +7,6 @@
  * 当前 MVP：
  * 只有一个主页面：
  * GraphView
- *
- * 外部使用方式：
- * app.use(router)
  */
 
 import { createRouter, createWebHistory } from 'vue-router'

@@ -1,12 +1,10 @@
 /**
  * 功能：
+ *
  *     从 GraphData.cognitiveState 提取折叠过滤信息。
  *
  *     被折叠隐藏的节点不应进入 Cytoscape 渲染结果。
  *     拥有折叠依赖的父节点需施加额外 CSS class。
- *
- * 外部如何使用：
- *     被 graph_element_mapper.ts 调用。
  */
 
 import type { GraphData, NodeId } from '@my-project/graph-engine'
@@ -20,6 +18,7 @@ interface FoldFilter {
 
 /**
  * 功能：
+ *
  *     从 GraphData 提取折叠过滤信息。
  */
 export function extractFoldFilter(graph: GraphData): FoldFilter {

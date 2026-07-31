@@ -2,19 +2,19 @@
  * tools/toolbar/delete.ts
  *
  * 功能：
+ *
  *     删除工具处理器。支持节点和边的两步确认删除流程。
  *
  * 总体结构：
+ *
  *     useDeleteTool() → ToolHandler
  *
  * 规则：
+ *
  *     1. 首次点击标记待定目标，第二次点击同一目标确认删除。
  *     2. 点击不同目标时切换待定目标。
  *     3. notification 暴露删除确认信息供视图渲染。
  *     4. 内部管理 pendingDeleteNodeId / pendingDeleteEdgeId 状态。
- *
- * 外部如何使用：
- *     toolbar/registry.ts 调用 useDeleteTool()。
  */
 
 import { ref, computed } from 'vue'

@@ -23,10 +23,6 @@
  *
  *     按钮定义从 tools/toolbar/registry 读取。
  *     激活/取消通过 tools/tool_mediator 转发。
- *
- * 外部如何使用：
- *
- *     Graph.vue 挂载本组件。
  */
 
 import { computed, onMounted } from 'vue'

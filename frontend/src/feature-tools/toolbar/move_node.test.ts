@@ -2,19 +2,24 @@
  * feature-tools/toolbar/move-node.test.ts
  *
  * 功能：
+ *
  *     移动节点工具（useMoveNodeTool）的单元测试。
  *     覆盖拾取放置状态机（idle ↔ picked）的全生命周期。
  *
+ * 总体结构：
+ *
+ *     1. vi.mock useRenderer — 共享 mock 状态（vi.hoisted）
+ *     2. 顶层 beforeEach — 重置 Pinia / localStorage 并加载金牌图
+ *     3. 测试用例分组 — 生命周期 / 状态转换 / 放置 / 取消拾取 / 计算属性
+ *
  * 规则：
+ *
  *     1. 使用金牌图作为测试数据。
  *     2. 每个测试独立环境（beforeEach 重置 Pinia 和 localStorage）。
  *     3. useRenderer 被 vi.mock 拦截（Cytoscape 在 jsdom 下不可用）。
  *     4. trackCursor 的 mock 暴露回调句柄供测试手动触发以模拟光标位置。
  *     5. getNodePosition mock 对已知节点返回正确坐标，并在 setNodePosition 调用后更新。
- *
- * 外部如何使用：
- *     pnpm --filter frontend test 自动发现并执行本文件。
- *     独立运行：pnpm --filter frontend test -- move-node.test.ts
+ *     6. 执行方式：pnpm --filter frontend test 自动发现并执行本文件；独立运行追加 `-- move-node.test.ts`。
  */
 
 import { setActivePinia, createPinia } from 'pinia'

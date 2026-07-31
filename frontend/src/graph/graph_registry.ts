@@ -2,21 +2,21 @@
  * graph_registry.ts
  *
  * 功能：
+ *
  *     多图注册表管理。GraphId → GraphData 映射的纯函数包装。
  *     本文件属于 Runtime 层——引擎是纯函数不持有状态，Registry 由前端 Runtime 持有。
  *
  * 总体结构：
+ *
  *     1. GraphRegistry  — GraphId → GraphData 映射类型别名
  *     2. createRegistry  — 创建空注册表
  *     3. 五个访问函数   — register / lookup / has / unregister / listIds
  *
  * 规则：
+ *
  *     1. 不持有全局状态——factory + 显式传参。
  *     2. 不负责图内校验。
  *     3. 始终以 GraphRegistry 类型名使用，禁止裸 Map<GraphId, GraphData>。
- *
- * 外部如何使用：
- *     import { createRegistry, registerGraph, lookupGraph } from '@/graph/graph_registry'
  */
 
 import type { GraphData, GraphId } from '@my-project/graph-engine'

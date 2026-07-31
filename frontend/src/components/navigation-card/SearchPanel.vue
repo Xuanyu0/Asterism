@@ -12,13 +12,6 @@
  *     3. Escape 关闭面板（由编排器全局 handler 处理，本组件不再重复绑定）。
  *     4. 匹配只读 graphStore.graphView，不修改任何数据。
  *     5. 每次 v-if 重建时搜索状态自动重置（由编排器控制）。
- *
- * 外部如何使用：
- *
- *     <SearchPanel
- *         v-on:focus-element="(id) => controller.requestCanvasFocus(id)"
- *         v-on:close="closePanels"
- *     />
  */
 
 import { ref, computed, onMounted, nextTick } from 'vue'

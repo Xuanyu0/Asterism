@@ -20,10 +20,6 @@
  *     1. 本组件只读 graphStore 状态，所有图谱切换经 graphStore.loadGraphToView。
  *     2. 切换图谱前清理 UI 现场：关闭浮空窗、取消激活工具。
  *     3. Dock 溢出检测由 NavigationCardDock 内部自管理。
- *
- * 外部如何使用：
- *
- *     Graph.vue 挂载本组件。
  */
 
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'

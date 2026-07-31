@@ -1,9 +1,7 @@
 /**
  * 功能：
- *     GraphData → Cytoscape CSS class 语义映射。
  *
- * 外部如何使用：
- *     被 graph_element_mapper.ts 调用。
+ *     GraphData → Cytoscape CSS class 语义映射。
  */
 
 import type { EdgeData, NodeData, NodeId } from '@my-project/graph-engine'
@@ -11,9 +9,11 @@ import type { EdgeData, NodeData, NodeId } from '@my-project/graph-engine'
 
 /**
  * 功能：
+ *
  *     根据 NodeData 生成 Cytoscape 节点 class。
  *
  * 规则：
+ *
  *     1. 只读取节点字段。
  *     2. 不修改节点数据。
  */
@@ -37,9 +37,11 @@ export function getNodeClasses(node: NodeData, foldedParentIds?: Set<NodeId>): s
 
 /**
  * 功能：
+ *
  *     根据 EdgeData 生成 Cytoscape 边 class。
  *
  * 规则：
+ *
  *     1. 只读取边字段。
  *     2. 不修改边数据。
  */

@@ -20,21 +20,6 @@
  *     2. Dock 内部自己算出 goParentGraph / goRootGraph 的 graphId。
  *     3. 内部使用 useOverflowDetection 管理路径截断检测，watch pathSegments 触发重测。
  *     4. 不向编排器暴露 isOverflowing 或 pathStripElement——编排器无需关心截断状态。
- *
- * 外部如何使用：
- *
- *     <NavigationCardDock
- *         v-bind:path-segments="pathSegments"
- *         v-bind:parent-graph-id="parentGraphId"
- *         v-bind:is-at-root="isAtRoot"
- *         v-bind:active-panel="activePanel"
- *         v-bind:drag-handlers="drag.handlers"
- *         v-on:go-parent-graph="switchGraphTo(parentGraphId)"
- *         v-on:go-root-graph="switchGraphTo(currentRootId)"
- *         v-on:go-segment-graph="(id) => switchGraphTo(id)"
- *         v-on:toggle-search="toggleSearchPanel"
- *         v-on:toggle-navigation="toggleNavigationPanel"
- *     />
  */
 
 import { watch, onMounted, ref } from 'vue'

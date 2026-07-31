@@ -10,27 +10,6 @@
  *     4. 绑定 Cytoscape 语义交互事件（tap / cxttap / dblclick）
  *     5. 双击节点导航（引用节点→源图、抽象节点→子图）
  *     6. 挂载 GraphNodeWindow、GraphPermanentToolbar 与 GraphModeSelector
- *
- * 前端机制（Vue 3 框架行为）：
- *     - <script setup lang="ts">：
- *       Vue 3 编译期语法糖。顶层变量自动暴露给模板，import 的组件自动注册。
- *       C++ 类比：编译器自动生成声明，无需手动写 return / components。
- *
- *     - ref<HTMLDivElement | null>(null)：
- *       Vue 响应式引用。模板中的 ref="cyContainer" 自动将 DOM 元素赋值给 .value。
- *       C++ 类比：std::shared_ptr + Observer 通知，但框架自动管理注册/注销。
- *
- *     - onMounted / onBeforeUnmount：
- *       生命周期钩子。onMounted ≈ 构造函数（DOM 已挂载），
- *       onBeforeUnmount ≈ 析构函数（组件销毁前清理）。注意 onMounted 之前 ref 为空。
- *
- *     - watch(source, callback)：
- *       响应式观察者。source 中访问的响应式值变化时触发 callback。
- *       浅层监听：仅 source 返回的引用变化时触发。GraphData 走引用替换，无需 deep。
- *       C++ 类比：Observer + 引用比较 + 自动注册/注销。
- *
- * 外部如何使用：
- *     App.vue 直接挂载本组件。
  */
 
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'

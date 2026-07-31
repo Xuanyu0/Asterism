@@ -20,10 +20,6 @@
  *     2. 禁止直接修改 GraphData。
  *     3. 禁止操作 Cytoscape 实例。
  *     4. 所有图操作通过引擎 compose → graphStore.applyBatch 链路执行。
- *
- * 外部如何使用：
- *
- *     GraphModeSelector.vue 调用本文件。
  */
 
 import type {
@@ -78,11 +74,6 @@ function findCommonLayer(graphRegistry: GraphRegistry): GraphData | undefined {
  *     2. 禁止直接修改 GraphData。
  *     3. 禁止操作 Cytoscape 实例。
  *     4. 所有图操作通过引擎 compose → graphStore.applyBatch 链路执行。
- *
- * 使用：
- *
- *     const controller = useOperationController()
- *     controller.induce(nodeIds)
  */
 export function useOperationController() {
     const graphStore = useGraphStore()
