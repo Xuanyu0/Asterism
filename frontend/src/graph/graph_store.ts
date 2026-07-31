@@ -1,22 +1,23 @@
 /**
- * graph_store.ts
+ * 说明：
  *
- * 功能：
+ *     GraphData 唯一事实源与所有图修改的唯一合法入口。
+ *     持有当前图 / 路径 / 撤销栈，协调多图注册表与 localStorage 持久化。
  *
- *     使用 Pinia 管理知识图谱 GraphData 状态，并统一执行图操作。
+ * 调用契约：
  *
- * 总体结构：
- *
- *     1. graphView  — 当前正在渲染在画布上的图
- *     2. graphPath  — 当前图路径
- *     3. undoStack  — 全操作撤销栈（Step 12 将升级为 OperationLog）
- *     4. commitBatchToGraph / commitBatchToGraphs  — 所有图操作的唯一入口
- *
- * 规则：
- *
- *     1. graphView 是当前渲染视图的事实源，不是操作目标的唯一绑定。
+ *     1. 操作目标可能是父/子图，不绑定当前渲染视图（graphView 只是渲染投影）。
  *     2. Draft 数据禁止进入本 Store。
  *     3. Cytoscape Runtime 禁止进入本 Store。
+ *
+ * TODO：
+ *
+ *     本文件多数函数错误路径静默返回（跳过 / 拒绝 / 中断），依赖调用方前置条件正确：
+ *     如 initRegistry 静默返回、listRootGraphInfos 静默跳过加载失败的图、
+ *     deleteRootGraphTree 静默拒绝删除活跃根图等。只有 loadGraphToView 与
+ *     commitBatchToGraphs 有显式错误出口。调用方又以兜底逻辑掩盖空状态，
+ *     导致持久化数据损坏在用户层面不可见。需统一错误处理策略（显式返回状态
+ *     或写入 lastValidationResult），待行为设计确定后处理。
  */
 
 import { defineStore } from 'pinia'
@@ -26,7 +27,7 @@ import type { GraphData, GraphId, GraphLookup } from '@my-project/graph-engine'
 import type { GraphOperation } from '@my-project/graph-engine'
 import type { ValidationResult } from '@my-project/graph-engine'
 
-import { applyBatch, normalizeGraph, generateGraphId } from '@my-project/graph-engine'
+import { applyBatch, ensureDefaultCognitiveState, generateGraphId } from '@my-project/graph-engine'
 
 import type { GraphRegistry } from '@/graph/graph_registry'
 import { createRegistry, registerGraph, unregisterGraph, lookupGraph, hasGraph } from '@/graph/graph_registry'
@@ -35,67 +36,35 @@ import { saveGraph, loadGraph, deleteGraph, listSavedGraphIds, listRootGraphIds,
 
 const MAX_UNDO_STACK_SIZE = 20
 
-
-
-
 /**
- * 功能：
+ * 说明：
  *
  *     根图谱列表项的摘要信息，供导航卡片展示根图谱列表。
  *
- * 规则：
+ * 代码修改契约：
  *
  *     1. 只包含列表展示所需的最小字段，不携带 nodes / edges。
  */
-export interface RootGraphSummary {
+export interface RootGraphInfo {
     /** 根图 ID。 */
     id: GraphId
 
     /** 根图标题。 */
     title: string
 
-    /** 最近更新时间戳。引擎当前未维护此字段，保留供未来排序使用。 */
+    /** 最近更新时间戳（图级，引擎维护）。 */
     updatedAt?: string
 }
 
 /**
- * 功能：
+ * 说明：
  *
- *     保存当前 GraphData 副本到撤销栈，并限制栈最大长度。
+ *     创建 Graph Store 单例，暴露全部图操作入口（职责与边界见文件头说明）。
  *
- * 规则：
+ * 调用契约：
  *
- *     JSON 序列化而非 structuredClone——Pinia reactive proxy 无法被 structuredClone。
- *
- * 消费者：
- *
- *     commitBatchToGraphs（undo snapshot）
- */
-export function pushUndoSnapshot(undoStack: GraphData[], graph: GraphData): GraphData[] {
-    const snapshot: GraphData = JSON.parse(JSON.stringify(graph))
-
-    return [...undoStack, snapshot].slice(-MAX_UNDO_STACK_SIZE)
-}
-
-
-/**
- * 功能：
- *
- *     创建 Graph Store 实例，管理 GraphData 状态与图操作。
- *     GraphData 唯一事实源，所有图数据修改必须经过本 Store。
- *
- * 总体结构：
- *
- *     1. 状态  — 当前图数据、选中状态、撤销栈
- *     2. API  — 图操作入口（loadGraphToView / commitBatchToGraph / commitBatchToGraphs 等）
- *
- * 规则：
- *
- *     1. Draft 数据与 Cytoscape Runtime 禁止进入本 Store。
- *     2. UI Runtime 可通过 feature-tools handler 直接调 commitBatchToGraph，不经过 operation_controller。
- *     3. 所有修改委托引擎 applyBatch 执行 validate + execute。
- *     4. commitBatchToGraph / commitBatchToGraphs 每次修改时自动持久化。
- *
+ *     1. UI Runtime 可通过 feature-tools handler 直接调 commitBatchToGraph，不经过 operation_controller。
+ *     2. 所有修改委托引擎 applyBatch 执行 validate + execute，成功后自动持久化。
  */
 export const useGraphStore = defineStore('graph_store', () => {
     const graphView = ref<GraphData | null>(null)
@@ -107,25 +76,14 @@ export const useGraphStore = defineStore('graph_store', () => {
     const lastValidationResult = ref<ValidationResult | null>(null)
     
     /**
-     * 功能：
+     * 说明：
      *
-     *     从持久化存储加载图谱，切换为当前视图图。
+     *     用户切换图谱的唯一入口：从持久化加载图谱并设为当前视图。
      *
-     *     这是用户切换图谱的唯一入口。负责 normalize + 状态重置、
-     *     "从 localStorage 加载"、"写入 runtime registry"、
-     *     以及沿 parentGraphId 回溯构建完整 graphPath（根→叶）。
+     * 调用契约：
      *
-     * 规则：
-     *
-     *     1. 找不到对应 GraphData 时写入 lastValidationResult 错误信息并返回 false。
-     *     2. 加载成功后将图写入 registry（跨图操作可见）。
-     *     3. 祖先图仅加载自身，不加载祖先图的子图。
-     *     4. 祖先图不在 registry 中时从 localStorage 惰性加载并注册。
-     *     5. 本函数不负责完整图校验。
-     *
-     * 消费者：
-     *
-     *     main.ts / 图谱列表 UI（待实现）
+     *     1. 本函数不负责完整图校验。
+     *     2. 切换成功即清空撤销栈。
      */
     function loadGraphToView(graphId: GraphId): boolean {
         const graph = loadGraph(graphId)
@@ -144,121 +102,57 @@ export const useGraphStore = defineStore('graph_store', () => {
             return false
         }
 
-        // 读取时即设置当前显示的图谱
-        graphView.value = normalizeGraph(graph)
-        lastValidationResult.value = null
+        // 切换图谱：旧图的校验结果（错误提示）与撤销历史不再适用于新视图，一并清空
+        graphView.value = ensureDefaultCognitiveState(graph)
+        clearValidationResult()
         undoStack.value = []
 
         registerGraph(graphRegistry.value, graph)
 
-        // 沿 parentGraphId 回溯构建完整 graphPath（根→叶）
-        // 算法参考引擎 buildGraphPath，但用 loadGraph 作为 registry 未命中时的 fallback
-        const path: GraphId[] = [graph.id]
-        const visited = new Set<GraphId>([graph.id])
-        let currentGraph: GraphData = graph
-        while (currentGraph.parentGraphId) {
-            const parentId = currentGraph.parentGraphId
-
-            // 环检测：防止异常数据导致无限循环
-            if (visited.has(parentId)) {
-                break
-            }
-            visited.add(parentId)
-
-            const parentInRegistry = lookupGraph(graphRegistry.value, parentId)
-            const parent = parentInRegistry ?? loadGraph(parentId)
-
-            if (!parent) {
-                break
-            }
-
-            // 祖先图不在 registry 中时加载并注册
-            if (!parentInRegistry) {
-                registerGraph(graphRegistry.value, parent)
-            }
-
-            path.unshift(parentId)
-            currentGraph = parent
-        }
+        // 构建当前图在根图树中的路径（根→叶），供导航卡片渲染面包屑与"是否在根"判断
+        const { path, terminal } = buildGraphPath(graph)
         graphPath.value = path
 
-        // 祖先链断裂检测：while 循环因 parent 不存在或环检测而提前退出时，
-        // currentGraph.parentGraphId 仍有值（未找到对应图谱），报告 warning
-        if (currentGraph.parentGraphId) {
+        // 祖先链断裂检测
+        if (terminal.parentGraphId) {
             lastValidationResult.value = {
                 valid: true,
                 issues: [{
                     severity: 'warning',
                     code: 'ANCESTOR_CHAIN_BROKEN',
-                    message: `图谱 "${graphId}" 的父链在 "${currentGraph.id}" 处中断：祖先图谱 "${currentGraph.parentGraphId}" 不可达`,
+                    message: `图谱 "${graphId}" 的父链在 "${terminal.id}" 处中断：祖先图谱 "${terminal.parentGraphId}" 不可达`,
                     targetType: 'graph',
-                    targetId: currentGraph.parentGraphId,
+                    targetId: terminal.parentGraphId,
                 }],
             }
         }
 
-        // 记录最后活跃的根图 ID：回溯链末端的图若确实是根图则写入。
-        if (currentGraph.kind === 'root') {
-            saveLastActiveRootId(currentGraph.id)
+        // 记录最后活跃的根图 ID：下次启动时 initRegistry 据此恢复工作根图树
+        if (terminal.kind === 'root') {
+            saveLastActiveRootId(terminal.id)
         }
 
         return true
     }
 
     /**
-     * 功能：
-     *
-     *     沿 parentGraphId 链回溯，判断 graph 是否属于指定根图树。
-     *
-     * 规则：
-     *
-     *     1. graph.id === rootId 时返回 true（根图自身）。
-     *     2. 沿 parentGraphId 逐级上溯，若某级 parentGraphId === rootId 返回 true。
-     *     3. 链中断（parentGraphId 对应的图不存在）或环检测命中返回 false。
-     *     4. 抵达其他根图（parentGraphId === undefined 但当前图不是 rootId）返回 false。
-     */
-    function isInRootTree(graph: GraphData, rootId: GraphId): boolean {
-        if (graph.id === rootId) return true
-
-        let current = graph
-        const visited = new Set<GraphId>([graph.id])
-        while (current.parentGraphId) {
-            if (current.parentGraphId === rootId) return true
-            if (visited.has(current.parentGraphId)) return false  // 环检测
-            visited.add(current.parentGraphId)
-
-            const parent = loadGraph(current.parentGraphId)
-            if (!parent) return false
-
-            current = parent
-        }
-        return false  // 抵达某根图（parentGraphId === undefined），但不是我们的根图
-    }
-
-    /**
-     * 功能：
+     * 说明：
      *
      *     从 lastActiveRootId 恢复工作根图及其全部子孙子图到注册表。
+     *     启动时注入整棵根图树，保证认知操作的跨图查询（makeLookup）能命中子图
      *
-     *     启动时注入根图树（根图 + 所有 parentGraphId 链终点为该根图的子图），
-     *     避免认知操作（diverge / induce）因子图未注册而触发惰性加载。
-     *
-     *     找不到 lastActiveRootId 或加载失败时注册表保持空，
-     *     由 Graph.vue 哨兵创建新根图。
-     *
-     * 规则：
+     * 调用契约：
      *
      *     1. 应用启动时调用一次。
-     *     2. 加载 lastActiveRootId 对应的根图，再扫描全部已保存图，
-     *        用 isInRootTree 筛选属于同一树的所有子图一并注册。
-     *     3. 不属于当前根图的其他根图子树不进入注册表。
-     *     4. 注册表可能为空（首次使用或上次根图已删除），由哨兵兜底。
+     *     2. 调用后 registry 可能仍为空（无历史根图 / 历史根图已删或加载失败）——
+     *        调用方不得假定调用后必有图，需自行兜底。
      *
-     *     graph_store 首次创建后，由 Graph.vue onMounted 触发。
+     * TODO：
      *
-     * 消费者：
-     *
-     *     Graph.vue onMounted
+     *     历史根图损坏（loadGraph 失败 / kind 非 root）与"无历史根图"均静默返回，
+     *     调用方无法区分"首次使用"与"持久化数据损坏"，后者会在下游兜底逻辑中
+     *     被当作首次使用掩盖。需为异常路径增加可见性（写 lastValidationResult
+     *     或返回状态），待行为设计确定后处理。
      */
     function initRegistry(): void {
         const lastRootId = loadLastActiveRootId()
@@ -280,25 +174,21 @@ export const useGraphStore = defineStore('graph_store', () => {
     }
 
     /**
-     * 功能：
+     * 说明：
      *
-     *     创建一个新的空根图并持久化。
-     *     若提供 id 且该 id 对应的图已存在，则跳过创建直接返回 id（幂等）。
+     *     创建一个新的空根图并立即持久化；若 opts.id 对应图已存在，跳过创建直接返回该 id。
      *
-     *     本函数不自动切换视图——调用方如需显示新图，需额外调用 loadGraphToView。
+     * 调用契约：
      *
-     * 规则：
-     *
-     *     1. 默认使用引擎 generateGraphId() 生成 ID。
-     *     2. 可通过 opts.id 指定固定 ID——幂等保证，图已存在则跳过创建。
-     *     3. 根图的 parentGraphId 和 ownerNodeId 为 undefined。
-     *     4. 创建后立即保存到 localStorage 并注册到 registry。
-     *     5. 不修改 graphView / graphPath 等运行时状态。
+     *     1. 本函数不自动切换视图——调用方如需显示新图，需额外调用 loadGraphToView。
+     *     2. 创建后立即保存到 localStorage 并注册到 registry。
      *
      * 参数：
      *
      *     title — 根图名称
-     *     opts  — 可选。opts.id 指定固定 GraphId（幂等——已存在则跳过）
+     *     opts  — 可选。opts.id 指定固定 GraphId（幂等——已存在则跳过创建）。
+     *             dev 种子数据（bootstrap）用它保证跨图引用（sourceGraphId）指向稳定 ID；
+     *             生产路径（Graph.vue / NavigationPanel）不传，走随机 ID。
      */
     function createRootGraph(title: string, opts?: { id?: GraphId }): GraphId {
         const id = opts?.id ?? generateGraphId()
@@ -324,124 +214,100 @@ export const useGraphStore = defineStore('graph_store', () => {
     }
 
     /**
-     * 功能：
+     * 说明：
      *
-     *     按 ID 从多图注册表中查找图。
-     *
-     *     认知操作（diverge、induce）等跨图场景前，前端通过此函数获取目标图。
-     *
-     * 消费者：
-     *
-     *     operation_controller（Cognition 模式）
+     *     按 ID 从多图注册表中查找图，供认知操作（diverge、induce）
+     *     等跨图场景获取目标图。
      */
     function getGraphById(graphId: GraphId): GraphData | undefined {
         return lookupGraph(graphRegistry.value, graphId)
     }
 
     /**
-     * 功能：
+     * 说明：
      *
-     *     创建供引擎 compose 层使用的跨图查询函数。
-     *
-     *     引擎各 compose 函数通过 GraphLookup 只读访问多图数据，
-     *     不依赖具体 Map 实现。本方法将 Runtime 持有的 graphRegistry
-     *     包装为 (graphId) → GraphData | undefined 的纯查询函数。
-     *
-     * 消费者：
-     *
-     *     operation_controller（induce / internalize / diverge 调用前构造 lookupGraph 参数）
+     *     将 Runtime 持有的 graphRegistry 包装为引擎 compose 层所需的
+     *     纯查询函数 (graphId) → GraphData | undefined，供 induce /
+     *     internalize / diverge 跨图查询使用。
      */
     function makeLookup(): GraphLookup {
         return (graphId: GraphId): GraphData | undefined => lookupGraph(graphRegistry.value, graphId)
     }
 
     /**
-     * 功能：
+     * 说明：
      *
-     *     清除上一次操作的校验结果。
-     *     供 UI 层在切换模式/工具/操作、关闭浮空窗时调用，
-     *     确保用户不会看到已过期的校验错误消息。
+     *     清除上一次操作的校验结果。供 UI 层在切换模式/工具/操作、
+     *     关闭浮空窗时调用，确保用户不会看到已过期的校验错误消息。
      */
     function clearValidationResult() {
         lastValidationResult.value = null
     }
     
-    /**
-     * 功能：
-     *
-     *     删除本地持久化中的图谱数据。
-     *
-     * 规则：
-     *
-     *     1. 不影响当前运行中的 graphView。
-     *     2. 只删除本地存储中的记录。
-     *     3. 如果删除的是当前图谱的持久化副本，当前内存中的图谱仍然保留。
-     */
-    function deleteSavedGraph(graphId: GraphId): void {
+    function deleteAndUnregisterGraph(graphId: GraphId): void {
         deleteGraph(graphId)
         unregisterGraph(graphRegistry.value, graphId)
     }
 
     /**
-     * 功能：
+     * 说明：
      *
-     *     列出 localStorage 中全部根图谱的摘要，供导航卡片展示与切换。
+     *     列出 localStorage 中全部根图谱的摘要，供 GraphNavigationCard 展示与切换。
      *
-     * 规则：
+     * 调用契约：
+     *
+     *     1. 本函数不修改任何运行时状态。
+     *
+     * 代码修改契约：
      *
      *     1. 数据来自持久化全量扫描，不经过 graphRegistry——
      *        registry 只持有当前根图树，无法覆盖全部根图。
-     *     2. 按标题字典序排序（updatedAt 引擎未维护，不参与排序）。
-     *     3. 本函数不修改任何运行时状态。
      *
-     * 消费者：
+     * TODO：
      *
-     *     GraphNavigationCard（Expand 面板根图谱列表）
+     *     排序依据待后续开发稳定后确定——图级 updatedAt 引擎已维护，
+     *     是否改用最近更新排序（而非 title 字典序）待定。
      */
-    function listRootGraphSummaries(): RootGraphSummary[] {
-        const summaries: RootGraphSummary[] = []
+    function listRootGraphInfos(): RootGraphInfo[] {
+        const infos: RootGraphInfo[] = []
 
         for (const graphId of listRootGraphIds()) {
             const graph = loadGraph(graphId)
             if (!graph) continue
-            summaries.push({ id: graph.id, title: graph.title, updatedAt: graph.updatedAt })
+            infos.push({ id: graph.id, title: graph.title, updatedAt: graph.updatedAt })
         }
 
-        return summaries.sort((a, b) => a.title.localeCompare(b.title, 'zh-Hans-CN'))
+        return infos.sort((a, b) => a.title.localeCompare(b.title, 'zh-Hans-CN'))
     }
 
     /**
-     * 功能：
+     * 说明：
      *
-     *     删除一个根图及其全部子孙子图（级联删除整棵图树）。
+     *     删除一个根图及其全部子孙子图（级联删除整棵图树），
+     *     供 GraphNavigationCard 根图谱列表删除按钮使用。
      *
-     * 规则：
+     * 调用契约：
      *
      *     1. 若 rootId 为当前视图所在根图，直接返回不删除——
      *        删除活跃根图会使视图失去持久化副本。
-     *     2. 通过 isInRootTree 判定归属，防止只删根图留下孤儿子图
+     *
+     * 代码修改契约：
+     *
+     *     1. 通过 isInRootTree 判定归属，防止只删根图留下孤儿子图
      *        污染 listSavedGraphIds 的全量扫描结果。
-     *     3. 删除后同步清理指向该根图的 lastActiveRootId 标记。
      *
      * 参数：
      *
      *     rootId — 要删除的根图 ID，与其全部子孙子图一并删除。
-     *
-     * 消费者：
-     *
-     *     GraphNavigationCard（根图谱列表删除按钮）
      */
     function deleteRootGraphTree(rootId: GraphId): void {
-        // 防御：禁止删除当前视图所在的根图。删除活跃根图会使视图
-        // 失去持久化副本，且 graphView 会悬挂在已不存在的图上。
+        // 防御：禁止删除当前视图所在的根图。
         const currentRootId = graphPath.value[0]
         if (currentRootId !== undefined && currentRootId === rootId) {
             return
         }
 
-        // 第一遍：收集整棵树的成员。必须在删除前完成——isInRootTree 沿
-        // parentGraphId 逐级 loadGraph 回溯，边扫描边删除会使孙图的父链断裂，
-        // 导致深层子图被判定为"不属于本树"而漏删。
+        // 收集整棵树的成员。
         const treeIds: GraphId[] = []
         for (const graphId of listSavedGraphIds()) {
             if (graphId === rootId) {
@@ -455,9 +321,9 @@ export const useGraphStore = defineStore('graph_store', () => {
             treeIds.push(graphId)
         }
 
-        // 第二遍：统一删除
+        // 收集完后，统一删除
         for (const graphId of treeIds) {
-            deleteSavedGraph(graphId)
+            deleteAndUnregisterGraph(graphId)
         }
 
         if (loadLastActiveRootId() === rootId) {
@@ -466,18 +332,10 @@ export const useGraphStore = defineStore('graph_store', () => {
     }
 
     /**
-     * 功能：
+     * 说明：
      *
-     *     对单个目标图执行批量操作。
-     *
-     *     本函数是 commitBatchToGraphs 的单图包装。
-     *
-     * 规则：
-     *
-     *     1. 委托 commitBatchToGraphs 执行统一的事务管理。
-     *     2. 目标图是 graphView 时更新视图并记录 undo snapshot。
-     *     3. 目标图是 registry 中图时更新 registry。
-     *     4. 自动持久化结果图。
+     *     对单个目标图执行批量操作，是 commitBatchToGraphs 的单图便捷包装。
+     *     事务、undo snapshot 与持久化行为全部继承自 commitBatchToGraphs。
      *
      * 参数：
      *
@@ -497,31 +355,42 @@ export const useGraphStore = defineStore('graph_store', () => {
     }
 
     /**
-     * 功能：
+     * 说明：
      *
-     *     对多个目标图批量执行操作，顺手执行持久化。
+     *     对多个目标图批量执行操作，是全部图写入的统一入口。
+     *     执行按照四阶段：逐项 applyBatch 执行 → 成功后统一提交状态 → 兑现 add_graph / delete_graph 信号
+     *     → 统一持久化。
      *
-     * 规则：
+     * 调用契约：
      *
-     *     1. 全部目标先执行，失败即返回。
-     *     2. 成功后才统一更新 graphView / registry。
-     *     3. graphView 的 undo snapshot 在批量开始前只拍一次。
-     *     4. 支持同一图在 operationBatch 中出现多次，后续项读取前面项的结果图。
-     *     5. 自动持久化所有结果图。
+     *     1. 任一项执行失败即整批返回，不产生部分提交。
+     *     2. 同一图可在 operationBatch 中出现多次，后续项以前一项的结果图为输入。
+     *     3. 全部成功后统一持久化所有结果图。
+     *
+     * 代码修改契约：
+     *
+     *     1. add_graph / delete_graph 为引擎静默信号，由本函数兑现为 registry 与持久化副作用。
+     *
+     * TODO：
+     *
+     *     undo snapshot 当前在批量提交前对 graphView 只拍一次（一次批量 = 一次撤销）。
+     *     该粒度语义是否成立，待 undo 接入引擎 OperationLog 后统一确定，届时本函数
+     *     的快照逻辑随之调整。
      *
      * 参数：
      *
-     *     operationBatch — 图与操作序列的配对数组，整批统一提交
+     *     operationBatch — 图与其对应的操作序列的配对数组
      */
     function commitBatchToGraphs(
         operationBatch: { graph: GraphData; operations: GraphOperation[] }[],
     ): { validation: ValidationResult } {
 
+        // TODO：空批守卫为冗余分支——删除后空批走正常路径产出完全相同
+        // （所有循环对空输入天然安全，尾部 validation 同样为 { valid: true, issues: [] }）。
+        // 待确认无依赖后移除。
         if (operationBatch.length === 0) {
             const emptyValidation: ValidationResult = { valid: true, issues: [] }
-
             lastValidationResult.value = emptyValidation
-
             return { validation: emptyValidation }
         }
 
@@ -566,7 +435,10 @@ export const useGraphStore = defineStore('graph_store', () => {
             }))
 
         if (needsUndoSnapshot && graphView.value) {
-            undoStack.value = pushUndoSnapshot(undoStack.value, graphView.value)
+            // 快照入栈：JSON 序列化而非 structuredClone——Pinia reactive proxy 无法被 structuredClone。
+            // 入栈后截断到 MAX_UNDO_STACK_SIZE。
+            const snapshot: GraphData = JSON.parse(JSON.stringify(graphView.value))
+            undoStack.value = [...undoStack.value, snapshot].slice(-MAX_UNDO_STACK_SIZE)
         }
 
         // 第二阶段：全部成功后统一更新 state
@@ -621,15 +493,21 @@ export const useGraphStore = defineStore('graph_store', () => {
     }
 
     /**
-     * 功能：
+     * 说明：
      *
-     *     撤销最近一次操作。
+     *     撤销最近一次操作：弹出撤销栈顶部快照并恢复为当前图。
      *
-     * 规则：
+     * 调用契约：
      *
      *     1. 恢复完整 GraphData Snapshot。
      *     2. 覆盖所有修改操作（add / delete / update / move / fold / expand）。
-     *     3. 刷新网页后 Undo 自动失效。
+     *     3. 刷新网页后 Undo 自动失效（快照不持久化）。
+     *
+     * TODO：
+     *
+     *     未来接入引擎 OperationLog（Event Sourcing）后，本函数将改为
+     *     基于 replay 的回放式撤销，届时快照栈可移除。当前施工进度未到，
+     *     暂以快照式实现占位，且尚未接线 UI 入口。
      */
     function undo(): boolean {
         const previousGraph = undoStack.value.pop()
@@ -640,6 +518,71 @@ export const useGraphStore = defineStore('graph_store', () => {
         graphView.value = previousGraph
 
         return true
+    }
+
+    /**
+     * 说明：
+     *
+     *     沿 parentGraphId 回溯构建从给定图到根图的完整路径（根→叶），
+     *     返回末端图（根图或链断裂处）供调用方做断链检测。
+     *
+     * 调用契约：
+     *
+     *     祖先图不在 registry 时从持久化惰性加载并注册。
+     */
+    function buildGraphPath(graph: GraphData): { path: GraphId[]; terminal: GraphData } {
+        const path: GraphId[] = [graph.id]
+        const visited = new Set<GraphId>([graph.id])
+        let currentGraph: GraphData = graph
+        while (currentGraph.parentGraphId) {
+            const parentId = currentGraph.parentGraphId
+
+            // 环检测：防止异常数据导致无限循环
+            if (visited.has(parentId)) {
+                break
+            }
+            visited.add(parentId)
+
+            const parentInRegistry = lookupGraph(graphRegistry.value, parentId)
+            const parent = parentInRegistry ?? loadGraph(parentId)
+
+            if (!parent) {
+                break
+            }
+
+            // 祖先图不在 registry 中时加载并注册
+            if (!parentInRegistry) {
+                registerGraph(graphRegistry.value, parent)
+            }
+
+            path.unshift(parentId)
+            currentGraph = parent
+        }
+
+        return { path, terminal: currentGraph }
+    }
+
+    /**
+     * 说明：
+     *
+     *     沿 parentGraphId 链回溯，判断 graph 是否属于指定根图树。
+     */
+    function isInRootTree(graph: GraphData, rootId: GraphId): boolean {
+        if (graph.id === rootId) return true
+
+        let current = graph
+        const visited = new Set<GraphId>([graph.id])
+        while (current.parentGraphId) {
+            if (current.parentGraphId === rootId) return true
+            if (visited.has(current.parentGraphId)) return false  // 环检测
+            visited.add(current.parentGraphId)
+
+            const parent = loadGraph(current.parentGraphId)
+            if (!parent) return false
+
+            current = parent
+        }
+        return false  // 抵达某根图（parentGraphId === undefined），但不是我们的根图
     }
 
     return {
@@ -662,8 +605,8 @@ export const useGraphStore = defineStore('graph_store', () => {
         clearValidationResult,
         
         // 功能行为
-        deleteSavedGraph,
-        listRootGraphSummaries,
+        deleteAndUnregisterGraph,
+        listRootGraphInfos,
         deleteRootGraphTree,
         commitBatchToGraph,
         commitBatchToGraphs,

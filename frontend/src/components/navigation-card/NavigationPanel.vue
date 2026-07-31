@@ -17,7 +17,7 @@
  *     2. 根图谱列表点击即切换，当前根图带标记且不可删除。
  *     3. 删除需二次点击确认；当前根图不显示删除按钮。
  *     4. 笔记库 / 常识层 / 设置为占位按钮，功能延后。
- *     5. 本组件自管理 rootSummaries / newRootTitle / armedDeleteId 状态。
+ *     5. 本组件自管理 rootInfos / newRootTitle / armedDeleteId 状态。
  */
 
 import { ref, computed, onMounted } from 'vue'
@@ -28,7 +28,7 @@ import { PlusIcon, TrashIcon, BookOpenIcon, GlobeAltIcon, Cog6ToothIcon } from '
 import AsterismLogo from '@/assets/icon-asterism.svg?component'
 
 import { useGraphStore } from '@/graph/graph_store'
-import type { RootGraphSummary } from '@/graph/graph_store'
+import type { RootGraphInfo } from '@/graph/graph_store'
 
 
 const props = defineProps<{
@@ -45,14 +45,14 @@ const emits = defineEmits<{
 const graphStore = useGraphStore()
 
 // ── 根图谱列表 ──
-const rootSummaries = ref<RootGraphSummary[]>([])
+const rootInfos = ref<RootGraphInfo[]>([])
 /**
  * 功能：
  *
  *     从数据层重新拉取所有根图谱摘要。
  */
 function refreshRootList(): void {
-    rootSummaries.value = graphStore.listRootGraphSummaries()
+    rootInfos.value = graphStore.listRootGraphInfos()
 }
 onMounted(() => {
     refreshRootList()
@@ -63,9 +63,9 @@ onMounted(() => {
  *
  *     选择根图谱并切换。
  */
-function selectRootGraph(summary: RootGraphSummary): void {
-    if (summary.id !== props.currentRootId) {
-        emits('switchRootGraph', summary.id)
+function selectRootGraph(info: RootGraphInfo): void {
+    if (info.id !== props.currentRootId) {
+        emits('switchRootGraph', info.id)
     }
     emits('close')
 }
@@ -97,17 +97,17 @@ const armedDeleteId = ref<GraphId | null>(null)
  *     1. 当前浏览中的根图不可删除。
  *     2. 确认后调用 graphStore.deleteRootGraphTree 级联删除整棵图树。
  */
-function requestDeleteRoot(summary: RootGraphSummary): void {
-    if (summary.id === props.currentRootId) return
+function requestDeleteRoot(info: RootGraphInfo): void {
+    if (info.id === props.currentRootId) return
 
-    if (armedDeleteId.value === summary.id) {
-        graphStore.deleteRootGraphTree(summary.id)
+    if (armedDeleteId.value === info.id) {
+        graphStore.deleteRootGraphTree(info.id)
         armedDeleteId.value = null
         refreshRootList()
         return
     }
 
-    armedDeleteId.value = summary.id
+    armedDeleteId.value = info.id
 }
 </script>
 
@@ -117,33 +117,33 @@ function requestDeleteRoot(summary: RootGraphSummary): void {
 
         <ul class="root-list">
             <li
-                v-for="summary in rootSummaries"
-                v-bind:key="summary.id"
+                v-for="info in rootInfos"
+                v-bind:key="info.id"
             >
                 <button
                     type="button"
                     class="root-item"
-                    v-bind:class="{ current: summary.id === currentRootId }"
-                    v-on:click="selectRootGraph(summary)"
+                    v-bind:class="{ current: info.id === currentRootId }"
+                    v-on:click="selectRootGraph(info)"
                 >
                     <AsterismLogo class="size-3.5 root-item-icon" />
-                    <span class="root-item-title">{{ summary.title }}</span>
+                    <span class="root-item-title">{{ info.title }}</span>
                     <span
-                        v-if="summary.id === currentRootId"
+                        v-if="info.id === currentRootId"
                         class="current-badge"
                     >当前</span>
                 </button>
                 <button
-                    v-if="summary.id !== currentRootId"
+                    v-if="info.id !== currentRootId"
                     type="button"
                     class="root-delete-btn"
-                    v-bind:class="{ armed: armedDeleteId === summary.id }"
-                    v-bind:title="armedDeleteId === summary.id
+                    v-bind:class="{ armed: armedDeleteId === info.id }"
+                    v-bind:title="armedDeleteId === info.id
                         ? '再次点击确认删除（含全部子图）'
                         : '删除图谱'"
-                    v-on:click.stop="requestDeleteRoot(summary)"
+                    v-on:click.stop="requestDeleteRoot(info)"
                 >
-                    <span v-if="armedDeleteId === summary.id">确认</span>
+                    <span v-if="armedDeleteId === info.id">确认</span>
                     <TrashIcon v-else class="size-3.5" />
                 </button>
             </li>
