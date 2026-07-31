@@ -39,7 +39,7 @@ import type {
     ReferenceNodeKind,
 } from '../src/types/graph_data'
 
-import { normalizeGraph } from '../src/core/normalize'
+import { ensureDefaultCognitiveState } from '../src/core/normalize'
 import { validateGraph } from '../src/core/validators/whole_graph_validator'
 
 // ═══════════ 类型工具 ═══════════
@@ -149,7 +149,7 @@ export function createEdge(overrides: EdgeOverrides): EdgeData {
  * 规则：
  *
  *     1. 根据边自动计算每个节点的 degree。
- *     2. 补全 cognitiveState 默认值（通过 normalizeGraph）。
+ *     2. 补全 cognitiveState 默认值（通过 ensureDefaultCognitiveState）。
  *     3. 组装后运行全量 schema 校验，不合法时抛异常。
  */
 export function assembleGraph(params: {
@@ -189,7 +189,7 @@ export function assembleGraph(params: {
         updatedAt: now,
     }
 
-    const normalized = normalizeGraph(graph)
+    const normalized = ensureDefaultCognitiveState(graph)
 
     validateOrThrow(normalized)
 

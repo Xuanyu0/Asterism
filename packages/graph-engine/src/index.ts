@@ -225,9 +225,9 @@ export { searchNodes } from './infrastructure'
  *
  * 使用：
  *
- *     const normalized = normalizeGraph(loadedGraph)
+ *     const normalized = ensureDefaultCognitiveState(loadedGraph)
  */
-export { normalizeGraph } from './core/normalize'
+export { ensureDefaultCognitiveState } from './core/normalize'
 
 /**
  * 功能：

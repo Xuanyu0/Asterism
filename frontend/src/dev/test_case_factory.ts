@@ -21,7 +21,7 @@ import type {
 } from '@my-project/graph-engine'
 
 import { validateGraph } from '@my-project/graph-engine'
-import { normalizeGraph } from '@my-project/graph-engine'
+import { ensureDefaultCognitiveState } from '@my-project/graph-engine'
 import { loadGraph, saveGraph } from '@/graph/graph_persistence'
 
 // ═══════════ 构造节点/边 ═══════════
@@ -97,7 +97,7 @@ export function assembleGraph(params: {
         ownerNodeId: params.ownerNodeId, createdAt: now, updatedAt: now,
     }
 
-    const normalized = normalizeGraph(graph)
+    const normalized = ensureDefaultCognitiveState(graph)
     validateOrThrow(normalized)
     return normalized
 }
