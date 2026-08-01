@@ -20,6 +20,7 @@ import { useToolMediator } from './mediator'
 import { useAddNodeTool } from './toolbar/add_node'
 import { useFoldTool } from './toolbar/fold'
 
+import type { ToolMediator } from './mediator'
 import type { ToolHandler } from './types'
 
 
@@ -45,7 +46,7 @@ beforeEach(() => {
 
 
 describe('useToolMediator', () => {
-    let mediator: ReturnType<typeof useToolMediator>
+    let mediator: ToolMediator
 
     beforeEach(() => {
         mediator = useToolMediator()
