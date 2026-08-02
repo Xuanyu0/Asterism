@@ -63,10 +63,7 @@ export function previewAddEdge(
     sourceCollides: boolean
     targetCollides: boolean
 } {
-    // 用 JSON 序列化克隆而非 structuredClone：graphStore.graphView 是 Vue 响应式
-    // Proxy，structuredClone 无法克隆 Proxy（抛 DataCloneError）。
-    // 与 graph_store.ts undo snapshot 的克隆方式保持一致。
-    const clone: GraphData = JSON.parse(JSON.stringify(graph))
+    const clone = cloneGraph(graph)
 
     const addEdgeOp: AddEdgeOperation = {
         type: 'add_edge',
@@ -122,9 +119,7 @@ export function previewMoveNode(
     nodeId: NodeId,
     desiredPosition: NodePosition,
 ): { previewGraph: GraphData; collides: boolean } {
-    // 用 JSON 序列化克隆而非 structuredClone：graphStore.graphView 是 Vue 响应式
-    // Proxy，structuredClone 无法克隆 Proxy（抛 DataCloneError）。
-    const clone: GraphData = JSON.parse(JSON.stringify(graph))
+    const clone = cloneGraph(graph)
 
     const result = moveNode({
         nodeId,
@@ -136,4 +131,20 @@ export function previewMoveNode(
     const preview = applyBatch(clone, result.operations)
 
     return { previewGraph: preview.graph, collides: hasErrors(result.issues) }
+}
+
+
+/**
+ * 说明：
+ *
+ *     深拷贝 GraphData 快照，供预览模拟操作隔离使用。入参不被修改。
+ *
+ * 规则：
+ *
+ *     用 JSON 序列化克隆而非 structuredClone：graphStore.graphView 是 Vue 响应式
+ *     Proxy，structuredClone 无法克隆 Proxy（抛 DataCloneError）。
+ *     与 graph_store.ts undo snapshot 的克隆方式保持一致。
+ */
+function cloneGraph(graph: GraphData): GraphData {
+    return JSON.parse(JSON.stringify(graph)) as GraphData
 }
