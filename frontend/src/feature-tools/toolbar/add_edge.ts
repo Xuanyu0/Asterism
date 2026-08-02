@@ -1,7 +1,5 @@
 /**
- * tools/toolbar/add-edge.ts
- *
- * 功能：
+ * 说明：
  *
  *     添加边工具处理器。支持实/虚边和有向/无向边四种变体。
  *
@@ -54,16 +52,14 @@ export function useAddEdgeTool(
     }
 
     /**
-     * 功能：
+     * 说明：
      *
      *     取消激活工具。清除本工具施加的全部 class，画布若停留在预览图则切回真实图。
      *
-     * 规则：
+     * 调用契约：
      *
-     *     1. hoverTargetId 非空 = 画布处于预览态（onNodeHover sync 预览图后置位，
-     *        离开 / 提交成功后复位）。deactivate 本身不修改 graphView，
+     *     1. deactivate 本身不修改 graphView，
      *        watch(graphView) 不会触发——仅预览态需要手动 sync 切回真实图。
-     *     2. 非预览态跳过 sync：此时 sync 真实图 = 无操作，属纯冗余调用。
      */
     function deactivate(): void {
         clearAllPreviews('add-edge')
@@ -111,7 +107,7 @@ export function useAddEdgeTool(
     }
 
     /**
-     * 功能：
+     * 说明：
      *
      *     处理节点悬停离开。切回真实图并重施 source 高亮（source 仍选中）。
      */
@@ -141,7 +137,7 @@ export function useAddEdgeTool(
      * 调用契约：
      *
      *     1. 校验失败或任一端碰撞 → 忽略点击，sourceNodeId 保持可重试。
-     *     3. Graph.vue 内的 watch(graphView) 会自动触发 syncFromGraphData 同步真实图，无需手动 sync。
+     *     2. Graph.vue 内的 watch(graphView) 会自动触发 syncFromGraphData 同步真实图，无需手动 sync。
      */
     function onNodeClick(nodeId: string): void {
         // 第一次点击：记录 source 并施加起点高亮
@@ -200,10 +196,6 @@ export function useAddEdgeTool(
 
     }
 
-    /**
-     * 说明：
-     *     渲染 hover 预览：整图切换到预览图，并在 sync 后重施 source 高亮与碰撞高亮。
-     */
     function applyHoverPreview(
         previewGraph: GraphData,
         targetId: NodeId,

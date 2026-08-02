@@ -1,15 +1,9 @@
 /**
- * feature-tools/toolbar/move_node.ts
- *
- * 功能：
+ * 说明：
  *
  *     移动节点工具处理器。实现拾取放置交互（pick-and-place）。
  *
- * 总体结构：
- *
- *     useMoveNodeTool() → ToolHandler
- *
- * 规则：
+ * 调用契约：
  *
  *     1. 两种状态：待拾取（idle）和已拾取（picked）。
  *     2. 待拾取状态下点击节点 → 已拾取，节点跟随光标。
@@ -37,10 +31,12 @@ import type { ToolId, ToolHandler, ToolNotification } from '../types'
 // ── useMoveNodeTool ──
 
 /**
- * 功能：
+ * 说明：
+ *
  *     创建移动节点工具处理器。
  *
- * 规则：
+ * 调用契约：
+ *
  *     1. 内部维护拾取放置状态机（idle ↔ picked）。
  *     2. 鼠标追踪通过 renderer 的 trackCursor 完成坐标转换。
  *     3. 拖动预览走 preview_engine.previewMoveNode（clone+sync 单通道），
@@ -99,12 +95,9 @@ export function useMoveNodeTool(): ToolHandler {
     // ── 生命周期 ──
 
     /**
-     * 功能：
-     *     激活工具。进入待拾取状态。
+     * 说明：
      *
-     * 规则：
-     *     1. 通过 trackCursor 注册光标追踪（状态守卫仅在 picked 时生效）。
-     *     2. 光标通过 cursorClass 暴露为 cursor-crosshair。
+     *     激活工具。进入待拾取状态。
      */
     function activate(): void {
         isActive.value = true
@@ -126,10 +119,12 @@ export function useMoveNodeTool(): ToolHandler {
     }
 
     /**
-     * 功能：
+     * 说明：
+     *
      *     取消激活工具。
      *
-     * 规则：
+     * 调用契约：
+     *
      *     1. 停止光标追踪。
      *     2. 已拾取状态下弹回节点到原位。
      *     3. 清理本工具施加的全部 class。
@@ -156,10 +151,12 @@ export function useMoveNodeTool(): ToolHandler {
     // ── 画布事件 ──
 
     /**
-     * 功能：
+     * 说明：
+     *
      *     处理节点点击事件。
      *
-     * 规则：
+     * 调用契约：
+     *
      *     待拾取 → 进入已拾取：记录 nodeId，节点开始跟随光标。
      *     已拾取 → 放置尝试（与 onCanvasClick 相同行为）。
      */
@@ -189,12 +186,9 @@ export function useMoveNodeTool(): ToolHandler {
     }
 
     /**
-     * 功能：
-     *     处理画布空白区域点击事件。
+     * 说明：
      *
-     * 规则：
-     *     已拾取状态 → 放置尝试（与 onNodeClick 的已拾取分支行为一致）。
-     *     待拾取状态 → 无操作（不创建草稿）。
+     *     处理画布空白区域点击事件。
      */
     function onCanvasClick(_pos: { x: number; y: number }): void {
         if (isPicked.value) {
@@ -222,16 +216,17 @@ export function useMoveNodeTool(): ToolHandler {
     // ── 取消拾取 ──
 
     /**
-     * 功能：
+     * 说明：
+     *
      *     取消当前拾取，弹回节点到真实图位置。
      *
-     * 规则：
+     * 调用契约：
+     *
      *     1. 整图切回真实图（syncFromGraphData）——位置 / 边宽 / class 一次全部恢复。
      *        不再用 resetNodePosition：sync 已同时刷新 renderer 位置记录，
      *        resetNodePosition 只会恢复到最近一次 sync 的预览位置。
      *     2. 清除本工具施加的全部 class（碰撞红、半透明）。
-     *     3. 回到待拾取（idle）状态。
-     *     4. 不停止 trackCursor（继续追踪，下次 idle → picked 无需重新绑定）。
+     *     3. 不停止 trackCursor（继续追踪，下次 idle → picked 无需重新绑定）。
      */
     function cancelPick(): void {
         if (pickedNodeId === null) return
@@ -251,14 +246,9 @@ export function useMoveNodeTool(): ToolHandler {
     // ── 放置尝试 ──
 
     /**
-     * 功能：
-     *     在当前光标位置尝试放置节点。
+     * 说明：
      *
-     * 规则：
-     *     1. 读取 Cy 节点当前视觉位置作为 desiredPosition。
-     *     2. 调引擎 composeMoveNode 做碰撞检测。
-     *     3. 无碰撞 → commitBatchToGraph 写入 GraphData → 回到 idle。
-     *     4. 有碰撞 → 节点红色高亮 + notification → 保持 picked（不弹回）。
+     *     在当前光标位置尝试放置节点。
      */
     function placeAttempt(): void {
         if (!graphStore.graphView || pickedNodeId === null) {
