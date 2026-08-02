@@ -18,19 +18,19 @@
   - 不负责：I/O、持久化、持有状态
   - 与框架无关
 - **Runtime 层**：位于前端的 GraphData 状态所有者，负责持有运行时状态（currentGraph / undoStack / registry）、编排引擎操作（调 Engine → 后处理）、实现持久化 I/O。Runtime 不负责 UI 渲染和纯函数转换，一定是框架绑定的（当前为 Pinia + Vue）
-- **Cytoscape 渲染层**：GraphData 的只读投影。接收 GraphData 渲染到画布，捕获交互事件后经 UI 适配层回流至 Runtime。禁止持有 GraphData 引用、禁止保存业务状态、禁止直接修改 GraphData
+- **Cytoscape 渲染/交互层**：GraphData 的只读映射/拷贝。接收 GraphData 渲染到画布，捕获交互事件后经交互逻辑层（feature-tools/）回流至 Runtime。禁止持有 GraphData 引用、禁止保存业务状态、禁止直接修改 GraphData
 - **工具**：前端页面中用户主动激活的状态。在此状态下，用户的画布交互（点击、拖拽）被解释为该工具特有的语义，并最终转化为对 GraphData 的修改。工具不直接操作 GraphData，通过 Runtime 层写入。目前按交互入口分为两类：
   - 常驻操作栏工具：通过工具栏按钮激活，生命周期由 `feature-tools/mediator.ts` 管理
   - 模式工具：先进入 Cogniton 或 Arrangement 模式，再选择具体操作
   - 规则：同一时刻最多一个工具处于激活状态，多个入口共享此互斥约束
 - **交互逻辑层**：用户与工具的交互通道。采用"水平分层 + 垂直自包含"混合架构，以下是其包含的内容：
   - 水平分层（所有工具共享）：
-    - 按钮 UI 定义：`feature-tools/toolbar/registry.ts`（图标、标签、处理器工厂）+ `GraphPermanentToolbar.vue`（渲染）
+    - 按钮 UI 定义：`feature-tools/toolbar/config.ts`（图标、标签、处理器工厂）+ `GraphPermanentToolbar.vue`（渲染）
     - 生命周期管理：`feature-tools/mediator.ts`（注册、激活/取消、互斥保证）
-    - 事件捕获与转发：`graph_interaction.ts`（Cytoscape 事件 → 语义事件）→ `feature-tools/mediator.ts`（转发至活跃 handler）
+    - 事件捕获与转发：`cytoscape/cy_interaction.ts`（Cytoscape 事件 → 语义事件）→ `feature-tools/mediator.ts`（转发至活跃 handler）
   - 垂直自包含（每个工具独立）：
     - 工具逻辑 + 中间变量：每个工具拥有自己的激活状态、光标样式、画布点击处理、操作构造
-    - 数据修改：委托 Runtime 层 `graphStore.applyBatch`
+    - 数据修改：委托 Runtime 层 `graphStore.commitBatchToGraph`
   - 不负责：GraphData 存储、持久化、UI 模式切换
 
 ## 测试命令
@@ -93,11 +93,12 @@ pnpm --filter @my-project/graph-engine test
 交互逻辑层 (feature-tools/)
     ├── mediator.ts         — 工具注册/激活/事件路由/互斥
     ├── types.ts            — ToolHandler 接口
-    ├── toolbar/            — 常驻工具 handler（add-node, add-edge, delete, fold）
-    └── cognition/          — 认知工具 handler（deconstruct）
-    ↓  事件路由 via mediator
+    ├── toolbar/            — 常驻工具 handler（add-node, add-edge, delete, fold, move）
+    ├── cognition/          — 认知工具 handler（deconstruct）
+    └── preview/            — 预览层模拟管道（previewAddEdge / previewMoveNode）
+    ↓  事件路由 via mediator；预览图经 renderer.syncFromGraphData 整图渲染（不写 GraphData）
 Runtime (graph/)
-    ├── graph_store.ts      — Pinia store（currentGraph / undoStack / applyBatch）
+    ├── graph_store.ts      — Pinia store（currentGraph / undoStack / commitBatchToGraph）
     ├── graph_persistence.ts— localStorage 持久化
     └── graph_registry.ts   — 多图注册表（GraphId → GraphData）
     ↓  委托纯函数
@@ -108,13 +109,13 @@ GraphEngine (@my-project/graph-engine)
     ├── infrastructure/     — 碰撞检测 / 位置放置 / 搜索
     └── spi/                — 持久化适配器接口
     ↓  watch(currentGraph)
-渲染投影层 (cytoscape/)
-    ├── graph_element_mapper.ts  — GraphData → CyElements（只读）
-    ├── cytoscape_style.ts       — 视觉样式配置
-    └── graph_interaction.ts     — Cytoscape 事件 → 语义事件
+渲染/交互层 (cytoscape/)     — Cy 外部库严格隔离层（目录外禁止依赖 cytoscape）
+    ├── useRenderer.ts      — 渲染运行时单例（mount / syncFromGraphData / addNodeClass / clearAllPreviews / bindHighlight / trackCursor）
+    ├── cy_element_mapper.ts + mapper-utils/ — GraphData → CyElements（只读映射/拷贝）
+    ├── cy_style.ts         — 视觉样式配置
+    └── cy_interaction.ts   — Cytoscape 事件 → 语义事件
     ↓  CyElements
 Cytoscape Renderer
-    └── use_cytoscape_renderer.ts — 挂载/同步/销毁
 ```
 
 ## 前端架构设计
