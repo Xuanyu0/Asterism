@@ -17,7 +17,7 @@
  *     4. 放置碰撞 → 红色高亮 + notification，保持已拾取。
  *     5. 右键取消拾取 → 弹回原位。
  *     6. 禁止直接修改 GraphData；所有写入通过 graphStore.commitBatchToGraph。
- *     7. 中间位置不写 GraphData，只更新 Cy 视觉层。
+ *     7. 中间位置不写 GraphData，经 preview_engine 克隆预览通道整图 sync 渲染。
  */
 
 import { ref, computed } from 'vue'
@@ -27,8 +27,9 @@ import { computeNodeRadiusOverrides } from '@/graph/node_radius'
 import { hasErrors } from '@/graph/issue_mapper'
 import { moveNode as composeMoveNode } from '@my-project/graph-engine'
 import { useRenderer } from '@/cytoscape/useRenderer'
+import { previewMoveNode } from '@/feature-tools/preview/preview_engine'
 
-import type { NodeId } from '@my-project/graph-engine'
+import type { NodeId, NodePosition } from '@my-project/graph-engine'
 
 import type { ToolId, ToolHandler, ToolNotification } from '../types'
 
@@ -42,16 +43,16 @@ import type { ToolId, ToolHandler, ToolNotification } from '../types'
  * 规则：
  *     1. 内部维护拾取放置状态机（idle ↔ picked）。
  *     2. 鼠标追踪通过 renderer 的 trackCursor 完成坐标转换。
- *     3. 碰撞检测委托引擎 composeMoveNode。
+ *     3. 拖动预览走 preview_engine.previewMoveNode（clone+sync 单通道），
+ *        放置碰撞检测委托引擎 composeMoveNode。
  *     4. 碰撞错误通过 notification 暴露供视图消费。
  *     5. 右键返回 true 阻止 mediator 默认 deactivate，由本 handler 内部处理取消。
  */
 export function useMoveNodeTool(): ToolHandler {
     const graphStore = useGraphStore()
     const {
-        setNodePosition,
+        syncFromGraphData,
         getNodePosition,
-        resetNodePosition,
         addNodeClass,
         removeNodeClass,
         clearAllPreviews,
@@ -119,25 +120,8 @@ export function useMoveNodeTool(): ToolHandler {
 
             if (!isPicked.value || pickedNodeId === null) return
 
-            // 更新节点位置（仅视觉层）
-            setNodePosition(pickedNodeId, modelPos)
-
-            // 实时碰撞检测：每帧跑 composeMoveNode，碰撞即红色高亮。
-            // 复杂度 O(n)；节点数 < 100 时 60fps 无压力；数百节点后可能掉帧。
-            const graphView = graphStore.graphView
-            if (graphView) {
-                const collisionResult = composeMoveNode({
-                    nodeId: pickedNodeId as NodeId,
-                    desiredPosition: modelPos,
-                    allNodes: graphView.nodes,
-                    nodeRadiusOverrides: computeNodeRadiusOverrides(graphView),
-                })
-                if (hasErrors(collisionResult.issues)) {
-                    addNodeClass(pickedNodeId, 'move-collision', 'move')
-                } else {
-                    removeNodeClass(pickedNodeId, 'move-collision', 'move')
-                }
-            }
+            // 拖动预览：整图切到预览图（位置 + 边宽 + 尺寸一次到位）
+            applyPreviewMove(modelPos)
         })
     }
 
@@ -157,7 +141,8 @@ export function useMoveNodeTool(): ToolHandler {
             stopCursorTracking = null
         }
 
-        // cancelPick 内部调 resetNodePosition + clearAllPreviews('move')，同时覆盖已拾取回退和 class 清理
+        // cancelPick 内部调 clearAllPreviews('move') + syncFromGraphData(真实GraphData)，
+        // 同时覆盖已拾取回退和 class 清理
         if (isPicked.value) {
             cancelPick()
         }
@@ -185,22 +170,22 @@ export function useMoveNodeTool(): ToolHandler {
             const pos = getNodePosition(nodeId)
             if (!pos) return
 
-            // 记录已拾取节点（取消时通过 resetNodePosition 恢复至最近一次 sync 记录的位置）
+            // 记录已拾取节点（取消时通过切回真实图 sync 恢复）
             pickedNodeId = nodeId
             isPicked.value = true
 
-            // 拾取后节点以半透明草稿形式跟随光标（视觉预览）。
-            addNodeClass(nodeId, 'move-picked', 'move')
-
-            // 立即将节点吸附至当前光标位置（利用 trackCursor 持续追踪的最后模型坐标）
+            // 立即将节点吸附至当前光标位置并渲染预览（利用 trackCursor 持续追踪的最后模型坐标）
             if (lastModelPos) {
-                setNodePosition(nodeId, lastModelPos)
+                // applyPreviewMove 内部 sync 后重施 move-picked，无需单独加 class
+                applyPreviewMove(lastModelPos)
+            } else {
+                // 无最后坐标（罕见）：仅施加半透明 class，位置不动
+                addNodeClass(nodeId, 'move-picked', 'move')
             }
-            return
+        } else {
+            // ── 已拾取 → 放置尝试 ──
+            placeAttempt()
         }
-
-        // ── 已拾取 → 放置尝试 ──
-        placeAttempt()
     }
 
     /**
@@ -217,14 +202,33 @@ export function useMoveNodeTool(): ToolHandler {
         }
     }
 
+    function applyPreviewMove(pos: NodePosition): void {
+        if (!graphStore.graphView || pickedNodeId === null) return
+
+        const { previewGraph, collides } = previewMoveNode(
+            graphStore.graphView,
+            pickedNodeId as NodeId,
+            pos,
+        )
+
+        // 整图切换到预览图——sync 清空 class，以下 class 必须在 sync 后重施
+        syncFromGraphData(previewGraph)
+        addNodeClass(pickedNodeId, 'move-picked', 'move')
+        if (collides) {
+            addNodeClass(pickedNodeId, 'preview-collision', 'move')
+        }
+    }
+
     // ── 取消拾取 ──
 
     /**
      * 功能：
-     *     取消当前拾取，弹回节点到最近一次 syncFromGraphData 记录的位置。
+     *     取消当前拾取，弹回节点到真实图位置。
      *
      * 规则：
-     *     1. 恢复节点到最近一次 syncFromGraphData 记录的位置（通过 resetNodePosition）。
+     *     1. 整图切回真实图（syncFromGraphData）——位置 / 边宽 / class 一次全部恢复。
+     *        不再用 resetNodePosition：sync 已同时刷新 renderer 位置记录，
+     *        resetNodePosition 只会恢复到最近一次 sync 的预览位置。
      *     2. 清除本工具施加的全部 class（碰撞红、半透明）。
      *     3. 回到待拾取（idle）状态。
      *     4. 不停止 trackCursor（继续追踪，下次 idle → picked 无需重新绑定）。
@@ -232,9 +236,11 @@ export function useMoveNodeTool(): ToolHandler {
     function cancelPick(): void {
         if (pickedNodeId === null) return
 
-        // 弹回原始位置 + 清除本工具施加的全部 class
-        resetNodePosition(pickedNodeId)
+        // 弹回：整图切回真实图——位置 / 边宽 / class 由 sync 一次全部恢复
         clearAllPreviews('move')
+        if (graphStore.graphView) {
+            syncFromGraphData(graphStore.graphView)
+        }
 
         // 重置状态
         pickedNodeId = null
@@ -276,8 +282,8 @@ export function useMoveNodeTool(): ToolHandler {
 
         // 有碰撞 → 拒绝放置
         if (hasErrors(result.issues)) {
-            // 红色高亮（后续 mousemove 会自动清除）
-            addNodeClass(pickedNodeId, 'move-collision', 'move')
+            // 红色高亮（后续 preview sync 时若无碰撞会自动清除）
+            addNodeClass(pickedNodeId, 'preview-collision', 'move')
             // 显示碰撞通知
             collisionMessage.value = '节点在目标位置与已有节点碰撞，无法放置。'
             return

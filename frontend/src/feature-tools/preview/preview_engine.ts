@@ -1,24 +1,27 @@
 /**
  * 说明：
  *
- *     预览层模拟管道。回答"如果加了这条边，图会变成什么样，会不会碰撞？"，
- *     不实际修改真实图。
+ *     预览层模拟管道。回答"如果对这个图施加某个操作，图会变成什么样，
+ *     会不会碰撞？"，不实际修改真实图。
  *
  * 角色：
  *
  *     预览层是 GraphData 的只读模拟投影——clone 当前图 → applyBatch 模拟执行 →
- *     返回预览图 + 碰撞布尔。add_edge 工具的 hover 预览拿到预览图后
- *     交给渲染层 syncFromGraphData 整图渲染。
+ *     返回预览图 + 碰撞布尔。add_edge 的 hover 预览与 move 的拖动预览
+ *     拿到预览图后交给渲染层 syncFromGraphData 整图渲染。
  *
  * 未来扩展：
  *
- *     通用 simulateCollision(graph, registry, operation) 管道供 move / orbit 预览使用。
- *     当前按 YAGNI 仅实现 add-edge。
+ *     通用 simulateCollision(graph, registry, operation) 管道供 orbit / path 预览使用。
+ *     当前按 YAGNI 仅实现 add-edge（previewAddEdge）与 move（previewMoveNode）专用函数。
  */
 
-import { applyBatch, generateEdgeId, hasCollisionAt } from '@my-project/graph-engine'
+import { applyBatch, generateEdgeId, hasCollisionAt, moveNode } from '@my-project/graph-engine'
 
-import type { AddEdgeOperation, GraphData, NodeId } from '@my-project/graph-engine'
+import { computeNodeRadiusOverrides } from '@/graph/node_radius'
+import { hasErrors } from '@/graph/issue_mapper'
+
+import type { AddEdgeOperation, GraphData, NodeId, NodePosition } from '@my-project/graph-engine'
 
 
 /**
@@ -97,4 +100,40 @@ export function previewAddEdge(
         : false
 
     return { previewGraph, valid: true, sourceCollides, targetCollides }
+}
+
+
+/**
+ * 说明：
+ *
+ *     模拟将 nodeId 节点移动到 desiredPosition，返回预览图与碰撞判定。
+ *     move 工具拖动预览的基础：整图切到预览图后，边宽由 mapper 按新位置
+ *     自动重算（与节点尺寸同源不失步），无需独立边宽逻辑。
+ *
+ * 调用契约：
+ *
+ *     collides 为 true 时调用方应渲染 previewGraph 并施加碰撞高亮
+ *     （preview-collision class）；collides 为 false 时仅渲染预览图即可。
+ *     moveNode 的 operations 恒生成（碰撞不阻止操作生成），applyBatch 恒 valid，
+ *     故本函数不需要 valid 字段。
+ */
+export function previewMoveNode(
+    graph: GraphData,
+    nodeId: NodeId,
+    desiredPosition: NodePosition,
+): { previewGraph: GraphData; collides: boolean } {
+    // 用 JSON 序列化克隆而非 structuredClone：graphStore.graphView 是 Vue 响应式
+    // Proxy，structuredClone 无法克隆 Proxy（抛 DataCloneError）。
+    const clone: GraphData = JSON.parse(JSON.stringify(graph))
+
+    const result = moveNode({
+        nodeId,
+        desiredPosition,
+        allNodes: clone.nodes,
+        nodeRadiusOverrides: computeNodeRadiusOverrides(clone),
+    })
+
+    const preview = applyBatch(clone, result.operations)
+
+    return { previewGraph: preview.graph, collides: hasErrors(result.issues) }
 }

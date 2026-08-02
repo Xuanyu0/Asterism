@@ -62,7 +62,7 @@ interface RendererAPI {
     /**
      * 说明：
      *
-     *     销毁当前 Cytoscape 实例并释放全部资源：交互事件、格点层、定时器、位置缓存与 class 记录。
+     *     销毁当前 Cytoscape 实例并释放全部资源：交互事件、格点层、定时器与 class 记录。
      *
      * 调用契约：
      *
@@ -73,7 +73,7 @@ interface RendererAPI {
     /**
      * 说明：
      *
-     *     将 GraphData 重新映射为 CyElements 并整体注入，同时刷新节点位置快照。
+     *     将 GraphData 重新映射为 CyElements 并整体注入。
      *
      * 调用契约：
      *
@@ -106,18 +106,6 @@ interface RendererAPI {
     /**
      * 说明：
      *
-     *     设置节点的视觉位置（仅视觉层，不写 GraphData）。
-     *
-     * 参数：
-     *
-     *     nodeId — 目标节点 ID
-     *     pos — 模型坐标 { x, y }
-     */
-    setNodePosition(nodeId: string, pos: NodePosition): void
-
-    /**
-     * 说明：
-     *
      *     获取节点的当前视觉位置。
      *
      * 调用契约：
@@ -129,22 +117,6 @@ interface RendererAPI {
      *     nodeId — 目标节点 ID
      */
     getNodePosition(nodeId: string): NodePosition | null
-
-    /**
-     * 说明：
-     *
-     *     将节点恢复到最近一次 syncFromGraphData 记录的 GraphData 位置。
-     *
-     * 调用契约：
-     *
-     *     1. 不修改 GraphData。
-     *     2. 不清除其他过程样式。
-     *
-     * 参数：
-     *
-     *     nodeId — 目标节点 ID
-     */
-    resetNodePosition(nodeId: string): void
 
     /**
      * 说明：
@@ -281,9 +253,6 @@ export function useRenderer(
     /** cyCanvas 格点背景层。destroy() 时置 null。 */
     let gridBackgroundLayer: ReturnType<Core['cyCanvas']> | null = null
 
-    /** 最近一次 syncFromGraphData 记录的节点位置，供 resetNodePosition 恢复。 */
-    const nodePositionsCache: Map<string, NodePosition> = new Map()
-
     /** owner（如 'move'）施加的 class 记录。仅管理 class，不操作 position。 */
     type OwnerClassMap = Map<string, Map<string, Set<string>>>
     const classOwners: OwnerClassMap = new Map()
@@ -339,7 +308,6 @@ export function useRenderer(
             cy = null
         }
 
-        nodePositionsCache.clear()
         classOwners.clear()
     }
 
@@ -351,14 +319,6 @@ export function useRenderer(
         const cyElements = mapGraphDataToCyElements(graphData)
         cy.json({ elements: cyElements })
         cy.resize()
-
-        // 记录所有节点的位置
-        nodePositionsCache.clear()
-        for (const node of graphData.nodes) {
-            if (node.position) {
-                nodePositionsCache.set(node.id, { x: node.position.x, y: node.position.y })
-            }
-        }
 
         // 清除全部过程中的视觉状态
         classOwners.clear()
@@ -395,19 +355,6 @@ export function useRenderer(
         }, 1200)
     }
 
-    function setNodePosition(nodeId: string, pos: NodePosition): void {
-        if (!cy) {
-            return
-        }
-
-        const el = cy.getElementById(nodeId)
-        if (el.length === 0) {
-            return
-        }
-
-        el.position(pos)
-    }
-
     function getNodePosition(nodeId: string): NodePosition | null {
         if (!cy) {
             return null
@@ -420,24 +367,6 @@ export function useRenderer(
 
         const pos = el.position()
         return { x: pos.x, y: pos.y }
-    }
-
-    function resetNodePosition(nodeId: string): void {
-        if (!cy) {
-            return
-        }
-
-        const pos = nodePositionsCache.get(nodeId)
-        if (!pos) {
-            return
-        }
-
-        const el = cy.getElementById(nodeId)
-        if (el.length === 0) {
-            return
-        }
-
-        el.position(pos)
     }
 
     function addNodeClass(nodeId: string, className: string, owner: string): void {
@@ -629,9 +558,7 @@ export function useRenderer(
         destroy,
         syncFromGraphData,
         centerOnElement,
-        setNodePosition,
         getNodePosition,
-        resetNodePosition,
         addNodeClass,
         removeNodeClass,
         clearAllPreviews,

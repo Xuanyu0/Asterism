@@ -17,7 +17,7 @@ import { useRenderer } from '@/cytoscape/useRenderer'
 import { previewAddEdge } from '@/feature-tools/preview/preview_engine'
 import { generateEdgeId } from '@my-project/graph-engine'
 
-import type { NodeId } from '@my-project/graph-engine'
+import type { GraphData, NodeId } from '@my-project/graph-engine'
 
 import type { ToolId, ToolHandler, ToolNotification } from '../types'
 
@@ -107,17 +107,7 @@ export function useAddEdgeTool(
 
         if (valid === false) return
 
-        // 整图切换到预览图——sync 会清空调用前已存在的 class，必须在 sync 后重施
-        syncFromGraphData(previewGraph)
-        addNodeClass(sourceNodeId.value, 'edge-source-target', 'add-edge')
-        if (sourceCollides) {
-            addNodeClass(sourceNodeId.value, 'preview-collision', 'add-edge')
-        }
-        if (targetCollides) {
-            addNodeClass(nodeId, 'preview-collision', 'add-edge')
-        }
-
-        hoverTargetId.value = nodeId
+        applyHoverPreview(previewGraph, nodeId as NodeId, sourceCollides, targetCollides)
     }
 
     /**
@@ -208,6 +198,31 @@ export function useAddEdgeTool(
         }
         // 失败后保持源节点不变，可继续添加下一条边
 
+    }
+
+    /**
+     * 说明：
+     *     渲染 hover 预览：整图切换到预览图，并在 sync 后重施 source 高亮与碰撞高亮。
+     */
+    function applyHoverPreview(
+        previewGraph: GraphData,
+        targetId: NodeId,
+        sourceCollides: boolean,
+        targetCollides: boolean,
+    ): void {
+        if (sourceNodeId.value === null) return
+
+        // 整图切换到预览图——sync 清空 class，以下 class 必须在 sync 后重施
+        syncFromGraphData(previewGraph)
+        addNodeClass(sourceNodeId.value, 'edge-source-target', 'add-edge')
+        if (sourceCollides) {
+            addNodeClass(sourceNodeId.value, 'preview-collision', 'add-edge')
+        }
+        if (targetCollides) {
+            addNodeClass(targetId, 'preview-collision', 'add-edge')
+        }
+
+        hoverTargetId.value = targetId
     }
 
     const handler: ToolHandler = {

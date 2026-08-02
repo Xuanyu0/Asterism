@@ -18,7 +18,8 @@
  *     2. 每个测试独立环境（beforeEach 重置 Pinia 和 localStorage）。
  *     3. useRenderer 被 vi.mock 拦截（Cytoscape 在 jsdom 下不可用）。
  *     4. trackCursor 的 mock 暴露回调句柄供测试手动触发以模拟光标位置。
- *     5. getNodePosition mock 对已知节点返回正确坐标，并在 setNodePosition 调用后更新。
+ *     5. syncFromGraphData mock 将图节点位置写回 nodePositionsMap（模拟真实 sync），
+ *        getNodePosition mock 从 nodePositionsMap 读取。
  *     6. 执行方式：pnpm --filter frontend test 自动发现并执行本文件；独立运行追加 `-- move-node.test.ts`。
  */
 
@@ -62,9 +63,15 @@ const { capturedCallback, nodePositionsMap, stopFn } = vi.hoisted(() => {
 // 这样 handler 内部和测试代码中调用 useRenderer() 获取的是同一份 mock 函数。
 
 vi.mock('@/cytoscape/useRenderer', () => {
-    const mockSetNodePosition = vi.fn(
-        (nodeId: string, pos: { x: number; y: number }) => {
-            nodePositionsMap.set(nodeId, pos)
+    const mockSyncFromGraphData = vi.fn(
+        (graph: { nodes: Array<{ id: string; position?: { x: number; y: number } }> }) => {
+            // 模拟真实 sync 语义：cy 节点位置 = 图位置（供 getNodePosition mock 读取）
+            nodePositionsMap.clear()
+            for (const node of graph.nodes) {
+                if (node.position) {
+                    nodePositionsMap.set(node.id, { x: node.position.x, y: node.position.y })
+                }
+            }
         },
     )
     const mockGetNodePosition = vi.fn(
@@ -72,7 +79,6 @@ vi.mock('@/cytoscape/useRenderer', () => {
             return nodePositionsMap.get(nodeId) ?? null
         },
     )
-    const mockResetNodePosition = vi.fn()
     const mockAddNodeClass = vi.fn()
     const mockRemoveNodeClass = vi.fn()
     const mockClearAllPreviews = vi.fn()
@@ -84,9 +90,8 @@ vi.mock('@/cytoscape/useRenderer', () => {
     )
     return {
         useRenderer: () => ({
-            setNodePosition: mockSetNodePosition,
+            syncFromGraphData: mockSyncFromGraphData,
             getNodePosition: mockGetNodePosition,
-            resetNodePosition: mockResetNodePosition,
             addNodeClass: mockAddNodeClass,
             removeNodeClass: mockRemoveNodeClass,
             clearAllPreviews: mockClearAllPreviews,
@@ -214,16 +219,73 @@ describe('idle → picked', () => {
         )
     })
 
-    test('onNodeClick 拾取后 setNodePosition 吸附到当前光标位置', () => {
+    test('onNodeClick 拾取吸附：syncFromGraphData 收到含 node-g1 @ (300,400) 的预览图', () => {
         const renderer = useRenderer()
 
         // 先模拟光标移动到 (300, 400)
         capturedCallback.current!({ x: 300, y: 400 })
         handler.onNodeClick!('node-g1')
 
-        expect(renderer.setNodePosition).toHaveBeenCalledWith(
-            'node-g1', { x: 300, y: 400 },
+        const syncMock = vi.mocked(renderer.syncFromGraphData)
+        expect(syncMock).toHaveBeenCalledTimes(1)
+        const previewGraph = syncMock.mock.calls[0]![0]
+        const moved = previewGraph.nodes.find((node: { id: string }) => node.id === 'node-g1')!
+        expect(moved.position).toEqual({ x: 300, y: 400 })
+        // sync 后重施 move-picked（applyPreviewMove 内部）
+        expect(renderer.addNodeClass).toHaveBeenCalledWith(
+            'node-g1', 'move-picked', 'move',
         )
+    })
+
+    test('拾取后拖动：syncFromGraphData 被调用且 move-picked 保持', () => {
+        const renderer = useRenderer()
+        handler.onNodeClick!('node-g1')
+
+        // 拾取（无 lastModelPos）后移动光标 → 每帧走预览通道
+        capturedCallback.current!({ x: 500, y: 300 })
+        capturedCallback.current!({ x: 600, y: 350 })
+
+        const syncMock = vi.mocked(renderer.syncFromGraphData)
+        expect(syncMock).toHaveBeenCalledTimes(2)
+        const lastGraph = syncMock.mock.calls.at(-1)![0]
+        const moved = lastGraph.nodes.find((node: { id: string }) => node.id === 'node-g1')!
+        expect(moved.position).toEqual({ x: 600, y: 350 })
+        expect(renderer.addNodeClass).toHaveBeenCalledWith(
+            'node-g1', 'move-picked', 'move',
+        )
+    })
+
+    test('拖动到碰撞位置 → preview-collision 被施加', () => {
+        const renderer = useRenderer()
+        handler.onNodeClick!('node-g1')
+
+        // 拖动到 node-g2 所在位置 → previewMoveNode 判定碰撞
+        capturedCallback.current!({ x: 350, y: 200 })
+
+        expect(renderer.syncFromGraphData).toHaveBeenCalledTimes(1)
+        expect(renderer.addNodeClass).toHaveBeenCalledWith(
+            'node-g1', 'preview-collision', 'move',
+        )
+    })
+
+    test('拖动到空位 → preview-collision 不被施加', () => {
+        const renderer = useRenderer()
+        handler.onNodeClick!('node-g1')
+
+        capturedCallback.current!({ x: 1000, y: 400 })
+
+        expect(renderer.addNodeClass).not.toHaveBeenCalledWith(
+            'node-g1', 'preview-collision', 'move',
+        )
+    })
+
+    test('idle 时 mousemove → syncFromGraphData 不被调用', () => {
+        const renderer = useRenderer()
+
+        capturedCallback.current!({ x: 300, y: 400 })
+        capturedCallback.current!({ x: 350, y: 350 })
+
+        expect(renderer.syncFromGraphData).not.toHaveBeenCalled()
     })
 
     // 注：onNodeClick 无 isActive 守卫，未激活时调用同样触发拾取逻辑。
@@ -244,7 +306,7 @@ describe('picked → idle 无碰撞放置', () => {
         handler.onNodeClick!('node-g1')
 
         // 此时 node-g1 在 mock 中的位置已更新为 { x: 2000, y: 2000 }
-        // （setNodePosition 将 lastModelPos 写入 nodePositionsMap）
+        // （applyPreviewMove 的 sync mock 将预览图位置写回 nodePositionsMap）
     })
 
     test('无碰撞放置后 commitBatchToGraph 被调用', () => {
@@ -319,11 +381,16 @@ describe('cancelPick', () => {
         expect(handler.notification!.message).toContain('碰撞')
     })
 
-    test('cancelPick 调用 resetNodePosition', () => {
+    test('cancelPick 调用 syncFromGraphData(真实图)，node-g1 恢复 (50,200)', () => {
         const renderer = useRenderer()
         handler.notification!.onCancel()
 
-        expect(renderer.resetNodePosition).toHaveBeenCalledWith('node-g1')
+        // 拾取吸附已 sync 过 1 次预览图；弹回再 sync 真实图
+        const calls = vi.mocked(renderer.syncFromGraphData).mock.calls
+        expect(calls).toHaveLength(2)
+        const realGraph = calls[1]![0]
+        const g1 = realGraph.nodes.find((node: { id: string }) => node.id === 'node-g1')!
+        expect(g1.position).toEqual({ x: 50, y: 200 })
     })
 
     test('cancelPick 调用 clearAllPreviews move', () => {
@@ -348,9 +415,10 @@ describe('cancelPick', () => {
         handler.deactivate()
 
         // deactivate 内部先调 tracking.stop()，再调 cancelPick()
-        // cancelPick 调 resetNodePosition + clearAllPreviews
-        expect(renderer.resetNodePosition).toHaveBeenCalledWith('node-g1')
+        // cancelPick 调 clearAllPreviews + syncFromGraphData(真实图)
+        // sync 次数 = 拾取吸附预览 1 次 + 弹回真实图 1 次
         expect(renderer.clearAllPreviews).toHaveBeenCalledWith('move')
+        expect(renderer.syncFromGraphData).toHaveBeenCalledTimes(2)
         expect(stopFn).toHaveBeenCalledTimes(1)
     })
 })

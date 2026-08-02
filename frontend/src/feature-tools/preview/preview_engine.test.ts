@@ -1,17 +1,17 @@
 /**
  * 说明：
  *
- *     previewAddEdge 的单元测试。覆盖：稀疏图不碰撞对、密集图两端碰撞、
- *     单端碰撞、degree +1、入参隔离（structuredClone）、校验失败路径、
- *     kind / direction 透传。
+ *     previewAddEdge / previewMoveNode 的单元测试。
+ *     覆盖：稀疏图不碰撞对、密集图两端碰撞、单端碰撞、degree +1、
+ *     入参隔离（JSON 序列化克隆，兼容响应式 Proxy）、校验失败路径、
+ *     kind / direction 透传、移动位置与碰撞判定。
  */
 
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
-import { previewAddEdge } from './preview_engine'
+import { reactive } from 'vue'
+import { previewAddEdge, previewMoveNode } from './preview_engine'
 
 import type { EdgeData, GraphData, GraphId, NodeData, NodeId } from '@my-project/graph-engine'
-
-import { reactive } from 'vue'
 
 
 describe('previewAddEdge', () => {
@@ -152,6 +152,59 @@ describe('previewAddEdge', () => {
             expect(result.targetCollides).toBe(false)
             expect(result.previewGraph.edges.length).toBe(golden.edges.length + 1)
         })
+    })
+})
+
+
+describe('previewMoveNode', () => {
+    let golden: GraphData
+
+    beforeEach(() => {
+        localStorage.clear()
+        golden = createGoldenTestGraphV2()
+    })
+
+    test('移动到空位：collides false，previewGraph 中目标节点位置已更新，其他节点不变', () => {
+        const result = previewMoveNode(golden, 'node-g1' as NodeId, { x: 1000, y: 400 })
+
+        expect(result.collides).toBe(false)
+        expect(result.previewGraph.nodes.find(node => node.id === 'node-g1')?.position)
+            .toEqual({ x: 1000, y: 400 })
+        expect(result.previewGraph.nodes.find(node => node.id === 'node-g2')?.position)
+            .toEqual({ x: 350, y: 200 })
+        expect(result.previewGraph.nodes.find(node => node.id === 'node-g3')?.position)
+            .toEqual({ x: 650, y: 200 })
+    })
+
+    test('移动到 node-g2 所在位置 (350,200) → collides true', () => {
+        const result = previewMoveNode(golden, 'node-g1' as NodeId, { x: 350, y: 200 })
+
+        expect(result.collides).toBe(true)
+        // 碰撞不阻止移动模拟——预览图仍生成新位置
+        expect(result.previewGraph.nodes.find(node => node.id === 'node-g1')?.position)
+            .toEqual({ x: 350, y: 200 })
+    })
+
+    test('不修改入参 graph', () => {
+        const result = previewMoveNode(golden, 'node-g1' as NodeId, { x: 1000, y: 400 })
+
+        expect(golden.nodes.find(node => node.id === 'node-g1')?.position)
+            .toEqual({ x: 50, y: 200 })
+        expect(result.previewGraph).not.toBe(golden)
+    })
+
+    test('reactive 包裹的图可正常预览（回归：structuredClone 抛 DataCloneError）', () => {
+        const reactiveGraph = reactive(golden)
+
+        const result = previewMoveNode(
+            reactiveGraph as unknown as GraphData,
+            'node-g1' as NodeId,
+            { x: 1000, y: 400 },
+        )
+
+        expect(result.collides).toBe(false)
+        expect(result.previewGraph.nodes.find(node => node.id === 'node-g1')?.position)
+            .toEqual({ x: 1000, y: 400 })
     })
 })
 

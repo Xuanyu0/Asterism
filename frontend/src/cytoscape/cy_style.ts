@@ -124,14 +124,7 @@ export function createCytoscapeStyle() {
                 'border-style': 'double',
             },
         },
-        // 移动工具：碰撞冲突高亮
-        {
-            selector: '.move-collision',
-            style: {
-                'border-color': '#ef4444',
-            },
-        },
-        // 预览层：碰撞冲突高亮（add-edge 等工具复用）
+        // 预览层：碰撞冲突高亮（add-edge / move 等工具复用）
         {
             selector: '.preview-collision',
             style: {
