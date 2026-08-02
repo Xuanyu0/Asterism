@@ -87,6 +87,12 @@ export interface ToolMediator {
     /** 将节点双击事件转发给当前激活工具。 */
     onNodeDoubleClick(nodeId: string): void
 
+    /** 将节点悬停事件转发给当前激活工具。 */
+    onNodeHover(nodeId: string): void
+
+    /** 将节点悬停离开事件转发给当前激活工具。 */
+    onNodeHoverOut(nodeId: string): void
+
     /** 画布右键：取消当前工具（最终会恢复为 default）。 */
     onRightClick(): void
 }
@@ -179,6 +185,14 @@ function createMediator(): ToolMediator {
         activeHandler.value?.onNodeDoubleClick?.(nodeId)
     }
 
+    function onNodeHover(nodeId: string): void {
+        activeHandler.value?.onNodeHover?.(nodeId)
+    }
+
+    function onNodeHoverOut(nodeId: string): void {
+        activeHandler.value?.onNodeHoverOut?.(nodeId)
+    }
+
     function onRightClick(): void {
         deactivate()
     }
@@ -194,6 +208,8 @@ function createMediator(): ToolMediator {
         onNodeClick,
         onEdgeClick,
         onNodeDoubleClick,
+        onNodeHover,
+        onNodeHoverOut,
         onRightClick,
     }
     return api

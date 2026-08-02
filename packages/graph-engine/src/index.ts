@@ -217,6 +217,21 @@ export { searchNodes } from './infrastructure'
 /**
  * 功能：
  *
+ *     单点碰撞准入判断。判断节点在目标位置是否会与已有节点碰撞。
+ *
+ * 消费者：
+ *
+ *     前端 preview_engine — 预览操作前预判碰撞而不实际修改图。
+ *
+ * 使用：
+ *
+ *     const collides = hasCollisionAt(nodeId, position, allNodes, nodeRadiusOverrides)
+ */
+export { hasCollisionAt } from './infrastructure'
+
+/**
+ * 功能：
+ *
  *     补全 GraphData 认知状态默认值。
  *
  * 消费者：

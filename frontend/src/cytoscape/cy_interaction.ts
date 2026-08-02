@@ -6,7 +6,7 @@
  * 总体结构：
  *
  *     1. CyCanvasPosition
- *     2. CyInteractionHandlers（tap / cxttap / dblclick）
+ *     2. CyInteractionHandlers（tap / cxttap / dblclick / mouseover / mouseout）
  *     3. bindCyEvents()
  */
 
@@ -44,6 +44,8 @@ export interface CyInteractionHandlers {
     onEdgeClicked?: (edgeId: EdgeId) => void
     onRightClick?: () => void
     onNodeDoubleClicked?: (nodeId: NodeId) => void
+    onNodeHovered?: (nodeId: NodeId) => void
+    onNodeHoverOut?: (nodeId: NodeId) => void
 }
 
 /**
@@ -96,11 +98,26 @@ export function bindCyEvents(
         // 画布双击和边双击：不处理（不调用任何 handler）
     })
 
+    // hover 事件目标可能是画布/边/节点，只对节点产生语义事件
+    cy.on('mouseover', 'node', (event: EventObject) => {
+        handlers.onNodeHovered?.(
+            event.target.id() as NodeId,
+        )
+    })
+
+    cy.on('mouseout', 'node', (event: EventObject) => {
+        handlers.onNodeHoverOut?.(
+            event.target.id() as NodeId,
+        )
+    })
+
     return {
         destroy(): void {
             cy.off('tap')
             cy.off('cxttap')
             cy.off('dblclick')
+            cy.off('mouseover', 'node')
+            cy.off('mouseout', 'node')
         },
     }
 }

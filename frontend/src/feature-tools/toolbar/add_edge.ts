@@ -8,17 +8,13 @@
  * 总体结构：
  *
  *     useAddEdgeTool(kind, direction) → ToolHandler
- *
- * 规则：
- *
- *     1. onNodeClick 两次点击流程：第一次记录 sourceNodeId，第二次构建 EdgeData 并提交。
- *     2. 成功后清空 sourceNodeId 但保持工具激活，可继续添加下一条边。
- *     3. deactivate 时清空 sourceNodeId。
  */
 
 import { ref, computed } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
+import { useRenderer } from '@/cytoscape/useRenderer'
+import { previewAddEdge } from '@/feature-tools/preview/preview_engine'
 import { generateEdgeId } from '@my-project/graph-engine'
 
 import type { NodeId } from '@my-project/graph-engine'
@@ -31,10 +27,18 @@ export function useAddEdgeTool(
     direction: 'directed' | 'undirected',
 ): ToolHandler {
     const graphStore = useGraphStore()
+    const {
+        syncFromGraphData,
+        addNodeClass,
+        clearAllPreviews,
+    } = useRenderer()
     const id: ToolId = `add-${kind}-${direction}`
 
     const isActive = ref(false)
     const sourceNodeId = ref<NodeId | null>(null)
+
+    /** 当前预览的目标节点。非空 = 画布处于预览态；供 hover 离开 / 提交成功 / deactivate 复位，deactivate 据此判断是否切回真实图。 */
+    const hoverTargetId = ref<NodeId | null>(null)
 
     const cursorClass = computed<string | null>(() => {
         if (!isActive.value) return null
@@ -43,26 +47,140 @@ export function useAddEdgeTool(
 
     const notification = computed<ToolNotification | null>(() => null)
 
+    // ── 生命周期 ──
+
     function activate(): void {
         isActive.value = true
     }
 
+    /**
+     * 功能：
+     *
+     *     取消激活工具。清除本工具施加的全部 class，画布若停留在预览图则切回真实图。
+     *
+     * 规则：
+     *
+     *     1. hoverTargetId 非空 = 画布处于预览态（onNodeHover sync 预览图后置位，
+     *        离开 / 提交成功后复位）。deactivate 本身不修改 graphView，
+     *        watch(graphView) 不会触发——仅预览态需要手动 sync 切回真实图。
+     *     2. 非预览态跳过 sync：此时 sync 真实图 = 无操作，属纯冗余调用。
+     */
     function deactivate(): void {
+        clearAllPreviews('add-edge')
+
+        if (hoverTargetId.value !== null) {
+            hoverTargetId.value = null
+            if (graphStore.graphView) {
+                syncFromGraphData(graphStore.graphView)
+            }
+        }
+
         sourceNodeId.value = null
         isActive.value = false
     }
 
-    // ── 不同事件的处理 ──
+    // ── 画布事件 ──
 
+    /**
+     * 说明：
+     *
+     *     处理节点悬停。source 已选中且悬停到非自身节点时，渲染加边预览图并施加碰撞高亮。
+     *
+     * 调用契约：
+     *
+     *     1. source 未选中或悬停自身 → 跳过（不把自己当目标）。
+     */
+    function onNodeHover(nodeId: string): void {
+        if (sourceNodeId.value === null) return
+        if (nodeId === sourceNodeId.value) return
+        if (!graphStore.graphView) return
+
+        const { previewGraph, valid, sourceCollides, targetCollides } = previewAddEdge(
+            graphStore.graphView,
+            {
+                sourceId: sourceNodeId.value,
+                targetId: nodeId as NodeId,
+                kind,
+                direction,
+            },
+        )
+
+        if (valid === false) return
+
+        // 整图切换到预览图——sync 会清空调用前已存在的 class，必须在 sync 后重施
+        syncFromGraphData(previewGraph)
+        addNodeClass(sourceNodeId.value, 'edge-source-target', 'add-edge')
+        if (sourceCollides) {
+            addNodeClass(sourceNodeId.value, 'preview-collision', 'add-edge')
+        }
+        if (targetCollides) {
+            addNodeClass(nodeId, 'preview-collision', 'add-edge')
+        }
+
+        hoverTargetId.value = nodeId
+    }
+
+    /**
+     * 功能：
+     *
+     *     处理节点悬停离开。切回真实图并重施 source 高亮（source 仍选中）。
+     */
+    function onNodeHoverOut(_nodeId: string): void {
+        // 没有选中起始节点时跳过渲染同步
+        if (hoverTargetId.value === null) return
+
+        clearAllPreviews('add-edge')
+
+        if (graphStore.graphView) {
+            syncFromGraphData(graphStore.graphView)
+        }
+
+        // source 仍选中——切回真实图后需重施 source 高亮
+        if (sourceNodeId.value !== null) {
+            addNodeClass(sourceNodeId.value, 'edge-source-target', 'add-edge')
+        }
+
+        hoverTargetId.value = null
+    }
+
+    /**
+     * 说明：
+     *
+     *     处理节点点击。第一次点击记录 source，第二次点击碰撞校验通过后创建边。
+     *
+     * 调用契约：
+     *
+     *     1. 校验失败或任一端碰撞 → 忽略点击，sourceNodeId 保持可重试。
+     *     3. Graph.vue 内的 watch(graphView) 会自动触发 syncFromGraphData 同步真实图，无需手动 sync。
+     */
     function onNodeClick(nodeId: string): void {
-        // 第一次点击：记录 source
+        // 第一次点击：记录 source 并施加起点高亮
         if (sourceNodeId.value === null) {
             sourceNodeId.value = nodeId as NodeId
+            addNodeClass(nodeId, 'edge-source-target', 'add-edge')
             return
         }
 
-        // 第二次点击：创建边
         if (!graphStore.graphView) {
+            return
+        }
+
+        // 不能自己连自己
+        if (nodeId === sourceNodeId.value) {
+            return
+        }
+
+        // 用预览层进行碰撞校验
+        const { valid, sourceCollides, targetCollides } = previewAddEdge(
+            graphStore.graphView,
+            {
+                sourceId: sourceNodeId.value,
+                targetId: nodeId as NodeId,
+                kind,
+                direction,
+            },
+        )
+        if (valid === false || sourceCollides || targetCollides) {
             return
         }
 
@@ -84,10 +202,11 @@ export function useAddEdgeTool(
         graphStore.lastValidationResult = result.validation
 
         if (result.validation.valid) {
-            // 重置源节点
+            clearAllPreviews('add-edge')
+            hoverTargetId.value = null
             sourceNodeId.value = null
         }
-        //失败后保持源节点不变，可继续添加下一条边
+        // 失败后保持源节点不变，可继续添加下一条边
 
     }
 
@@ -97,9 +216,10 @@ export function useAddEdgeTool(
         activate,
         deactivate,
         onNodeClick,
+        onNodeHover,
+        onNodeHoverOut,
         get cursorClass() { return cursorClass.value },
         get notification() { return notification.value },
-        get highlightNode(): string | null { return sourceNodeId.value },
     }
     return handler
 }

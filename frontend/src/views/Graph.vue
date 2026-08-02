@@ -7,7 +7,7 @@
  *     1. 挂载 Cytoscape 容器
  *     2. 初始化 Cytoscape Renderer
  *     3. 监听 GraphData 变化并同步渲染
- *     4. 绑定 Cytoscape 语义交互事件（tap / cxttap / dblclick）
+ *     4. 绑定 Cytoscape 语义交互事件（tap / cxttap / dblclick / mouseover / mouseout）
  *     5. 双击节点导航（引用节点→源图、抽象节点→子图）
  *     6. 挂载 GraphNodeWindow、GraphPermanentToolbar 与 GraphModeSelector
  */
@@ -20,7 +20,6 @@ import { useGraphStore } from '@/graph/graph_store'
 import { useRenderer } from '@/cytoscape/useRenderer.ts'
 import { useUIStore } from '@/ui/ui_store'
 import { useToolMediator } from '@/feature-tools/mediator'
-import { useDefaultTool } from '@/feature-tools/default_tool'
 import { useDeconstructTool } from '@/feature-tools/cognition/deconstruct'
 
 import GraphNodeWindow from '@/components/GraphNodeWindow.vue'
@@ -117,31 +116,18 @@ onMounted(() => {
             mediator.deactivate()
             mediator.onNodeDoubleClick(nodeId)
         },
+        onNodeHovered(nodeId: NodeId) {
+            mediator.onNodeHover(nodeId)
+        },
+        onNodeHoverOut(nodeId: NodeId) {
+            mediator.onNodeHoverOut(nodeId)
+        },
     })
 
     if (graphStore.graphView) {
         renderer.syncFromGraphData(graphStore.graphView)
     }
 })
-
-/**
- * 功能：
- *     监听 add-edge handler 的起点高亮，施加/清除 .edge-source-target。
- *
- * 规则：
- *     1. 仅边添加工具生效——其他 handler 不设起点节点。
- *     2. 通过 renderer.bindHighlight 反应式管理 class。
- */
-renderer.bindHighlight(
-    () => {
-        const handler = mediator.activeHandler.value
-        if (!handler) return null
-        const id = handler.id as string
-        if (!id.includes('directed') && !id.includes('undirected')) return null
-        return handler.highlightNode ?? null
-    },
-    'edge-source-target',
-)
 
 /**
  * 功能：

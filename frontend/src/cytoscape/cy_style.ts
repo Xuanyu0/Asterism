@@ -131,6 +131,13 @@ export function createCytoscapeStyle() {
                 'border-color': '#ef4444',
             },
         },
+        // 预览层：碰撞冲突高亮（add-edge 等工具复用）
+        {
+            selector: '.preview-collision',
+            style: {
+                'border-color': '#ef4444',
+            },
+        },
         // 移动工具：已拾取节点半透明
         {
             selector: '.move-picked',

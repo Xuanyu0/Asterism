@@ -106,6 +106,8 @@ export interface ToolHandler {
     onNodeClick?(nodeId: string): void
     onEdgeClick?(edgeId: string): void
     onNodeDoubleClick?(nodeId: string): void
+    onNodeHover?(nodeId: string): void
+    onNodeHoverOut?(nodeId: string): void
 
     onConfirm?(label: string, summary: string): void
     onCancel?(): void
