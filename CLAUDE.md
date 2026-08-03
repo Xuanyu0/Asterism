@@ -136,73 +136,34 @@ Cytoscape Renderer
 
 **Graph Engine 是整个项目的底层核心系统**，已作为独立、框架无关的 `@my-project/graph-engine` 包实现。前端通过 `graph_store.ts` 直接调用引擎 API（`applyBatch` / compose 函数）。
 
-## 开发阶段总览
-
-* 注：项目实际内容以最新情况为准，此处仅记录历史情况。
-
-### Phase 1：前端 Runtime 完成 ✅
-
-- **NodeWindow Runtime** — 统一 DraftNode 与 ExistingNode 编辑
-- **OperationToolbar Runtime** — 完善 Add Edge / Delete / Fold
-- **OperationController 收口** 
-- **Node Type 收口** — 引入 discriminated union，消除 `'normal'` 占位符
-
-### Phase 2a：Graph Engine（架构核心层） ✅
-
-将前端职责聚合代码下沉为独立引擎包 `@my-project/graph-engine`：
-- 框架无关（不依赖 Pinia / Vue）
-- 11 种原子操作的 validate + execute + createReversal
-- 批量事务 applyBatch（全量验证 → 全部执行或整批丢弃）
-- 认知编排（deconstruct / induce / internalize / diverge）与布局编排（move / orbit / path 等）
-- 碰撞检测、位置放置、跨图搜索、ID 生成等基础设施
-- 操作日志（OperationLog / State）与回放（replayGraph / replayToStep）
-- 前端已全部切到引擎 API，冗余代码已清理
-
----
-
-### Phase 2b：功能收尾 → MVP 交付
-
-GE 的全部功能在前端完全落地，使 Cognition（除 explore / unearth）和 Arrangement 全部操作可用。
-
-**目标**：用户可以实质性地使用 Asterism 进行学习，完整支持图谱本地持久化和操作回溯。
-
-**Phase 2b 完成标志 = MVP 交付**：
-
-1. 用户可添加/删除节点和边（常驻操作栏 8 按钮）
-2. 用户可折叠/展开依赖
-3. 用户可执行解构、归纳、内化、发散（deconstruct / induce / internalize / diverge）
-4. 用户可拖拽移动节点、使用环绕/路径布局
-5. 用户可 undo 操作
-6. 图谱完整持久化至 localStorage，刷新后恢复
-7. 操作失败时用户可见错误提示
-8. explore / unearth 保持 TODO（Phase 4 AI Runtime）
-
----
-
-### Phase 3：功能与 UI 界面迭代优化
-
-- 导航卡片
-- Overlay 视图 Button
-- 笔记库
-- 交互模式按钮图标替换、
-- 按钮视觉动效
-- 学习历史回顾 UI（时间轴视图、State 列表、分支选择）
-
----
-
-### Phase 4：AI Runtime
-
-- Compiler / Translator / Checker / Analyser Agent 信息流连通
-- 要求 Graph Engine 作为底层基础
-- 存储格式从 JSON 切换为 JSONB
-- 批量原子操作 `applyBatch` 已就绪（Phase 2a 已实现）
-
----
-
 ### MVP 阶段暂不启动
 
 - FastAPI 后端
 - Supabase 集成
+
+## 项目演进
+
+项目演进通过 git tag 记录里程碑（semver，`v` 前缀）。此处只锚定当前版本，不维护历史列表——历史以 git 为准。
+
+**当前版本 tag**：`v0.1.0`
+
+查看演进的常用 git 指令：
+
+```bash
+# 里程碑时间线（tag 即里程碑，含日期与说明）
+git tag -l --format='%(refname:short) | %(creatordate:short) | %(subject)'
+
+# 带里程碑标注的提交历史
+git log --oneline --decorate -30
+
+# 查看某个里程碑的发布说明（annotated tag 的消息）
+git show <tag>
+
+# 从某里程碑到现在的全部变更
+git log --oneline <tag>..HEAD
+```
+
+设计与历史细节见 `docs/开发文档/` 各阶段文档。
 
 ## 设计文档
 
