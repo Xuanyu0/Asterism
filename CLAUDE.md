@@ -102,6 +102,7 @@ Cytoscape Renderer
 交互逻辑层 (feature-tools/)            — 工具注册/激活/事件路由/各自互斥；不直接写 GraphData
     ├── types.ts           — ToolId 联合 / ToolHandler / ToolConfig / ToolNotification
     ├── mediator.ts        — 注册/激活/转发/互斥；deactivate 恢复 default（不存在"无工具"状态）
+    ├── composables/       — 工具层共享组合式函数（useFloatingWindow：浮空窗状态单例 + 外部点击关闭规则）
     ├── default_tool.ts    — 默认工具 baseline：点节点/边 → 浮空窗 → 确认后写入
     ├── toolbar/           — 常驻工具：config.ts（按钮注册表）+ add_node / add_edge / delete / fold / move_node
     ├── cognition/         — 认知工具 handler（当前仅 deconstruct；induce / internalize / diverge 待从 operation_controller 迁入）
@@ -115,7 +116,7 @@ Runtime / UI 状态层 (graph/ + ui/)
     ├── graph_persistence.ts — localStorage 持久化实现
     ├── issue_mapper.ts    — ComposeIssue → ValidationIssue 类型边界适配
     ├── node_radius.ts     — 节点外接圆半径计算（碰撞 / 预览共享）
-    ├── ui_store.ts        — 纯 UI 意图（浮窗状态、画布焦点），不保存 GraphData
+    ├── ui_store.ts        — 纯 UI 意图（画布焦点），不保存 GraphData
     └── operation_controller.ts — 认知/布局操作编排【历史遗留：待迁移至 feature-tools/】
     ↓  委托纯函数
 GraphEngine (@my-project/graph-engine) — 框架无关；广义 GraphData 唯一转换入口；无副作用
@@ -144,7 +145,7 @@ Cytoscape Renderer
 | Store | 职责 | 禁止 |
 |-------|------|------|
 | graph_store | GraphData 唯一事实源，当前图 / undoStack / registry 状态持有者 | Draft/Cytoscape 禁止进入 |
-| ui_store | 用户 UI 意图（浮窗状态、画布焦点） | 不保存 GraphData |
+| ui_store | 用户 UI 意图（画布焦点） | 不保存 GraphData |
 
 ## 开发策略
 
