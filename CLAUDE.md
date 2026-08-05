@@ -89,31 +89,45 @@ pnpm --filter @my-project/graph-engine test
 
 ```
 用户交互 (DOM)
-    ↓
-交互逻辑层 (feature-tools/)
-    ├── mediator.ts         — 工具注册/激活/事件路由/互斥
-    ├── types.ts            — ToolHandler 接口
-    ├── toolbar/            — 常驻工具 handler（add-node, add-edge, delete, fold, move）
-    ├── cognition/          — 认知工具 handler（deconstruct）
-    └── preview/            — 预览层模拟管道（previewAddEdge / previewMoveNode）
-    ↓  事件路由 via mediator；预览图经 renderer.syncFromGraphData 整图渲染（不写 GraphData）
-Runtime (graph/)
-    ├── graph_store.ts      — Pinia store（currentGraph / undoStack / commitBatchToGraph）
-    ├── graph_persistence.ts— localStorage 持久化
-    └── graph_registry.ts   — 多图注册表（GraphId → GraphData）
+    ↓  点击/拖拽/悬停等被 Cytoscape 捕获
+Cytoscape Renderer
+    ↓  原始事件
+渲染/交互层 (cytoscape/)              — 严格隔离 Cytoscape 外部库；GraphData 为只读拷贝并映射
+    ├── useRenderer.ts     — 渲染运行时 Cy 单例持有者（mount / destroy；syncFromGraphData 是唯一接收 GraphData 的渲染入口）
+    ├── cy_element_mapper.ts + mapper-utils/ — GraphData → CyElements 
+    │                        （私有 mapper： fold_filter 折叠过滤 / visual_mapper 视觉映射 / class_mapper class 高亮）
+    ├── cy_style.ts        — Cy 视觉样式配置
+    └── cy_interaction.ts  — Cy 事件 → 语义事件（只翻译，不转发）
+    ↓  语义事件（onNodeClicked / onCanvasClicked / ...）
+交互逻辑层 (feature-tools/)            — 工具注册/激活/事件路由/各自互斥；不直接写 GraphData
+    ├── types.ts           — ToolId 联合 / ToolHandler / ToolConfig / ToolNotification
+    ├── mediator.ts        — 注册/激活/转发/互斥；deactivate 恢复 default（不存在"无工具"状态）
+    ├── default_tool.ts    — 默认工具 baseline：点节点/边 → 浮空窗 → 确认后写入
+    ├── toolbar/           — 常驻工具：config.ts（按钮注册表）+ add_node / add_edge / delete / fold / move_node
+    ├── cognition/         — 认知工具 handler（当前仅 deconstruct；induce / internalize / diverge 待从 operation_controller 迁入）
+    └── preview/           — 预览模拟管道（只计算算不渲染）：clone → applyBatch 模拟 → 预览图 + 碰撞判定
+    ↓  预览经 renderer.syncFromGraphData 整图同步渲染（不写持久化的 GraphData）
+    ↓  用户确认后，执行数据写入操作
+Runtime / UI 状态层 (graph/ + ui/)
+    ├── graph_store.ts     — 【GraphData 唯一事实源 + 所有修改的唯一合法入口】
+    │                        commitBatchToGraph(单图) / commitBatchToGraphs(跨图批量) / undo / redo / loadGraphToView
+    ├── graph_registry.ts  — 多图注册表（Map：GraphId → GraphData）
+    ├── graph_persistence.ts — localStorage 持久化实现
+    ├── issue_mapper.ts    — ComposeIssue → ValidationIssue 类型边界适配
+    ├── node_radius.ts     — 节点外接圆半径计算（碰撞 / 预览共享）
+    ├── ui_store.ts        — 纯 UI 意图（浮窗状态、画布焦点），不保存 GraphData
+    └── operation_controller.ts — 认知/布局操作编排【历史遗留：待迁移至 feature-tools/】
     ↓  委托纯函数
-GraphEngine (@my-project/graph-engine)
-    ├── types/              — 类型定义
-    ├── core/               — validate / execute / replay / reversal
-    ├── compose/            — 认知编排 + 布局编排
-    ├── infrastructure/     — 碰撞检测 / 位置放置 / 搜索
-    └── spi/                — 持久化适配器接口
-    ↓  watch(currentGraph)
-渲染/交互层 (cytoscape/)     — Cy 外部库严格隔离层（目录外禁止依赖 cytoscape）
-    ├── useRenderer.ts      — 渲染运行时单例（mount / syncFromGraphData / addNodeClass / clearAllPreviews / bindHighlight / trackCursor）
-    ├── cy_element_mapper.ts + mapper-utils/ — GraphData → CyElements（只读映射/拷贝）
-    ├── cy_style.ts         — 视觉样式配置
-    └── cy_interaction.ts   — Cytoscape 事件 → 语义事件
+GraphEngine (@my-project/graph-engine) — 框架无关；广义 GraphData 唯一转换入口；无副作用
+    ├── types/             — 类型定义（graph_data / atomic_operations / cognitive / validation / operation_log ...）
+    ├── compose/           — 编排操作：cognitive/（deconstruct·induce·internalize·diverge）+ arrangement/（move·path·adjust·orbit）
+    ├── compose/pipeline.ts — 【applyBatch 事务流水线：逐条校验 → dry-run 执行 → 全局规则；任一失败整批丢弃】
+    ├── core/              — execute(执行) / validate(校验) / replay(回放) / reversal(逆操作→undo)
+    │                        normalize(认知状态补全) / sync(度数同步) / traversal / id / validators/
+    ├── infrastructure/    — collision(碰撞检测) / placement(位置放置) / search(搜索) / geometry(几何)
+    └── spi/               — 持久化适配器接口（Phase 3 扩展点）
+    ↓  返回新 GraphData（引用替换，浅 watch 足够）
+    views/Graph.vue        — 装配层：watch(GraphView) → renderer.syncFromGraphData(newGraph)
     ↓  CyElements
 Cytoscape Renderer
 ```
@@ -147,12 +161,9 @@ Cytoscape Renderer
 
 **当前版本 tag**：`v0.1.0`
 
-查看演进的常用 git 指令：
+查看项目演进的 git 指令：
 
 ```bash
-# 里程碑时间线（tag 即里程碑，含日期与说明）
-git tag -l --format='%(refname:short) | %(creatordate:short) | %(subject)'
-
 # 带里程碑标注的提交历史
 git log --oneline --decorate -30
 
@@ -404,3 +415,9 @@ docs/spec/        ← 最后检索
 | **冲突裁决** | 需要同时查 L1/L2/L3 对同一概念的表述时 |
 
 * 若没有找到，就作为不确定项标记，然后直接向用户报告
+
+## 该项目 Debug 的特效药 
+
+**注意**：修 BUG 时，不要一直推测，如果发现一个 BUG 有多个不确定的修改方向，应主动和用户协商尝试使用以下 Debug 的方法
+* 个人推荐首先尝试 log 大法：在项目的流单向数据流下，专治**某一层数据修改异常**、**设计与执行不一致**、**没有 Debug 线索**
+* 其次是针对 GE 的单元测试：GE 纯函数式编程，输出可复现。
