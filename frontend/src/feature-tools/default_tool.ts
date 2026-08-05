@@ -12,7 +12,7 @@
 import { ref } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useUIStore } from '@/ui/ui_store'
+import { useCanvasFocus } from '@/composables/useCanvasFocus'
 import { useFloatingWindow } from './composables/useFloatingWindow'
 
 import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
@@ -32,7 +32,7 @@ import type { ToolHandler, ToolId } from './types'
  */
 export function useDefaultTool(): ToolHandler {
     const graphStore = useGraphStore()
-    const uiStore = useUIStore()
+    const canvasFocus = useCanvasFocus()
     const floatingWindow = useFloatingWindow()
     const id: ToolId = 'default'
 
@@ -117,7 +117,7 @@ export function useDefaultTool(): ToolHandler {
         if (!graphStore.loadGraphToView(targetGraphId)) return
 
         if (focusNodeId) {
-            uiStore.requestCanvasFocus(focusNodeId)
+            canvasFocus.requestCanvasFocus(focusNodeId)
         }
     }
 

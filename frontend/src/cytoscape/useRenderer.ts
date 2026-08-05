@@ -3,7 +3,7 @@
  *
  *     Cytoscape 渲染运行时单例 composable：负责实例生命周期、GraphData → 画布同步
  *     与视觉层操作。是 GraphData 的只读投影——不持有、不修改 GraphData，不访问
- *     graph_store / ui_store，Cytoscape 不是事实源。
+ *     graph_store / useCanvasFocus，Cytoscape 不是事实源。
  *
  * 调用契约：
  *

@@ -57,7 +57,7 @@ export interface CyInteractionHandlers {
  *
  *     1. 只读取 Cytoscape 事件。
  *     2. 只输出项目语义事件。
- *     3. 禁止读取 ui_store / graph_store。
+ *     3. 禁止读取 graph_store。
  *     4. 禁止创建 GraphOperation。
  *     5. 借用 vue 组合式函数的功能，但非真正的组合式函数
  */

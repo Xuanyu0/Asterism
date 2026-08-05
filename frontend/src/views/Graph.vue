@@ -18,7 +18,7 @@ import type { NodeId } from '@my-project/graph-engine'
 import { useGraphStore } from '@/graph/graph_store'
 
 import { useRenderer } from '@/cytoscape/useRenderer.ts'
-import { useUIStore } from '@/ui/ui_store'
+import { useCanvasFocus } from '@/composables/useCanvasFocus'
 import { useToolMediator } from '@/feature-tools/mediator'
 import { useDeconstructTool } from '@/feature-tools/cognition/deconstruct'
 
@@ -32,7 +32,7 @@ const cyContainer = ref<HTMLDivElement | null>(null)
 
 const graphStore = useGraphStore()
 const renderer = useRenderer(cyContainer)
-const uiStore = useUIStore()
+const canvasFocus = useCanvasFocus()
 const mediator = useToolMediator()
 
 /**
@@ -159,21 +159,21 @@ renderer.bindHighlight(
 
 /**
  * 功能：
- *     消费画布定位请求：ui_store.pendingCanvasFocusId → renderer.centerOnElement。
+ *     消费画布定位请求：useCanvasFocus.pendingCanvasFocusId → renderer.centerOnElement。
  *
  * 规则：
  *     1. 消费后立即清除请求，保证同一元素可重复触发定位。
  *     2. 本监听不修改 GraphData。
  */
 watch(
-    () => uiStore.pendingCanvasFocusId,
+    () => canvasFocus.pendingCanvasFocusId.value,
     (targetId) => {
         if (!targetId) {
             return
         }
 
         renderer.centerOnElement(targetId)
-        uiStore.clearCanvasFocus()
+        canvasFocus.clearCanvasFocus()
     },
 )
 

@@ -27,7 +27,7 @@ import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { GraphId } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useUIStore } from '@/ui/ui_store'
+import { useCanvasFocus } from '@/composables/useCanvasFocus'
 import { useToolMediator } from '@/feature-tools/mediator'
 import { useDragPosition } from '@/composables/useDragPosition'
 import { useAutoFade } from '@/composables/useAutoFade'
@@ -38,7 +38,7 @@ import NavigationPanel from '@/components/navigation-card/NavigationPanel.vue'
 import SearchPanel from '@/components/navigation-card/SearchPanel.vue'
 
 const graphStore = useGraphStore()
-const uiStore = useUIStore()
+const canvasFocus = useCanvasFocus()
 const mediator = useToolMediator()
 
 // ── 拖拽 ──
@@ -219,7 +219,7 @@ onBeforeUnmount(() => {
                 key="search"
                 v-bind:panel-opens-upward="panelOpensUpward"
                 v-bind:panel-align-right="panelAlignRight"
-                v-on:focus-element="(id: string) => uiStore.requestCanvasFocus(id)"
+                v-on:focus-element="(id: string) => canvasFocus.requestCanvasFocus(id)"
                 v-on:close="closePanels"
             />
         </Transition>

@@ -16,10 +16,9 @@
  *
  * 规则：
  *
- *     1. 可以读取 ui_store。
- *     2. 禁止直接修改 GraphData。
- *     3. 禁止操作 Cytoscape 实例。
- *     4. 所有图操作通过引擎 compose → graphStore.applyBatch 链路执行。
+ *     1. 禁止直接修改 GraphData。
+ *     2. 禁止操作 Cytoscape 实例。
+ *     3. 所有图操作通过引擎 compose → graphStore.applyBatch 链路执行。
  */
 
 import type {
@@ -30,7 +29,6 @@ import type {
 import type { GraphRegistry } from '@/graph/graph_registry'
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useUIStore } from '@/ui/ui_store'
 
 import { computeNodeRadiusOverrides } from '@/graph/node_radius'
 import { mapComposeIssues, hasErrors } from '@/graph/issue_mapper'
@@ -70,14 +68,12 @@ function findCommonLayer(graphRegistry: GraphRegistry): GraphData | undefined {
  *
  * 规则：
  *
- *     1. 可以读取 ui_store。
- *     2. 禁止直接修改 GraphData。
- *     3. 禁止操作 Cytoscape 实例。
- *     4. 所有图操作通过引擎 compose → graphStore.applyBatch 链路执行。
+ *     1. 禁止直接修改 GraphData。
+ *     2. 禁止操作 Cytoscape 实例。
+ *     3. 所有图操作通过引擎 compose → graphStore.applyBatch 链路执行。
  */
 export function useOperationController() {
     const graphStore = useGraphStore()
-    const uiStore = useUIStore()
     // ── 认知操作 ──
 
     /**

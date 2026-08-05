@@ -57,7 +57,7 @@ pnpm --filter @my-project/graph-engine test
 ### 前端
 - Vue 3 (Composition API + `<script setup>`)
 - TypeScript 6.0
-- Pinia (3 个 Store)
+- Pinia (1 个 Store)
 - Tailwind CSS v4
 - Cytoscape.js 3.33
 - pnpm（禁止 npm / yarn）
@@ -116,7 +116,7 @@ Runtime / UI 状态层 (graph/ + ui/)
     ├── graph_persistence.ts — localStorage 持久化实现
     ├── issue_mapper.ts    — ComposeIssue → ValidationIssue 类型边界适配
     ├── node_radius.ts     — 节点外接圆半径计算（碰撞 / 预览共享）
-    ├── ui_store.ts        — 纯 UI 意图（画布焦点），不保存 GraphData
+    ├── composables/useCanvasFocus.ts — 画布视口定位请求单例（一次性 UI 意图，不保存 GraphData）
     └── operation_controller.ts — 认知/布局操作编排【历史遗留：待迁移至 feature-tools/】
     ↓  委托纯函数
 GraphEngine (@my-project/graph-engine) — 框架无关；广义 GraphData 唯一转换入口；无副作用
@@ -127,7 +127,8 @@ GraphEngine (@my-project/graph-engine) — 框架无关；广义 GraphData 唯�
     │                        normalize(认知状态补全) / sync(度数同步) / traversal / id / validators/
     ├── infrastructure/    — collision(碰撞检测) / placement(位置放置) / search(搜索) / geometry(几何)
     └── spi/               — 持久化适配器接口（Phase 3 扩展点）
-    ↓  返回新 GraphData（引用替换，浅 watch 足够）
+    ↓  返回新 GraphData
+    ↓  GraphView 引用替换
     views/Graph.vue        — 装配层：watch(GraphView) → renderer.syncFromGraphData(newGraph)
     ↓  CyElements
 Cytoscape Renderer
@@ -140,12 +141,11 @@ Cytoscape Renderer
 - 对于 UX，代码中的状态设计应当遵循用户在交互时可感知的最小**交互单元**
 - 对于 UI 的架构设计，应当满足用户在页面上可见的最小可分类的**视觉单元**
 
-## 两个 Pinia Store
+## Pinia Store
 
 | Store | 职责 | 禁止 |
 |-------|------|------|
 | graph_store | GraphData 唯一事实源，当前图 / undoStack / registry 状态持有者 | Draft/Cytoscape 禁止进入 |
-| ui_store | 用户 UI 意图（画布焦点） | 不保存 GraphData |
 
 ## 开发策略
 
@@ -199,7 +199,7 @@ git log --oneline <tag>..HEAD
 ### 文件命名（snake_case）
 
 所有 `.ts` 文件统一 `snake_case`：
-- ✅ `graph_store.ts`, `ui_store.ts`, `graph_operation_types.ts`, `graph_persistence.ts`
+- ✅ `graph_store.ts`, `graph_registry.ts`, `graph_persistence.ts`
 - ❌ `GraphStore.ts`, `graphStore.ts`, `Graph_Store.ts`
 
 其他两类：
