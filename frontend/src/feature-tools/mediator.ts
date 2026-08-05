@@ -6,14 +6,15 @@
  * 调用契约：
  *
  *     1. 同一时刻最多一个激活工具——activate 新工具前自动取消当前。
- *     2. 不直接修改 GraphData——图操作由激活的 handler 经 graphStore 完成。
+ *     2. 初始化即激活 default，不存在"无工具"状态；取消工具一律走 deactivate()（恢复 default）。
+ *     3. 不直接修改 GraphData——图操作由激活的 handler 经 graphStore 完成。
  */
 
 import { ref, shallowRef, type ShallowRef, type Ref } from 'vue'
 
 import type { ToolId, ToolHandler } from './types'
-import { useUIStore } from '@/ui/ui_store'
 import { useDefaultTool } from './default_tool'
+import { useFloatingWindow } from './composables/useFloatingWindow'
 
 /**
  * 说明：
@@ -26,11 +27,11 @@ import { useDefaultTool } from './default_tool'
  *     2. registry 可直接读取；修改请走 register()。
  */
 export interface ToolMediator {
-    /** 当前激活工具 id（null = 无激活工具）。 */
-    activeToolId: Ref<ToolId | null>
+    /** 当前激活工具 id（初始化即 default，不存在"无工具"状态）。 */
+    activeToolId: Ref<ToolId>
 
     /** 当前激活的 handler 引用。 */
-    activeHandler: ShallowRef<ToolHandler | null>
+    activeHandler: ShallowRef<ToolHandler>
 
     /** 工具注册表（id → handler）。修改请走 register()，勿直接写入。 */
     registry: Map<ToolId, ToolHandler>
@@ -54,15 +55,14 @@ export interface ToolMediator {
      *
      * 调用契约：
      *
-     *     1. id 为 null 时复位为无激活工具。
-     *     2. id 未注册时静默返回，当前状态不变。
-     *     3. 切换工具时自动关闭浮空窗。
+     *     1. id 未注册时静默返回，当前状态不变。
+     *     2. 切换工具时自动关闭浮空窗。
      *
      * 参数：
      *
-     *     id — 目标工具标识；null 表示取消当前工具
+     *     id — 目标工具标识；取消工具请走 deactivate()
      */
-    activate(id: ToolId | null): void
+    activate(id: ToolId): void
 
     /**
      * 说明：
@@ -106,7 +106,8 @@ let singleton: ToolMediator | null = null
  *
  * 调用契约：
  *
- *     1. 必须在 Pinia 安装后调用（setup 内或之后，Mediator 内部使用 uiStore）。
+ *     1. 必须在 Pinia 安装后调用（setup 内或之后，createMediator 会创建
+ *        default handler 与浮空窗单例，二者内部使用 graphStore）。
  *     2. 后续调用返回同一实例。
  */
 export function useToolMediator(): ToolMediator {
@@ -119,28 +120,22 @@ export function useToolMediator(): ToolMediator {
 function createMediator(): ToolMediator {
     // ── 状态 ──
 
-    const activeToolId: Ref<ToolId | null> = ref(null)
-    const activeHandler: ShallowRef<ToolHandler | null> = shallowRef(null)
     const handlerRegistry: Map<ToolId, ToolHandler> = new Map()
-    const uiStore = useUIStore()
 
-    // 自动注册 default 兜底 handler（mediator 启动时注册，调用方无需关心）
-    handlerRegistry.set('default', useDefaultTool())
+    // 自动注册 default 兜底 handler 并初始激活——不存在"无工具"状态
+    const defaultHandler = useDefaultTool()
+    handlerRegistry.set('default', defaultHandler)
+
+    const activeToolId: Ref<ToolId> = ref<ToolId>('default')
+    const activeHandler: ShallowRef<ToolHandler> = shallowRef<ToolHandler>(defaultHandler)
+    defaultHandler.activate()
 
     function register(id: ToolId, handler: ToolHandler): void {
         handlerRegistry.set(id, handler)
     }
 
-    function activate(id: ToolId | null): void {
-        if (activeHandler.value) {
-            activeHandler.value.deactivate()
-        }
-
-        if (id === null) {
-            activeToolId.value = null
-            activeHandler.value = null
-            return
-        }
+    function activate(id: ToolId): void {
+        activeHandler.value.deactivate()
 
         const handler = handlerRegistry.get(id)
         if (!handler) {
@@ -152,13 +147,11 @@ function createMediator(): ToolMediator {
         activeHandler.value = handler
 
         // 切换工具时自动关闭浮空窗，避免旧浮空窗在非 default 工具下 Confirm 静默失败
-        uiStore.closeFloatingWindow()
+        useFloatingWindow().close()
     }
 
     function deactivate(): void {
-        if (activeHandler.value) {
-            activeHandler.value.deactivate()
-        }
+        activeHandler.value.deactivate()
 
         // 恢复 default 工具作为 baseline（createMediator 已注册，保证存在）
         const defaultHandler = handlerRegistry.get('default')!

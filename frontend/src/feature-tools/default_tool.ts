@@ -13,10 +13,10 @@ import { ref } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { useUIStore } from '@/ui/ui_store'
+import { useFloatingWindow } from './composables/useFloatingWindow'
 
 import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
 import type { ToolHandler, ToolId } from './types'
-
 
 /**
  * 功能：
@@ -26,13 +26,14 @@ import type { ToolHandler, ToolId } from './types'
  * 规则：
  *
  *     1. 通过 mediator 的 `activate()` 激活（启动时 + `deactivate` 恢复机制）。
- *     2. onNodeClick 在 graphView 中查找节点 → uiStore.openFloatingWindow。
- *     3. onEdgeClick 在 graphView 中查找边 → uiStore.openFloatingWindow。
- *     4. onConfirm 读取 uiStore.floatingWindowData 获取原实体，用 label/summary 覆盖后构造 operation 并 applyBatch。
+ *     2. onNodeClick 在 graphView 中查找节点 → open 浮空窗。
+ *     3. onEdgeClick 在 graphView 中查找边 → open 浮空窗。
+ *     4. onConfirm 读取浮空窗单例的展示数据获取原实体，用 label/summary 覆盖后构造 operation 并 applyBatch。
  */
 export function useDefaultTool(): ToolHandler {
     const graphStore = useGraphStore()
     const uiStore = useUIStore()
+    const floatingWindow = useFloatingWindow()
     const id: ToolId = 'default'
 
     const isActive = ref(false)
@@ -57,7 +58,7 @@ export function useDefaultTool(): ToolHandler {
     function onNodeClick(nodeId: string): void {
         const node = graphStore.graphView?.nodes.find(n => n.id === nodeId)
         if (node) {
-            uiStore.openFloatingWindow(node)
+            floatingWindow.open(node)
         }
     }
 
@@ -69,7 +70,7 @@ export function useDefaultTool(): ToolHandler {
     function onEdgeClick(edgeId: string): void {
         const edge = graphStore.graphView?.edges.find(e => e.id === edgeId)
         if (edge) {
-            uiStore.openFloatingWindow(edge)
+            floatingWindow.open(edge)
         }
     }
 
@@ -111,7 +112,7 @@ export function useDefaultTool(): ToolHandler {
             return
         }
 
-        uiStore.closeFloatingWindow()
+        floatingWindow.close()
 
         if (!graphStore.loadGraphToView(targetGraphId)) return
 
@@ -125,7 +126,7 @@ export function useDefaultTool(): ToolHandler {
     /**
      * 功能：
      *
-     *     将浮空窗编辑结果写入 GraphData。读取 uiStore.floatingWindowData 获取原实体，
+     *     将浮空窗编辑结果写入 GraphData。读取浮空窗单例的展示数据获取原实体，
      *     用 label/summary 覆盖后构造 update_node / update_edge operation 并 applyBatch。
      *
      * 规则：
@@ -134,7 +135,7 @@ export function useDefaultTool(): ToolHandler {
      *     2. 校验失败时浮空窗保留。
      */
     function onConfirm(label: string, summary: string): void {
-        const original = uiStore.floatingWindowData
+        const original = floatingWindow.floatingData.value
         if (!original || !graphStore.graphView) {
             return
         }
@@ -149,7 +150,7 @@ export function useDefaultTool(): ToolHandler {
             )
 
             if (result.validation.valid) {
-                uiStore.closeFloatingWindow()
+                floatingWindow.close()
             }
         } else {
             // 节点编辑
@@ -165,7 +166,7 @@ export function useDefaultTool(): ToolHandler {
             )
 
             if (result.validation.valid) {
-                uiStore.closeFloatingWindow()
+                floatingWindow.close()
             }
         }
     }
@@ -186,6 +187,7 @@ export function useDefaultTool(): ToolHandler {
         onEdgeClick,
         onNodeDoubleClick,
         onConfirm,
+        get floatingWindowData() { return floatingWindow.floatingData.value },
         get cursorClass() { return null },
         get notification() { return null },
     }

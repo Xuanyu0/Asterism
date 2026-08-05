@@ -20,7 +20,6 @@
 import { ref, computed } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useUIStore } from '@/ui/ui_store'
 
 import type { NodeId, EdgeId } from '@my-project/graph-engine'
 
@@ -29,7 +28,6 @@ import type { ToolId, ToolHandler, ToolNotification } from '../types'
 
 export function useDeleteTool(): ToolHandler {
     const graphStore = useGraphStore()
-    const uiStore = useUIStore()
     const id: ToolId = 'delete'
 
     const isActive = ref(false)
@@ -111,11 +109,6 @@ export function useDeleteTool(): ToolHandler {
     function executeDeleteNode(nodeId: NodeId): void {
         if (!graphStore.graphView) return
 
-        const floatingData = uiStore.floatingWindowData
-        if (floatingData && 'id' in floatingData && floatingData.id === nodeId) {
-            uiStore.closeFloatingWindow()
-        }
-
         const result = graphStore.commitBatchToGraph(graphStore.graphView, [{
             type: 'delete_node',
             nodeId,
@@ -126,11 +119,6 @@ export function useDeleteTool(): ToolHandler {
 
     function executeDeleteEdge(edgeId: EdgeId): void {
         if (!graphStore.graphView) return
-
-        const floatingData = uiStore.floatingWindowData
-        if (floatingData && 'id' in floatingData && floatingData.id === edgeId) {
-            uiStore.closeFloatingWindow()
-        }
 
         const result = graphStore.commitBatchToGraph(graphStore.graphView, [{
             type: 'delete_edge',

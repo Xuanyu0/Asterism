@@ -11,6 +11,8 @@
 
 import type { Component } from 'vue'
 
+import type { NodeData, EdgeData } from '@my-project/graph-engine'
+
 // 服务特定实现的类型
 import type { DraftNode } from './toolbar/add_node'
 
@@ -124,6 +126,9 @@ export interface ToolHandler {
     readonly draftNode?: DraftNode | null
     /** 浮空窗编辑时回调。可选——无草稿编辑需求的 handler 不提供。 */
     updateDraftNode?(patch: Partial<DraftNode>): void
+
+    /** 浮空窗展示数据。null = 无浮空窗。可选——无浮空窗需求的 handler 不提供。 */
+    readonly floatingWindowData?: NodeData | EdgeData | null
 }
 
 /**

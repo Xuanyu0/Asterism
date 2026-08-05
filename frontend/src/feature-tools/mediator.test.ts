@@ -58,12 +58,17 @@ describe('useToolMediator', () => {
         expect(m1).toBe(m2)
     })
 
+    test('初始化即激活 default（不存在"无工具"状态）', () => {
+        expect(mediator.activeToolId.value).toBe('default')
+        expect(mediator.activeHandler.value.id).toBe('default')
+    })
+
     test('注册 handler 后可激活', () => {
         const handler = useAddNodeTool('real')
         mediator.register('add-real-node', handler)
         mediator.activate('add-real-node')
         expect(mediator.activeToolId.value).toBe('add-real-node')
-        expect(mediator.activeHandler.value).not.toBeNull()
+        expect(mediator.activeHandler.value.id).toBe('add-real-node')
     })
 
     test('激活新工具自动取消旧工具', () => {
@@ -80,16 +85,6 @@ describe('useToolMediator', () => {
         expect(handlerB.isActive).toBe(true)
     })
 
-    test('activate(null) 取消所有', () => {
-        const handler = useAddNodeTool('real')
-        mediator.register('add-real-node', handler)
-        mediator.activate('add-real-node')
-        expect(mediator.activeToolId.value).toBe('add-real-node')
-
-        mediator.activate(null)
-        expect(mediator.activeToolId.value).toBeNull()
-    })
-
     test('deactivate 取消并恢复 default', () => {
         const handler = useAddNodeTool('real')
         mediator.register('add-real-node', handler)
@@ -99,6 +94,7 @@ describe('useToolMediator', () => {
         mediator.deactivate()
         // deactivate() 自动恢复 default 工具
         expect(mediator.activeToolId.value).toBe('default')
+        expect(mediator.activeHandler.value.id).toBe('default')
     })
 
     test('事件转发到 activeHandler', () => {

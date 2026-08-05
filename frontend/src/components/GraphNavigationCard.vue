@@ -18,7 +18,7 @@
  * 规则：
  *
  *     1. 本组件只读 graphStore 状态，所有图谱切换经 graphStore.loadGraphToView。
- *     2. 切换图谱前清理 UI 现场：关闭浮空窗、取消激活工具。
+ *     2. 切换图谱前取消激活工具（浮空窗由外部点击规则负责关闭）。
  *     3. Dock 溢出检测由 NavigationCardDock 内部自管理。
  */
 
@@ -106,7 +106,6 @@ const currentRootId = computed(() => graphStore.graphPath[0] ?? null)
 const isAtRoot = computed(() => graphStore.graphPath.length <= 1)
 
 function switchGraphTo(graphId: GraphId): void {
-    uiStore.closeFloatingWindow()
     mediator.deactivate()
     graphStore.loadGraphToView(graphId)
 }

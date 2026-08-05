@@ -3,21 +3,17 @@
  *
  * 功能：
  *
- *     使用 Pinia 管理前端 UI 纯展示状态（浮空窗、画布视口定位）。
- *     工具激活状态已由 tools/tool_mediator 统一管理。
+ *     使用 Pinia 管理前端 UI 纯展示状态（画布视口定位）。
+ *     工具激活状态已由 feature-tools/mediator 统一管理；
+ *     浮空窗状态已迁入 feature-tools/composables/useFloatingWindow。
  *
  * 总体结构：
  *
- *     1. floatingWindowData: 浮空窗显示的节点/边数据
- *     2. pendingCanvasFocusId: 画布视口定位请求（写入 → Graph.vue 消费 → 清除）
+ *     1. pendingCanvasFocusId: 画布视口定位请求（写入 → Graph.vue 消费 → 清除）
  */
 
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-
-import type { NodeData, EdgeData } from '@my-project/graph-engine'
-
-import { useGraphStore } from '@/graph/graph_store'
 
 /**
  * 功能：
@@ -26,15 +22,14 @@ import { useGraphStore } from '@/graph/graph_store'
  *
  * 总体结构：
  *
- *     1. 状态: UIStoreState — 浮空窗数据、画布定位请求
- *     2. API: 浮空窗操作、画布定位
+ *     1. 状态: pendingCanvasFocusId — 画布视口定位请求
+ *     2. API: requestCanvasFocus / clearCanvasFocus
  *
  * 规则：
  *
  *     1. 本状态只描述用户当前 UI 意图，不保存 GraphData。
  */
 export const useUIStore = defineStore('ui_store', () => {
-    const floatingWindowData = ref<NodeData | EdgeData | null>(null)
     /**
      * 功能：
      *
@@ -46,16 +41,6 @@ export const useUIStore = defineStore('ui_store', () => {
      *     2. 消费后必须清除（clearCanvasFocus），保证同一元素可重复定位。
      */
     const pendingCanvasFocusId = ref<string | null>(null)
-
-    function openFloatingWindow(data: NodeData | EdgeData) {
-        floatingWindowData.value = data
-    }
-
-    function closeFloatingWindow() {
-        useGraphStore().clearValidationResult()
-
-        floatingWindowData.value = null
-    }
 
     /**
      * 功能：
@@ -80,10 +65,7 @@ export const useUIStore = defineStore('ui_store', () => {
     }
 
     return {
-        floatingWindowData,
         pendingCanvasFocusId,
-        openFloatingWindow,
-        closeFloatingWindow,
         requestCanvasFocus,
         clearCanvasFocus,
     }

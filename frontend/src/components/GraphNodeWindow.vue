@@ -34,9 +34,21 @@
     <!-- 已有节点/边编辑浮空窗 -->
     <div
         v-else-if="floatingData"
+        v-bind:ref="registerFloatingContainer"
         class="floating-window"
     >
-        <h3>{{ isEdge ? 'Edit Edge' : 'Edit Node' }}</h3>
+        <div class="floating-window-header">
+            <h3>{{ isEdge ? 'Edit Edge' : 'Edit Node' }}</h3>
+
+            <button
+                type="button"
+                class="floating-window-close"
+                v-bind:aria-label="'关闭编辑窗口'"
+                v-on:click="closeFloatingWindow"
+            >
+                <XMarkIcon class="size-4 pointer-events-none" />
+            </button>
+        </div>
 
         <label class="field-label">Label</label>
         <input
@@ -58,10 +70,6 @@
             <button v-on:click="handleFloatingConfirm">
                 Confirm
             </button>
-
-            <button class="btn-secondary" v-on:click="uiStore.closeFloatingWindow">
-                Cancel
-            </button>
         </div>
     </div>
 </template>
@@ -77,17 +85,23 @@
  *     3. 两种模式互斥显示
  */
 
-import { computed, watch } from 'vue'
-import { useUIStore } from '@/ui/ui_store'
+import { computed, watch, type ComponentPublicInstance } from 'vue'
+
+import { XMarkIcon } from '@heroicons/vue/24/outline'
+
 import { useToolMediator } from '@/feature-tools/mediator'
+import { useFloatingWindow } from '@/feature-tools/composables/useFloatingWindow'
+
 import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
 
-const uiStore = useUIStore()
 const mediator = useToolMediator()
+const floatingWindow = useFloatingWindow()
 
 const draftNode = computed(() => mediator.activeHandler.value?.draftNode ?? null)
 
-const floatingData = computed(() => uiStore.floatingWindowData)
+// 数据源切换：经 default handler 门面转发单例状态（getter 在 computed 内访问以建立响应式依赖）
+const defaultHandler = mediator.registry.get('default')
+const floatingData = computed(() => defaultHandler?.floatingWindowData ?? null)
 
 watch(floatingData, () => {
     editingData = null
@@ -145,6 +159,16 @@ function handleCancelDraftNode(): void {
 
 let editingData: NodeData | EdgeData | null = null
 
+// 浮空窗根元素注册：组件挂载/卸载时（含 v-if 切换）经 ref 回调上报给单例
+function registerFloatingContainer(el: Element | ComponentPublicInstance | null): void {
+    // Vue 的 ref 回调参数类型较宽；本窗口根元素是原生 div，卸载时为 null
+    floatingWindow.registerContainer(el instanceof HTMLElement ? el : null)
+}
+
+function closeFloatingWindow(): void {
+    floatingWindow.close()
+}
+
 function handleFloatingLabelInput(event: Event): void {
     const target = event.target as HTMLInputElement
     const data = floatingData.value
@@ -201,6 +225,35 @@ function handleFloatingConfirm(): void {
 .floating-window h3 {
     margin: 0 0 12px 0;
     font-size: 14px;
+    color: #1e293b;
+}
+
+.floating-window-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.floating-window-header h3 {
+    margin: 0;
+}
+
+.floating-window-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    color: #64748b;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.floating-window-close:hover {
+    background: #f1f5f9;
     color: #1e293b;
 }
 

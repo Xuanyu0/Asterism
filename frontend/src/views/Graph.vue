@@ -87,8 +87,7 @@ onMounted(() => {
         graphStore.loadGraphToView(rootId)
     }
 
-    // 激活 default（mediator 启动时自动注册）
-    mediator.activate('default')
+    // default 已由 mediator 初始激活（createMediator 创建即 default），无需手动激活
 
     // 注册认知工具 handler（3.0-1：deconstruct 作为原型）
     mediator.register('deconstruct', useDeconstructTool())
@@ -108,11 +107,9 @@ onMounted(() => {
         },
         onNodeDoubleClicked(nodeId: NodeId) {
             // 步骤 A：工具激活检查 — 有非默认工具激活时不执行导航
-            const activeToolId = mediator.activeToolId.value
-            if (activeToolId !== null && activeToolId !== 'default') return
+            if (mediator.activeToolId.value !== 'default') return
 
             // 步骤 B：清理 + 导航（委托 mediator 转发至 default handler）
-            uiStore.closeFloatingWindow()
             mediator.deactivate()
             mediator.onNodeDoubleClick(nodeId)
         },
