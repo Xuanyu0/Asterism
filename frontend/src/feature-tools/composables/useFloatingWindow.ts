@@ -1,15 +1,8 @@
 /**
  * 说明：
  *
- *     浮空窗状态模块级单例。承载 default 工具交互会话中的浮空窗数据，
- *     并把"关闭"收敛为"明确关闭点 + 外部点击规则"，替代原先散布在
- *     ui_store 与各调用方之间的关闭义务。
- *
- * 总体结构：
- *
- *     1. floatingData — 当前浮空窗展示的节点/边数据（null = 无浮空窗）
- *     2. open / close / registerContainer — 状态写入与容器生命周期
- *     3. 外部点击规则 — window 级常驻 pointerdown 监听；窗打开时容器外点击即关闭
+ *     浮空窗状态模块级单例。承载 default 工具交互会话中的浮空窗数据。
+ *     window 级常驻 pointerdown 监听；窗打开时容器外点击即关闭。
  *
  * 调用契约：
  *
@@ -32,7 +25,7 @@ import { useGraphStore } from '@/graph/graph_store'
  *
  *     1. 同一时刻至多一个容器注册（组件挂载/卸载时切换）。
  */
-export interface FloatingWindowApi {
+interface FloatingWindowAPI {
     /** 当前浮空窗展示数据。null = 无浮空窗。 */
     floatingData: Ref<NodeData | EdgeData | null>
 
@@ -70,7 +63,7 @@ export interface FloatingWindowApi {
     registerContainer(el: HTMLElement | null): void
 }
 
-let singleton: FloatingWindowApi | null = null
+let singleton: FloatingWindowAPI | null = null
 
 /**
  * 说明：
@@ -83,14 +76,14 @@ let singleton: FloatingWindowApi | null = null
  *        外部点击规则处理——状态全部存于单例，监听回调不持有组件状态。
  *     2. 必须在 Pinia 安装后调用（close 内部使用 graphStore）。
  */
-export function useFloatingWindow(): FloatingWindowApi {
+export function useFloatingWindow(): FloatingWindowAPI {
     if (!singleton) {
         singleton = createFloatingWindow()
     }
     return singleton
 }
 
-function createFloatingWindow(): FloatingWindowApi {
+function createFloatingWindow(): FloatingWindowAPI {
     const floatingData = ref<NodeData | EdgeData | null>(null)
     let containerEl: HTMLElement | null = null
 

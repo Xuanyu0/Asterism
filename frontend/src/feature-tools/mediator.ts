@@ -26,7 +26,7 @@ import { useFloatingWindow } from './composables/useFloatingWindow'
  *     1. 事件转发只送达当前激活的 handler。
  *     2. registry 可直接读取；修改请走 register()。
  */
-export interface ToolMediator {
+export interface ToolMediatorAPI {
     /** 当前激活工具 id（初始化即 default，不存在"无工具"状态）。 */
     activeToolId: Ref<ToolId>
 
@@ -97,7 +97,7 @@ export interface ToolMediator {
     onRightClick(): void
 }
 
-let singleton: ToolMediator | null = null
+let singleton: ToolMediatorAPI | null = null
 
 /**
  * 说明：
@@ -110,14 +110,14 @@ let singleton: ToolMediator | null = null
  *        default handler 与浮空窗单例，二者内部使用 graphStore）。
  *     2. 后续调用返回同一实例。
  */
-export function useToolMediator(): ToolMediator {
+export function useToolMediator(): ToolMediatorAPI {
     if (!singleton) {
         singleton = createMediator()
     }
     return singleton
 }
 
-function createMediator(): ToolMediator {
+function createMediator(): ToolMediatorAPI {
     // ── 状态 ──
 
     const handlerRegistry: Map<ToolId, ToolHandler> = new Map()
@@ -190,7 +190,7 @@ function createMediator(): ToolMediator {
         deactivate()
     }
 
-    const api: ToolMediator = {
+    const api: ToolMediatorAPI = {
         activeToolId,
         activeHandler,
         registry: handlerRegistry,
