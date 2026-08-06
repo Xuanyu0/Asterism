@@ -18,9 +18,9 @@
 
 ### 已知技术债务
 
-`NavigationPanel.vue` 中 `createRootGraph` 和 `deleteRootGraphTree` 直接在子组件中调用了 store 写方法，而非通过 emit。原因是这两个操作不涉及副作用编排，且子组件需要获取返回值（新 graphId）。
+`NavigationPanel.vue` 经适配层（`graph/adapters/useNavigationAdapter.ts`）调用 `createRoot` 和 `deleteRootTree` 等 store 写方法，而非通过 emit → 父组件处理。原因是这两个操作不涉及副作用编排，且子组件需要获取返回值（新 graphId）；适配层为写操作提供了图数据域内的统一入口，但仍未走 emit 链路。
 
-**约束**：此类例外应极少。写 store 前确认：是否存在父组件需要做的编排？是 → 必须走 emit；否 → 可以读 store，但写入 store 仍应优先走 emit。
+**约束**：此类例外应极少。写 store 前确认：是否存在父组件需要做的编排？是 → 必须走 emit；否 → 可以读 store，但写入 store 仍应优先走 emit；中间路径（经适配层写）应仅在适配层提供领域化入口时使用。
 
 ---
 

@@ -11,6 +11,7 @@
 import { ref, computed } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
+import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
 import { useRenderer } from '@/cytoscape/useRenderer'
 import { previewAddEdge } from '@/feature-tools/preview/preview_engine'
 import { generateEdgeId } from '@my-project/graph-engine'
@@ -25,6 +26,7 @@ export function useAddEdgeTool(
     direction: 'directed' | 'undirected',
 ): ToolHandler {
     const graphStore = useGraphStore()
+    const operations = useGraphOperationAdapter()
     const {
         syncFromGraphData,
         addNodeClass,
@@ -180,14 +182,12 @@ export function useAddEdgeTool(
             label: '',
         }
 
-        const result = graphStore.commitBatchToGraph(graphStore.graphView, [{
+        const validation = operations.commitToCurrentGraph([{
             type: 'add_edge',
             edge,
         }])
 
-        graphStore.lastValidationResult = result.validation
-
-        if (result.validation.valid) {
+        if (validation.valid) {
             clearAllPreviews('add-edge')
             hoverTargetId.value = null
             sourceNodeId.value = null

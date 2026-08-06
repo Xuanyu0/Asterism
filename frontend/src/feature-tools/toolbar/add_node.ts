@@ -13,13 +13,14 @@
  * 规则：
  *
  *     1. onCanvasClick 创建 DraftNode。
- *     2. onConfirm 校验 label → 构造 NodeData → commitBatchToGraph → 清 draft → deactivate。
+ *     2. onConfirm 校验 label → 构造 NodeData → 经适配层 applyToCurrentGraph → 清 draft → deactivate。
  *     3. deactivate 时清除草稿。
  */
 
 import { ref, computed } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
+import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
 import { generateNodeId } from '@my-project/graph-engine'
 
 import type { KnowledgeNodeKind } from '@my-project/graph-engine'
@@ -48,6 +49,7 @@ export interface DraftNode {
 
 export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
     const graphStore = useGraphStore()
+    const operations = useGraphOperationAdapter()
 
     const id: ToolId = (kind === 'real' ? 'add-real-node' : 'add-virtual-node')
 
@@ -87,7 +89,7 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
 
         const trimmedLabel = label.trim()
         if (!trimmedLabel) {
-            graphStore.lastValidationResult = {
+            operations.setValidationFailure({
                 valid: false,
                 issues: [{
                     severity: 'error' as const,
@@ -95,7 +97,7 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
                     message: '节点标签不能为空。',
                     targetType: 'node' as const,
                 }],
-            }
+            })
             return
         }
 
@@ -115,14 +117,12 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
             },
         }
 
-        const result = graphStore.commitBatchToGraph(graphStore.graphView, [{
+        const validation = operations.commitToCurrentGraph([{
             type: 'add_node',
             node,
         }])
 
-        graphStore.lastValidationResult = result.validation
-
-        if (result.validation.valid) {
+        if (validation.valid) {
             draftNode.value = null
         }
     }

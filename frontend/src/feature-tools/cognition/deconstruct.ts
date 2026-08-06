@@ -20,14 +20,16 @@ import { ref, computed } from 'vue'
 import { deconstruct as composeDeconstruct } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
+import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
 import { useToolMediator } from '@/feature-tools/mediator'
-import { mapComposeIssues, hasErrors } from '@/graph/issue_mapper'
+import { mapComposeIssues, hasErrors } from '@/graph/utils/issue_mapper'
 
 import type { ToolHandler } from '@/feature-tools/types'
 
 
 export function useDeconstructTool(): ToolHandler {
     const graphStore = useGraphStore()
+    const operations = useGraphOperationAdapter()
     const mediator = useToolMediator()
 
     const isActive = ref(false)
@@ -47,12 +49,12 @@ export function useDeconstructTool(): ToolHandler {
     /**
      * 功能：
      *
-     *     处理节点点击——执行解构操作（compose → validate → applyBatch → 自取消）。
+     *     处理节点点击——执行解构操作（compose → 校验 → applyToCurrentGraph → 自取消）。
      *
      * 规则：
      *
      *     1. 委托引擎 composeDeconstruct 产出 operations。
-     *     2. commitBatchToGraph 统一提交到 graphView。
+     *     2. 经适配层 applyToCurrentGraph 统一提交到 graphView。
      *     3. 操作完成后自动调用 mediator.deactivate() 取消自身。
      */
     function onNodeClick(nodeId: string): void {
@@ -66,20 +68,15 @@ export function useDeconstructTool(): ToolHandler {
         })
 
         if (hasErrors(result.issues)) {
-            graphStore.lastValidationResult = {
+            operations.setValidationFailure({
                 valid: false,
                 issues: mapComposeIssues(result.issues, 'node', nodeId),
-            }
+            })
 
             return
         }
 
-        const batchResult = graphStore.commitBatchToGraph(
-            graphStore.graphView,
-            result.operations,
-        )
-
-        graphStore.lastValidationResult = batchResult.validation
+        operations.commitToCurrentGraph(result.operations)
 
         // 单次操作完成后自动退出
         mediator.deactivate()

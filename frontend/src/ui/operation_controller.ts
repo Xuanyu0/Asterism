@@ -29,9 +29,11 @@ import type {
 import type { GraphRegistry } from '@/graph/graph_registry'
 
 import { useGraphStore } from '@/graph/graph_store'
+import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
+import { useNavigationAdapter } from '@/graph/adapters/useNavigationAdapter'
 
-import { computeNodeRadiusOverrides } from '@/graph/node_radius'
-import { mapComposeIssues, hasErrors } from '@/graph/issue_mapper'
+import { computeNodeRadiusOverrides } from '@/graph/utils/node_radius'
+import { mapComposeIssues, hasErrors } from '@/graph/utils/issue_mapper'
 
 // compose — cognitive
 import { induce as composeInduce } from '@my-project/graph-engine'
@@ -74,6 +76,9 @@ function findCommonLayer(graphRegistry: GraphRegistry): GraphData | undefined {
  */
 export function useOperationController() {
     const graphStore = useGraphStore()
+    // 待 operation_controller 迁移后移除：适配层提供 store 查询能力
+    const graphOperations = useGraphOperationAdapter()
+    const navigation = useNavigationAdapter()
     // ── 认知操作 ──
 
     /**
@@ -121,7 +126,8 @@ export function useOperationController() {
         const result = composeInduce({
             nodeIds,
             parentGraph: graphStore.graphView,
-            lookupGraph: graphStore.makeLookup(),
+            // 待 operation_controller 迁移后移除：经适配层取 makeLookup
+            lookupGraph: graphOperations.makeLookup(),
             nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.graphView),
             allEdges: graphStore.graphView.edges,
         })
@@ -198,7 +204,8 @@ export function useOperationController() {
             nodeIds,
             parentGraph: graphStore.graphView,
             commonLayer,
-            lookupGraph: graphStore.makeLookup(),
+            // 待 operation_controller 迁移后移除：经适配层取 makeLookup
+            lookupGraph: graphOperations.makeLookup(),
             nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.graphView),
         })
 
@@ -254,7 +261,8 @@ export function useOperationController() {
             targetNodeId,
             currentGraph: graphStore.graphView,
             heuristicPosition,
-            lookupGraph: graphStore.makeLookup(),
+            // 待 operation_controller 迁移后移除：经适配层取 makeLookup
+            lookupGraph: graphOperations.makeLookup(),
             graphIds: Array.from(graphStore.graphRegistry.keys()),
         })
 
@@ -280,7 +288,8 @@ export function useOperationController() {
             // 对端图：通过 registry 查找 peer 操作目标图
             for (const draft of result.drafts) {
                 if ('graphId' in draft && draft.graphId !== graphStore.graphView?.id) {
-                    const peerGraph = graphStore.getGraphById(draft.graphId)
+                    // 待 operation_controller 迁移后移除：经适配层取 getGraphById
+                    const peerGraph = navigation.getGraphById(draft.graphId)
 
                     if (peerGraph) {
                         targets.push({

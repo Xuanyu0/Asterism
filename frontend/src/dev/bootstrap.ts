@@ -8,16 +8,18 @@
  * 规则：
  *     1. 调用前必须已挂载 Pinia（app.use(pinia)），因为内部 useGraphStore。
  *     2. 路由挂载先后不影响——本函数只挂 window 对象 + 加载测试数据，不依赖路由。
- *     3. 金图与银图均通过 graphStore 操作路径（createRootGraph → commitBatchToGraph × 3）
+ *     3. 金图与银图均通过 graphStore 操作路径（createRootGraph → applyToCurrentGraph × 3）
  *        构造，与用户实际操作路径一致。
  */
 
 import type { GraphId, NodeId, EdgeId } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
+import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
 
 export function bootstrapDevTools(): void {
     const graphStore = useGraphStore()
+    const operations = useGraphOperationAdapter()
 
     // ═══════ 金牌测试图构造（graphStore 操作路径） ═══════
 
@@ -30,154 +32,145 @@ export function bootstrapDevTools(): void {
         const gId = graphStore.graphView!.id
 
         // — 金图节点（6 个，一批） —
-        graphStore.commitBatchToGraph(
-            graphStore.graphView!,
-            [
-                {
-                    type: 'add_node',
-                    node: {
-                        role: 'knowledge', id: 'node-g1' as NodeId, graphId: gId,
-                        kind: 'real', form: 'atomic',
-                        label: '知识节点A',
-                        abstractionLevel: 0, degree: 0,
-                        position: { x: 50, y: 200 },
-                    },
+        operations.commitToCurrentGraph([
+            {
+                type: 'add_node',
+                node: {
+                    role: 'knowledge', id: 'node-g1' as NodeId, graphId: gId,
+                    kind: 'real', form: 'atomic',
+                    label: '知识节点A',
+                    abstractionLevel: 0, degree: 0,
+                    position: { x: 50, y: 200 },
                 },
-                {
-                    type: 'add_node',
-                    node: {
-                        role: 'knowledge', id: 'node-g2' as NodeId, graphId: gId,
-                        kind: 'real', form: 'atomic',
-                        label: '知识节点B',
-                        abstractionLevel: 0, degree: 0,
-                        position: { x: 350, y: 200 },
-                    },
+            },
+            {
+                type: 'add_node',
+                node: {
+                    role: 'knowledge', id: 'node-g2' as NodeId, graphId: gId,
+                    kind: 'real', form: 'atomic',
+                    label: '知识节点B',
+                    abstractionLevel: 0, degree: 0,
+                    position: { x: 350, y: 200 },
                 },
-                {
-                    type: 'add_node',
-                    node: {
-                        role: 'knowledge', id: 'node-g3' as NodeId, graphId: gId,
-                        kind: 'real', form: 'abstract',
-                        label: '抽象节点',
-                        abstractionLevel: 0, degree: 0,
-                        position: { x: 650, y: 200 },
-                        childGraphId: 'sub-golden' as GraphId,
-                    },
+            },
+            {
+                type: 'add_node',
+                node: {
+                    role: 'knowledge', id: 'node-g3' as NodeId, graphId: gId,
+                    kind: 'real', form: 'abstract',
+                    label: '抽象节点',
+                    abstractionLevel: 0, degree: 0,
+                    position: { x: 650, y: 200 },
+                    childGraphId: 'sub-golden' as GraphId,
                 },
-                {
-                    type: 'add_node',
-                    node: {
-                        role: 'knowledge', id: 'node-g4' as NodeId, graphId: gId,
-                        kind: 'virtual',
-                        label: '虚节点',
-                        abstractionLevel: 0, degree: 0,
-                        position: { x: 950, y: 200 },
-                    },
+            },
+            {
+                type: 'add_node',
+                node: {
+                    role: 'knowledge', id: 'node-g4' as NodeId, graphId: gId,
+                    kind: 'virtual',
+                    label: '虚节点',
+                    abstractionLevel: 0, degree: 0,
+                    position: { x: 950, y: 200 },
                 },
-                {
-                    type: 'add_node',
-                    node: {
-                        role: 'reference', id: 'node-g5' as NodeId, graphId: gId,
-                        referenceKind: 'communication',
-                        label: '跳转银牌',
-                        abstractionLevel: 0, degree: 0,
-                        position: { x: 50, y: 500 },
-                        sourceGraphId: 'graph-silver' as GraphId,
-                        sourceNodeId: 'sv-node-1' as NodeId,
-                    },
+            },
+            {
+                type: 'add_node',
+                node: {
+                    role: 'reference', id: 'node-g5' as NodeId, graphId: gId,
+                    referenceKind: 'communication',
+                    label: '跳转银牌',
+                    abstractionLevel: 0, degree: 0,
+                    position: { x: 50, y: 500 },
+                    sourceGraphId: 'graph-silver' as GraphId,
+                    sourceNodeId: 'sv-node-1' as NodeId,
                 },
-                {
-                    type: 'add_node',
-                    node: {
-                        role: 'knowledge', id: 'node-g6' as NodeId, graphId: gId,
-                        kind: 'real', form: 'atomic',
-                        label: '知识节点C',
-                        abstractionLevel: 0, degree: 0,
-                        position: { x: 350, y: 500 },
-                    },
+            },
+            {
+                type: 'add_node',
+                node: {
+                    role: 'knowledge', id: 'node-g6' as NodeId, graphId: gId,
+                    kind: 'real', form: 'atomic',
+                    label: '知识节点C',
+                    abstractionLevel: 0, degree: 0,
+                    position: { x: 350, y: 500 },
                 },
-            ],
-        )
+            },
+        ])
 
         // — 金图边（4 条，单独 batch——节点必须已存在） —
-        graphStore.commitBatchToGraph(
-            graphStore.graphView!,
-            [
-                {
-                    type: 'add_edge',
-                    edge: {
-                        id: 'edge-g12' as EdgeId, graphId: gId,
-                        source: 'node-g1' as NodeId, target: 'node-g2' as NodeId,
-                        kind: 'real', direction: 'directed', label: '',
-                    },
+        operations.commitToCurrentGraph([
+            {
+                type: 'add_edge',
+                edge: {
+                    id: 'edge-g12' as EdgeId, graphId: gId,
+                    source: 'node-g1' as NodeId, target: 'node-g2' as NodeId,
+                    kind: 'real', direction: 'directed', label: '',
                 },
-                {
-                    type: 'add_edge',
-                    edge: {
-                        id: 'edge-g23' as EdgeId, graphId: gId,
-                        source: 'node-g2' as NodeId, target: 'node-g3' as NodeId,
-                        kind: 'real', direction: 'directed', label: '',
-                    },
+            },
+            {
+                type: 'add_edge',
+                edge: {
+                    id: 'edge-g23' as EdgeId, graphId: gId,
+                    source: 'node-g2' as NodeId, target: 'node-g3' as NodeId,
+                    kind: 'real', direction: 'directed', label: '',
                 },
-                {
-                    type: 'add_edge',
-                    edge: {
-                        id: 'edge-g46' as EdgeId, graphId: gId,
-                        source: 'node-g4' as NodeId, target: 'node-g6' as NodeId,
-                        kind: 'virtual', direction: 'undirected', label: '',
-                    },
+            },
+            {
+                type: 'add_edge',
+                edge: {
+                    id: 'edge-g46' as EdgeId, graphId: gId,
+                    source: 'node-g4' as NodeId, target: 'node-g6' as NodeId,
+                    kind: 'virtual', direction: 'undirected', label: '',
                 },
-                {
-                    type: 'add_edge',
-                    edge: {
-                        id: 'edge-g51' as EdgeId, graphId: gId,
-                        source: 'node-g5' as NodeId, target: 'node-g1' as NodeId,
-                        kind: 'real', direction: 'directed', label: '',
-                    },
+            },
+            {
+                type: 'add_edge',
+                edge: {
+                    id: 'edge-g51' as EdgeId, graphId: gId,
+                    source: 'node-g5' as NodeId, target: 'node-g1' as NodeId,
+                    kind: 'real', direction: 'directed', label: '',
                 },
-            ],
-        )
+            },
+        ])
 
         // — 金图子图（add_graph 信号操作） —
-        graphStore.commitBatchToGraph(
-            graphStore.graphView!,
-            [
-                {
-                    type: 'add_graph',
-                    graph: {
-                        id: 'sub-golden' as GraphId,
-                        kind: 'subgraph',
-                        title: '金牌子图',
-                        parentGraphId: gId,
-                        ownerNodeId: 'node-g3' as NodeId,
-                        nodes: [
-                            {
-                                role: 'knowledge', id: 'sub-g1' as NodeId, graphId: 'sub-golden' as GraphId,
-                                kind: 'real', form: 'atomic',
-                                label: '子图节点A',
-                                abstractionLevel: 0, degree: 0,
-                                position: { x: 200, y: 200 },
-                            },
-                            {
-                                role: 'knowledge', id: 'sub-g2' as NodeId, graphId: 'sub-golden' as GraphId,
-                                kind: 'real', form: 'atomic',
-                                label: '子图节点B',
-                                abstractionLevel: 0, degree: 0,
-                                position: { x: 500, y: 200 },
-                            },
-                        ],
-                        edges: [
-                            {
-                                id: 'edge-sg12' as EdgeId, graphId: 'sub-golden' as GraphId,
-                                source: 'sub-g1' as NodeId, target: 'sub-g2' as NodeId,
-                                kind: 'real', direction: 'directed', label: '',
-                            },
-                        ],
-                        cognitiveState: { foldedDependencies: [] },
-                    },
+        operations.commitToCurrentGraph([
+            {
+                type: 'add_graph',
+                graph: {
+                    id: 'sub-golden' as GraphId,
+                    kind: 'subgraph',
+                    title: '金牌子图',
+                    parentGraphId: gId,
+                    ownerNodeId: 'node-g3' as NodeId,
+                    nodes: [
+                        {
+                            role: 'knowledge', id: 'sub-g1' as NodeId, graphId: 'sub-golden' as GraphId,
+                            kind: 'real', form: 'atomic',
+                            label: '子图节点A',
+                            abstractionLevel: 0, degree: 0,
+                            position: { x: 200, y: 200 },
+                        },
+                        {
+                            role: 'knowledge', id: 'sub-g2' as NodeId, graphId: 'sub-golden' as GraphId,
+                            kind: 'real', form: 'atomic',
+                            label: '子图节点B',
+                            abstractionLevel: 0, degree: 0,
+                            position: { x: 500, y: 200 },
+                        },
+                    ],
+                    edges: [
+                        {
+                            id: 'edge-sg12' as EdgeId, graphId: 'sub-golden' as GraphId,
+                            source: 'sub-g1' as NodeId, target: 'sub-g2' as NodeId,
+                            kind: 'real', direction: 'directed', label: '',
+                        },
+                    ],
+                    cognitiveState: { foldedDependencies: [] },
                 },
-            ],
-        )
+            },
+        ])
     }
 
     // ═══════ 银牌测试图构造（graphStore 操作路径，与金图一致） ═══════
@@ -189,136 +182,127 @@ export function bootstrapDevTools(): void {
         const sId = graphStore.graphView!.id
 
         // — 银图节点（5 个，一批） —
-        graphStore.commitBatchToGraph(
-            graphStore.graphView!,
-            [
-                {
-                    type: 'add_node',
-                    node: {
-                        role: 'knowledge', id: 'sv-node-1' as NodeId, graphId: sId,
-                        kind: 'real', form: 'atomic',
-                        label: '跳转目标',
-                        abstractionLevel: 0, degree: 0,
-                        position: { x: 50, y: 200 },
-                    },
+        operations.commitToCurrentGraph([
+            {
+                type: 'add_node',
+                node: {
+                    role: 'knowledge', id: 'sv-node-1' as NodeId, graphId: sId,
+                    kind: 'real', form: 'atomic',
+                    label: '跳转目标',
+                    abstractionLevel: 0, degree: 0,
+                    position: { x: 50, y: 200 },
                 },
-                {
-                    type: 'add_node',
-                    node: {
-                        role: 'knowledge', id: 'sv-node-2' as NodeId, graphId: sId,
-                        kind: 'real', form: 'atomic',
-                        label: '银牌节点B',
-                        abstractionLevel: 0, degree: 0,
-                        position: { x: 350, y: 200 },
-                    },
+            },
+            {
+                type: 'add_node',
+                node: {
+                    role: 'knowledge', id: 'sv-node-2' as NodeId, graphId: sId,
+                    kind: 'real', form: 'atomic',
+                    label: '银牌节点B',
+                    abstractionLevel: 0, degree: 0,
+                    position: { x: 350, y: 200 },
                 },
-                {
-                    type: 'add_node',
-                    node: {
-                        role: 'knowledge', id: 'sv-node-3' as NodeId, graphId: sId,
-                        kind: 'real', form: 'abstract',
-                        label: '抽象节点',
-                        abstractionLevel: 0, degree: 0,
-                        position: { x: 650, y: 200 },
-                        childGraphId: 'sub-silver' as GraphId,
-                    },
+            },
+            {
+                type: 'add_node',
+                node: {
+                    role: 'knowledge', id: 'sv-node-3' as NodeId, graphId: sId,
+                    kind: 'real', form: 'abstract',
+                    label: '抽象节点',
+                    abstractionLevel: 0, degree: 0,
+                    position: { x: 650, y: 200 },
+                    childGraphId: 'sub-silver' as GraphId,
                 },
-                {
-                    type: 'add_node',
-                    node: {
-                        role: 'reference', id: 'sv-node-4' as NodeId, graphId: sId,
-                        referenceKind: 'communication',
-                        label: '回金牌',
-                        abstractionLevel: 0, degree: 0,
-                        position: { x: 50, y: 500 },
-                        sourceGraphId: 'graph-golden' as GraphId,
-                        sourceNodeId: 'node-g1' as NodeId,
-                    },
+            },
+            {
+                type: 'add_node',
+                node: {
+                    role: 'reference', id: 'sv-node-4' as NodeId, graphId: sId,
+                    referenceKind: 'communication',
+                    label: '回金牌',
+                    abstractionLevel: 0, degree: 0,
+                    position: { x: 50, y: 500 },
+                    sourceGraphId: 'graph-golden' as GraphId,
+                    sourceNodeId: 'node-g1' as NodeId,
                 },
-                {
-                    type: 'add_node',
-                    node: {
-                        role: 'knowledge', id: 'sv-node-5' as NodeId, graphId: sId,
-                        kind: 'real', form: 'atomic',
-                        label: '银牌节点E',
-                        abstractionLevel: 0, degree: 0,
-                        position: { x: 350, y: 500 },
-                    },
+            },
+            {
+                type: 'add_node',
+                node: {
+                    role: 'knowledge', id: 'sv-node-5' as NodeId, graphId: sId,
+                    kind: 'real', form: 'atomic',
+                    label: '银牌节点E',
+                    abstractionLevel: 0, degree: 0,
+                    position: { x: 350, y: 500 },
                 },
-            ],
-        )
+            },
+        ])
 
         // — 银图边（3 条，单独 batch——节点必须已存在） —
-        graphStore.commitBatchToGraph(
-            graphStore.graphView!,
-            [
-                {
-                    type: 'add_edge',
-                    edge: {
-                        id: 'edge-sv12' as EdgeId, graphId: sId,
-                        source: 'sv-node-1' as NodeId, target: 'sv-node-2' as NodeId,
-                        kind: 'real', direction: 'directed', label: '',
-                    },
+        operations.commitToCurrentGraph([
+            {
+                type: 'add_edge',
+                edge: {
+                    id: 'edge-sv12' as EdgeId, graphId: sId,
+                    source: 'sv-node-1' as NodeId, target: 'sv-node-2' as NodeId,
+                    kind: 'real', direction: 'directed', label: '',
                 },
-                {
-                    type: 'add_edge',
-                    edge: {
-                        id: 'edge-sv23' as EdgeId, graphId: sId,
-                        source: 'sv-node-2' as NodeId, target: 'sv-node-3' as NodeId,
-                        kind: 'real', direction: 'directed', label: '',
-                    },
+            },
+            {
+                type: 'add_edge',
+                edge: {
+                    id: 'edge-sv23' as EdgeId, graphId: sId,
+                    source: 'sv-node-2' as NodeId, target: 'sv-node-3' as NodeId,
+                    kind: 'real', direction: 'directed', label: '',
                 },
-                {
-                    type: 'add_edge',
-                    edge: {
-                        id: 'edge-sv45' as EdgeId, graphId: sId,
-                        source: 'sv-node-4' as NodeId, target: 'sv-node-5' as NodeId,
-                        kind: 'real', direction: 'directed', label: '',
-                    },
+            },
+            {
+                type: 'add_edge',
+                edge: {
+                    id: 'edge-sv45' as EdgeId, graphId: sId,
+                    source: 'sv-node-4' as NodeId, target: 'sv-node-5' as NodeId,
+                    kind: 'real', direction: 'directed', label: '',
                 },
-            ],
-        )
+            },
+        ])
 
         // — 银子图（add_graph 信号操作） —
-        graphStore.commitBatchToGraph(
-            graphStore.graphView!,
-            [
-                {
-                    type: 'add_graph',
-                    graph: {
-                        id: 'sub-silver' as GraphId,
-                        kind: 'subgraph',
-                        title: '银牌子图',
-                        parentGraphId: sId,
-                        ownerNodeId: 'sv-node-3' as NodeId,
-                        nodes: [
-                            {
-                                role: 'knowledge', id: 'sv-sub-1' as NodeId, graphId: 'sub-silver' as GraphId,
-                                kind: 'real', form: 'atomic',
-                                label: '银牌子节点A',
-                                abstractionLevel: 0, degree: 0,
-                                position: { x: 200, y: 200 },
-                            },
-                            {
-                                role: 'knowledge', id: 'sv-sub-2' as NodeId, graphId: 'sub-silver' as GraphId,
-                                kind: 'real', form: 'atomic',
-                                label: '银牌子节点B',
-                                abstractionLevel: 0, degree: 0,
-                                position: { x: 500, y: 200 },
-                            },
-                        ],
-                        edges: [
-                            {
-                                id: 'edge-ss12' as EdgeId, graphId: 'sub-silver' as GraphId,
-                                source: 'sv-sub-1' as NodeId, target: 'sv-sub-2' as NodeId,
-                                kind: 'real', direction: 'directed', label: '',
-                            },
-                        ],
-                        cognitiveState: { foldedDependencies: [] },
-                    },
+        operations.commitToCurrentGraph([
+            {
+                type: 'add_graph',
+                graph: {
+                    id: 'sub-silver' as GraphId,
+                    kind: 'subgraph',
+                    title: '银牌子图',
+                    parentGraphId: sId,
+                    ownerNodeId: 'sv-node-3' as NodeId,
+                    nodes: [
+                        {
+                            role: 'knowledge', id: 'sv-sub-1' as NodeId, graphId: 'sub-silver' as GraphId,
+                            kind: 'real', form: 'atomic',
+                            label: '银牌子节点A',
+                            abstractionLevel: 0, degree: 0,
+                            position: { x: 200, y: 200 },
+                        },
+                        {
+                            role: 'knowledge', id: 'sv-sub-2' as NodeId, graphId: 'sub-silver' as GraphId,
+                            kind: 'real', form: 'atomic',
+                            label: '银牌子节点B',
+                            abstractionLevel: 0, degree: 0,
+                            position: { x: 500, y: 200 },
+                        },
+                    ],
+                    edges: [
+                        {
+                            id: 'edge-ss12' as EdgeId, graphId: 'sub-silver' as GraphId,
+                            source: 'sv-sub-1' as NodeId, target: 'sv-sub-2' as NodeId,
+                            kind: 'real', direction: 'directed', label: '',
+                        },
+                    ],
+                    cognitiveState: { foldedDependencies: [] },
                 },
-            ],
-        )
+            },
+        ])
     }
 
     // 切回金图视图（bootstrap 完成后画布默认显示金图）

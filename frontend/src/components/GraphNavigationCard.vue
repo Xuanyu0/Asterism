@@ -17,7 +17,7 @@
  *
  * 规则：
  *
- *     1. 本组件只读 graphStore 状态，所有图谱切换经 graphStore.loadGraphToView。
+ *     1. 本组件经导航适配层（useNavigationAdapter）消费图数据，所有图谱切换经适配层 goToGraph。
  *     2. 切换图谱前取消激活工具（浮空窗由外部点击规则负责关闭）。
  *     3. Dock 溢出检测由 NavigationCardDock 内部自管理。
  */
@@ -26,18 +26,17 @@ import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 import type { GraphId } from '@my-project/graph-engine'
 
-import { useGraphStore } from '@/graph/graph_store'
+import { useNavigationAdapter } from '@/graph/adapters/useNavigationAdapter'
 import { useCanvasFocus } from '@/composables/useCanvasFocus'
 import { useToolMediator } from '@/feature-tools/mediator'
 import { useDragPosition } from '@/composables/useDragPosition'
 import { useAutoFade } from '@/composables/useAutoFade'
 
-import type { PanelKind, PathSegment } from '@/components/navigation-card/types'
+import type { PanelKind } from '@/components/navigation-card/types'
 import Dock from '@/components/navigation-card/Dock.vue'
 import NavigationPanel from '@/components/navigation-card/NavigationPanel.vue'
 import SearchPanel from '@/components/navigation-card/SearchPanel.vue'
 
-const graphStore = useGraphStore()
 const canvasFocus = useCanvasFocus()
 const mediator = useToolMediator()
 
@@ -46,7 +45,7 @@ const drag = useDragPosition({
     storageKey: 'nav-card-position',
     defaultPosition: { x: 64, y: 16 },
     margin: 16,
-    snapthreshold:  32
+    snapthreshold: 32
 })
 const {
     position: cardPosition,
@@ -92,22 +91,25 @@ const { isFaded, onPointerEnter, onPointerLeave } = useAutoFade({
     preventFade: computed(() => hasOpenPanel.value || isDragging.value),
 })
 
-// ── 路径与位置 ──
-const pathSegments = computed<PathSegment[]>(() => {
-    return graphStore.graphPath.map((graphId, index) => ({
-        graphId,
-        title: graphStore.getGraphById(graphId)?.title ?? '未命名',
-        isCurrent: index === graphStore.graphPath.length - 1,
-    }))
-})
+// ── 路径与位置（经导航适配层派生） ──
+const { breadcrumb: pathSegments, currentRootId, isAtRoot, parentGraphId, hasCurrentGraph, goToGraph } = useNavigationAdapter()
 
-const parentGraphId = computed(() => graphStore.graphView?.parentGraphId ?? null)
-const currentRootId = computed(() => graphStore.graphPath[0] ?? null)
-const isAtRoot = computed(() => graphStore.graphPath.length <= 1)
-
+/**
+ * 功能：
+ *
+ *     切换当前视图到目标图谱（导航动作）。
+ *
+ * 规则：
+ *
+ *     1. 本函数是跨域编排点：切图前先停用当前激活工具（工具域，
+ *        mediator.deactivate），再委托导航适配层切图（graph 域，goToGraph）。
+ *        依赖方向禁止 graph 适配层反向依赖工具域，故"停工具 + 切图"
+ *        的组合只能在此汇合点完成。
+ *     2. 纯切图能力在适配层 goToGraph（loadGraphToView），本函数不重复。
+ */
 function switchGraphTo(graphId: GraphId): void {
     mediator.deactivate()
-    graphStore.loadGraphToView(graphId)
+    goToGraph(graphId)
 }
 
 function goUpOneLevel(): void {
@@ -180,7 +182,7 @@ onBeforeUnmount(() => {
 
 <template>
     <div
-        v-if="graphStore.graphView"
+        v-if="hasCurrentGraph"
         ref="cardElement"
         class="nav-card"
         v-bind:class="{

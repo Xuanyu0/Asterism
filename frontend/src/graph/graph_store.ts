@@ -4,26 +4,25 @@
  *     GraphData 唯一事实源与所有图修改的唯一合法入口。
  *     持有当前图 / 路径 / 撤销栈，协调多图注册表与 localStorage 持久化。
  *
- * 调用契约：
+ * 职责边界：
  *
- *     1. 操作目标可能是父/子图，不绑定当前渲染视图（graphView 只是渲染投影）。
- *     2. Draft 数据禁止进入本 Store。
- *     3. Cytoscape Runtime 禁止进入本 Store。
+ *     留在本 store 的判定标准：
+ *          Graph.vue 调用 ∨ 唯一图数据修改入口（commitBatchToGraphs）∨ 唯一图数据回溯入口（undo）。
  *
  * TODO：
  *
- *     本文件多数函数错误路径静默返回（跳过 / 拒绝 / 中断），依赖调用方前置条件正确：
- *     如 initRegistry 静默返回、listRootGraphInfos 静默跳过加载失败的图、
- *     deleteRootGraphTree 静默拒绝删除活跃根图等。只有 loadGraphToView 与
- *     commitBatchToGraphs 有显式错误出口。调用方又以兜底逻辑掩盖空状态，
- *     导致持久化数据损坏在用户层面不可见。需统一错误处理策略（显式返回状态
- *     或写入 lastValidationResult），待行为设计确定后处理。
+ *     本文件保留函数的部分错误路径静默返回（跳过 / 拒绝 / 中断），依赖调用方前置条件正确：
+ *     如 initRegistry 静默返回、loadGraphToView 的祖先链断裂仅写告警。迁移至 graph/adapters
+ *     的 listRootGraphInfos / deleteRootGraphTree 同样沿用静默风格（静默跳过加载失败的图 /
+ *     静默拒绝删除活跃根图）。只有 loadGraphToView 与 commitBatchToGraphs 有显式错误出口。
+ *     调用方又以兜底逻辑掩盖空状态，导致持久化数据损坏在用户层面不可见。需统一错误处理
+ *     策略（显式返回状态或写入 lastValidationResult），待行为设计确定后处理。
  */
 
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-import type { GraphData, GraphId, GraphLookup } from '@my-project/graph-engine'
+import type { GraphData, GraphId } from '@my-project/graph-engine'
 import type { GraphOperation } from '@my-project/graph-engine'
 import type { ValidationResult } from '@my-project/graph-engine'
 
@@ -32,29 +31,11 @@ import { applyBatch, ensureDefaultCognitiveState, generateGraphId } from '@my-pr
 import type { GraphRegistry } from '@/graph/graph_registry'
 import { createRegistry, registerGraph, unregisterGraph, lookupGraph, hasGraph } from '@/graph/graph_registry'
 
-import { saveGraph, loadGraph, deleteGraph, listSavedGraphIds, listRootGraphIds, saveLastActiveRootId, loadLastActiveRootId, clearLastActiveRootId } from '@/graph/graph_persistence'
+import { saveGraph, loadGraph, deleteGraph, listSavedGraphIds, saveLastActiveRootId, loadLastActiveRootId } from '@/graph/graph_persistence'
+
+import { isInRootTree } from '@/graph/utils/graph_tree'
 
 const MAX_UNDO_STACK_SIZE = 20
-
-/**
- * 说明：
- *
- *     根图谱列表项的摘要信息，供导航卡片展示根图谱列表。
- *
- * 代码修改契约：
- *
- *     1. 只包含列表展示所需的最小字段，不携带 nodes / edges。
- */
-export interface RootGraphInfo {
-    /** 根图 ID。 */
-    id: GraphId
-
-    /** 根图标题。 */
-    title: string
-
-    /** 最近更新时间戳（图级，引擎维护）。 */
-    updatedAt?: string
-}
 
 /**
  * 说明：
@@ -63,7 +44,7 @@ export interface RootGraphInfo {
  *
  * 调用契约：
  *
- *     1. UI Runtime 可通过 feature-tools handler 直接调 commitBatchToGraph，不经过 operation_controller。
+ *     1. 图修改经 graph/adapters/useGraphOperationAdapter.commitToCurrentGraph。
  *     2. 所有修改委托引擎 applyBatch 执行 validate + execute，成功后自动持久化。
  */
 export const useGraphStore = defineStore('graph_store', () => {
@@ -216,27 +197,6 @@ export const useGraphStore = defineStore('graph_store', () => {
     /**
      * 说明：
      *
-     *     按 ID 从多图注册表中查找图，供认知操作（diverge、induce）
-     *     等跨图场景获取目标图。
-     */
-    function getGraphById(graphId: GraphId): GraphData | undefined {
-        return lookupGraph(graphRegistry.value, graphId)
-    }
-
-    /**
-     * 说明：
-     *
-     *     将 Runtime 持有的 graphRegistry 包装为引擎 compose 层所需的
-     *     纯查询函数 (graphId) → GraphData | undefined，供 induce /
-     *     internalize / diverge 跨图查询使用。
-     */
-    function makeLookup(): GraphLookup {
-        return (graphId: GraphId): GraphData | undefined => lookupGraph(graphRegistry.value, graphId)
-    }
-
-    /**
-     * 说明：
-     *
      *     清除上一次操作的校验结果。供 UI 层在切换模式/工具/操作、
      *     关闭浮空窗时调用，确保用户不会看到已过期的校验错误消息。
      */
@@ -244,116 +204,6 @@ export const useGraphStore = defineStore('graph_store', () => {
         lastValidationResult.value = null
     }
     
-    function deleteAndUnregisterGraph(graphId: GraphId): void {
-        deleteGraph(graphId)
-        unregisterGraph(graphRegistry.value, graphId)
-    }
-
-    /**
-     * 说明：
-     *
-     *     列出 localStorage 中全部根图谱的摘要，供 GraphNavigationCard 展示与切换。
-     *
-     * 调用契约：
-     *
-     *     1. 本函数不修改任何运行时状态。
-     *
-     * 代码修改契约：
-     *
-     *     1. 数据来自持久化全量扫描，不经过 graphRegistry——
-     *        registry 只持有当前根图树，无法覆盖全部根图。
-     *
-     * TODO：
-     *
-     *     排序依据待后续开发稳定后确定——图级 updatedAt 引擎已维护，
-     *     是否改用最近更新排序（而非 title 字典序）待定。
-     */
-    function listRootGraphInfos(): RootGraphInfo[] {
-        const infos: RootGraphInfo[] = []
-
-        for (const graphId of listRootGraphIds()) {
-            const graph = loadGraph(graphId)
-            if (!graph) continue
-            infos.push({ id: graph.id, title: graph.title, updatedAt: graph.updatedAt })
-        }
-
-        return infos.sort((a, b) => a.title.localeCompare(b.title, 'zh-Hans-CN'))
-    }
-
-    /**
-     * 说明：
-     *
-     *     删除一个根图及其全部子孙子图（级联删除整棵图树），
-     *     供 GraphNavigationCard 根图谱列表删除按钮使用。
-     *
-     * 调用契约：
-     *
-     *     1. 若 rootId 为当前视图所在根图，直接返回不删除——
-     *        删除活跃根图会使视图失去持久化副本。
-     *
-     * 代码修改契约：
-     *
-     *     1. 通过 isInRootTree 判定归属，防止只删根图留下孤儿子图
-     *        污染 listSavedGraphIds 的全量扫描结果。
-     *
-     * 参数：
-     *
-     *     rootId — 要删除的根图 ID，与其全部子孙子图一并删除。
-     */
-    function deleteRootGraphTree(rootId: GraphId): void {
-        // 防御：禁止删除当前视图所在的根图。
-        const currentRootId = graphPath.value[0]
-        if (currentRootId !== undefined && currentRootId === rootId) {
-            return
-        }
-
-        // 收集整棵树的成员。
-        const treeIds: GraphId[] = []
-        for (const graphId of listSavedGraphIds()) {
-            if (graphId === rootId) {
-                treeIds.push(graphId)
-                continue
-            }
-
-            const graph = loadGraph(graphId)
-            if (!graph || !isInRootTree(graph, rootId)) continue
-
-            treeIds.push(graphId)
-        }
-
-        // 收集完后，统一删除
-        for (const graphId of treeIds) {
-            deleteAndUnregisterGraph(graphId)
-        }
-
-        if (loadLastActiveRootId() === rootId) {
-            clearLastActiveRootId()
-        }
-    }
-
-    /**
-     * 说明：
-     *
-     *     对单个目标图执行批量操作，是 commitBatchToGraphs 的单图便捷包装。
-     *     事务、undo snapshot 与持久化行为全部继承自 commitBatchToGraphs。
-     *
-     * 参数：
-     *
-     *     targetGraph — 要操作的目标图
-     *     operations  — 操作序列
-     */
-    function commitBatchToGraph(
-        targetGraph: GraphData,
-        operations: GraphOperation[],
-    ): { validation: ValidationResult } {
-        const result = commitBatchToGraphs(
-            [{ graph: targetGraph, operations }],
-        )
-        lastValidationResult.value = result.validation
-
-        return result
-    }
-
     /**
      * 说明：
      *
@@ -562,29 +412,6 @@ export const useGraphStore = defineStore('graph_store', () => {
         return { path, terminal: currentGraph }
     }
 
-    /**
-     * 说明：
-     *
-     *     沿 parentGraphId 链回溯，判断 graph 是否属于指定根图树。
-     */
-    function isInRootTree(graph: GraphData, rootId: GraphId): boolean {
-        if (graph.id === rootId) return true
-
-        let current = graph
-        const visited = new Set<GraphId>([graph.id])
-        while (current.parentGraphId) {
-            if (current.parentGraphId === rootId) return true
-            if (visited.has(current.parentGraphId)) return false  // 环检测
-            visited.add(current.parentGraphId)
-
-            const parent = loadGraph(current.parentGraphId)
-            if (!parent) return false
-
-            current = parent
-        }
-        return false  // 抵达某根图（parentGraphId === undefined），但不是我们的根图
-    }
-
     return {
         graphView,
         graphPath,
@@ -600,15 +427,9 @@ export const useGraphStore = defineStore('graph_store', () => {
         createRootGraph,
         
         // 内部行为
-        getGraphById,
-        makeLookup,
         clearValidationResult,
         
         // 功能行为
-        deleteAndUnregisterGraph,
-        listRootGraphInfos,
-        deleteRootGraphTree,
-        commitBatchToGraph,
         commitBatchToGraphs,
         undo,
     }

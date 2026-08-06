@@ -27,9 +27,9 @@ import type { GraphId } from '@my-project/graph-engine'
 import { PlusIcon, TrashIcon, BookOpenIcon, GlobeAltIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
 import AsterismLogo from '@/assets/icon-asterism.svg?component'
 
-import { useGraphStore } from '@/graph/graph_store'
-import type { RootGraphInfo } from '@/graph/graph_store'
+import { useNavigationAdapter } from '@/graph/adapters/useNavigationAdapter'
 
+import type { RootGraphInfo } from '@/graph/adapters/useNavigationAdapter'
 
 const props = defineProps<{
     currentRootId: GraphId | null
@@ -42,7 +42,7 @@ const emits = defineEmits<{
     close: []
 }>()
 
-const graphStore = useGraphStore()
+const navigation = useNavigationAdapter()
 
 // ── 根图谱列表 ──
 const rootInfos = ref<RootGraphInfo[]>([])
@@ -52,7 +52,7 @@ const rootInfos = ref<RootGraphInfo[]>([])
  *     从数据层重新拉取所有根图谱摘要。
  */
 function refreshRootList(): void {
-    rootInfos.value = graphStore.listRootGraphInfos()
+    rootInfos.value = navigation.listRootGraphInfos()
 }
 onMounted(() => {
     refreshRootList()
@@ -77,7 +77,7 @@ function createAndSwitch(): void {
     const title = newRootTitle.value.trim()
     if (!title) return
 
-    const graphId = graphStore.createRootGraph(title)
+    const graphId = navigation.createRootGraph(title)
     newRootTitle.value = ''
 
     emits('switchRootGraph', graphId)
@@ -95,13 +95,13 @@ const armedDeleteId = ref<GraphId | null>(null)
  * 规则：
  *
  *     1. 当前浏览中的根图不可删除。
- *     2. 确认后调用 graphStore.deleteRootGraphTree 级联删除整棵图树。
+ *     2. 确认后经导航适配层 deleteRootGraphTree 级联删除整棵图树。
  */
 function requestDeleteRoot(info: RootGraphInfo): void {
     if (info.id === props.currentRootId) return
 
     if (armedDeleteId.value === info.id) {
-        graphStore.deleteRootGraphTree(info.id)
+        navigation.deleteRootGraphTree(info.id)
         armedDeleteId.value = null
         refreshRootList()
         return

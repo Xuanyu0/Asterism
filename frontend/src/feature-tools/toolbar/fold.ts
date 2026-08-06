@@ -18,6 +18,7 @@
 import { ref, computed } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
+import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
 
 import type { NodeId } from '@my-project/graph-engine'
 
@@ -26,7 +27,8 @@ import type { ToolId, ToolHandler, ToolNotification } from '../types'
 
 export function useFoldTool(): ToolHandler {
     const graphStore = useGraphStore()
-    const id: ToolId = `fold`
+    const operations = useGraphOperationAdapter()
+    const id: ToolId = 'fold'
 
     const isActive = ref(false)
 
@@ -60,12 +62,10 @@ export function useFoldTool(): ToolHandler {
             ? ('expand_dependency' as const)
             : ('collapse_dependency' as const)
 
-        const result = graphStore.commitBatchToGraph(graphStore.graphView, [{
+        operations.commitToCurrentGraph([{
             type: operationType,
             targetNodeId: nodeId as NodeId,
         }])
-
-        graphStore.lastValidationResult = result.validation
     }
 
     return {

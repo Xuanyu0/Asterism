@@ -10,15 +10,16 @@
  *     3. 已拾取状态下点击 → 放置尝试。
  *     4. 放置碰撞 → 红色高亮 + notification，保持已拾取。
  *     5. 右键取消拾取 → 弹回原位。
- *     6. 禁止直接修改 GraphData；所有写入通过 graphStore.commitBatchToGraph。
+ *     6. 禁止直接修改 GraphData；所有写入经适配层 applyToCurrentGraph（内部走 commitBatchToGraphs）。
  *     7. 中间位置不写 GraphData，经 preview_engine 克隆预览通道整图 sync 渲染。
  */
 
 import { ref, computed } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
-import { computeNodeRadiusOverrides } from '@/graph/node_radius'
-import { hasErrors } from '@/graph/issue_mapper'
+import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
+import { computeNodeRadiusOverrides } from '@/graph/utils/node_radius'
+import { hasErrors } from '@/graph/utils/issue_mapper'
 import { moveNode as composeMoveNode } from '@my-project/graph-engine'
 import { useRenderer } from '@/cytoscape/useRenderer'
 import { previewMoveNode } from '@/feature-tools/preview/preview_engine'
@@ -46,6 +47,7 @@ import type { ToolId, ToolHandler, ToolNotification } from '../types'
  */
 export function useMoveNodeTool(): ToolHandler {
     const graphStore = useGraphStore()
+    const operations = useGraphOperationAdapter()
     const {
         syncFromGraphData,
         getNodePosition,
@@ -280,12 +282,9 @@ export function useMoveNodeTool(): ToolHandler {
         }
 
         // 无碰撞 → 写入 GraphData
-        const batchResult = graphStore.commitBatchToGraph(
-            graphStore.graphView,
-            result.operations,
-        )
+        const validation = operations.commitToCurrentGraph(result.operations)
 
-        if (batchResult.validation.valid) {
+        if (validation.valid) {
             // 清除透明度 preview
             removeNodeClass(pickedNodeId, 'move-picked', 'move')
 
@@ -294,7 +293,7 @@ export function useMoveNodeTool(): ToolHandler {
             isPicked.value = false
             collisionMessage.value = null
         }
-        // batchResult.validation.valid === false 理论上不可达
+        // validation.valid === false 理论上不可达
         // （compose 已通过的操作 execute 阶段不会失败）——防御性保留
     }
 

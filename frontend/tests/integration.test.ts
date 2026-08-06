@@ -14,6 +14,7 @@
 
 import { setActivePinia, createPinia } from 'pinia'
 import { useGraphStore } from '@/graph/graph_store'
+import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
 import { saveGraph, loadGraph, deleteGraph, listRootGraphIds } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2, createSilverTestGraph } from '@/dev/test_case_factory'
 import { validateGraph } from '@my-project/graph-engine'
@@ -105,7 +106,7 @@ describe('原子操作链路', () => {
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
-        const result = store.commitBatchToGraph(store.graphView!, [{
+        const result = useGraphOperationAdapter().commitToCurrentGraph([{
             type: 'add_node',
             node: {
                 role: 'knowledge',
@@ -121,7 +122,7 @@ describe('原子操作链路', () => {
             },
         }])
 
-        expect(result.validation.valid).toBe(true)
+        expect(result.valid).toBe(true)
         expect(store.graphView!.nodes.length).toBe(7)
     })
 
@@ -145,7 +146,7 @@ describe('fold/expand + undo', () => {
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
-        store.commitBatchToGraph(store.graphView!, [{
+        useGraphOperationAdapter().commitToCurrentGraph([{
             type: 'collapse_dependency',
             targetNodeId: 'node-g2' as NodeId,
         }])
@@ -159,7 +160,7 @@ describe('fold/expand + undo', () => {
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
-        store.commitBatchToGraph(store.graphView!, [{
+        useGraphOperationAdapter().commitToCurrentGraph([{
             type: 'collapse_dependency',
             targetNodeId: 'node-g2' as NodeId,
         }])
@@ -179,12 +180,12 @@ describe('fold/expand + undo', () => {
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
-        const result = store.commitBatchToGraph(store.graphView!, [{
+        const result = useGraphOperationAdapter().commitToCurrentGraph([{
             type: 'delete_node',
             nodeId: 'non-existent-node' as NodeId,
         }])
 
-        expect(result.validation.valid).toBe(false)
+        expect(result.valid).toBe(false)
         expect(store.graphView!.nodes.length).toBe(6)
     })
 })
