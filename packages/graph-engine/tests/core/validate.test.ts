@@ -44,6 +44,40 @@ describe('validate add_node', () => {
         expect(result.valid).toBe(false)
         expect(result.issues.some(i => i.code === 'NODE_ID_DUPLICATED')).toBe(true)
     })
+
+    it('label 为空字符串 → EMPTY_LABEL', () => {
+        const graph = makeGraph(2)
+        const result = validateOperation(graph, {
+            type: 'add_node',
+            node: createNode({ id: 'n-empty' as NodeId, graphId: G, label: '' }),
+        })
+        expect(result.valid).toBe(false)
+        const issue = result.issues.find(i => i.code === 'EMPTY_LABEL')
+        expect(issue).toBeDefined()
+        expect(issue!.message).toBe('节点标签不能为空。')
+        expect(issue!.targetType).toBe('node')
+        expect(issue!.targetId).toBe('n-empty')
+    })
+
+    it('label 为纯空白 → EMPTY_LABEL（trim 语义）', () => {
+        const graph = makeGraph(2)
+        const result = validateOperation(graph, {
+            type: 'add_node',
+            node: createNode({ id: 'n-blank' as NodeId, graphId: G, label: '   ' }),
+        })
+        expect(result.valid).toBe(false)
+        expect(result.issues.some(i => i.code === 'EMPTY_LABEL')).toBe(true)
+    })
+
+    it('正常 label → 无 EMPTY_LABEL', () => {
+        const graph = makeGraph(2)
+        const result = validateOperation(graph, {
+            type: 'add_node',
+            node: createNode({ id: 'n-ok' as NodeId, graphId: G, label: '知识节点' }),
+        })
+        expect(result.valid).toBe(true)
+        expect(result.issues.some(i => i.code === 'EMPTY_LABEL')).toBe(false)
+    })
 })
 
 // ═══════════ add_edge ═══════════

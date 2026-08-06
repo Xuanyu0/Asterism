@@ -46,6 +46,17 @@ function createResult(issues: ValidationIssue[]): ValidationResult {
 function validateAddNode(graph: GraphData, operation: { type: 'add_node'; node: NodeData }): ValidationResult {
     const issues: ValidationIssue[] = []
 
+    // 图规则：label 非空（trim 后），空标签节点禁止添加
+    if (operation.node.label.trim() === '') {
+        issues.push({
+            severity: 'error',
+            code: 'EMPTY_LABEL',
+            message: '节点标签不能为空。',
+            targetType: 'node',
+            targetId: operation.node.id,
+        })
+    }
+
     if (graph.nodes.some(node => node.id === operation.node.id)) {
         issues.push({
             severity: 'error',
