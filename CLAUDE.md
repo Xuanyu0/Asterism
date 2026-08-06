@@ -18,7 +18,7 @@
   - 不负责：I/O、持久化、持有状态
   - 与框架无关
 - **Runtime 层**：位于前端的 GraphData 状态所有者，负责持有运行时状态、编排引擎操作（调 Engine → 后处理）、实现持久化 I/O。Runtime 不负责 UI 渲染和纯函数转换，一定是框架绑定的（当前为 Pinia + Vue）。Runtime 层内部再分两层：
-  - **graph_store.ts（数据核心）**：内部的函数满足**Graph.vue 调用 ∨ 唯一图数据修改入口 ∨ 唯一图数据回溯入口**。
+  - **graph_store.ts（数据核心）**：内部的函数满足 **Graph.vue 调用 ∨ 唯一图数据修改入口 ∨ 唯一图数据回溯入口**。
   - **adapters/（业务适配层）**：图数据业务逻辑的封装，经 store 公开状态访问共享运行时数据，不持有状态本身。依赖方向：业务 → 适配层 → store（单向）
 - **Cytoscape 渲染/交互层**：GraphData 的只读映射/拷贝。接收 GraphData 渲染到画布，捕获交互事件后经交互逻辑层（feature-tools/）回流至 Runtime。禁止持有 GraphData 引用、禁止保存业务状态、禁止直接修改 GraphData
 - **工具**：前端页面中用户主动激活的状态。在此状态下，用户的画布交互（点击、拖拽）被解释为该工具特有的语义，并最终转化为对 GraphData 的修改。工具不直接操作 GraphData，通过 Runtime 层写入。目前按交互入口分为两类：
@@ -118,11 +118,12 @@ Runtime / UI 状态层 (graph/ + ui/)
     │                        在前端的唯一入口：commitBatchToGraphs（数据修改）/ undo（回溯）
     ├── adapters/          — 图数据适配层（graph 域业务逻辑，经 store 公开状态访问共享运行时数据）
     │    ├── useNavigationAdapter.ts    — 导航卡片业务适配：breadcrumb 派生 / goToGraph / listRootGraphInfos / deleteRootGraphTree / getGraphById
-    │    └── useGraphOperationAdapter.ts — 工具层业务适配：commitToCurrentGraph（提交+校验同步）/ makeLookup（跨图查询）
+    │    └── useGraphOperationAdapter.ts — 工具层业务适配：commitToCurrentGraph（提交+校验同步）/ reportComposeValidation / makeLookup（跨图查询）
     ├── utils/             — 公共工具函数（无状态纯函数）
     ├── graph_registry.ts  — 多图注册表（Map：GraphId → GraphData）
     ├── graph_persistence.ts — localStorage 持久化实现
     └── operation_controller.ts — 认知/布局操作编排【历史遗留：待迁移至 feature-tools/】
+    │  提前报告图规则校验外的系统异常（数据损坏 / 链断裂 / 环），用户默认不可见
     ↓  委托纯函数
 GraphEngine (@my-project/graph-engine) — 框架无关；广义 GraphData 唯一转换入口；无副作用
     ├── types/             — 类型定义（graph_data / atomic_operations / cognitive / validation / operation_log ...）
@@ -132,9 +133,12 @@ GraphEngine (@my-project/graph-engine) — 框架无关；广义 GraphData 唯�
     │                        normalize(认知状态补全) / sync(度数同步) / traversal / id / validators/
     ├── infrastructure/    — collision(碰撞检测) / placement(位置放置) / search(搜索) / geometry(几何)
     └── spi/               — 持久化适配器接口（Phase 3 扩展点）
-    ↓  返回新 GraphData
+    ↓  返回新 GraphData 与图规则校验结果
     ↓  GraphView 引用替换
-    views/Graph.vue        — 装配层：watch(GraphView) → renderer.syncFromGraphData(newGraph)
+    ↓  图校验结果：lastValidationResult 写入仅经 commitBatchToGraphs 的 applyBatch 返回 / 适配层 reportComposeValidation 转发
+    views/Graph.vue        — 【装配层】
+    │                        渲染用户看到的当前图谱：watch(GraphView) → renderer.syncFromGraphData(newGraph)；
+    │                        渲染校验信息：canvasErrorIssues（lastValidationResult 的 error 级 issues）→ NotificationPanel
     ↓  CyElements
 Cytoscape Renderer
 ```
