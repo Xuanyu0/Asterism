@@ -22,7 +22,6 @@ import { deconstruct as composeDeconstruct } from '@my-project/graph-engine'
 import { useGraphStore } from '@/graph/graph_store'
 import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
 import { useToolMediator } from '@/feature-tools/mediator'
-import { mapComposeIssues, hasErrors } from '@/graph/utils/issue_mapper'
 
 import type { ToolHandler } from '@/feature-tools/types'
 
@@ -67,12 +66,8 @@ export function useDeconstructTool(): ToolHandler {
             parentGraph: graphStore.graphView,
         })
 
-        if (hasErrors(result.issues)) {
-            operations.setValidationFailure({
-                valid: false,
-                issues: mapComposeIssues(result.issues, 'node', nodeId),
-            })
-
+        // compose 校验收口在适配层：失败则写 lastValidationResult 并阻断本次操作
+        if (operations.reportComposeValidation(result.issues, 'node', nodeId)) {
             return
         }
 

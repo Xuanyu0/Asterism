@@ -19,7 +19,7 @@
 import { applyBatch, generateEdgeId, hasCollisionAt, moveNode } from '@my-project/graph-engine'
 
 import { computeNodeRadiusOverrides } from '@/graph/utils/node_radius'
-import { hasErrors } from '@/graph/utils/issue_mapper'
+import { hasErrors } from '@/graph/utils/issue_guard'
 
 import type { AddEdgeOperation, GraphData, NodeId, NodePosition } from '@my-project/graph-engine'
 

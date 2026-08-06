@@ -33,7 +33,6 @@ import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdap
 import { useNavigationAdapter } from '@/graph/adapters/useNavigationAdapter'
 
 import { computeNodeRadiusOverrides } from '@/graph/utils/node_radius'
-import { mapComposeIssues, hasErrors } from '@/graph/utils/issue_mapper'
 
 // compose — cognitive
 import { induce as composeInduce } from '@my-project/graph-engine'
@@ -132,12 +131,8 @@ export function useOperationController() {
             allEdges: graphStore.graphView.edges,
         })
 
-        if (hasErrors(result.issues)) {
-            graphStore.lastValidationResult = {
-                valid: false,
-                issues: mapComposeIssues(result.issues, 'graph'),
-            }
-
+        // compose 校验收口在适配层：失败则写 lastValidationResult 并阻断本次操作
+        if (graphOperations.reportComposeValidation(result.issues, 'graph')) {
             return
         }
 
@@ -157,9 +152,8 @@ export function useOperationController() {
             })
         }
 
-        const batchResult = graphStore.commitBatchToGraphs(targets)
-
-        graphStore.lastValidationResult = batchResult.validation
+        // commitBatchToGraphs 内部已同步校验结果到 lastValidationResult，无需重复写入
+        graphStore.commitBatchToGraphs(targets)
     }
 
     /**
@@ -187,17 +181,9 @@ export function useOperationController() {
         const commonLayer = findCommonLayer(graphStore.graphRegistry)
 
         if (!commonLayer) {
-            graphStore.lastValidationResult = {
-                valid: false,
-                issues: [{
-                    severity: 'error',
-                    code: 'COMMON_LAYER_NOT_FOUND',
-                    message: '未找到常识层图谱，无法执行内化操作。',
-                    targetType: 'graph',
-                }],
-            }
-
-            return
+            // 编程错误通道：internalize 前置条件违约（常识层图缺失，当前不可达）。
+            // 前端不再构造规则展示给用户——由调用方保证常识层图存在（initRegistry 建立）
+            throw new Error('COMMON_LAYER_NOT_FOUND: 未找到常识层图谱，无法执行内化操作。')
         }
 
         const result = composeInternalize({
@@ -209,12 +195,8 @@ export function useOperationController() {
             nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.graphView),
         })
 
-        if (hasErrors(result.issues)) {
-            graphStore.lastValidationResult = {
-                valid: false,
-                issues: mapComposeIssues(result.issues, 'graph'),
-            }
-
+        // compose 校验收口在适配层：失败则写 lastValidationResult 并阻断本次操作
+        if (graphOperations.reportComposeValidation(result.issues, 'graph')) {
             return
         }
 
@@ -234,9 +216,8 @@ export function useOperationController() {
             })
         }
 
-        const batchResult = graphStore.commitBatchToGraphs(targets)
-
-        graphStore.lastValidationResult = batchResult.validation
+        // commitBatchToGraphs 内部已同步校验结果到 lastValidationResult，无需重复写入
+        graphStore.commitBatchToGraphs(targets)
     }
 
     /**
@@ -266,12 +247,8 @@ export function useOperationController() {
             graphIds: Array.from(graphStore.graphRegistry.keys()),
         })
 
-        if (hasErrors(result.issues)) {
-            graphStore.lastValidationResult = {
-                valid: false,
-                issues: mapComposeIssues(result.issues, 'graph'),
-            }
-
+        // compose 校验收口在适配层：失败则写 lastValidationResult 并阻断本次操作
+        if (graphOperations.reportComposeValidation(result.issues, 'graph')) {
             return
         }
 
@@ -303,9 +280,8 @@ export function useOperationController() {
             }
         }
 
-        const batchResult = graphStore.commitBatchToGraphs(targets)
-
-        graphStore.lastValidationResult = batchResult.validation
+        // commitBatchToGraphs 内部已同步校验结果到 lastValidationResult，无需重复写入
+        graphStore.commitBatchToGraphs(targets)
     }
 
     // ── 公开 API ──

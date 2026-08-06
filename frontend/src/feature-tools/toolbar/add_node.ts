@@ -87,19 +87,9 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
             return
         }
 
+        // 空 label 不再前端预校验构造——提交后由引擎 validateAddNode 拒绝（EMPTY_LABEL），
+        // 校验结果经 commitBatchToGraphs 同步到 lastValidationResult，draftNode 保留不清空
         const trimmedLabel = label.trim()
-        if (!trimmedLabel) {
-            operations.setValidationFailure({
-                valid: false,
-                issues: [{
-                    severity: 'error' as const,
-                    code: 'EMPTY_LABEL',
-                    message: '节点标签不能为空。',
-                    targetType: 'node' as const,
-                }],
-            })
-            return
-        }
 
         const node = {
             role: 'knowledge' as const,
@@ -126,7 +116,7 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
             draftNode.value = null
         }
     }
-    
+
     function onCancel(): void {
         draftNode.value = null
     }

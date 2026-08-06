@@ -3,7 +3,7 @@
  *
  * 功能：
  *     工具层图操作适配（useGraphOperationAdapter）的集成测试。
- *     覆盖单例性、commitToCurrentGraph 提交 + 校验同步 + 原样透传、setValidationFailure 收口写入。
+ *     覆盖单例性、commitToCurrentGraph 提交 + 校验同步 + 原样透传、reportComposeValidation 上报收口。
  *
  * 规则：
  *     1. 使用金牌图（graph-golden）作为测试数据。
@@ -80,17 +80,14 @@ describe('useGraphOperationAdapter', () => {
         expect(store.graphView!.nodes.length).toBe(nodeCountBefore)
     })
 
-    test('setValidationFailure 写入失败校验结果', () => {
-        operations.setValidationFailure({
-            valid: false,
-            issues: [{
-                severity: 'error',
-                code: 'EMPTY_LABEL',
-                message: '节点标签不能为空。',
-                targetType: 'node',
-            }],
-        })
+    test('reportComposeValidation 含 error → 写 lastValidationResult 并返回 true', () => {
+        const failed = operations.reportComposeValidation(
+            [{ severity: 'error', code: 'EMPTY_LABEL', message: '节点标签不能为空。' }],
+            'node',
+            'node-1' as NodeId,
+        )
 
+        expect(failed).toBe(true)
         expect(store.lastValidationResult).toEqual({
             valid: false,
             issues: [{
@@ -98,17 +95,23 @@ describe('useGraphOperationAdapter', () => {
                 code: 'EMPTY_LABEL',
                 message: '节点标签不能为空。',
                 targetType: 'node',
+                targetId: 'node-1',
             }],
         })
     })
 
-    test('无当前图时 commitToCurrentGraph 防御性返回失败结果', () => {
+    test('reportComposeValidation 无 error → 不写 lastValidationResult 并返回 false', () => {
+        const failed = operations.reportComposeValidation([], 'graph')
+
+        expect(failed).toBe(false)
+        expect(store.lastValidationResult).toBeNull()
+    })
+
+    test('无当前图时 commitToCurrentGraph 抛错（编程错误通道）', () => {
         // store 无公开卸载入口，直接置空 graphView 模拟无图状态
         store.graphView = null
 
-        const validation = operations.commitToCurrentGraph([])
-
-        expect(validation.valid).toBe(false)
+        expect(() => operations.commitToCurrentGraph([])).toThrow()
     })
 
     test('commitToCurrentGraph 经 commitBatchToGraphs 提交（不再经单图包装）', () => {

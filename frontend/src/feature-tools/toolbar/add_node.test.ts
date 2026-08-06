@@ -57,7 +57,7 @@ describe('useAddNodeTool', () => {
         expect(store.graphView!.nodes.length).toBe(7)
     })
 
-    test('空 label 拒绝', () => {
+    test('空 label 提交由引擎拒绝（EMPTY_LABEL）', () => {
         handler.onCanvasClick!({ x: 999, y: 999 })
         handler.onConfirm!('', '摘要')
 
@@ -65,6 +65,7 @@ describe('useAddNodeTool', () => {
         expect(store.graphView!.nodes.length).toBe(6)
         expect(store.lastValidationResult).not.toBeNull()
         expect(store.lastValidationResult!.valid).toBe(false)
+        expect(store.lastValidationResult!.issues.some(issue => issue.code === 'EMPTY_LABEL')).toBe(true)
     })
 
     test('deactivate 清除草稿', () => {
