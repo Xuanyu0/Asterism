@@ -1,0 +1,143 @@
+/**
+ * useGraphOperationAdapter.test.ts
+ *
+ * 功能：
+ *     工具层图操作适配（useGraphOperationAdapter）的集成测试。
+ *     覆盖单例性、applyToCurrentGraph 提交 + 校验同步 + 原样透传、setValidationFailure 收口写入。
+ *
+ * 规则：
+ *     1. 使用金牌图（graph-golden）作为测试数据。
+ *     2. 适配层为模块级单例，方法调用时解析当前激活的 Pinia——每用例独立 Pinia，
+ *        各测试通过重新写入并加载金牌图复位状态。
+ */
+
+import { setActivePinia, createPinia } from 'pinia'
+
+import type { GraphId, NodeId } from '@my-project/graph-engine'
+
+import { useGraphStore } from '@/graph/graph_store'
+import { saveGraph } from '@/graph/graph_persistence'
+import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
+import { useGraphOperationAdapter } from './useGraphOperationAdapter'
+
+import type { GraphOperationAdapterAPI } from './useGraphOperationAdapter'
+
+describe('useGraphOperationAdapter', () => {
+    let operations: GraphOperationAdapterAPI
+    let store: ReturnType<typeof useGraphStore>
+
+    beforeEach(() => {
+        setActivePinia(createPinia())
+        localStorage.clear()
+        const golden = createGoldenTestGraphV2()
+        saveGraph(golden)
+        store = useGraphStore()
+        store.loadGraphToView(golden.id)
+        operations = useGraphOperationAdapter()
+    })
+
+    test('模块级单例：多次调用返回同一实例', () => {
+        const another = useGraphOperationAdapter()
+        expect(another).toBe(operations)
+    })
+
+    test('applyToCurrentGraph 提交后同步 lastValidationResult 并原样返回校验结果', () => {
+        const nodeCountBefore = store.graphView!.nodes.length
+
+        const validation = operations.commitToCurrentGraph([{
+            type: 'add_node',
+            node: {
+                id: 'node-new' as NodeId,
+                graphId: store.graphView!.id,
+                role: 'knowledge' as const,
+                kind: 'real' as const,
+                form: 'atomic' as const,
+                label: '新增节点',
+                degree: 0,
+                abstractionLevel: 0,
+                // 远离既有节点，避免触发碰撞校验
+                position: { x: 5000, y: 5000 },
+            },
+        }])
+
+        expect(validation.valid).toBe(true)
+        // store 中的校验结果是响应式包装，用深度相等验证"原样同步"
+        expect(store.lastValidationResult).toEqual(validation)
+        expect(store.graphView!.nodes.length).toBe(nodeCountBefore + 1)
+    })
+
+    test('applyToCurrentGraph 校验失败时同步失败结果且不改动图', () => {
+        const nodeCountBefore = store.graphView!.nodes.length
+
+        const validation = operations.commitToCurrentGraph([{
+            type: 'delete_node',
+            nodeId: 'node-nonexistent' as NodeId,
+        }])
+
+        expect(validation.valid).toBe(false)
+        expect(store.lastValidationResult).toEqual(validation)
+        expect(store.lastValidationResult!.issues[0]?.code).toBe('NODE_NOT_FOUND')
+        expect(store.graphView!.nodes.length).toBe(nodeCountBefore)
+    })
+
+    test('setValidationFailure 写入失败校验结果', () => {
+        operations.setValidationFailure({
+            valid: false,
+            issues: [{
+                severity: 'error',
+                code: 'EMPTY_LABEL',
+                message: '节点标签不能为空。',
+                targetType: 'node',
+            }],
+        })
+
+        expect(store.lastValidationResult).toEqual({
+            valid: false,
+            issues: [{
+                severity: 'error',
+                code: 'EMPTY_LABEL',
+                message: '节点标签不能为空。',
+                targetType: 'node',
+            }],
+        })
+    })
+
+    test('无当前图时 applyToCurrentGraph 防御性返回失败结果', () => {
+        // store 无公开卸载入口，直接置空 graphView 模拟无图状态
+        store.graphView = null
+
+        const validation = operations.commitToCurrentGraph([])
+
+        expect(validation.valid).toBe(false)
+    })
+
+    test('applyToCurrentGraph 经 commitBatchToGraphs 提交（不再经单图包装）', () => {
+        const spy = vi.spyOn(store, 'commitBatchToGraphs')
+
+        const validation = operations.commitToCurrentGraph([{
+            type: 'add_node',
+            node: {
+                id: 'node-spy' as NodeId,
+                graphId: store.graphView!.id,
+                role: 'knowledge' as const,
+                kind: 'real' as const,
+                form: 'atomic' as const,
+                label: '提交测试',
+                degree: 0,
+                abstractionLevel: 0,
+                position: { x: 5000, y: 5000 },
+            },
+        }])
+
+        expect(spy).toHaveBeenCalledTimes(1)
+        expect(validation.valid).toBe(true)
+        spy.mockRestore()
+    })
+
+    test('makeLookup 构造跨图查询函数', () => {
+        const lookup = operations.makeLookup()
+
+        expect(lookup('graph-golden' as GraphId)?.title).toBe('金牌测试图')
+        expect(lookup('graph-nonexistent' as GraphId)).toBeUndefined()
+    })
+})
