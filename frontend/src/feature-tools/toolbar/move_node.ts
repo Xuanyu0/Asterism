@@ -10,7 +10,7 @@
  *     3. 已拾取状态下点击 → 放置尝试。
  *     4. 放置碰撞 → 红色高亮 + notification，保持已拾取。
  *     5. 右键取消拾取 → 弹回原位。
- *     6. 禁止直接修改 GraphData；所有写入经适配层 applyToCurrentGraph（内部走 commitBatchToGraphs）。
+ *     6. 禁止直接修改 GraphData；所有写入经适配层 commitToCurrentGraph（内部走 commitBatchToGraphs）。
  *     7. 中间位置不写 GraphData，经 preview_engine 克隆预览通道整图 sync 渲染。
  */
 

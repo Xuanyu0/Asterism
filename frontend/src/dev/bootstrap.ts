@@ -8,7 +8,7 @@
  * 规则：
  *     1. 调用前必须已挂载 Pinia（app.use(pinia)），因为内部 useGraphStore。
  *     2. 路由挂载先后不影响——本函数只挂 window 对象 + 加载测试数据，不依赖路由。
- *     3. 金图与银图均通过 graphStore 操作路径（createRootGraph → applyToCurrentGraph × 3）
+ *     3. 金图与银图均通过 graphStore 操作路径（createRootGraph → commitToCurrentGraph × 3）
  *        构造，与用户实际操作路径一致。
  */
 

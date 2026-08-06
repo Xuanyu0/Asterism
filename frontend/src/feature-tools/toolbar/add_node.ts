@@ -13,7 +13,7 @@
  * 规则：
  *
  *     1. onCanvasClick 创建 DraftNode。
- *     2. onConfirm 校验 label → 构造 NodeData → 经适配层 applyToCurrentGraph → 清 draft → deactivate。
+ *     2. onConfirm 校验 label → 构造 NodeData → 经适配层 commitToCurrentGraph → 清 draft → deactivate。
  *     3. deactivate 时清除草稿。
  */
 

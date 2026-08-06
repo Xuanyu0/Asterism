@@ -3,7 +3,7 @@
  *
  * 功能：
  *     工具层图操作适配（useGraphOperationAdapter）的集成测试。
- *     覆盖单例性、applyToCurrentGraph 提交 + 校验同步 + 原样透传、setValidationFailure 收口写入。
+ *     覆盖单例性、commitToCurrentGraph 提交 + 校验同步 + 原样透传、setValidationFailure 收口写入。
  *
  * 规则：
  *     1. 使用金牌图（graph-golden）作为测试数据。
@@ -41,7 +41,7 @@ describe('useGraphOperationAdapter', () => {
         expect(another).toBe(operations)
     })
 
-    test('applyToCurrentGraph 提交后同步 lastValidationResult 并原样返回校验结果', () => {
+    test('commitToCurrentGraph 提交后同步 lastValidationResult 并原样返回校验结果', () => {
         const nodeCountBefore = store.graphView!.nodes.length
 
         const validation = operations.commitToCurrentGraph([{
@@ -66,7 +66,7 @@ describe('useGraphOperationAdapter', () => {
         expect(store.graphView!.nodes.length).toBe(nodeCountBefore + 1)
     })
 
-    test('applyToCurrentGraph 校验失败时同步失败结果且不改动图', () => {
+    test('commitToCurrentGraph 校验失败时同步失败结果且不改动图', () => {
         const nodeCountBefore = store.graphView!.nodes.length
 
         const validation = operations.commitToCurrentGraph([{
@@ -102,7 +102,7 @@ describe('useGraphOperationAdapter', () => {
         })
     })
 
-    test('无当前图时 applyToCurrentGraph 防御性返回失败结果', () => {
+    test('无当前图时 commitToCurrentGraph 防御性返回失败结果', () => {
         // store 无公开卸载入口，直接置空 graphView 模拟无图状态
         store.graphView = null
 
@@ -111,7 +111,7 @@ describe('useGraphOperationAdapter', () => {
         expect(validation.valid).toBe(false)
     })
 
-    test('applyToCurrentGraph 经 commitBatchToGraphs 提交（不再经单图包装）', () => {
+    test('commitToCurrentGraph 经 commitBatchToGraphs 提交（不再经单图包装）', () => {
         const spy = vi.spyOn(store, 'commitBatchToGraphs')
 
         const validation = operations.commitToCurrentGraph([{

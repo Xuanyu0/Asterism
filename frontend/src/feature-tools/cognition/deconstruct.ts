@@ -49,12 +49,12 @@ export function useDeconstructTool(): ToolHandler {
     /**
      * 功能：
      *
-     *     处理节点点击——执行解构操作（compose → 校验 → applyToCurrentGraph → 自取消）。
+     *     处理节点点击——执行解构操作（compose → 校验 → commitToCurrentGraph → 自取消）。
      *
      * 规则：
      *
      *     1. 委托引擎 composeDeconstruct 产出 operations。
-     *     2. 经适配层 applyToCurrentGraph 统一提交到 graphView。
+     *     2. 经适配层 commitToCurrentGraph 统一提交到 graphView。
      *     3. 操作完成后自动调用 mediator.deactivate() 取消自身。
      */
     function onNodeClick(nodeId: string): void {

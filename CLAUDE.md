@@ -17,7 +17,9 @@
   - 负责：定义类型、validate / execute / compose / replay
   - 不负责：I/O、持久化、持有状态
   - 与框架无关
-- **Runtime 层**：位于前端的 GraphData 状态所有者，负责持有运行时状态（currentGraph / undoStack / registry）、编排引擎操作（调 Engine → 后处理）、实现持久化 I/O。Runtime 不负责 UI 渲染和纯函数转换，一定是框架绑定的（当前为 Pinia + Vue）
+- **Runtime 层**：位于前端的 GraphData 状态所有者，负责持有运行时状态、编排引擎操作（调 Engine → 后处理）、实现持久化 I/O。Runtime 不负责 UI 渲染和纯函数转换，一定是框架绑定的（当前为 Pinia + Vue）。Runtime 层内部再分两层：
+  - **graph_store.ts（数据核心）**：内部的函数满足**Graph.vue 调用 ∨ 唯一图数据修改入口 ∨ 唯一图数据回溯入口**。
+  - **adapters/（业务适配层）**：图数据业务逻辑的封装，经 store 公开状态访问共享运行时数据，不持有状态本身。依赖方向：业务 → 适配层 → store（单向）
 - **Cytoscape 渲染/交互层**：GraphData 的只读映射/拷贝。接收 GraphData 渲染到画布，捕获交互事件后经交互逻辑层（feature-tools/）回流至 Runtime。禁止持有 GraphData 引用、禁止保存业务状态、禁止直接修改 GraphData
 - **工具**：前端页面中用户主动激活的状态。在此状态下，用户的画布交互（点击、拖拽）被解释为该工具特有的语义，并最终转化为对 GraphData 的修改。工具不直接操作 GraphData，通过 Runtime 层写入。目前按交互入口分为两类：
   - 常驻操作栏工具：通过工具栏按钮激活，生命周期由 `feature-tools/mediator.ts` 管理
@@ -30,7 +32,7 @@
     - 事件捕获与转发：`cytoscape/cy_interaction.ts`（Cytoscape 事件 → 语义事件）→ `feature-tools/mediator.ts`（转发至活跃 handler）
   - 垂直自包含（每个工具独立）：
     - 工具逻辑 + 中间变量：每个工具拥有自己的激活状态、光标样式、画布点击处理、操作构造
-    - 数据修改：委托 Runtime 层 `graphStore.commitBatchToGraph`
+    - 数据修改：经工具层适配 `useGraphOperationAdapter.commitToCurrentGraph` 委托 Runtime（提交 + 校验同步）
   - 不负责：GraphData 存储、持久化、UI 模式切换
 
 ## 测试命令
@@ -111,12 +113,15 @@ Cytoscape Renderer
     ↓  用户确认后，执行数据写入操作
 Runtime / UI 状态层 (graph/ + ui/)
     ├── graph_store.ts     — 【GraphData 唯一事实源 + 所有修改的唯一合法入口】
-    │                        commitBatchToGraph(单图) / commitBatchToGraphs(跨图批量) / undo / redo / loadGraphToView
+    │                        状态：graphView / graphPath / graphRegistry / undoStack / lastValidationResult / lastSaveTime
+    │                        底层能力（Graph.vue 调用）：loadGraphToView / initRegistry / createRootGraph / clearValidationResult
+    │                        在前端的唯一入口：commitBatchToGraphs（数据修改）/ undo（回溯）
+    ├── adapters/          — 图数据适配层（graph 域业务逻辑，经 store 公开状态访问共享运行时数据）
+    │    ├── useNavigationAdapter.ts    — 导航卡片业务适配：breadcrumb 派生 / goToGraph / listRootGraphInfos / deleteRootGraphTree / getGraphById
+    │    └── useGraphOperationAdapter.ts — 工具层业务适配：commitToCurrentGraph（提交+校验同步）/ makeLookup（跨图查询）
+    ├── utils/             — 公共工具函数（无状态纯函数）
     ├── graph_registry.ts  — 多图注册表（Map：GraphId → GraphData）
     ├── graph_persistence.ts — localStorage 持久化实现
-    ├── issue_mapper.ts    — ComposeIssue → ValidationIssue 类型边界适配
-    ├── node_radius.ts     — 节点外接圆半径计算（碰撞 / 预览共享）
-    ├── composables/useCanvasFocus.ts — 画布视口定位请求单例（一次性 UI 意图，不保存 GraphData）
     └── operation_controller.ts — 认知/布局操作编排【历史遗留：待迁移至 feature-tools/】
     ↓  委托纯函数
 GraphEngine (@my-project/graph-engine) — 框架无关；广义 GraphData 唯一转换入口；无副作用
@@ -145,7 +150,9 @@ Cytoscape Renderer
 
 | Store | 职责 | 禁止 |
 |-------|------|------|
-| graph_store | GraphData 唯一事实源，当前图 / undoStack / registry 状态持有者 | Draft/Cytoscape 禁止进入 |
+| graph_store | GraphData 唯一事实源 + 共享运行时状态 + 底层能力 + 唯一入口 | Draft/Cytoscape 禁止进入 |
+
+> 图数据业务逻辑（导航 / 工具提交 / 查询包装）在 `graph/adapters/` 两个适配层，不进入 store。
 
 ## 开发策略
 
@@ -295,8 +302,8 @@ JSDoc 基础模板：
 ### GraphData 唯一事实源（项目基石）
 
 GraphData 是唯一事实源。修改 GraphData 的两条合法路径：
-1. **原子操作**：`graphStore.applyBatch([operation])`（单个 add/delete/update/move/fold/expand 包装为单元素数组）
-2. **编排操作**：Engine compose 函数返回新 GraphData → `graphStore.currentGraph = ...`（deconstruct / induce / internalize / diverge 等认知和布局操作）
+1. **原子操作**：经工具层适配 `useGraphOperationAdapter.commitToCurrentGraph(operations)` 提交（内部由 `commitBatchToGraphs` 执行，单个 add/delete/update/move/fold/expand 包装为数组）
+2. **编排操作**：Engine compose 函数产出 operations → 经 `commitToCurrentGraph` 提交（deconstruct / induce / internalize / diverge 等认知和布局操作）
 
 ### Import 组织规范
 
