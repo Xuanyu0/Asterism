@@ -206,16 +206,18 @@ describe('持久化', () => {
         saveGraph(golden)
 
         const loaded = loadGraph(golden.id)
-        expect(loaded).not.toBeNull()
-        expect(loaded!.nodes.length).toBe(6)
+        expect(loaded.ok).toBe(true)
+        if (loaded.ok) {
+            expect(loaded.graph.nodes.length).toBe(6)
+        }
     })
 
-    test('delete → load 返回 null', () => {
+    test('delete → load 返回 missing', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
         deleteGraph(golden.id)
         const loaded = loadGraph(golden.id)
-        expect(loaded).toBeNull()
+        expect(loaded).toEqual({ ok: false, reason: 'missing' })
     })
 
     test('listRootGraphIds 包含金牌图 ID', () => {

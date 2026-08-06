@@ -39,10 +39,10 @@ export function isInRootTree(graph: GraphData, rootId: GraphId): boolean {
         if (visited.has(current.parentGraphId)) return false  // 环检测
         visited.add(current.parentGraphId)
 
-        const parent = loadGraph(current.parentGraphId)
-        if (!parent) return false
+        const result = loadGraph(current.parentGraphId)
+        if (!result.ok) return false
 
-        current = parent
+        current = result.graph
     }
     return false  // 抵达某根图（parentGraphId === undefined），但不是我们的根图
 }

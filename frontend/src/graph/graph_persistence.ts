@@ -53,29 +53,39 @@ export function saveGraph(graph: GraphData): void {
 }
 
 /**
+ * 说明：
+ *
+ *     loadGraph 的返回判别联合，使"图不存在"（正常状态）与"图损坏"（系统异常）在信号层面可区分。
+ */
+export type LoadGraphResult =
+    | { ok: true; graph: GraphData }
+    | { ok: false; reason: 'missing' | 'corrupted' }
+
+/**
  * 功能：
  *
  *     根据 GraphId 从浏览器 localStorage 读取一个 GraphData。
  *
  * 规则：
  *
- *     1. 如果找不到对应 GraphData，返回 null。
- *     2. 如果 localStorage 中的数据不是合法 JSON，返回 null。
- *     3. 本函数只负责反序列化，不负责完整图校验。
- *     4. 读取后是否接受该图，应该由调用方决定。
+ *     1. key 不存在（missing）→ `{ ok: false, reason: 'missing' }`。
+ *     2. localStorage 中的数据不是合法 JSON（corrupted，JSON.parse 抛异常）→ `{ ok: false, reason: 'corrupted' }`。
+ *     3. 反序列化成功 → `{ ok: true, graph }`。
+ *     4. 本函数只负责反序列化，不负责完整图校验。
+ *     5. 读取后是否接受该图，应该由调用方决定。
  */
-export function loadGraph(graphId: GraphId): GraphData | null {
+export function loadGraph(graphId: GraphId): LoadGraphResult {
     const storageKey = createGraphStorageKey(graphId)
     const serializedGraph = localStorage.getItem(storageKey)
 
     if (!serializedGraph) {
-        return null
+        return { ok: false, reason: 'missing' }
     }
 
     try {
-        return JSON.parse(serializedGraph) as GraphData
+        return { ok: true, graph: JSON.parse(serializedGraph) as GraphData }
     } catch {
-        return null
+        return { ok: false, reason: 'corrupted' }
     }
 }
 
@@ -149,8 +159,8 @@ export function listRootGraphIds(): GraphId[] {
     const rootIds: GraphId[] = []
 
     for (const id of allIds) {
-        const graph = loadGraph(id)
-        if (graph && graph.kind === 'root') {
+        const result = loadGraph(id)
+        if (result.ok && result.graph.kind === 'root') {
             rootIds.push(id)
         }
     }
@@ -219,7 +229,9 @@ export function clearLastActiveRootId(): void {
  */
 export const localStorageAdapter: PersistenceAdapter = {
     async load(graphId: GraphId): Promise<GraphData | null> {
-        return loadGraph(graphId)
+        // 引擎 PersistenceAdapter 契约保持 GraphData | null，此处桥接判别联合为 null 语义。
+        const result = loadGraph(graphId)
+        return result.ok ? result.graph : null
     },
 
     async save(graph: GraphData): Promise<void> {
@@ -235,6 +247,7 @@ export const localStorageAdapter: PersistenceAdapter = {
 
         return ids
             .map(id => loadGraph(id))
-            .filter((graph): graph is GraphData => graph !== null)
+            .filter((result): result is LoadGraphResult & { ok: true } => result.ok)
+            .map(result => result.graph)
     },
 }

@@ -183,8 +183,9 @@ function createNavigationAdapter(): NavigationAdapterAPI {
         const infos: RootGraphInfo[] = []
 
         for (const graphId of listRootGraphIds()) {
-            const graph = loadGraph(graphId)
-            if (!graph) continue
+            const result = loadGraph(graphId)
+            if (!result.ok) continue
+            const graph = result.graph
             infos.push({ id: graph.id, title: graph.title, updatedAt: graph.updatedAt })
         }
 
@@ -212,8 +213,8 @@ function createNavigationAdapter(): NavigationAdapterAPI {
                 continue
             }
 
-            const graph = loadGraph(graphId)
-            if (!graph || !isInRootTree(graph, rootId)) continue
+            const result = loadGraph(graphId)
+            if (!result.ok || !isInRootTree(result.graph, rootId)) continue
 
             treeIds.push(graphId)
         }

@@ -156,7 +156,7 @@ describe('useNavigationAdapter', () => {
         navigation.deleteRootGraphTree(rootId)
 
         expect(navigation.listRootGraphInfos().some(info => info.id === rootId)).toBe(false)
-        expect(loadGraph('sub-todelete' as GraphId)).toBeNull()
+        expect(loadGraph('sub-todelete' as GraphId)).toEqual({ ok: false, reason: 'missing' })
     })
 
     test('deleteRootGraphTree 防御：当前视图所在根图不可删除', () => {

@@ -12,11 +12,11 @@
  * TODO：
  *
  *     本文件保留函数的部分错误路径静默返回（跳过 / 拒绝 / 中断），依赖调用方前置条件正确：
- *     如 initRegistry 静默返回、loadGraphToView 的祖先链断裂仅写告警。迁移至 graph/adapters
- *     的 listRootGraphInfos / deleteRootGraphTree 同样沿用静默风格（静默跳过加载失败的图 /
- *     静默拒绝删除活跃根图）。只有 loadGraphToView 与 commitBatchToGraphs 有显式错误出口。
+ *     如 initRegistry 对 missing 静默返回、buildGraphPath 防御中断仅走开发者通道记录
+ *     （console.warn，用户默认不可见）。迁移至 graph/adapters 的 listRootGraphInfos /
+ *     deleteRootGraphTree 同样沿用静默风格（静默跳过加载失败的图 / 静默拒绝删除活跃根图）。
  *     调用方又以兜底逻辑掩盖空状态，导致持久化数据损坏在用户层面不可见。需统一错误处理
- *     策略（显式返回状态或写入 lastValidationResult），待行为设计确定后处理。
+ *     策略，待行为设计确定后处理。
  */
 
 import { defineStore } from 'pinia'
@@ -55,7 +55,7 @@ export const useGraphStore = defineStore('graph_store', () => {
 
     const lastSaveTime = ref<number | null>(null)
     const lastValidationResult = ref<ValidationResult | null>(null)
-    
+
     /**
      * 说明：
      *
@@ -65,23 +65,24 @@ export const useGraphStore = defineStore('graph_store', () => {
      *
      *     1. 本函数不负责完整图校验。
      *     2. 切换成功即清空撤销栈。
+     *
+     * 错误出口：
+     *
+     *     1. missing（图不存在）→ 静默返回 false，不写任何状态（正常状态，UI 兜底逻辑不变）。
+     *     2. corrupted（图损坏）→ 走开发者通道（console.warn）后返回 false，不写 lastValidationResult。
+     *     3. 祖先链断裂 / 环 → 由 buildGraphPath 回溯时走开发者通道（console.warn），图本身加载成功返回 true。
      */
     function loadGraphToView(graphId: GraphId): boolean {
-        const graph = loadGraph(graphId)
+        const result = loadGraph(graphId)
 
-        if (!graph) {
-            lastValidationResult.value = {
-                valid: false,
-                issues: [{
-                    severity: 'error',
-                    code: 'LOAD_FAILED',
-                    message: `图谱 "${graphId}" 加载失败`,
-                    targetType: 'graph',
-                    targetId: graphId,
-                }],
+        if (!result.ok) {
+            // missing（图不存在）为正常状态，静默；corrupted（图损坏）为系统异常，入开发者通道
+            if (result.reason === 'corrupted') {
+                reportCorruptedGraph(graphId)
             }
             return false
         }
+        const graph = result.graph
 
         // 切换图谱：旧图的校验结果（错误提示）与撤销历史不再适用于新视图，一并清空
         graphView.value = ensureDefaultCognitiveState(graph)
@@ -94,20 +95,8 @@ export const useGraphStore = defineStore('graph_store', () => {
         const { path, terminal } = buildGraphPath(graph)
         graphPath.value = path
 
-        // 祖先链断裂检测
-        if (terminal.parentGraphId) {
-            lastValidationResult.value = {
-                valid: true,
-                issues: [{
-                    severity: 'warning',
-                    code: 'ANCESTOR_CHAIN_BROKEN',
-                    message: `图谱 "${graphId}" 的父链在 "${terminal.id}" 处中断：祖先图谱 "${terminal.parentGraphId}" 不可达`,
-                    targetType: 'graph',
-                    targetId: terminal.parentGraphId,
-                }],
-            }
-        }
-
+        // 祖先链断裂 / 环的检测与开发者通道记录在 buildGraphPath 回溯过程中完成，
+        // 此处不再重复报告（否则同一异常会产出两条相同 console.warn）
         // 记录最后活跃的根图 ID：下次启动时 initRegistry 据此恢复工作根图树
         if (terminal.kind === 'root') {
             saveLastActiveRootId(terminal.id)
@@ -130,27 +119,39 @@ export const useGraphStore = defineStore('graph_store', () => {
      *
      * TODO：
      *
-     *     历史根图损坏（loadGraph 失败 / kind 非 root）与"无历史根图"均静默返回，
-     *     调用方无法区分"首次使用"与"持久化数据损坏"，后者会在下游兜底逻辑中
-     *     被当作首次使用掩盖。需为异常路径增加可见性（写 lastValidationResult
-     *     或返回状态），待行为设计确定后处理。
+     *     历史根图 corrupted 已入开发者通道（console.warn）可区分"首次使用"与"数据损坏"；
+     *     kind 非 root 时仍静默返回，与"无历史根图"无法区分。需为异常路径增加可见性，
+     *     待行为设计确定后处理。
      */
     function initRegistry(): void {
         const lastRootId = loadLastActiveRootId()
         if (!lastRootId) return
 
-        const rootGraph = loadGraph(lastRootId)
-        if (!rootGraph || rootGraph.kind !== 'root') return
-        registerGraph(graphRegistry.value, rootGraph)
+        const rootResult = loadGraph(lastRootId)
+        if (!rootResult.ok) {
+            // missing（历史根图已删）与"无历史根图"同属正常状态，静默；corrupted（数据损坏）入开发者通道，
+            // 使"首次使用"与"持久化数据损坏"可在开发者通道区分
+            if (rootResult.reason === 'corrupted') {
+                reportCorruptedGraph(lastRootId)
+            }
+            return
+        }
+        if (rootResult.graph.kind !== 'root') return
+        registerGraph(graphRegistry.value, rootResult.graph)
 
         // 预加载当前根图树的所有子图
         const allIds = listSavedGraphIds()
         for (const graphId of allIds) {
             if (graphId === lastRootId || hasGraph(graphRegistry.value, graphId)) continue
-            const graph = loadGraph(graphId)
-            if (!graph) continue
-            if (!isInRootTree(graph, lastRootId)) continue
-            registerGraph(graphRegistry.value, graph)
+            const result = loadGraph(graphId)
+            if (!result.ok) {
+                if (result.reason === 'corrupted') {
+                    reportCorruptedGraph(graphId)
+                }
+                continue
+            }
+            if (!isInRootTree(result.graph, lastRootId)) continue
+            registerGraph(graphRegistry.value, result.graph)
         }
     }
 
@@ -175,7 +176,7 @@ export const useGraphStore = defineStore('graph_store', () => {
         const id = opts?.id ?? generateGraphId()
 
         // 幂等：若指定了 ID 且图已存在，直接返回，不覆盖
-        if (opts?.id && loadGraph(opts.id)) {
+        if (opts?.id && loadGraph(opts.id).ok) {
             return id
         }
 
@@ -203,7 +204,7 @@ export const useGraphStore = defineStore('graph_store', () => {
     function clearValidationResult() {
         lastValidationResult.value = null
     }
-    
+
     /**
      * 说明：
      *
@@ -234,15 +235,7 @@ export const useGraphStore = defineStore('graph_store', () => {
     function commitBatchToGraphs(
         operationBatch: { graph: GraphData; operations: GraphOperation[] }[],
     ): { validation: ValidationResult } {
-
-        // TODO：空批守卫为冗余分支——删除后空批走正常路径产出完全相同
-        // （所有循环对空输入天然安全，尾部 validation 同样为 { valid: true, issues: [] }）。
-        // 待确认无依赖后移除。
-        if (operationBatch.length === 0) {
-            const emptyValidation: ValidationResult = { valid: true, issues: [] }
-            lastValidationResult.value = emptyValidation
-            return { validation: emptyValidation }
-        }
+        // 无需空批守卫
 
         // 第一阶段：按顺序执行所有项，用 latestGraphs 跟踪同一图的中间状态
         const latestGraphs = new Map<GraphId, GraphData>()
@@ -373,12 +366,17 @@ export const useGraphStore = defineStore('graph_store', () => {
     /**
      * 说明：
      *
-     *     沿 parentGraphId 回溯构建从给定图到根图的完整路径（根→叶），
-     *     返回末端图（根图或链断裂处）供调用方做断链检测。
+     *     沿 parentGraphId 链回溯，为任意图构建从根图到该图的完整路径（根→叶）。
+     *     回溯途中：祖先图不在 registry 时由 findParentGraph 惰性加载并注册
+     *     （保证后续引用一致）；链完整性异常（环 / 父图缺失）就地写入开发者
+     *     通道记录，并在断裂处停止回溯。
      *
      * 调用契约：
      *
-     *     祖先图不在 registry 时从持久化惰性加载并注册。
+     *     1. 输入图需在 registry 或持久化中可达（祖先链可回溯）。
+     *     2. 假定图链为树结构（单亲、无环）——环检测防御该假设被破坏。
+     *     3. 返回 terminal：链末端图（根图或断裂处），调用方据此判断是否到达根。
+     *     4. 环 / 父缺失的 console.warn 记录在回溯处就地完成，调用方无需重复报告。
      */
     function buildGraphPath(graph: GraphData): { path: GraphId[]; terminal: GraphData } {
         const path: GraphId[] = [graph.id]
@@ -387,22 +385,18 @@ export const useGraphStore = defineStore('graph_store', () => {
         while (currentGraph.parentGraphId) {
             const parentId = currentGraph.parentGraphId
 
-            // 环检测：防止异常数据导致无限循环
+            // 环检测：链应构成森林（无环），异常数据成环时防止无限循环
             if (visited.has(parentId)) {
+                reportCycleDetected(parentId)
                 break
             }
             visited.add(parentId)
 
-            const parentInRegistry = lookupGraph(graphRegistry.value, parentId)
-            const parent = parentInRegistry ?? loadGraph(parentId)
-
+            // 父图缺失（registry 与持久化均不可达）：链在此中断，terminal 停在断裂处
+            const parent = findParentGraph(graphRegistry.value, parentId)
             if (!parent) {
+                reportBrokenAncestorChain(graph.id, currentGraph.id, parentId)
                 break
-            }
-
-            // 祖先图不在 registry 中时加载并注册
-            if (!parentInRegistry) {
-                registerGraph(graphRegistry.value, parent)
             }
 
             path.unshift(parentId)
@@ -425,12 +419,92 @@ export const useGraphStore = defineStore('graph_store', () => {
         loadGraphToView,
         initRegistry,
         createRootGraph,
-        
+
         // 内部行为
         clearValidationResult,
-        
+
         // 功能行为
         commitBatchToGraphs,
         undo,
     }
 })
+
+// ── 私有辅助（图查找） ──
+
+/**
+ * 说明：
+ *
+ *     查找父图：优先取 registry 中的运行时引用（避免反序列化新对象、保持引用一致），
+ *     未命中则从持久化惰性加载并注册（保证后续回溯与导航引用同一对象）。
+ *
+ * 参数：
+ *
+ *     registry — 图注册表
+ *     parentId — 父图 ID
+ *
+ * 返回：
+ *
+ *     父图 GraphData；registry 与持久化均不可达时返回 undefined，调用方据此判定链断裂。
+ */
+function findParentGraph(registry: GraphRegistry, parentId: GraphId): GraphData | undefined {
+    const inRegistry = lookupGraph(registry, parentId)
+    if (inRegistry) return inRegistry
+
+    const result = loadGraph(parentId)
+    if (result.ok) {
+        registerGraph(registry, result.graph)
+        return result.graph
+    }
+
+    return undefined
+}
+
+// ── 私有辅助（开发者通道报告） ──
+
+/**
+ * 说明：
+ *
+ *     开发者通道统一前缀。所有数据完整性异常报告以此开头，便于在 console 中过滤检索。
+ */
+const DATA_INTEGRITY_PREFIX = '[data-integrity]'
+
+/**
+ * 说明：
+ *
+ *     数据损坏报告（开发者通道）。持久化图谱 JSON 反序列化失败（corrupted）时调用。
+ *
+ * 参数：
+ *
+ *     graphId — 损坏图谱的 ID（报告中的 targetId）
+ */
+function reportCorruptedGraph(graphId: GraphId): void {
+    console.warn(`${DATA_INTEGRITY_PREFIX} [CORRUPTED_GRAPH] 图谱 "${graphId}" 持久化数据损坏（JSON 解析失败），已跳过加载`)
+}
+
+/**
+ * 说明：
+ *
+ *     祖先链断裂报告（开发者通道）。沿 parentGraphId 回溯时父图不可达（缺失或损坏）时调用。
+ *
+ * 参数：
+ *
+ *     graphId          — 发起回溯的图 ID
+ *     terminalId       — 链断裂处（最后成功回溯到的图 ID）
+ *     missingParentId  — 缺失的父图 ID
+ */
+function reportBrokenAncestorChain(graphId: GraphId, terminalId: GraphId, missingParentId: GraphId): void {
+    console.warn(`${DATA_INTEGRITY_PREFIX} [ANCESTOR_CHAIN_BROKEN] 图谱 "${graphId}" 的父链在 "${terminalId}" 处中断：祖先图谱 "${missingParentId}" 不可达`)
+}
+
+/**
+ * 说明：
+ *
+ *     环检测报告（开发者通道）。parentGraphId 链检测到环、回溯被迫中断时调用。
+ *
+ * 参数：
+ *
+ *     parentId — 导致回退的重复父图 ID（环的入口）
+ */
+function reportCycleDetected(parentId: GraphId): void {
+    console.warn(`${DATA_INTEGRITY_PREFIX} [CYCLE_DETECTED] parentGraphId 链检测到环：图谱 "${parentId}" 被重复访问，已中断回溯`)
+}

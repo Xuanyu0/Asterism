@@ -179,7 +179,7 @@ export function createGoldenTestGraphV2(graphId?: GraphId): GraphData {
     const gId = graphId ?? ('graph-golden' as GraphId)
 
     // 确保银牌测试图已存在（金牌引用节点指向它）
-    if (!loadGraph('graph-silver' as GraphId)) {
+    if (!loadGraph('graph-silver' as GraphId).ok) {
         const silverGraph = createSilverTestGraph()
         saveGraph(silverGraph)
     }
