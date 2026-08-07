@@ -77,6 +77,11 @@ pnpm --filter @my-project/graph-engine test
 ### 开发环境
 - WSL Ubuntu + VSCode
 
+### MVP 阶段暂不启动
+
+- FastAPI 后端
+- Supabase 集成
+
 ## 核心原则（必须遵守）
 
 1. **GraphData 是唯一事实源（Single Source of Truth）**
@@ -87,7 +92,7 @@ pnpm --filter @my-project/graph-engine test
    - 必要时的替代方案：去掉 `deep`，或窄化到具体叶子属性：`watch(() => store.x.y, cb)`
    - 理由：有经过测试的未知非预期行为
 
-## 架构分层（严格单向数据流）
+## 项目架构（严格单向数据流）
 
 ```
 用户交互 (DOM)
@@ -162,45 +167,19 @@ Cytoscape Renderer
 
 **Graph Engine 是整个项目的底层核心系统**，已作为独立、框架无关的 `@my-project/graph-engine` 包实现。前端通过 `graph_store.ts` 直接调用引擎 API（`applyBatch` / compose 函数）。
 
-### MVP 阶段暂不启动
-
-- FastAPI 后端
-- Supabase 集成
-
 ## 项目演进
-
-项目演进通过 git tag 记录里程碑（semver，`v` 前缀）。此处只锚定当前版本，不维护历史列表——历史以 git 为准。
 
 **当前版本 tag**：`v0.1.0`
 
-查看项目演进的 git 指令：
-
-```bash
-# 带里程碑标注的提交历史
-git log --oneline --decorate -30
-
-# 查看某个里程碑的发布说明（annotated tag 的消息）
-git show <tag>
-
-# 从某里程碑到现在的全部变更
-git log --oneline <tag>..HEAD
-```
-
-设计与历史细节见 `docs/开发文档/` 各阶段文档。
+开发的历史细节见 `docs/开发文档/` 各阶段文档。
 
 ## 设计文档
 
-- 完整设计文档：`docs/设计/`
+- 完整的功能设计文档见：`docs/设计/`
 
 ---
 
 ## 代码规范
-
-### 总体原则
-
-代码服务于 **Runtime 规则表达**，而不是实现细节表达。优先描述"这个对象是什么 / 承担什么职责 / 遵守什么规则"，而不是"这行代码在干什么"。
-
-核心：**注释解释规则，代码表达实现。**
 
 ### 变量命名规则
 
@@ -228,7 +207,6 @@ git log --oneline <tag>..HEAD
 
 ### 注释规范
 
-* 目前项目大部分注释都过时了（慢慢改吧）
 * 项目里注释规范的落实文件可以参考并学习：`frontend/src/graph/graph_store.ts` 和 `frontend/src/cytoscape/useRenderer.ts`
 
 #### 写注释的核心前提
@@ -299,16 +277,6 @@ JSDoc 基础模板：
  */
 ```
 
-#### 注释规则推荐
-
-1. **非直觉实现**。代码逻辑正确但为什么这样写不是一眼能看懂的。
-
-### GraphData 唯一事实源（项目基石）
-
-GraphData 是唯一事实源。修改 GraphData 的两条合法路径：
-1. **原子操作**：经工具层适配 `useGraphOperationAdapter.commitToCurrentGraph(operations)` 提交（内部由 `commitBatchToGraphs` 执行，单个 add/delete/update/move/fold/expand 包装为数组）
-2. **编排操作**：Engine compose 函数产出 operations → 经 `commitToCurrentGraph` 提交（deconstruct / induce / internalize / diverge 等认知和布局操作）
-
 ### Import 组织规范
 
 强制分组 + 空行分隔
@@ -341,19 +309,9 @@ function helperB() { ... }
 
 ### Vue 模板语法规范
 
-**禁止缩写**。Vue 模板中所有指令必须使用完整形式，不准使用缩写：
+**禁止缩写**。Vue 模板中所有指令必须使用完整形式，不准使用@或者:缩写：
 
-| 缩写 | 禁止 | 必须 |
-|------|------|------|
-| `@click` | ❌ | `v-on:click` |
-| `@input` | ❌ | `v-on:input` |
-| `@contextmenu.prevent` | ❌ | `v-on:contextmenu.prevent` |
-| `:key` | ❌ | `v-bind:key` |
-| `:class` | ❌ | `v-bind:class` |
-| `:title` | ❌ | `v-bind:title` |
-| `:value` | ❌ | `v-bind:value` |
-
-### 设计决策权限
+## 设计决策权限
 
 | 行为 | 允许 | 禁止 |
 |------|------|------|
@@ -369,7 +327,7 @@ function helperB() { ... }
 3. **代码按现有规范自由修改**，无需额外确认。
 4. 此规则旨在确保用户（而非 AI）是设计文档的唯一作者——AI 的产出进入对话和代码，不进设计文档。
 
-### 文档层级与冲突处理
+## 文档层级与冲突处理
 
 `docs/` 下三个子目录存在严格的权威层级：
 
