@@ -4,7 +4,6 @@
  * Path 布局测试。直线排列 + 碰撞检测触发 + 无边 error。
  */
 
-import { describe, it, expect } from 'vitest'
 import type { GraphId, NodeId, NodeRadiusMap } from '../../../src/types/graph_data'
 import { pathLayout } from '../../../src/compose/arrangement/path'
 import { createNode, createEdge, assembleGraph } from '../../test_case_factory'
@@ -13,7 +12,7 @@ const G = 'test-path' as GraphId
 const R = new Map() as NodeRadiusMap
 
 describe('pathLayout', () => {
-    it('直线排列', () => {
+    test('直线排列', () => {
         const axis = createNode({ id: 'axis' as NodeId, graphId: G, position: { x: 0, y: 0 } })
         const p1 = createNode({ id: 'p1' as NodeId, graphId: G, position: { x: 100, y: 0 } })
         const p2 = createNode({ id: 'p2' as NodeId, graphId: G, position: { x: 200, y: 0 } })
@@ -35,7 +34,7 @@ describe('pathLayout', () => {
         expect(result.operations).toHaveLength(2)
     })
 
-    it('无边 error', () => {
+    test('无边 error', () => {
         const axis = createNode({ id: 'axis' as NodeId, graphId: G, position: { x: 0, y: 0 } })
         const p1 = createNode({ id: 'p1' as NodeId, graphId: G, position: { x: 100, y: 0 } })
         const graph = assembleGraph({ id: G, nodes: [axis, p1], edges: [] })

@@ -16,7 +16,7 @@
  *     import { generateNodeId } from '@my-project/graph-engine'
  */
 
-import type { NodeId, EdgeId, GraphId } from '../types/graph_data'
+import type { NodeId, EdgeId, GraphId } from '../../types/graph_data'
 
 export function generateNodeId(): NodeId {
     return crypto.randomUUID() as NodeId

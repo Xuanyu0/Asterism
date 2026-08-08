@@ -24,9 +24,62 @@
 import type { GraphData, NodeData, EdgeData, NodeId } from '../types/graph_data'
 import type { GraphOperation } from '../types/atomic_operations'
 import type { ValidationIssue, ValidationResult } from '../types/validation'
-import { collectDependencyNodeIds } from './traversal'
+import { collectDependencyNodeIds } from './utils/traversal'
 import { DEFAULT_GRAPH_RULES } from './validators/thresholds'
 import { hasCollisionAt } from '../infrastructure/collision'
+
+/**
+ * 功能：
+ *
+ *     校验单步 GraphOperation 的前提条件是否满足。
+ *
+ * 规则：
+ *
+ *     1. 只校验局部前提条件。
+ *     2. GraphData 不变量由 applyBatch Phase 3 统一校验。
+ *
+ * 使用：
+ *
+ *     applyBatch 内部 Phase 1 调用。
+ */
+export function validateOperation(graph: GraphData, operation: GraphOperation): ValidationResult {
+    switch (operation.type) {
+        case 'add_node':
+            return validateAddNode(graph, operation)
+
+        case 'add_edge':
+            return validateAddEdge(graph, operation)
+
+        case 'delete_node':
+            return validateDeleteNode(graph, operation)
+
+        case 'delete_edge':
+            return validateDeleteEdge(graph, operation)
+
+        case 'update_node':
+            return validateUpdateNode(graph, operation)
+
+        case 'update_edge':
+            return validateUpdateEdge(graph, operation)
+
+        case 'move_node':
+            return validateMoveNode(graph, operation)
+
+        case 'collapse_dependency':
+            return validateCollapseDependency(graph, operation)
+
+        case 'expand_dependency':
+            return validateExpandDependency(graph, operation)
+
+        case 'add_graph':
+        case 'delete_graph':
+            return createResult([])
+
+        default:
+            return createResult([])
+    }
+}
+
 
 // ═══════════ 工具函数 ═══════════
 
@@ -196,9 +249,14 @@ function validateMoveNode(graph: GraphData, operation: { type: 'move_node'; node
     return createResult(issues)
 }
 
-function validateCollapseDependency(graph: GraphData, operation: { type: 'collapse_dependency'; targetNodeId: NodeId }): ValidationResult {
+function validateCollapseDependency(
+    graph: GraphData,
+    operation: { type: 'collapse_dependency'; targetNodeId: NodeId; foldedNodeIds?: NodeId[] },
+): ValidationResult {
     const issues: ValidationIssue[] = []
-    const dependencyNodeIds = collectDependencyNodeIds(graph, operation.targetNodeId)
+    // 显式折叠成员（undo 逆元路径）：成员来自操作前快照，必然非空，
+    // 依赖拓扑重算无意义且可能误报（如折叠后依赖边被删，undo 重算为空）——跳过依赖拓扑类检查。
+    const hasExplicitMembers = operation.foldedNodeIds !== undefined
 
     if (!hasNode(graph, operation.targetNodeId)) {
         issues.push({
@@ -210,24 +268,28 @@ function validateCollapseDependency(graph: GraphData, operation: { type: 'collap
         })
     }
 
-    if (dependencyNodeIds.length === 0) {
-        issues.push({
-            severity: 'error',
-            code: 'NO_DEPENDENCY_TO_COLLAPSE',
-            message: '目标节点没有可折叠的有向实边前置依赖。',
-            targetType: 'node',
-            targetId: operation.targetNodeId,
-        })
-    }
+    if (!hasExplicitMembers) {
+        const dependencyNodeIds = collectDependencyNodeIds(graph, operation.targetNodeId)
 
-    if (hasUndirectedEdgeInsideNodeSet(graph, [...dependencyNodeIds, operation.targetNodeId])) {
-        issues.push({
-            severity: 'error',
-            code: 'DEPENDENCY_REGION_HAS_UNDIRECTED_EDGE',
-            message: '依赖折叠区域内存在无向边，暂不允许折叠。',
-            targetType: 'node',
-            targetId: operation.targetNodeId,
-        })
+        if (dependencyNodeIds.length === 0) {
+            issues.push({
+                severity: 'error',
+                code: 'NO_DEPENDENCY_TO_COLLAPSE',
+                message: '目标节点没有可折叠的有向实边前置依赖。',
+                targetType: 'node',
+                targetId: operation.targetNodeId,
+            })
+        }
+
+        if (hasUndirectedEdgeInsideNodeSet(graph, [...dependencyNodeIds, operation.targetNodeId])) {
+            issues.push({
+                severity: 'error',
+                code: 'DEPENDENCY_REGION_HAS_UNDIRECTED_EDGE',
+                message: '依赖折叠区域内存在无向边，暂不允许折叠。',
+                targetType: 'node',
+                targetId: operation.targetNodeId,
+            })
+        }
     }
 
     return createResult(issues)
@@ -285,56 +347,3 @@ function hasUndirectedEdgeInsideNodeSet(graph: GraphData, nodeIds: NodeId[]): bo
     )
 }
 
-// ═══════════ 公开 API ═══════════
-
-/**
- * 功能：
- *
- *     校验单步 GraphOperation 的前提条件是否满足。
- *
- * 规则：
- *
- *     1. 只校验局部前提条件。
- *     2. GraphData 不变量由 applyBatch Phase 3 统一校验。
- *
- * 使用：
- *
- *     applyBatch 内部 Phase 1 调用。
- */
-export function validateOperation(graph: GraphData, operation: GraphOperation): ValidationResult {
-    switch (operation.type) {
-        case 'add_node':
-            return validateAddNode(graph, operation)
-
-        case 'add_edge':
-            return validateAddEdge(graph, operation)
-
-        case 'delete_node':
-            return validateDeleteNode(graph, operation)
-
-        case 'delete_edge':
-            return validateDeleteEdge(graph, operation)
-
-        case 'update_node':
-            return validateUpdateNode(graph, operation)
-
-        case 'update_edge':
-            return validateUpdateEdge(graph, operation)
-
-        case 'move_node':
-            return validateMoveNode(graph, operation)
-
-        case 'collapse_dependency':
-            return validateCollapseDependency(graph, operation)
-
-        case 'expand_dependency':
-            return validateExpandDependency(graph, operation)
-
-        case 'add_graph':
-        case 'delete_graph':
-            return createResult([])
-
-        default:
-            return createResult([])
-    }
-}

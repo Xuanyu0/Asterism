@@ -4,7 +4,6 @@
  * 内化操作测试。覆盖原子/抽象/引用/混合四种节点类型。
  */
 
-import { describe, it, expect } from 'vitest'
 import type { GraphId, NodeId } from '../../../src/types/graph_data'
 import { internalize } from '../../../src/compose/cognitive/internalize'
 import { createInternalizeInputGraph, createInternalizeAbstractInputGraph, createCommonLayerGraph, createNode, assembleGraph } from '../../test_case_factory'
@@ -12,7 +11,7 @@ import { createInternalizeInputGraph, createInternalizeAbstractInputGraph, creat
 const R = new Map()
 
 describe('internalize', () => {
-    it('混合输入（知识节点迁移 + 引用节点自动删除）', () => {
+    test('混合输入（知识节点迁移 + 引用节点自动删除）', () => {
         const graph = createInternalizeInputGraph()
         const common = createCommonLayerGraph()
         const result = internalize({
@@ -29,7 +28,7 @@ describe('internalize', () => {
         expect(result.operations.commonLayer.filter(op => op.type === 'add_node').length).toBe(2) // K1, K2
     })
 
-    it('纯引用节点（全部自动删除）', () => {
+    test('纯引用节点（全部自动删除）', () => {
         const graph = assembleGraph({ id: 'test-int-ref' as GraphId, nodes: [
             createNode({ id: 'r1' as NodeId, graphId: 'test-int-ref' as GraphId, role: 'reference', referenceKind: 'heuristic', sourceGraphId: 'g' as GraphId, sourceNodeId: 's' as NodeId }),
             createNode({ id: 'r2' as NodeId, graphId: 'test-int-ref' as GraphId, role: 'reference', referenceKind: 'communication', sourceGraphId: 'g' as GraphId, sourceNodeId: 's2' as NodeId }),
@@ -47,7 +46,7 @@ describe('internalize', () => {
         expect(result.operations.commonLayer.filter(op => op.type === 'add_node')).toHaveLength(0)
     })
 
-    it('抽象节点内化（含子图 DFS）', () => {
+    test('抽象节点内化（含子图 DFS）', () => {
         const graph = createInternalizeAbstractInputGraph()
         const common = createCommonLayerGraph()
         const result = internalize({
@@ -62,7 +61,7 @@ describe('internalize', () => {
         expect(result.issues.some(i => i.severity === 'warning')).toBe(true)
     })
 
-    it('常识层位置散布（scatterInCircle 递增）', () => {
+    test('常识层位置散布（scatterInCircle 递增）', () => {
         const graph = assembleGraph({ id: 'test-int-sct' as GraphId, nodes: [
             createNode({ id: 'k1' as NodeId, graphId: 'test-int-sct' as GraphId }),
             createNode({ id: 'k2' as NodeId, graphId: 'test-int-sct' as GraphId }),

@@ -39,7 +39,7 @@ import type {
     ReferenceNodeKind,
 } from '../src/types/graph_data'
 
-import { ensureDefaultCognitiveState } from '../src/core/normalize'
+import { ensureDefaultCognitiveState } from '../src/core/utils/normalize'
 import { validateGraph } from '../src/core/validators/whole_graph_validator'
 
 // ═══════════ 类型工具 ═══════════

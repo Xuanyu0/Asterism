@@ -6,7 +6,6 @@
  * collapse_dependency / expand_dependency / add_graph / delete_graph。
  */
 
-import { describe, it, expect } from 'vitest'
 import type { GraphData, GraphId, NodeId } from '../../src/types/graph_data'
 import { executeOperation } from '../../src/core/execute'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
@@ -26,7 +25,7 @@ function makeGraph(nodes = 2, edges = 0): GraphData {
 }
 
 describe('execute add_node', () => {
-    it('node 数量 +1', () => {
+    test('node 数量 +1', () => {
         const graph = makeGraph(2)
         const next = executeOperation(graph, {
             type: 'add_node',
@@ -36,7 +35,7 @@ describe('execute add_node', () => {
         expect(next.nodes.some(node => node.id === 'n-new')).toBe(true)
     })
 
-    it('入参不变', () => {
+    test('入参不变', () => {
         const graph = makeGraph(2)
         executeOperation(graph, {
             type: 'add_node',
@@ -47,7 +46,7 @@ describe('execute add_node', () => {
 })
 
 describe('execute add_edge', () => {
-    it('edge 数量 +1，端点 degree +1', () => {
+    test('edge 数量 +1，端点 degree +1', () => {
         const graph = makeGraph(3)
         const next = executeOperation(graph, {
             type: 'add_edge',
@@ -62,14 +61,14 @@ describe('execute add_edge', () => {
 })
 
 describe('execute delete_node', () => {
-    it('node 消失，关联边消失', () => {
+    test('node 消失，关联边消失', () => {
         const graph = makeGraph(3, 2) // e0: n0→n1, e1: n1→n2
         const next = executeOperation(graph, { type: 'delete_node', nodeId: 'n1' as NodeId })
         expect(next.nodes.length).toBe(2)
         expect(next.edges.length).toBe(0) // both edges involved n1
     })
 
-    it('级联删除同图引用节点', () => {
+    test('级联删除同图引用节点', () => {
         const refNode = createNode({
             id: 'ref-0' as NodeId, graphId: G,
             role: 'reference', referenceKind: 'communication',
@@ -82,7 +81,7 @@ describe('execute delete_node', () => {
 })
 
 describe('execute delete_edge', () => {
-    it('edge 消失，端点 degree -1', () => {
+    test('edge 消失，端点 degree -1', () => {
         const graph = makeGraph(2, 1) // e0: n0→n1
         const srcBefore = graph.nodes.find(node => node.id === 'n0')!.degree
         const next = executeOperation(graph, { type: 'delete_edge', edgeId: 'e0' as NodeId })
@@ -92,7 +91,7 @@ describe('execute delete_edge', () => {
 })
 
 describe('execute update_node', () => {
-    it('label 更新', () => {
+    test('label 更新', () => {
         const graph = makeGraph(2)
         const next = executeOperation(graph, {
             type: 'update_node',
@@ -101,7 +100,7 @@ describe('execute update_node', () => {
         expect(next.nodes.find(node => node.id === 'n0')!.label).toBe('updated')
     })
 
-    it('label 穿透到同图引用节点', () => {
+    test('label 穿透到同图引用节点', () => {
         const refNode = createNode({
             id: 'ref-0' as NodeId, graphId: G,
             role: 'reference', referenceKind: 'communication',
@@ -118,7 +117,7 @@ describe('execute update_node', () => {
 })
 
 describe('execute move_node', () => {
-    it('position 变更', () => {
+    test('position 变更', () => {
         const graph = makeGraph(2)
         const next = executeOperation(graph, { type: 'move_node', nodeId: 'n0' as NodeId, position: { x: 100, y: 200 } })
         expect(next.nodes.find(node => node.id === 'n0')!.position).toEqual({ x: 100, y: 200 })
@@ -126,13 +125,13 @@ describe('execute move_node', () => {
 })
 
 describe('execute collapse / expand', () => {
-    it('collapse_dependency 写入 cognitiveState', () => {
+    test('collapse_dependency 写入 cognitiveState', () => {
         const graph = makeGraph(3, 2) // n0→n1→n2
         const next = executeOperation(graph, { type: 'collapse_dependency', targetNodeId: 'n2' as NodeId })
         expect(next.cognitiveState?.foldedDependencies.length).toBeGreaterThan(0)
     })
 
-    it('expand_dependency 清除折叠', () => {
+    test('expand_dependency 清除折叠', () => {
         const graph = makeGraph(3, 2)
         const collapsed = executeOperation(graph, { type: 'collapse_dependency', targetNodeId: 'n2' as NodeId })
         const expanded = executeOperation(collapsed, { type: 'expand_dependency', targetNodeId: 'n2' as NodeId })
@@ -141,7 +140,7 @@ describe('execute collapse / expand', () => {
 })
 
 describe('execute add_graph / delete_graph', () => {
-    it('add_graph 落到 default 分支，返回原图不变', () => {
+    test('add_graph 落到 default 分支，返回原图不变', () => {
         const graph = makeGraph(2)
         const result = executeOperation(graph, {
             type: 'add_graph',
@@ -150,7 +149,7 @@ describe('execute add_graph / delete_graph', () => {
         expect(result).toBe(graph)
     })
 
-    it('delete_graph 落到 default 分支，返回原图不变', () => {
+    test('delete_graph 落到 default 分支，返回原图不变', () => {
         const graph = makeGraph(2)
         const result = executeOperation(graph, { type: 'delete_graph', graphId: 'child-1' as GraphId })
         expect(result).toBe(graph)

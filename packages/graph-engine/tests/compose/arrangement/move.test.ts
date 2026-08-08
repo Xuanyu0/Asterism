@@ -4,7 +4,6 @@
  * moveNode 测试。单节点移动、碰撞检测、空节点列表。
  */
 
-import { describe, it, expect } from 'vitest'
 import type { GraphId, NodeId, NodeRadiusMap } from '../../../src/types/graph_data'
 import { moveNode } from '../../../src/compose/arrangement/move'
 import { createNode, createEdge, assembleGraph } from '../../test_case_factory'
@@ -13,7 +12,7 @@ const G = 'test-move' as GraphId
 const R = new Map() as NodeRadiusMap
 
 describe('moveNode', () => {
-    it('无碰撞通过', () => {
+    test('无碰撞通过', () => {
         const graph = assembleGraph({ id: G, nodes: [
             createNode({ id: 'a' as NodeId, graphId: G, position: { x: 0, y: 0 } }),
             createNode({ id: 'b' as NodeId, graphId: G, position: { x: 500, y: 0 } }),
@@ -24,7 +23,7 @@ describe('moveNode', () => {
         expect(result.operations[0]!.type).toBe('move_node')
     })
 
-    it('碰撞返回 error', () => {
+    test('碰撞返回 error', () => {
         const graph = assembleGraph({ id: G, nodes: [
             createNode({ id: 'a' as NodeId, graphId: G, position: { x: 0, y: 0 } }),
             createNode({ id: 'b' as NodeId, graphId: G, position: { x: 50, y: 0 } }),

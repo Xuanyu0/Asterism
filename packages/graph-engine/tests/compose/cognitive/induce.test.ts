@@ -4,7 +4,6 @@
  * 归纳操作测试。
  */
 
-import { describe, it, expect } from 'vitest'
 import type { GraphId, NodeId } from '../../../src/types/graph_data'
 import { induce } from '../../../src/compose/cognitive/induce'
 import { createInduceInputGraph, createInduceWithHeuristicInputGraph, createNode, assembleGraph } from '../../test_case_factory'
@@ -12,7 +11,7 @@ import { createInduceInputGraph, createInduceWithHeuristicInputGraph, createNode
 const R = new Map()
 
 describe('induce', () => {
-    it('标准归纳（5 节点）', () => {
+    test('标准归纳（5 节点）', () => {
         const graph = createInduceInputGraph()
         const result = induce({
             nodeIds: ['ind-A', 'ind-B', 'ind-C'] as NodeId[],
@@ -30,7 +29,7 @@ describe('induce', () => {
         expect(result.operations.child[0]!.type).toBe('add_graph')
     })
 
-    it('含启发节点参与', () => {
+    test('含启发节点参与', () => {
         const graph = createInduceWithHeuristicInputGraph()
         const result = induce({
             nodeIds: ['ih-A', 'ih-H'] as NodeId[],
@@ -42,7 +41,7 @@ describe('induce', () => {
         expect(result.issues.filter(i => i.severity === 'error')).toHaveLength(0)
     })
 
-    it('沟通节点拒绝', () => {
+    test('沟通节点拒绝', () => {
         const graph = assembleGraph({ id: 'test-ind-comm' as GraphId, nodes: [
             createNode({ id: 'k' as NodeId, graphId: 'test-ind-comm' as GraphId }),
             createNode({ id: 'c' as NodeId, graphId: 'test-ind-comm' as GraphId, role: 'reference', referenceKind: 'communication', sourceGraphId: 'g' as GraphId, sourceNodeId: 's' as NodeId }),
@@ -57,7 +56,7 @@ describe('induce', () => {
         expect(result.issues.some(i => i.message.includes('沟通节点'))).toBe(true)
     })
 
-    it('< 2 节点拒绝', () => {
+    test('< 2 节点拒绝', () => {
         const graph = createInduceInputGraph()
         const result = induce({
             nodeIds: ['ind-A'] as NodeId[],

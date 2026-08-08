@@ -4,7 +4,6 @@
  * 测试 searchNodes 单图搜索、全图搜索和 graphPath 路径回溯。
  */
 
-import { describe, it, expect } from 'vitest'
 import { searchNodes } from '../src/infrastructure/search'
 import type { GraphData, GraphId, NodeData } from '../src/types/graph_data'
 import type { GraphLookup } from '../src/types/infrastructure_types'
@@ -63,7 +62,7 @@ function makeLookup(graphs: GraphData[]): { graphIds: GraphId[]; lookupGraph: Gr
 // ═══════════ searchNodes ═══════════
 
 describe('searchNodes', () => {
-    it('returns empty array for empty query', () => {
+    test('returns empty array for empty query', () => {
         const { graphIds, lookupGraph } = makeLookup([])
 
         const results = searchNodes('', graphIds, lookupGraph)
@@ -71,7 +70,7 @@ describe('searchNodes', () => {
         expect(results).toEqual([])
     })
 
-    it('matches nodes by label substring', () => {
+    test('matches nodes by label substring', () => {
         const g = graph('g1', 'Test Graph', [
             kn('n1', '递归'),
             kn('n2', '迭代'),
@@ -85,7 +84,7 @@ describe('searchNodes', () => {
         expect(results.map(r => r.nodeId)).toEqual(['n1', 'n3'])
     })
 
-    it('returns empty array when no match', () => {
+    test('returns empty array when no match', () => {
         const { graphIds, lookupGraph } = makeLookup([graph('g1', 'G', [kn('n1', '递归')])])
 
         const results = searchNodes('不存在', graphIds, lookupGraph)
@@ -93,7 +92,7 @@ describe('searchNodes', () => {
         expect(results).toEqual([])
     })
 
-    it('searches single graph when graphId provided', () => {
+    test('searches single graph when graphId provided', () => {
         const g1 = graph('g1', '图一', [kn('n1', '递归')])
         const g2 = graph('g2', '图二', [kn('n2', '递归函数')])
         const { graphIds, lookupGraph } = makeLookup([g1, g2])
@@ -104,7 +103,7 @@ describe('searchNodes', () => {
         expect(results[0]!.graphId).toBe('g1')
     })
 
-    it('searches all graphs when all graphIds provided', () => {
+    test('searches all graphs when all graphIds provided', () => {
         const g1 = graph('g1', '图一', [kn('n1', '递归')])
         const g2 = graph('g2', '图二', [kn('n2', '递归函数')])
         const { graphIds, lookupGraph } = makeLookup([g1, g2])
@@ -114,13 +113,13 @@ describe('searchNodes', () => {
         expect(results).toHaveLength(2)
     })
 
-    it('returns empty for nonexistent graphId', () => {
+    test('returns empty for nonexistent graphId', () => {
         const { graphIds, lookupGraph } = makeLookup([])
         const results = searchNodes('递归', graphIds, lookupGraph, 'missing' as GraphId)
         expect(results).toEqual([])
     })
 
-    it('matches reference nodes as well', () => {
+    test('matches reference nodes as well', () => {
         const g = graph('g1', 'G', [
             kn('n1', '递归'),
             refNode('r1', '递归投影', 'g0', 'x'),
@@ -136,7 +135,7 @@ describe('searchNodes', () => {
 // ═══════════ graphPath backtracking ═══════════
 
 describe('graphPath in search results', () => {
-    it('builds root-to-leaf path for nested graphs', () => {
+    test('builds root-to-leaf path for nested graphs', () => {
         const g0 = graph('root', '根图', [kn('n0', '根节点')])
         const g1 = graph('child', '子图', [kn('n1', '递归')], 'root')
         const g2 = graph('grandchild', '孙图', [kn('n2', '递归')], 'child')
@@ -150,7 +149,7 @@ describe('graphPath in search results', () => {
         }
     })
 
-    it('single root graph has path of length 1', () => {
+    test('single root graph has path of length 1', () => {
         const { graphIds, lookupGraph } = makeLookup([graph('root', '根图', [kn('n1', '递归')])])
 
         const results = searchNodes('递归', graphIds, lookupGraph)

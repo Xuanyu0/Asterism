@@ -16,7 +16,7 @@
  *     2. 所有操作返回新的 GraphData，不修改传入 GraphData。
  *     3. 所有图内变更操作会写入 timestamp。
  *     4. 签名 (graph, op) → graph。
- *     5. 度数同步委托给 sync.ts。图遍历委托给 traversal.ts。
+ *     5. 度数按本图边数增减，不做引用穿透（引用节点度数不跟随源节点）。图遍历委托给 traversal.ts。
  *     6. add_graph / delete_graph 不在 execute 层处理——它们是 compose→Runtime 信号，
  *        落到 default 分支静默返回原 graph。Runtime 在 applyBatch 返回后读 operations
  *        数组中的 add_graph/delete_graph 操作自行处理 registry 副作用。
@@ -27,8 +27,7 @@
 
 import type { GraphData, NodeId } from '../types/graph_data'
 import type { GraphOperation } from '../types/atomic_operations'
-import { syncReferenceNodeDegree } from './sync'
-import { collectDependencyNodeIds } from './traversal'
+import { collectDependencyNodeIds, findReferenceNodesPointingTo } from './utils/traversal'
 
 export function executeOperation(graph: GraphData, operation: GraphOperation): GraphData {
     switch (operation.type) {
@@ -81,39 +80,14 @@ function executeAddNode(graph: GraphData, operation: { type: 'add_node'; node: G
 function executeAddEdge(graph: GraphData, operation: { type: 'add_edge'; edge: GraphData['edges'][number] }): GraphData {
     const now = new Date().toISOString()
 
-    let nodes = graph.nodes.map(node => {
+    // 度数只按本图边数计算：仅两端节点 degree +1，引用节点不跟随源节点度数
+    const nodes = graph.nodes.map(node => {
         if (node.id === operation.edge.source || node.id === operation.edge.target) {
             return { ...node, degree: node.degree + 1 }
         }
 
         return node
     })
-
-    // 同图穿透：若 source 或 target 是引用节点（源节点在本图），源节点也加 degree
-    for (const endpointId of [operation.edge.source, operation.edge.target]) {
-        const endpointNode = nodes.find(node => node.id === endpointId)
-
-        if (endpointNode?.role === 'reference' && endpointNode.sourceGraphId === graph.id) {
-            nodes = nodes.map(node => {
-                if (node.id === endpointNode.sourceNodeId) {
-                    return { ...node, degree: node.degree + 1 }
-                }
-
-                return node
-            })
-            // 源节点 degree 变更后，同步给所有同图引用节点
-            nodes = syncReferenceNodeDegree(nodes, graph.id, endpointNode.sourceNodeId)
-        }
-    }
-
-    // 同图同步：若加边直接连到知识节点，该知识节点的同图引用节点也同步
-    for (const endpointId of [operation.edge.source, operation.edge.target]) {
-        const endpointNode = nodes.find(node => node.id === endpointId)
-
-        if (endpointNode?.role === 'knowledge') {
-            nodes = syncReferenceNodeDegree(nodes, graph.id, endpointId)
-        }
-    }
 
     return {
         ...graph,
@@ -141,9 +115,7 @@ function executeDeleteNode(graph: GraphData, operation: { type: 'delete_node'; n
     // 引用节点级联删除。
     // 删除知识节点时，同图内所有指向它的引用节点同步移除。
     const cascadedReferenceNodeIds = new Set(
-        graph.nodes
-            .filter(node => node.role === 'reference' && node.sourceNodeId === operation.nodeId && node.sourceGraphId === graph.id)
-            .map(node => node.id),
+        findReferenceNodesPointingTo(graph, operation.nodeId).map(node => node.id),
     )
 
     for (const refNodeId of cascadedReferenceNodeIds) {
@@ -207,39 +179,14 @@ function executeDeleteEdge(graph: GraphData, operation: { type: 'delete_edge'; e
     const deletedEdge = graph.edges.find(edge => edge.id === operation.edgeId)
     const now = new Date().toISOString()
 
-    let nodes = graph.nodes.map(node => {
+    // 度数只按本图边数计算：仅两端节点 degree -1，引用节点不跟随源节点度数
+    const nodes = graph.nodes.map(node => {
         if (deletedEdge && (node.id === deletedEdge.source || node.id === deletedEdge.target)) {
             return { ...node, degree: Math.max(0, node.degree - 1) }
         }
 
         return node
     })
-
-    // 同图穿透：对称于 add_edge
-    if (deletedEdge) {
-        for (const endpointId of [deletedEdge.source, deletedEdge.target]) {
-            const endpointNode = nodes.find(node => node.id === endpointId)
-
-            if (endpointNode?.role === 'reference' && endpointNode.sourceGraphId === graph.id) {
-                nodes = nodes.map(node => {
-                    if (node.id === endpointNode.sourceNodeId) {
-                        return { ...node, degree: Math.max(0, node.degree - 1) }
-                    }
-
-                    return node
-                })
-                nodes = syncReferenceNodeDegree(nodes, graph.id, endpointNode.sourceNodeId)
-            }
-        }
-
-        for (const endpointId of [deletedEdge.source, deletedEdge.target]) {
-            const endpointNode = nodes.find(node => node.id === endpointId)
-
-            if (endpointNode?.role === 'knowledge') {
-                nodes = syncReferenceNodeDegree(nodes, graph.id, endpointId)
-            }
-        }
-    }
 
     return {
         ...graph,
@@ -316,8 +263,13 @@ function executeMoveNode(graph: GraphData, operation: { type: 'move_node'; nodeI
     }
 }
 
-function executeCollapseDependency(graph: GraphData, operation: { type: 'collapse_dependency'; targetNodeId: NodeId }): GraphData {
-    const foldedNodeIds = collectDependencyNodeIds(graph, operation.targetNodeId)
+function executeCollapseDependency(
+    graph: GraphData,
+    operation: { type: 'collapse_dependency'; targetNodeId: NodeId; foldedNodeIds?: NodeId[] },
+): GraphData {
+    // 有显式折叠成员时照名单恢复（undo 逆元路径）；缺省时重算（正常折叠路径）。
+    // 字段为空数组与无字段重算结果为空同理：不写折叠条目（空成员静默 no-op）。
+    const foldedNodeIds = operation.foldedNodeIds ?? collectDependencyNodeIds(graph, operation.targetNodeId)
 
     if (foldedNodeIds.length === 0) {
         return graph

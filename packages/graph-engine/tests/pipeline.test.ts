@@ -4,7 +4,6 @@
  * 测试 applyBatch 事务流水线。
  */
 
-import { describe, it, expect } from 'vitest'
 import { applyBatch } from '../src/compose/pipeline'
 import type { GraphData } from '../src/types/graph_data'
 import type { GraphOperation } from '../src/types/atomic_operations'
@@ -37,7 +36,7 @@ function addNodeOp(id: string, label: string): GraphOperation {
 // ═══════════ applyBatch ═══════════
 
 describe('applyBatch', () => {
-    it('executes all ops when all valid', () => {
+    test('executes all ops when all valid', () => {
         const graph = emptyGraph()
         const ops = [
             addNodeOp('a', 'Node A'),
@@ -53,7 +52,7 @@ describe('applyBatch', () => {
         expect(result.graph.nodes[1].id).toBe('b')
     })
 
-    it('returns original graph unchanged on validation failure', () => {
+    test('returns original graph unchanged on validation failure', () => {
         const graph = emptyGraph()
         const graphWithA = applyBatch(graph, [addNodeOp('a', 'Node A')]).graph
 
@@ -66,7 +65,7 @@ describe('applyBatch', () => {
         expect(result.graph.nodes).toHaveLength(1)
     })
 
-    it('returned graph unchanged on dryRun', () => {
+    test('returned graph unchanged on dryRun', () => {
         const graph = emptyGraph()
         const ops = [addNodeOp('a', 'Node A')]
 
@@ -77,7 +76,7 @@ describe('applyBatch', () => {
         expect(result.graph.nodes).toHaveLength(0) // 未执行
     })
 
-    it('stops on first failure with stopOnFirst', () => {
+    test('stops on first failure with stopOnFirst', () => {
         const graph = emptyGraph()
         const ops = [
             addNodeOp('x', 'Valid'),
@@ -94,7 +93,7 @@ describe('applyBatch', () => {
         expect(result.results).toHaveLength(3)
     })
 
-    it('validation fails when op violates rules on original graph', () => {
+    test('validation fails when op violates rules on original graph', () => {
         const graph = emptyGraph()
         const graphWithX = applyBatch(graph, [addNodeOp('x', 'Node X')]).graph
 
@@ -108,7 +107,7 @@ describe('applyBatch', () => {
         expect(result.validation.issues.length).toBeGreaterThanOrEqual(1)
     })
 
-    it('returns empty results for empty ops', () => {
+    test('returns empty results for empty ops', () => {
         const graph = emptyGraph()
 
         const result = applyBatch(graph, [])

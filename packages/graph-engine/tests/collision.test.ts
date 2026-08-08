@@ -4,7 +4,6 @@
  * 测试 hasCollisionAt 和 hasCollisionInDrafts。
  */
 
-import { describe, it, expect } from 'vitest'
 import { hasCollisionAt, hasCollisionInDrafts } from '../src/infrastructure/collision'
 import type { NodeData, NodeRadiusMap } from '../src/types/graph_data'
 
@@ -30,23 +29,23 @@ const emptyMap: NodeRadiusMap = new Map()
 // ═══════════ hasCollisionAt ═══════════
 
 describe('hasCollisionAt', () => {
-    it('returns false when no overlap', () => {
+    test('returns false when no overlap', () => {
         const nodes = [kn('a', pos(0, 0)), kn('b', pos(200, 0))]
 
         expect(hasCollisionAt('a', pos(50, 0), nodes, emptyMap)).toBe(false)
     })
 
-    it('returns true when overlapping another node', () => {
+    test('returns true when overlapping another node', () => {
         const nodes = [kn('a', pos(0, 0)), kn('b', pos(30, 0))]
 
         expect(hasCollisionAt('a', pos(0, 0), nodes, emptyMap)).toBe(true)
     })
 
-    it('returns false for unknown node id', () => {
+    test('returns false for unknown node id', () => {
         expect(hasCollisionAt('missing', pos(0, 0), [], emptyMap)).toBe(false)
     })
 
-    it('respects NodeRadiusMap override', () => {
+    test('respects NodeRadiusMap override', () => {
         const nodes = [kn('a', pos(0, 0)), kn('b', pos(30, 0))]
 
         const map: NodeRadiusMap = new Map([['a', 10], ['b', 10]])
@@ -55,7 +54,7 @@ describe('hasCollisionAt', () => {
         expect(hasCollisionAt('a', pos(15, 0), nodes, map)).toBe(true)
     })
 
-    it('excludes target node from check', () => {
+    test('excludes target node from check', () => {
         const nodes = [kn('a', pos(0, 0))]
 
         expect(hasCollisionAt('a', pos(100, 0), nodes, emptyMap)).toBe(false)
@@ -65,11 +64,11 @@ describe('hasCollisionAt', () => {
 // ═══════════ hasCollisionInDrafts ═══════════
 
 describe('hasCollisionInDrafts', () => {
-    it('returns false for empty drafts', () => {
+    test('returns false for empty drafts', () => {
         expect(hasCollisionInDrafts([], [], emptyMap)).toBe(false)
     })
 
-    it('returns false for single draft with no other nodes', () => {
+    test('returns false for single draft with no other nodes', () => {
         expect(hasCollisionInDrafts(
             [{ nodeId: 'a', position: pos(50, 0) }],
             [],
@@ -77,7 +76,7 @@ describe('hasCollisionInDrafts', () => {
         )).toBe(false)
     })
 
-    it('detects collision between two drafts', () => {
+    test('detects collision between two drafts', () => {
         const drafts = [
             { nodeId: 'a', position: pos(0, 0) },
             { nodeId: 'b', position: pos(30, 0) },
@@ -87,7 +86,7 @@ describe('hasCollisionInDrafts', () => {
         )).toBe(true)
     })
 
-    it('returns false when drafts are far apart', () => {
+    test('returns false when drafts are far apart', () => {
         const drafts = [
             { nodeId: 'a', position: pos(0, 0) },
             { nodeId: 'b', position: pos(200, 0) },
@@ -97,7 +96,7 @@ describe('hasCollisionInDrafts', () => {
         )).toBe(false)
     })
 
-    it('detects draft vs existing node collision', () => {
+    test('detects draft vs existing node collision', () => {
         const nodes = [kn('b', pos(50, 0))]
         const drafts = [{ nodeId: 'a', position: pos(60, 0) }]
         expect(hasCollisionInDrafts(
@@ -105,7 +104,7 @@ describe('hasCollisionInDrafts', () => {
         )).toBe(true)
     })
 
-    it('excludes draft nodeId when checking vs existing nodes', () => {
+    test('excludes draft nodeId when checking vs existing nodes', () => {
         // node 'a' 在 GraphData 中已存在，位置 pos(0,0)
         // 草稿将其移至 pos(100,0)。node 'b' 在 pos(500,0) 很远。
         // 排除自身后应无碰撞。
@@ -116,7 +115,7 @@ describe('hasCollisionInDrafts', () => {
         )).toBe(false)
     })
 
-    it('detects draft-vs-draft collision regardless of allNodes', () => {
+    test('detects draft-vs-draft collision regardless of allNodes', () => {
         // 两个草稿互碰，即使它们在 allNodes 中已有位置（应排除自身）
         const nodes = [kn('a', pos(0, 0)), kn('b', pos(200, 0))]
         const drafts = [
@@ -128,7 +127,7 @@ describe('hasCollisionInDrafts', () => {
         )).toBe(true)
     })
 
-    it('uses existing node radius from GraphData when available', () => {
+    test('uses existing node radius from GraphData when available', () => {
         // node 'a' 有 degree 导致更大半径，草稿应使用其已有半径
         const nodes = [kn('a', pos(0, 0), /* degree = */ 3)]
         const drafts = [
@@ -140,7 +139,7 @@ describe('hasCollisionInDrafts', () => {
         )).toBe(true)
     })
 
-    it('respects nodeRadiusOverrides', () => {
+    test('respects nodeRadiusOverrides', () => {
         const drafts = [
             { nodeId: 'a', position: pos(0, 0) },
             { nodeId: 'b', position: pos(15, 0) },

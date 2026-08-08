@@ -67,7 +67,7 @@ export type {
 } from './types/validation'
 
 /** 消费者：graph_store（操作日志 & undo/redo）。 */
-export type { OperationLogEntry, OperationLog, State } from './types/operation_log'
+export type { ItemOperations, OperationLogEntry, OperationLog, State } from './types/operation_log'
 
 /** 消费者：graph_persistence.ts（localStorage 实现 SPI 契约）。Phase 3 扩展点。 */
 export type { PersistenceAdapter } from './spi/persistence'
@@ -242,7 +242,7 @@ export { hasCollisionAt } from './infrastructure'
  *
  *     const normalized = ensureDefaultCognitiveState(loadedGraph)
  */
-export { ensureDefaultCognitiveState } from './core/normalize'
+export { ensureDefaultCognitiveState } from './core/utils/normalize'
 
 /**
  * 功能：
@@ -275,6 +275,6 @@ export { validateGraph } from './core/validators/whole_graph_validator'
  *     const edgeId = generateEdgeId()
  *     const graphId = generateGraphId()
  */
-export { generateNodeId, generateEdgeId, generateGraphId } from './core/id'
+export { generateNodeId, generateEdgeId, generateGraphId } from './core/utils/id'
 
 export { DEFAULT_LAYOUT_RULES } from './core/layout_rules'

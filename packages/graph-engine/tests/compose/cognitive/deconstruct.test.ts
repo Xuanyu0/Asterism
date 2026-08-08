@@ -4,13 +4,12 @@
  * 解构操作测试。
  */
 
-import { describe, it, expect } from 'vitest'
 import type { GraphId, NodeId } from '../../../src/types/graph_data'
 import { deconstruct } from '../../../src/compose/cognitive/deconstruct'
 import { createDeconstructInputGraph, createNode, assembleGraph } from '../../test_case_factory'
 
 describe('deconstruct', () => {
-    it('正常解构（含邻居）', () => {
+    test('正常解构（含邻居）', () => {
         const graph = createDeconstructInputGraph()
         const result = deconstruct({ nodeId: 'decon-A' as NodeId, parentGraph: graph })
         expect(result.issues.filter(i => i.severity === 'error')).toHaveLength(0)
@@ -25,7 +24,7 @@ describe('deconstruct', () => {
         expect(addGraphOp.graph.nodes).toHaveLength(3)
     })
 
-    it('虚节点拒绝', () => {
+    test('虚节点拒绝', () => {
         const graph = assembleGraph({ id: 'test-virt' as GraphId, nodes: [
             createNode({ id: 'v' as NodeId, graphId: 'test-virt' as GraphId, kind: 'virtual' }),
         ], edges: [] })
@@ -34,7 +33,7 @@ describe('deconstruct', () => {
         expect(result.operations).toHaveLength(0)
     })
 
-    it('抽象节点拒绝（重复解构）', () => {
+    test('抽象节点拒绝（重复解构）', () => {
         const graph = assembleGraph({ id: 'test-abs' as GraphId, nodes: [
             createNode({ id: 'a' as NodeId, graphId: 'test-abs' as GraphId, form: 'abstract' }),
         ], edges: [] })
@@ -42,7 +41,7 @@ describe('deconstruct', () => {
         expect(result.issues.some(i => i.message.includes('抽象'))).toBe(true)
     })
 
-    it('非 knowledge 拒绝', () => {
+    test('非 knowledge 拒绝', () => {
         const graph = assembleGraph({ id: 'test-ref' as GraphId, nodes: [
             createNode({ id: 'r' as NodeId, graphId: 'test-ref' as GraphId, role: 'reference', referenceKind: 'communication', sourceGraphId: 'g' as GraphId, sourceNodeId: 's' as NodeId }),
         ], edges: [] })
@@ -50,7 +49,7 @@ describe('deconstruct', () => {
         expect(result.issues.some(i => i.message.includes('知识节点'))).toBe(true)
     })
 
-    it('无邻居节点', () => {
+    test('无邻居节点', () => {
         const graph = assembleGraph({ id: 'test-solo' as GraphId, nodes: [
             createNode({ id: 'solo' as NodeId, graphId: 'test-solo' as GraphId }),
         ], edges: [] })

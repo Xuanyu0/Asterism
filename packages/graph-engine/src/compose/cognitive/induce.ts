@@ -30,7 +30,7 @@ import type { EdgeData, GraphData, NodeId, NodePosition } from '../../types/grap
 import type { GraphLookup, NodeRadiusMap } from '../../types/infrastructure_types'
 import type { ComposeIssue } from '../../types/compose_types'
 import type { GraphOperation } from '../../types/atomic_operations'
-import { generateGraphId, generateNodeId, generateEdgeId } from '../../core/id'
+import { generateGraphId, generateNodeId, generateEdgeId } from '../../core/utils/id'
 import { distributeOnTiers, scatterInCircle } from '../../infrastructure/placement'
 import type { TierAssignment } from '../../infrastructure/placement'
 import { hasCollisionInDrafts, hasCollisionAt } from '../../infrastructure/collision'

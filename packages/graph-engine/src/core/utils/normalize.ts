@@ -13,7 +13,7 @@
  *     本函数是否保留（收敛进数据入口统一补齐，还是随类型收紧移除）待定。
  */
 
-import type { GraphData } from '../types/graph_data'
+import type { GraphData } from '../../types/graph_data'
 
 export function ensureDefaultCognitiveState(graph: GraphData): GraphData {
     return {

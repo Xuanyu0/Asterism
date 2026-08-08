@@ -34,7 +34,7 @@ import type { EdgeData, GraphData, GraphId, NodeId, NodePosition } from '../../t
 import type { GraphLookup, NodeRadiusMap } from '../../types/infrastructure_types'
 import type { ComposeIssue, DraftPosition } from '../../types/compose_types'
 import type { GraphOperation } from '../../types/atomic_operations'
-import { generateNodeId, generateEdgeId } from '../../core/id'
+import { generateNodeId, generateEdgeId } from '../../core/utils/id'
 import { scatterInCircle } from '../../infrastructure/placement'
 import { hasCollisionAt } from '../../infrastructure/collision'
 

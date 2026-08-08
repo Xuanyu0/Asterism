@@ -4,7 +4,6 @@
  * 操作序列回放测试。验证 replayGraph / replayToStep 从基线图 + 操作序列恢复状态。
  */
 
-import { describe, it, expect } from 'vitest'
 import type { GraphData, GraphId, NodeId } from '../../src/types/graph_data'
 import { replayGraph, replayToStep } from '../../src/core/replay'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
@@ -24,7 +23,7 @@ function makeGraph(nodes = 3, edges = 2): GraphData {
 }
 
 describe('replay', () => {
-    it('replayGraph 全量回放到末尾', () => {
+    test('replayGraph 全量回放到末尾', () => {
         const base = makeGraph(3, 0)
         const ops = [
             { type: 'add_edge' as const, edge: createEdge({ id: 'e0' as NodeId, graphId: G, source: 'n0' as NodeId, target: 'n1' as NodeId, kind: 'real', direction: 'directed' }) },
@@ -34,7 +33,7 @@ describe('replay', () => {
         expect(result.edges.length).toBe(2)
     })
 
-    it('replayToStep 部分回放', () => {
+    test('replayToStep 部分回放', () => {
         const base = makeGraph(3, 0)
         const ops = [
             { type: 'add_edge' as const, edge: createEdge({ id: 'e0' as NodeId, graphId: G, source: 'n0' as NodeId, target: 'n1' as NodeId, kind: 'real', direction: 'directed' }) },
@@ -48,7 +47,7 @@ describe('replay', () => {
         expect(r2.edges.length).toBe(2)
     })
 
-    it('replayToStep step 超出范围时截断', () => {
+    test('replayToStep step 超出范围时截断', () => {
         const base = makeGraph(3, 0)
         const ops = [{ type: 'add_edge' as const, edge: createEdge({ id: 'e0' as NodeId, graphId: G, source: 'n0' as NodeId, target: 'n1' as NodeId, kind: 'real', direction: 'directed' }) }]
         const r = replayToStep(base, ops, 99)

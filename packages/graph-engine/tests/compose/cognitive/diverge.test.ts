@@ -4,7 +4,6 @@
  * 发散操作测试。Case A（同图直连）、Case A ref→ref 拒绝、Case B（跨图启发+镜像）。
  */
 
-import { describe, it, expect } from 'vitest'
 import type { GraphData, GraphId, NodeId } from '../../../src/types/graph_data'
 import type { GraphLookup } from '../../../src/types/infrastructure_types'
 import { diverge } from '../../../src/compose/cognitive/diverge'
@@ -23,7 +22,7 @@ function makeLookup(graphs: GraphData[]): { graphIds: GraphId[]; lookupGraph: Gr
 }
 
 describe('diverge', () => {
-    it('Case A：同图直连（两知识节点）', () => {
+    test('Case A：同图直连（两知识节点）', () => {
         const current = createDivergeInputGraph()
         const { graphIds, lookupGraph } = makeLookup([current])
         const result = diverge({
@@ -40,7 +39,7 @@ describe('diverge', () => {
         expect(result.operations.peer).toHaveLength(0)
     })
 
-    it('Case A：ref→ref 拒绝（链式引用禁止）', () => {
+    test('Case A：ref→ref 拒绝（链式引用禁止）', () => {
         const graph = createDivergeInputGraph()
         const { graphIds, lookupGraph } = makeLookup([graph])
         const result = diverge({
@@ -55,7 +54,7 @@ describe('diverge', () => {
         // 此场景由 deconstruct 后子图中两个沟通节点无法 diverge 覆盖
     })
 
-    it('Case B：跨图启发创建 + 镜像', () => {
+    test('Case B：跨图启发创建 + 镜像', () => {
         const { current, peer } = createDivergeCrossGraphInput()
         const { graphIds, lookupGraph } = makeLookup([current, peer])
         // source 在 peer 图中，不在 current 中

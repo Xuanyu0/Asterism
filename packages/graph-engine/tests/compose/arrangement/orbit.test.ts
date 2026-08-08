@@ -4,7 +4,6 @@
  * 环绕布局测试。初始吸附 + 碰撞检测 + 无边 error。
  */
 
-import { describe, it, expect } from 'vitest'
 import type { GraphId, NodeId, NodeRadiusMap } from '../../../src/types/graph_data'
 import { orbit } from '../../../src/compose/arrangement/orbit'
 import { createNode, createEdge, assembleGraph } from '../../test_case_factory'
@@ -13,7 +12,7 @@ const G = 'test-orbit' as GraphId
 const R = new Map() as NodeRadiusMap
 
 describe('orbit', () => {
-    it('合法环绕布局：卫星吸附至轨道', () => {
+    test('合法环绕布局：卫星吸附至轨道', () => {
         const center = createNode({ id: 'center' as NodeId, graphId: G, position: { x: 0, y: 0 } })
         const a = createNode({ id: 'a' as NodeId, graphId: G, position: { x: 2000, y: 0 } })
         const b = createNode({ id: 'b' as NodeId, graphId: G, position: { x: 0, y: 2000 } })
@@ -37,7 +36,7 @@ describe('orbit', () => {
         }
     })
 
-    it('无边 error', () => {
+    test('无边 error', () => {
         const center = createNode({ id: 'center' as NodeId, graphId: G, position: { x: 0, y: 0 } })
         const a = createNode({ id: 'a' as NodeId, graphId: G, position: { x: 200, y: 0 } })
         const graph = assembleGraph({ id: G, nodes: [center, a], edges: [] })

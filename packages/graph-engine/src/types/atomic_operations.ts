@@ -58,6 +58,12 @@ export interface MoveNodeOperation {
 export interface CollapseDependencyOperation {
     type: 'collapse_dependency'
     targetNodeId: NodeId
+    /**
+     * 显式折叠成员名单。存在时 execute 直接使用字段值照名单恢复，不重算；
+     * 缺省时 execute 用 collectDependencyNodeIds 重算（正常折叠路径）。
+     * expand_dependency 的逆元（collapse_dependency）携带原折叠条目时使用。
+     */
+    foldedNodeIds?: NodeId[]
 }
 
 export interface ExpandDependencyOperation {

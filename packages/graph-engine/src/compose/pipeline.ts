@@ -57,6 +57,7 @@ import { DEFAULT_GLOBAL_RULES_TABLE, runGlobalRules } from '../core/validators/g
  *     - dryRun：只校验不执行。用于认知操作正式执行前预判。
  *     - stopOnFirst：遇第一个失败即停（默认 false，聚合全部 issue 后返回）。
  *     - globalRulesTable：全局规则开关表。未传入时使用默认全开配置。
+ *     - onBeforeEachOperation：逐操作执行前回调，仅暴露中间态，不改变执行结果。
  */
 export interface BatchOptions {
     /** 只校验不执行。默认 false。 */
@@ -67,6 +68,12 @@ export interface BatchOptions {
 
     /** 全局规则开关表。默认 DEFAULT_GLOBAL_RULES_TABLE。 */
     globalRulesTable?: GlobalRulesTable
+
+    /**
+     * 每原子操作执行前的回调。在逐操作执行循环（Phase 2）中、executeOperation
+     * 之前调用，入参为该操作与其执行前的图状态（中间态）。未传时不调用（零行为变化）。
+     */
+    onBeforeEachOperation?: (op: GraphOperation, graphBeforeOp: GraphData) => void
 }
 
 /**
@@ -118,7 +125,7 @@ export interface BatchResult {
  *
  *     graph     — 操作前的 GraphData 快照
  *     ops       — 待执行的操作序列
- *     options   — [可选] dryRun / stopOnFirst / globalRulesTable
+ *     options   — [可选] dryRun / stopOnFirst / globalRulesTable / onBeforeEachOperation
  *
  * 使用：
  *
@@ -161,6 +168,8 @@ export function applyBatch(
     let resultGraph = graph
 
     for (const op of ops) {
+        // 逐操作挂点：入参为 op 执行前的中间态，不改变执行结果
+        options?.onBeforeEachOperation?.(op, resultGraph)
         resultGraph = executeOperation(resultGraph, op)
     }
 

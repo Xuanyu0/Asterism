@@ -7,9 +7,10 @@
  *         - 状态标签：粗粒度，由用户显式提交，驱动历史回顾
  *
  * 总体结构：
- *     1. OperationLogEntry：单条操作日志（正向操作 + 逆操作序列 + 父节点引用 + 时间戳）
- *     2. OperationLog：操作树本体（entries + cursor）
- *     3. State：用户显式提交的状态标签，指向操作树中的某个 entry
+ *     1. ItemOperations：按图分组的一批操作（item 的日志形态）
+ *     2. OperationLogEntry：单条操作日志（一批正向操作 + 一批逆元 + 图级元数据 + 父节点引用 + 时间戳）
+ *     3. OperationLog：操作树本体（entries + cursor）
+ *     4. State：用户显式提交的状态标签，指向操作树中的某个 entry
  *
  * 规则：
  *     - parentIndex = -1 表示 entry 直接挂在基线 G₀ 下
@@ -17,16 +18,42 @@
  *     - 子节点通过 entries.filter(e => e.parentIndex === cursor) 派生，不显式存储
  *     - State 是对操作树中某个位置的语义标签，不存储 GraphData 副本
  *     - 回退到一个 State = cursor 跳到该 entry，沿 parentIndex 链回放
+ *     - 批粒度：一次 commitBatchToGraphs = 一条 entry = 一次回溯单元
  *
  * 外部使用方式：
- *     import type { OperationLogEntry, OperationLog, State } from '@my-project/graph-engine'
+ *     import type { ItemOperations, OperationLogEntry, OperationLog, State } from '@my-project/graph-engine'
  */
 
 import type { GraphOperation } from './atomic_operations'
+import type { GraphId } from './graph_data'
 
+/**
+ * 功能：
+ *
+ *     按图分组的一批操作（item 的日志形态）。graphId 替代运行时 graph 对象，
+ *     用于 undo 时按图应用逆元——扁平原子操作（如 delete_node）仅含 nodeId，
+ *     无法反推图归属。
+ */
+export interface ItemOperations {
+    graphId: GraphId
+    operations: GraphOperation[]
+}
+
+/**
+ * 功能：
+ *
+ *     单条操作日志（批粒度）。对应一次 commitBatchToGraphs = 一次回溯单元。
+ *
+ * 规则：
+ *
+ *     - operation：一批正向操作，按图分组
+ *     - reversalOperations：一批逆元，undo 执行顺序——item 间逆序 + item 内逆序
+ *     - graphSignals：图级元数据（新增 / 删除的图）
+ */
 export interface OperationLogEntry {
-    operation: GraphOperation
-    reversalOperations: GraphOperation[]
+    operation: ItemOperations[]
+    reversalOperations: ItemOperations[]
+    graphSignals: { added: GraphId[]; deleted: GraphId[] }
     parentIndex: number
     timestamp: string
 }

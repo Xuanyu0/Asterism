@@ -4,7 +4,6 @@
  * Adjust Distance 和 Adjust Orbit 测试。
  */
 
-import { describe, it, expect } from 'vitest'
 import type { GraphId, NodeId, NodeRadiusMap } from '../../../src/types/graph_data'
 import { adjustDistance, adjustOrbit } from '../../../src/compose/arrangement/adjust'
 import { createNode, assembleGraph } from '../../test_case_factory'
@@ -15,7 +14,7 @@ const R = new Map() as NodeRadiusMap
 const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
 
 describe('adjustDistance', () => {
-    it('连续距离调整', () => {
+    test('连续距离调整', () => {
         const node = createNode({ id: 'a' as NodeId, graphId: G, position: { x: 0, y: 0 } })
         const graph = assembleGraph({ id: G, nodes: [node], edges: [] })
 
@@ -33,7 +32,7 @@ describe('adjustDistance', () => {
 })
 
 describe('adjustOrbit', () => {
-    it('离散层级吸附', () => {
+    test('离散层级吸附', () => {
         const node = createNode({ id: 'a' as NodeId, graphId: G, position: { x: 0, y: 0 } })
         const graph = assembleGraph({ id: G, nodes: [node], edges: [] })
 
