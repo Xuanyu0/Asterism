@@ -242,6 +242,7 @@ export const useGraphStore = defineStore('graph_store', () => {
         const allIssues = []
 
         for (const item of operationBatch) {
+            // 跨 item 状态连续：同一图被多个 item 修改时，后续基于前一个操作后图数据的结果
             const inputGraph = latestGraphs.get(item.graph.id) ?? item.graph
             const { graph: resultGraph, validation } = applyBatch(inputGraph, item.operations)
 

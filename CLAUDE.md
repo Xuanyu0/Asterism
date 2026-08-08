@@ -135,7 +135,7 @@ GraphEngine (@my-project/graph-engine) — 框架无关；广义 GraphData 唯�
     ├── compose/           — 编排操作：cognitive/（deconstruct·induce·internalize·diverge）+ arrangement/（move·path·adjust·orbit）
     ├── compose/pipeline.ts — 【applyBatch 事务流水线：逐条校验 → dry-run 执行 → 全局规则；任一失败整批丢弃】
     ├── core/              — execute(执行) / validate(校验) / replay(回放) / reversal(逆操作→undo)
-    │                        normalize(认知状态补全) / sync(度数同步) / traversal / id / validators/
+    │                        utils/(normalize 认知状态补全 / traversal 图遍历 / id 生成) / validators/
     ├── infrastructure/    — collision(碰撞检测) / placement(位置放置) / search(搜索) / geometry(几何)
     └── spi/               — 持久化适配器接口（Phase 3 扩展点）
     ↓  返回新 GraphData 与图规则校验结果
