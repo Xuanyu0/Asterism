@@ -79,6 +79,28 @@ export interface GraphOperationAdapterAPI {
      *     (graphId) → GraphData | undefined，供 induce / internalize / diverge 跨图查询使用。
      */
     makeLookup(): GraphLookup
+
+    /**
+     * 说明：
+     *
+     *     撤销最近一次操作（日志驱动，薄封装透传 store.undo）。
+     *
+     * 返回：
+     *
+     *     是否存在可撤销的历史且撤销成功。
+     */
+    undo(): boolean
+
+    /**
+     * 说明：
+     *
+     *     重做最近一次撤销（日志驱动，薄封装透传 store.redo）。
+     *
+     * 返回：
+     *
+     *     是否存在可重做的历史且重做成功。
+     */
+    redo(): boolean
 }
 
 let singleton: GraphOperationAdapterAPI | null = null
@@ -142,9 +164,19 @@ function createGraphOperationAdapter(): GraphOperationAdapterAPI {
         return (graphId: GraphId): GraphData | undefined => lookupGraph(useGraphStore().graphRegistry, graphId)
     }
 
+    function undo(): boolean {
+        return useGraphStore().undo()
+    }
+
+    function redo(): boolean {
+        return useGraphStore().redo()
+    }
+
     return {
         commitToCurrentGraph,
         reportComposeValidation,
         makeLookup,
+        undo,
+        redo,
     }
 }

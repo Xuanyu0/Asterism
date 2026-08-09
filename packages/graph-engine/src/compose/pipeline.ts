@@ -58,6 +58,10 @@ import { DEFAULT_GLOBAL_RULES_TABLE, runGlobalRules } from '../core/validators/g
  *     - stopOnFirst：遇第一个失败即停（默认 false，聚合全部 issue 后返回）。
  *     - globalRulesTable：全局规则开关表。未传入时使用默认全开配置。
  *     - onBeforeEachOperation：逐操作执行前回调，仅暴露中间态，不改变执行结果。
+ *     - skipValidate：跳过 Phase 1 逐条前提校验（默认 false）。供 undo/redo 恢复型
+ *       逆元批使用——validate-all-first 基于输入图校验，恢复型批（如 add_edge 端点
+ *       依赖批内 add_node 恢复的节点）必然误报。跳过前提校验后 execute 仍逐操作
+ *       顺序执行（依赖由操作内部顺序保证），Phase 3 全局规则仍运行。
  */
 export interface BatchOptions {
     /** 只校验不执行。默认 false。 */
@@ -74,6 +78,12 @@ export interface BatchOptions {
      * 之前调用，入参为该操作与其执行前的图状态（中间态）。未传时不调用（零行为变化）。
      */
     onBeforeEachOperation?: (op: GraphOperation, graphBeforeOp: GraphData) => void
+
+    /**
+     * 跳过 Phase 1 逐条前提校验（默认 false）。正常正向操作保持默认校验；
+     * undo/redo 恢复型逆元批传 true（恢复已知合法状态，校验基于输入图必然误报）。
+     */
+    skipValidate?: boolean
 }
 
 /**
@@ -125,7 +135,7 @@ export interface BatchResult {
  *
  *     graph     — 操作前的 GraphData 快照
  *     ops       — 待执行的操作序列
- *     options   — [可选] dryRun / stopOnFirst / globalRulesTable / onBeforeEachOperation
+ *     options   — [可选] dryRun / stopOnFirst / globalRulesTable / onBeforeEachOperation / skipValidate
  *
  * 使用：
  *
@@ -140,17 +150,22 @@ export function applyBatch(
 ): BatchResult {
     const dryRun = options?.dryRun ?? false
     const stopOnFirst = options?.stopOnFirst ?? false
+    const skipValidate = options?.skipValidate ?? false
     const globalRulesTable = options?.globalRulesTable ?? DEFAULT_GLOBAL_RULES_TABLE
 
     // Phase 1 — 逐条校验操作前提条件
+    // skipValidate（undo/redo 恢复型逆元批）：跳过全部前提校验，直接 Phase 2——
+    // validate-all-first 基于输入图校验，恢复型批必然误报（见 BatchOptions.skipValidate）
     const results: PerOpResult[] = []
 
-    for (const op of ops) {
-        const validation = validateOperation(graph, op)
+    if (!skipValidate) {
+        for (const op of ops) {
+            const validation = validateOperation(graph, op)
 
-        results.push({ operation: op, validation })
+            results.push({ operation: op, validation })
 
-        if (!validation.valid && stopOnFirst) break
+            if (!validation.valid && stopOnFirst) break
+        }
     }
 
     const localIssues = results.flatMap(r => r.validation.issues)

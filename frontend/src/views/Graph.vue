@@ -54,6 +54,30 @@ const containerClasses = computed(() => {
 
 /**
  * 功能：
+ *
+ *     临时快捷键接线（010 §3.2，非契约）：Ctrl+Z 撤销 / Ctrl+Shift+Z 或 Ctrl+Y 重做，
+ *     供手动冒烟验证。命中组合时 preventDefault 拦截浏览器原生回退；
+ *     不做焦点判断（试玩阶段全页面拦截），正式 UI 由步骤 04 承接。
+ */
+function handleUndoRedoKeydown(event: KeyboardEvent): void {
+    if (event.ctrlKey && event.key.toLowerCase() === 'z') {
+        event.preventDefault()
+        if (event.shiftKey) {
+            graphStore.redo()
+        } else {
+            graphStore.undo()
+        }
+        return
+    }
+
+    if (event.ctrlKey && event.key.toLowerCase() === 'y') {
+        event.preventDefault()
+        graphStore.redo()
+    }
+}
+
+/**
+ * 功能：
  *     读取画布级操作的 error 校验问题。
  *
  * 规则：
@@ -71,6 +95,9 @@ const canvasErrorIssues = computed(() => {
 const activeNotification = computed(() => mediator.activeHandler.value?.notification ?? null)
 
 onMounted(() => {
+    // 临时快捷键接线（010 §3.2）：注册后随组件卸载移除
+    window.addEventListener('keydown', handleUndoRedoKeydown)
+
     // 加载上次激活的根图谱
     graphStore.initRegistry()
     // 哨兵模式：确定要加载的根图 ID
@@ -178,6 +205,7 @@ watch(
 )
 
 onBeforeUnmount(() => {
+    window.removeEventListener('keydown', handleUndoRedoKeydown)
     renderer.destroy()
 })
 </script>
