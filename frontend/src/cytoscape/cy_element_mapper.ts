@@ -87,7 +87,12 @@ function mapNodeToCyElement(node: NodeData, foldedParentIds: Set<NodeId>): CyNod
             nodeDiameter: computeNodeDiameter(node.degree),
             fontSize: computeFontSize(node.degree),
         },
-        position: node.position,
+        // 拷贝 position 值而非传引用：Cytoscape Element 构造时把 position 对象【按引用】
+        // 存入 _private.position（element.mjs），后续 cy.json 更新会经 ele.position()
+        // 原地写回该对象。若传入 GraphData 的 position（graphView 场景下是 Vue reactive
+        // Proxy），预览 sync 就会把预览位置写穿回 graphStore.graphView——move 预览污染
+        // 根因。渲染层必须持有自己的副本，GraphData 是唯一事实源。
+        position: node.position ? { x: node.position.x, y: node.position.y } : undefined,
         classes: getNodeClasses(node, foldedParentIds),
     }
 }
