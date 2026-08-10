@@ -14,7 +14,7 @@ import { ref } from 'vue'
 import { useGraphStore } from '@/graph/graph_store'
 import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
 import { useCanvasFocus } from '@/composables/useCanvasFocus'
-import { useFloatingWindow } from './composables/useFloatingWindow'
+import { useFloatingWindow } from '@/composables/useFloatingWindow'
 
 import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
 import type { ToolHandler, ToolId } from './types'

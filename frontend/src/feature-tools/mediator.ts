@@ -14,7 +14,7 @@ import { ref, shallowRef, type ShallowRef, type Ref } from 'vue'
 
 import type { ToolId, ToolHandler } from './types'
 import { useDefaultTool } from './default_tool'
-import { useFloatingWindow } from './composables/useFloatingWindow'
+import { useFloatingWindow } from '@/composables/useFloatingWindow'
 
 /**
  * 说明：
