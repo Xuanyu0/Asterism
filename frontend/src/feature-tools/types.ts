@@ -42,12 +42,12 @@ export type OperationTool =
  *     2. 这些操作未来通常会进入 Graph Transform Runtime 或 AI Runtime。
  */
 export type CognitionTool =
-    | 'explore'    // 探索
-    | 'unearth'    // 发掘
-    | 'deconstruct'    // 解构
-    | 'induce'    // 归纳
-    | 'internalize'    // 内化 / 常识化
-    | 'diverge'    // 发散
+    | 'explore' // 探索
+    | 'unearth' // 发掘
+    | 'deconstruct' // 解构
+    | 'induce' // 归纳
+    | 'internalize' // 内化 / 常识化
+    | 'diverge' // 发散
 
 /**
  * 功能：
@@ -62,11 +62,11 @@ export type CognitionTool =
  *     4. adjustDistance / adjustOrbit 为连续微调操作。
  */
 export type ArrangementTool =
-    | 'move'    // 单节点移动
-    | 'orbit'    // 环绕布局
-    | 'path'    // 路径布局
-    | 'adjustDistance'    // 调整距离
-    | 'adjustOrbit'    // 调整轨道
+    | 'move' // 单节点移动
+    | 'orbit' // 环绕布局
+    | 'path' // 路径布局
+    | 'adjustDistance' // 调整距离
+    | 'adjustOrbit' // 调整轨道
 
 /**
  * 功能：
@@ -116,7 +116,7 @@ export interface ToolHandler {
 
     readonly cursorClass: string | null
     readonly notification: ToolNotification | null
-    
+
     /** 需要 Cytoscape 高亮的目标节点 ID。null 表示不高亮。可选——无高亮需求的 handler 不提供。 */
     readonly highlightNode?: string | null
     /** 需要 Cytoscape 高亮的目标边 ID。null 表示不高亮。可选——无高亮需求的 handler 不提供。 */
@@ -134,10 +134,18 @@ export interface ToolHandler {
 /**
  * 功能：
  *
+ *     工具栏按钮的视觉分组。渲染层按组边界自动插入分隔线。
+ */
+export type ToolGroup = 'node' | 'edge' | 'otherTool'
+
+/**
+ * 功能：
+ *
  *     注册表条目。描述按钮显示信息与处理器工厂。
  */
 export interface ToolConfig {
     id: ToolId
+    group: ToolGroup
     icon: Component
     iconClass?: string
     label: string

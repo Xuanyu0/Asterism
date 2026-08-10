@@ -29,7 +29,6 @@ import { useMoveNodeTool } from './move_node'
 
 import type { ToolConfig } from '../types'
 
-
 /**
  * 功能：
  *
@@ -38,19 +37,73 @@ import type { ToolConfig } from '../types'
  * 规则：
  *
  *     1. 按钮顺序决定工具栏显示顺序。
- *     2. 第 3 个和第 7 个按钮在 CSS 中有左边距（分组视觉分隔）。
+ *     2. group 字段标记视觉分组，渲染层在组边界自动插入分隔线。
  */
 export const toolbarConfig: ToolConfig[] = [
     // ── 节点组 ──
-    { id: 'add-real-node',         icon: PlusCircleIcon,              label: '添加实节点',   useTool: () => useAddNodeTool('real') },
-    { id: 'add-virtual-node',      icon: VirtualNodeIcon,             label: '添加虚节点',   useTool: () => useAddNodeTool('virtual') },
+    {
+        id: 'add-real-node',
+        group: 'node',
+        icon: PlusCircleIcon,
+        label: '添加实节点',
+        useTool: () => useAddNodeTool('real'),
+    },
+    {
+        id: 'add-virtual-node',
+        group: 'node',
+        icon: VirtualNodeIcon,
+        label: '添加虚节点',
+        useTool: () => useAddNodeTool('virtual'),
+    },
     // ── 边组 ──
-    { id: 'add-real-directed',     icon: ArrowRightIcon,              label: '添加有向实边', useTool: () => useAddEdgeTool('real', 'directed') },
-    { id: 'add-real-undirected',   icon: MinusIcon,                   label: '添加无向实边', useTool: () => useAddEdgeTool('real', 'undirected') },
-    { id: 'add-virtual-directed',  icon: VirtualDirectedIcon,         label: '添加有向虚边', useTool: () => useAddEdgeTool('virtual', 'directed') },
-    { id: 'add-virtual-undirected', icon: VirtualUndirectedIcon,      label: '添加无向虚边', useTool: () => useAddEdgeTool('virtual', 'undirected') },
+    {
+        id: 'add-real-directed',
+        group: 'edge',
+        icon: ArrowRightIcon,
+        label: '添加有向实边',
+        useTool: () => useAddEdgeTool('real', 'directed'),
+    },
+    {
+        id: 'add-real-undirected',
+        group: 'edge',
+        icon: MinusIcon,
+        label: '添加无向实边',
+        useTool: () => useAddEdgeTool('real', 'undirected'),
+    },
+    {
+        id: 'add-virtual-directed',
+        group: 'edge',
+        icon: VirtualDirectedIcon,
+        label: '添加有向虚边',
+        useTool: () => useAddEdgeTool('virtual', 'directed'),
+    },
+    {
+        id: 'add-virtual-undirected',
+        group: 'edge',
+        icon: VirtualUndirectedIcon,
+        label: '添加无向虚边',
+        useTool: () => useAddEdgeTool('virtual', 'undirected'),
+    },
     // ── 工具组 ──
-    { id: 'delete',                icon: TrashIcon,                   label: '删除',         useTool: () => useDeleteTool() },
-    { id: 'fold',                  icon: ChevronDownIcon,             label: '折叠',         useTool: () => useFoldTool() },
-    { id: 'move',                  icon: ArrowsPointingOutIcon,      label: '移动节点',     useTool: () => useMoveNodeTool() },
+    {
+        id: 'delete',
+        group: 'otherTool',
+        icon: TrashIcon,
+        label: '删除',
+        useTool: () => useDeleteTool(),
+    },
+    {
+        id: 'fold',
+        group: 'otherTool',
+        icon: ChevronDownIcon,
+        label: '折叠',
+        useTool: () => useFoldTool(),
+    },
+    {
+        id: 'move',
+        group: 'otherTool',
+        icon: ArrowsPointingOutIcon,
+        label: '移动节点',
+        useTool: () => useMoveNodeTool(),
+    },
 ]
