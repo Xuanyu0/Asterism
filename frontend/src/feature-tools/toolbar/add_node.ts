@@ -33,17 +33,17 @@ import type { KnowledgeNodeKind, NodePosition } from '@my-project/graph-engine'
 import type { ToolId, ToolHandler, ToolNotification } from '../types'
 
 /**
- * 功能：
+ * 尚未提交到 GraphData 的节点草稿。
  *
- *     表示尚未提交到 GraphData 的节点草稿。
- *
+ * @remarks
  * 规则：
- *
- *     1. DraftNode 不属于 GraphData。
- *     2. 用户确认前允许为空字段。
- *     3. 关闭浮空窗后自动销毁。
+ * - DraftNode 不属于 GraphData
+ * - nodeId 是预览节点 ID（previewAddNode 生成），供浮空窗锚定到画布上的占位节点
+ * - 用户确认前允许为空字段；关闭浮空窗后自动销毁
  */
 export interface DraftNode {
+    /** 预览节点 ID——画布上占位节点的锚定目标（浮空窗据此定位）。 */
+    nodeId: string
     kind: KnowledgeNodeKind
     x: number
     y: number
@@ -122,7 +122,7 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
     function onCanvasClick(pos: { x: number; y: number }): void {
         // 点击落定：定格预览节点在点击位置。若该位置碰撞，直接报错拒绝，
         // 不进入浮空窗编辑（用户需移动光标到无碰撞处重新点击）。
-        const collides = applyAddNodePreview(pos)
+        const { collides, nodeId } = applyAddNodePreview(pos)
 
         if (collides) {
             collisionMessage.value = '该位置与已有节点碰撞，无法放置。'
@@ -132,6 +132,8 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
         collisionMessage.value = null
 
         draftNode.value = {
+            // 预览节点 ID 写入草稿，供浮空窗锚定到画布上的占位节点
+            nodeId: nodeId ?? '',
             kind: kind as KnowledgeNodeKind,
             x: pos.x,
             y: pos.y,
@@ -200,21 +202,18 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
     // ── 实时预览 ──
 
     /**
-     * 说明：
+     * 在当前光标位置应用添加节点预览：整图切到预览图（含占位节点），碰撞时叠加红色高亮。
      *
-     *     在当前光标位置应用添加节点预览：整图切到预览图（含占位节点），
-     *     碰撞时叠加红色高亮。
+     * @remarks
+     * sync 会清空全部 class，因此占位 / 碰撞 class 必须在 sync 后重施。
      *
-     * 返回值：
-     *
-     *     collides — 该位置是否与已有节点碰撞。调用方据此决定是否允许落定。
-     *
-     * 调用契约：
-     *
-     *     sync 会清空全部 class，因此占位 / 碰撞 class 必须在 sync 后重施。
+     * @param pos - 当前光标模型坐标
+     * @returns collides 为该位置是否与已有节点碰撞（调用方据此决定是否允许落定）；
+     *          nodeId 为预览生成的占位节点 ID（graphView 缺失时为 null，
+     *          onCanvasClick 定格时写入 draftNode.nodeId 供浮空窗锚定）
      */
-    function applyAddNodePreview(pos: NodePosition): boolean {
-        if (!graphStore.graphView) return false
+    function applyAddNodePreview(pos: NodePosition): { collides: boolean; nodeId: string | null } {
+        if (!graphStore.graphView) return { collides: false, nodeId: null }
 
         const { previewGraph, collides, nodeId } = previewAddNode(graphStore.graphView, pos, kind)
 
@@ -224,7 +223,7 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
             addNodeClass(nodeId, 'preview-collision', 'add-node')
         }
 
-        return collides
+        return { collides, nodeId }
     }
 
     return {

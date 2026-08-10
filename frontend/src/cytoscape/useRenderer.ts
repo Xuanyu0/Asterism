@@ -25,9 +25,15 @@ import type { CyInteractionHandlers } from './cy_interaction'
 import { mapGraphDataToCyElements } from './cy_element_mapper'
 import { bindCyEvents } from './cy_interaction'
 import { createCytoscapeStyle } from './cy_style'
+import { attachElementPopper, registerPopperExtension } from './cy_popper'
+
+import type { PopperAnchorHandle, PopperAnchorOptions } from './cy_popper'
 
 // 注册 cytoscape-canvas 扩展（用于格点背景）
 cytoscape.use(cytoscapeCanvas)
+
+// 注册 cytoscape-popper 扩展（浮空窗锚定；v4 必须在任意 ele.popper() 调用前注册）
+registerPopperExtension()
 
 // 模块级 renderer 单例引用
 let singleton: RendererAPI | null = null
@@ -208,6 +214,26 @@ interface RendererAPI {
      *     className — 要施加/移除的 class 名
      */
     bindHighlight(getter: () => string | null | undefined, className: string): void
+
+    /**
+     * 将 DOM 元素锚定到指定 Cytoscape 元素（节点/边），跟随目标位移与画布平移缩放。
+     *
+     * @remarks
+     * 委托 {@link attachElementPopper}。调用契约：
+     * - cy 未挂载或目标元素不存在时返回 no-op 句柄（update/destroy 空实现），不抛错
+     * - 调用方必须持有返回句柄，并在关闭 / 切换目标 / 卸载时调 destroy——否则监听泄漏
+     * - 节点锚定包围盒中心，边锚定包围盒中心（即中点）
+     *
+     * @param elementId - 目标节点/边的 ID
+     * @param contentEl - 被锚定的 DOM 元素
+     * @param options - 透传给 floating-ui 的选项（placement / strategy / middleware）
+     * @returns 可重算的锚定句柄 { update, destroy }
+     */
+    attachPopper(
+        elementId: string,
+        contentEl: HTMLElement,
+        options?: PopperAnchorOptions,
+    ): PopperAnchorHandle
 }
 
 /**
@@ -505,6 +531,17 @@ export function useRenderer(
         )
     }
 
+    function attachPopper(
+        elementId: string,
+        contentEl: HTMLElement,
+        options?: PopperAnchorOptions,
+    ): PopperAnchorHandle {
+        if (!cy) {
+            return { update() {}, destroy() {} }
+        }
+
+        return attachElementPopper(cy, elementId, contentEl, options)
+    }
 
     // ── 私有辅助：格点背景 ──
 
@@ -564,6 +601,7 @@ export function useRenderer(
         clearAllPreviews,
         trackCursor,
         bindHighlight,
+        attachPopper,
     }
 
     singleton = api

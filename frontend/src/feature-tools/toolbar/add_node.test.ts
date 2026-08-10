@@ -107,9 +107,10 @@ describe('useAddNodeTool', () => {
         expect(handler.isActive).toBe(true)
     })
 
-    test('onCanvasClick 创建 DraftNode', () => {
+    test('onCanvasClick 创建 DraftNode（含预览节点 nodeId，供浮空窗锚定）', () => {
         handler.onCanvasClick!({ x: 100, y: 200 })
         expect(handler.draftNode).not.toBeNull()
+        expect(handler.draftNode!.nodeId).toBe('preview-node-1')
         expect(handler.draftNode!.x).toBe(100)
         expect(handler.draftNode!.y).toBe(200)
         expect(handler.draftNode!.kind).toBe('real')

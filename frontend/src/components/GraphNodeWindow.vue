@@ -1,77 +1,67 @@
 <template>
-    <!-- DraftNode 浮空窗 -->
-    <div
-        v-if="draftNode"
-        class="floating-window"
-    >
-        <h3>Draft Node</h3>
+    <!-- 物理挂 body，逻辑仍组件树；popper 注入 left/top 实现锚定到目标 -->
+    <Teleport to="body">
+        <!-- DraftNode 浮空窗 -->
+        <div v-if="draftNode" v-bind:ref="registerWindowRoot" class="floating-window">
+            <h3>Draft Node</h3>
 
-        <label class="field-label">Label</label>
-        <input
-            v-bind:value="draftNode.label"
-            placeholder="Label"
-            v-on:input="handleDraftLabelInput"
-        />
+            <label class="field-label">Labzel</label>
+            <input
+                v-bind:value="draftNode.label"
+                placeholder="Label"
+                v-on:input="handleDraftLabelInput"
+            />
 
-        <label class="field-label">Summary</label>
-        <textarea
-            v-bind:value="draftNode.summary"
-            placeholder="Summary"
-            v-on:input="handleDraftSummaryInput"
-        />
-
-        <div class="button-row">
-            <button v-on:click="handleConfirmDraftNode">
-                Confirm
-            </button>
-
-            <button class="btn-secondary" v-on:click="handleCancelDraftNode">
-                Cancel
-            </button>
-        </div>
-    </div>
-
-    <!-- 已有节点/边编辑浮空窗 -->
-    <div
-        v-else-if="floatingData"
-        v-bind:ref="registerFloatingContainer"
-        class="floating-window"
-    >
-        <div class="floating-window-header">
-            <h3>{{ isEdge ? 'Edit Edge' : 'Edit Node' }}</h3>
-
-            <button
-                type="button"
-                class="floating-window-close"
-                v-bind:aria-label="'关闭编辑窗口'"
-                v-on:click="closeFloatingWindow"
-            >
-                <XMarkIcon class="size-4 pointer-events-none" />
-            </button>
-        </div>
-
-        <label class="field-label">Label</label>
-        <input
-            v-bind:value="floatingData.label ?? ''"
-            placeholder="Label"
-            v-on:input="handleFloatingLabelInput"
-        />
-
-        <template v-if="isKnowledgeNode">
             <label class="field-label">Summary</label>
             <textarea
-                v-bind:value="floatingSummary"
+                v-bind:value="draftNode.summary"
                 placeholder="Summary"
-                v-on:input="handleFloatingSummaryInput"
+                v-on:input="handleDraftSummaryInput"
             />
-        </template>
 
-        <div class="button-row">
-            <button v-on:click="handleFloatingConfirm">
-                Confirm
-            </button>
+            <div class="button-row">
+                <button v-on:click="handleConfirmDraftNode">Confirm</button>
+
+                <button class="btn-secondary" v-on:click="handleCancelDraftNode">Cancel</button>
+            </div>
         </div>
-    </div>
+
+        <!-- 已有节点/边编辑浮空窗 -->
+        <div v-else-if="floatingData" v-bind:ref="registerWindowRoot" class="floating-window">
+            <div class="floating-window-header">
+                <h3>{{ isEdge ? 'Edit Edge' : 'Edit Node' }}</h3>
+
+                <button
+                    type="button"
+                    class="floating-window-close"
+                    v-bind:aria-label="'关闭编辑窗口'"
+                    v-on:click="closeFloatingWindow"
+                >
+                    <XMarkIcon class="pointer-events-none size-4" />
+                </button>
+            </div>
+
+            <label class="field-label">Label</label>
+            <input
+                v-bind:value="floatingData.label ?? ''"
+                placeholder="Label"
+                v-on:input="handleFloatingLabelInput"
+            />
+
+            <template v-if="isKnowledgeNode">
+                <label class="field-label">Summary</label>
+                <textarea
+                    v-bind:value="floatingSummary"
+                    placeholder="Summary"
+                    v-on:input="handleFloatingSummaryInput"
+                />
+            </template>
+
+            <div class="button-row">
+                <button v-on:click="handleFloatingConfirm">Confirm</button>
+            </div>
+        </div>
+    </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -83,19 +73,28 @@
  *     1. DraftNode 编辑入口（新建节点草稿）
  *     2. 已有节点/边编辑入口（浮空窗修改）
  *     3. 两种模式互斥显示
+ *
+ * 规则：
+ *     1. 经 <Teleport to="body"> 物理挂载到 body；锚定位置由 renderer.attachPopper
+ *        注入 left/top（draft 窗锚定预览节点，编辑窗锚定目标节点/边中点）。
+ *     2. 根元素注册沿用 useFloatingWindow.registerContainer（外部点击关闭判定），
+ *        与锚定共用同一根元素。
  */
 
-import { computed, watch, type ComponentPublicInstance } from 'vue'
+import { computed, watch, ref, onBeforeUnmount } from 'vue'
 
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 
 import { useToolMediator } from '@/feature-tools/mediator'
-import { useFloatingWindow } from '@/feature-tools/composables/useFloatingWindow'
+import { useFloatingWindow } from '@/composables/useFloatingWindow'
+import { useRenderer } from '@/cytoscape/useRenderer'
 
+import type { ComponentPublicInstance } from 'vue'
 import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
 
 const mediator = useToolMediator()
 const floatingWindow = useFloatingWindow()
+const renderer = useRenderer()
 
 const draftNode = computed(() => mediator.activeHandler.value?.draftNode ?? null)
 
@@ -145,10 +144,7 @@ function handleConfirmDraftNode(): void {
     const active = mediator.activeHandler.value
     if (!active?.draftNode) return
 
-    active.onConfirm?.(
-        active.draftNode.label,
-        active.draftNode.summary,
-    )
+    active.onConfirm?.(active.draftNode.label, active.draftNode.summary)
 }
 
 function handleCancelDraftNode(): void {
@@ -159,10 +155,75 @@ function handleCancelDraftNode(): void {
 
 let editingData: NodeData | EdgeData | null = null
 
-// 浮空窗根元素注册：组件挂载/卸载时（含 v-if 切换）经 ref 回调上报给单例
-function registerFloatingContainer(el: Element | ComponentPublicInstance | null): void {
+// ── 浮空窗 锚定（popper） ──
+
+/**
+ * 当前锚定句柄（单实例）。
+ *
+ * @remarks
+ * 重建（目标切换）与组件卸载前必须先 destroy——否则 Cytoscape 事件监听泄漏。
+ */
+let popperHandle: { update(): void; destroy(): void } | null = null
+
+/**
+ * 当前浮空窗根元素。
+ *
+ * @remarks
+ * draft 窗与编辑窗互斥显示，共用一个锚定根；v-if 切换时经 ref 回调更新。
+ */
+const windowRootEl = ref<HTMLElement | null>(null)
+
+/**
+ * 锚定目标 id：draft 窗取预览节点 nodeId，编辑窗取实体 id（node.id / edge.id）。
+ */
+const anchorTargetId = computed<string | null>(() => {
+    if (draftNode.value) {
+        return draftNode.value.nodeId ?? null
+    }
+    if (floatingData.value) {
+        return floatingData.value.id
+    }
+    return null
+})
+
+// 目标 id 或根元素变化 → 重建锚定。flush: 'post' 保证根元素 ref 已就位（v-if 窗口渲染完成后）。
+// 同时依赖 windowRootEl：组件重挂载时浮空窗状态（模块级单例）存活而根元素 ref 重建，
+// 若只 watch 目标 id，immediate 触发时根元素未就位会漏建锚定。
+watch(
+    [anchorTargetId, windowRootEl],
+    ([targetId]) => {
+        if (popperHandle) {
+            popperHandle.destroy()
+            popperHandle = null
+        }
+
+        if (!targetId || !windowRootEl.value) return
+
+        popperHandle = renderer.attachPopper(targetId, windowRootEl.value)
+    },
+    { flush: 'post', immediate: true },
+)
+
+onBeforeUnmount(() => {
+    popperHandle?.destroy()
+    popperHandle = null
+})
+
+/**
+ * 浮空窗根元素注册回调：兼作锚定根捕获与外部点击容器注册。
+ *
+ * @remarks
+ * 组件挂载/卸载（含 v-if 切换）时经 ref 回调调用。draft 窗与编辑窗互斥，
+ * 同一回调对二者均安全——floatingData 为 null 时外部点击监听提前返回，
+ * draft 窗注册为容器无副作用。
+ *
+ * @param el - ref 回调参数（本窗口根元素是原生 div，卸载时为 null）
+ */
+function registerWindowRoot(el: Element | ComponentPublicInstance | null): void {
     // Vue 的 ref 回调参数类型较宽；本窗口根元素是原生 div，卸载时为 null
-    floatingWindow.registerContainer(el instanceof HTMLElement ? el : null)
+    const htmlEl = el instanceof HTMLElement ? el : null
+    windowRootEl.value = htmlEl
+    floatingWindow.registerContainer(htmlEl)
 }
 
 function closeFloatingWindow(): void {
@@ -198,9 +259,7 @@ function handleFloatingConfirm(): void {
     if (!editingData) return
 
     const label = editingData.label ?? ''
-    const summary = isKnowledgeNode.value
-        ? (editingData as KnowledgeNodeData).summary ?? ''
-        : ''
+    const summary = isKnowledgeNode.value ? ((editingData as KnowledgeNodeData).summary ?? '') : ''
 
     mediator.activeHandler.value?.onConfirm?.(label, summary)
 
@@ -210,15 +269,17 @@ function handleFloatingConfirm(): void {
 
 <style scoped>
 .floating-window {
-    position: absolute;
-    top: 20px;
-    right: 20px;
+    /* 定位由 cy_popper 锚定注入 left/top；position: fixed 与 strategy: 'fixed' 配套
+       （视口坐标系）——absolute 会按文档坐标系解析视口坐标，导致偏移且撑大文档触发滚动条 */
+    position: fixed;
     width: 300px;
     padding: 16px;
     background: white;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.06);
+    box-shadow:
+        0 4px 16px rgba(0, 0, 0, 0.1),
+        0 1px 4px rgba(0, 0, 0, 0.06);
     z-index: 999;
 }
 
@@ -249,7 +310,9 @@ function handleFloatingConfirm(): void {
     border-radius: 4px;
     color: #64748b;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition:
+        background 0.15s,
+        color 0.15s;
 }
 
 .floating-window-close:hover {
@@ -274,7 +337,9 @@ function handleFloatingConfirm(): void {
     border-radius: 6px;
     font-size: 13px;
     outline: none;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition:
+        border-color 0.15s,
+        box-shadow 0.15s;
 }
 
 .floating-window input:focus,
@@ -295,7 +360,9 @@ function handleFloatingConfirm(): void {
     border-radius: 6px;
     font-size: 13px;
     cursor: pointer;
-    transition: background 0.15s, transform 0.1s;
+    transition:
+        background 0.15s,
+        transform 0.1s;
 }
 
 .button-row button:first-child {
