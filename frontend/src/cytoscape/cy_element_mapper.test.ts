@@ -12,7 +12,6 @@ import { mapGraphDataToCyElements } from './cy_element_mapper'
 
 import type { GraphData, GraphId, NodeId } from '@my-project/graph-engine'
 
-
 const GRAPH_ID = 'graph-root-1' as GraphId
 
 function buildGraph(nodes: ReturnType<typeof createNode>[]): GraphData {
@@ -85,15 +84,17 @@ describe('mapGraphDataToCyElements', () => {
         })
         const graph = buildGraph([parent, child])
         graph.cognitiveState = {
-            foldedDependencies: [{
-                targetNodeId: 'node-parent' as NodeId,
-                foldedNodeIds: ['node-child' as NodeId],
-            }],
+            foldedDependencies: [
+                {
+                    targetNodeId: 'node-parent' as NodeId,
+                    foldedNodeIds: ['node-child' as NodeId],
+                },
+            ],
         }
 
         const elements = mapGraphDataToCyElements(graph)
 
-        expect(elements.nodes.map(n => n.data.id)).not.toContain('node-child')
-        expect(elements.nodes.map(n => n.data.id)).toContain('node-parent')
+        expect(elements.nodes.map((n) => n.data.id)).not.toContain('node-child')
+        expect(elements.nodes.map((n) => n.data.id)).toContain('node-parent')
     })
 })

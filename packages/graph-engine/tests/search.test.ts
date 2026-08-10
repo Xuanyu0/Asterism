@@ -10,7 +10,12 @@ import type { GraphLookup } from '../src/types/infrastructure_types'
 
 // helpers
 
-function graph(id: string, title: string, nodes: NodeData[], parentGraphId?: string): GraphData {
+function graph(
+    id: string,
+    title: string,
+    nodes: NodeData[],
+    parentGraphId?: string,
+): GraphData {
     return {
         id,
         kind: parentGraphId ? 'subgraph' : 'root',
@@ -33,7 +38,12 @@ function kn(id: string, label: string): NodeData {
     }
 }
 
-function refNode(id: string, label: string, sourceGraphId: string, sourceNodeId: string): NodeData {
+function refNode(
+    id: string,
+    label: string,
+    sourceGraphId: string,
+    sourceNodeId: string,
+): NodeData {
     return {
         id,
         graphId: '',
@@ -48,7 +58,10 @@ function refNode(id: string, label: string, sourceGraphId: string, sourceNodeId:
 }
 
 /** 构造 lookupGraph + graphIds 辅助。 */
-function makeLookup(graphs: GraphData[]): { graphIds: GraphId[]; lookupGraph: GraphLookup } {
+function makeLookup(graphs: GraphData[]): {
+    graphIds: GraphId[]
+    lookupGraph: GraphLookup
+} {
     const map = new Map<GraphId, GraphData>()
     for (const g of graphs) {
         map.set(g.id as GraphId, g)
@@ -81,11 +94,13 @@ describe('searchNodes', () => {
         const results = searchNodes('递归', graphIds, lookupGraph)
 
         expect(results).toHaveLength(2)
-        expect(results.map(r => r.nodeId)).toEqual(['n1', 'n3'])
+        expect(results.map((r) => r.nodeId)).toEqual(['n1', 'n3'])
     })
 
     test('returns empty array when no match', () => {
-        const { graphIds, lookupGraph } = makeLookup([graph('g1', 'G', [kn('n1', '递归')])])
+        const { graphIds, lookupGraph } = makeLookup([
+            graph('g1', 'G', [kn('n1', '递归')]),
+        ])
 
         const results = searchNodes('不存在', graphIds, lookupGraph)
 
@@ -97,7 +112,12 @@ describe('searchNodes', () => {
         const g2 = graph('g2', '图二', [kn('n2', '递归函数')])
         const { graphIds, lookupGraph } = makeLookup([g1, g2])
 
-        const results = searchNodes('递归', graphIds, lookupGraph, 'g1' as GraphId)
+        const results = searchNodes(
+            '递归',
+            graphIds,
+            lookupGraph,
+            'g1' as GraphId,
+        )
 
         expect(results).toHaveLength(1)
         expect(results[0]!.graphId).toBe('g1')
@@ -115,7 +135,12 @@ describe('searchNodes', () => {
 
     test('returns empty for nonexistent graphId', () => {
         const { graphIds, lookupGraph } = makeLookup([])
-        const results = searchNodes('递归', graphIds, lookupGraph, 'missing' as GraphId)
+        const results = searchNodes(
+            '递归',
+            graphIds,
+            lookupGraph,
+            'missing' as GraphId,
+        )
         expect(results).toEqual([])
     })
 
@@ -150,7 +175,9 @@ describe('graphPath in search results', () => {
     })
 
     test('single root graph has path of length 1', () => {
-        const { graphIds, lookupGraph } = makeLookup([graph('root', '根图', [kn('n1', '递归')])])
+        const { graphIds, lookupGraph } = makeLookup([
+            graph('root', '根图', [kn('n1', '递归')]),
+        ])
 
         const results = searchNodes('递归', graphIds, lookupGraph)
 

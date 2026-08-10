@@ -30,7 +30,9 @@ const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
 
 // ═══════════ 内部：节点辅助 ═══════════
 
-function hasPosition(node: NodeData): node is NodeData & { position: NodePosition } {
+function hasPosition(
+    node: NodeData,
+): node is NodeData & { position: NodePosition } {
     return node.position !== undefined
 }
 
@@ -56,7 +58,7 @@ function getTarget(
     allNodes: NodeData[],
     nodeRadiusOverrides: NodeRadiusMap,
 ): CollisionTarget | undefined {
-    const node = allNodes.find(node => node.id === nodeId)
+    const node = allNodes.find((node) => node.id === nodeId)
     if (!node) return undefined
 
     return {
@@ -82,13 +84,12 @@ function getRadius(node: NodeData, nodeRadiusOverrides: NodeRadiusMap): number {
 
 // ═══════════ 公开 API ═══════════
 
-
 /**
  * 功能：
  *
  *     判断节点放置在目标位置是否会与已有节点发生碰撞。
  *
-     *     目标节点可能不在 allNodes 中（新建节点）：此时半径回退为覆盖值或 unitDistance，
+ *     目标节点可能不在 allNodes 中（新建节点）：此时半径回退为覆盖值或 unitDistance，
  *     但仍正常检测该位置与已有节点的碰撞。
  *
  * 规则：
@@ -175,12 +176,15 @@ export function hasCollisionInDrafts(
 
     // 组装草稿的半径信息。草稿自身可能不在 allNodes 中（新建节点）：
     // 先查 nodeRadiusOverrides，无覆盖再回退为 unitDistance。
-    const draftItems = drafts.map(draft => {
-        const existing = allNodes.find(node => node.id === draft.nodeId)
+    const draftItems = drafts.map((draft) => {
+        const existing = allNodes.find((node) => node.id === draft.nodeId)
         if (existing) {
             return { draft, radius: getRadius(existing, nodeRadiusOverrides) }
         }
-        return { draft, radius: nodeRadiusOverrides.get(draft.nodeId) ?? unitDistance }
+        return {
+            draft,
+            radius: nodeRadiusOverrides.get(draft.nodeId) ?? unitDistance,
+        }
     })
 
     // 草稿 vs 草稿：两两检查
@@ -189,7 +193,10 @@ export function hasCollisionInDrafts(
         for (let j = i + 1; j < draftItems.length; j++) {
             const b = draftItems[j]!
             const minDist = a.radius + b.radius
-            if (squaredDistance(a.draft.position, b.draft.position) < minDist * minDist) {
+            if (
+                squaredDistance(a.draft.position, b.draft.position) <
+                minDist * minDist
+            ) {
                 return true
             }
         }
@@ -198,12 +205,20 @@ export function hasCollisionInDrafts(
     // 草稿 vs 已有节点：每个草稿单独调 hasCollisionAt。
     // 传入其他草稿的 ID 作为额外排除项——同伴正在被移动，其旧位置不应触发碰撞。
     // 调 hasCollisionAt 而非重新实现循环体，保持碰撞判定公式单一来源。
-    const draftIdSet = new Set(drafts.map(d => d.nodeId))
+    const draftIdSet = new Set(drafts.map((d) => d.nodeId))
 
     for (const draft of drafts) {
         const peerIds = new Set(draftIdSet)
         peerIds.delete(draft.nodeId) // 排除当前草稿同伴，但保留自身（hasCollisionAt 自带排除）
-        if (hasCollisionAt(draft.nodeId, draft.position, allNodes, nodeRadiusOverrides, peerIds)) {
+        if (
+            hasCollisionAt(
+                draft.nodeId,
+                draft.position,
+                allNodes,
+                nodeRadiusOverrides,
+                peerIds,
+            )
+        ) {
             return true
         }
     }

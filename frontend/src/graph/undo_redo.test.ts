@@ -57,7 +57,12 @@ function makeGraph(
     })
 }
 
-function knowledgeNode(id: NodeId, label: string, x: number, y: number): NodeData {
+function knowledgeNode(
+    id: NodeId,
+    label: string,
+    x: number,
+    y: number,
+): NodeData {
     return createNode({ id, graphId: ROOT, label, position: { x, y } })
 }
 
@@ -82,11 +87,27 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
         const nodeB = knowledgeNode('node-b', '节点B', 5000, 5000)
         const ops = [
             { type: 'add_node' as const, node: nodeB },
-            { type: 'add_edge' as const, edge: createEdge({ id: 'edge-ax' as EdgeId, graphId: ROOT, source: 'node-a' as NodeId, target: 'node-x' as NodeId, kind: 'real' as const, direction: 'directed' as const }) },
-            { type: 'move_node' as const, nodeId: 'node-a' as NodeId, position: { x: 9000, y: 9000 } },
+            {
+                type: 'add_edge' as const,
+                edge: createEdge({
+                    id: 'edge-ax' as EdgeId,
+                    graphId: ROOT,
+                    source: 'node-a' as NodeId,
+                    target: 'node-x' as NodeId,
+                    kind: 'real' as const,
+                    direction: 'directed' as const,
+                }),
+            },
+            {
+                type: 'move_node' as const,
+                nodeId: 'node-a' as NodeId,
+                position: { x: 9000, y: 9000 },
+            },
         ]
 
-        const { validation } = store.commitBatchToGraphs([{ graph, operations: ops }])
+        const { validation } = store.commitBatchToGraphs([
+            { graph, operations: ops },
+        ])
 
         expect(validation.valid).toBe(true)
         expect(store.operationLog.entries).toHaveLength(1)
@@ -96,24 +117,43 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
         expect(entry.parentIndex).toBe(-1)
 
         // operation：按图分组、正向顺序
-        expect(entry.operation).toEqual([{
-            graphId: ROOT,
-            operations: [
-                { type: 'add_node', node: nodeB },
-                { type: 'add_edge', edge: expect.objectContaining({ id: 'edge-ax', source: 'node-a', target: 'node-x' }) },
-                { type: 'move_node', nodeId: 'node-a', position: { x: 9000, y: 9000 } },
-            ],
-        }])
+        expect(entry.operation).toEqual([
+            {
+                graphId: ROOT,
+                operations: [
+                    { type: 'add_node', node: nodeB },
+                    {
+                        type: 'add_edge',
+                        edge: expect.objectContaining({
+                            id: 'edge-ax',
+                            source: 'node-a',
+                            target: 'node-x',
+                        }),
+                    },
+                    {
+                        type: 'move_node',
+                        nodeId: 'node-a',
+                        position: { x: 9000, y: 9000 },
+                    },
+                ],
+            },
+        ])
 
         // reversalOperations：item 内逆序（后执行先撤销）
-        expect(entry.reversalOperations).toEqual([{
-            graphId: ROOT,
-            operations: [
-                { type: 'move_node', nodeId: 'node-a', position: { x: 0, y: 0 } },
-                { type: 'delete_edge', edgeId: 'edge-ax' },
-                { type: 'delete_node', nodeId: 'node-b' },
-            ],
-        }])
+        expect(entry.reversalOperations).toEqual([
+            {
+                graphId: ROOT,
+                operations: [
+                    {
+                        type: 'move_node',
+                        nodeId: 'node-a',
+                        position: { x: 0, y: 0 },
+                    },
+                    { type: 'delete_edge', edgeId: 'edge-ax' },
+                    { type: 'delete_node', nodeId: 'node-b' },
+                ],
+            },
+        ])
     })
 
     test('混合多图批 → reversalOperations item 间逆序（后提交的图先撤销）', () => {
@@ -122,29 +162,74 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
         const graphB = makeGraph('graph-b', [knowledgeNode('b-1', 'B1', 0, 0)])
 
         store.commitBatchToGraphs([
-            { graph: graphA, operations: [{ type: 'add_node', node: knowledgeNode('a-2', 'A2', 5000, 5000) }] },
-            { graph: graphB, operations: [{ type: 'add_node', node: knowledgeNode('b-2', 'B2', 5000, 5000) }] },
+            {
+                graph: graphA,
+                operations: [
+                    {
+                        type: 'add_node',
+                        node: knowledgeNode('a-2', 'A2', 5000, 5000),
+                    },
+                ],
+            },
+            {
+                graph: graphB,
+                operations: [
+                    {
+                        type: 'add_node',
+                        node: knowledgeNode('b-2', 'B2', 5000, 5000),
+                    },
+                ],
+            },
         ])
 
         const entry = store.operationLog.entries[0]!
         // operation：正向 item 顺序
-        expect(entry.operation.map(item => item.graphId)).toEqual(['graph-a', 'graph-b'])
+        expect(entry.operation.map((item) => item.graphId)).toEqual([
+            'graph-a',
+            'graph-b',
+        ])
         // reversalOperations：item 间逆序
-        expect(entry.reversalOperations.map(item => item.graphId)).toEqual(['graph-b', 'graph-a'])
-        expect(entry.reversalOperations[0]!.operations).toEqual([{ type: 'delete_node', nodeId: 'b-2' }])
-        expect(entry.reversalOperations[1]!.operations).toEqual([{ type: 'delete_node', nodeId: 'a-2' }])
+        expect(entry.reversalOperations.map((item) => item.graphId)).toEqual([
+            'graph-b',
+            'graph-a',
+        ])
+        expect(entry.reversalOperations[0]!.operations).toEqual([
+            { type: 'delete_node', nodeId: 'b-2' },
+        ])
+        expect(entry.reversalOperations[1]!.operations).toEqual([
+            { type: 'delete_node', nodeId: 'a-2' },
+        ])
     })
 
     test('graphSignals：add_graph / delete_graph 信号提取正确；parentIndex 首条 -1、第二条 0', () => {
         const store = useGraphStore()
         const root = makeGraph(ROOT)
-        const sub = makeGraph('graph-sub', [], [], { kind: 'subgraph', parentGraphId: ROOT, ownerNodeId: 'node-owner' as NodeId })
+        const sub = makeGraph('graph-sub', [], [], {
+            kind: 'subgraph',
+            parentGraphId: ROOT,
+            ownerNodeId: 'node-owner' as NodeId,
+        })
 
-        store.commitBatchToGraphs([{ graph: root, operations: [{ type: 'add_graph', graph: sub }] }])
-        store.commitBatchToGraphs([{ graph: store.graphRegistry.get(ROOT)!, operations: [{ type: 'delete_graph', graphId: 'graph-sub' as GraphId }] }])
+        store.commitBatchToGraphs([
+            { graph: root, operations: [{ type: 'add_graph', graph: sub }] },
+        ])
+        store.commitBatchToGraphs([
+            {
+                graph: store.graphRegistry.get(ROOT)!,
+                operations: [
+                    { type: 'delete_graph', graphId: 'graph-sub' as GraphId },
+                ],
+            },
+        ])
 
-        expect(store.operationLog.entries[0]!.graphSignals).toEqual({ added: ['graph-sub'], deleted: [] })
-        expect(store.operationLog.entries[1]!.graphSignals).toEqual({ added: [], deleted: ['graph-sub'] })
+        expect(store.operationLog.entries[0]!.graphSignals).toEqual({
+            added: ['graph-sub'],
+            deleted: [],
+        })
+        expect(store.operationLog.entries[1]!.graphSignals).toEqual({
+            added: [],
+            deleted: ['graph-sub'],
+        })
         expect(store.operationLog.entries[0]!.parentIndex).toBe(-1)
         expect(store.operationLog.entries[1]!.parentIndex).toBe(0)
         // 图级操作不构造逆元：两条 entry 的 reversalOperations 均为空
@@ -157,7 +242,17 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
         const graph = makeGraph(ROOT, [knowledgeNode('node-a', '节点A', 0, 0)])
 
         store.commitBatchToGraphs(
-            [{ graph, operations: [{ type: 'add_node', node: knowledgeNode('node-b', '节点B', 5000, 5000) }] }],
+            [
+                {
+                    graph,
+                    operations: [
+                        {
+                            type: 'add_node',
+                            node: knowledgeNode('node-b', '节点B', 5000, 5000),
+                        },
+                    ],
+                },
+            ],
             { recordLog: false },
         )
 
@@ -190,20 +285,52 @@ describe('undo 链', () => {
     test('add_node → update_node(+summary) → delete_node 逐级 undo 精确恢复（节点/属性）', () => {
         const store = useGraphStore()
         const graph = makeGraph(ROOT, [
-            createNode({ id: 'node-a' as NodeId, graphId: ROOT, label: '节点A', position: { x: 0, y: 0 } }),
+            createNode({
+                id: 'node-a' as NodeId,
+                graphId: ROOT,
+                label: '节点A',
+                position: { x: 0, y: 0 },
+            }),
         ])
 
         // 每条一次提交（单操作批）。update_node 的 node 用普通对象构造——
         // 不可 spread Pinia 注册表中的 reactive 节点（嵌套 position 会以 proxy 进入操作）
-        store.commitBatchToGraphs([{ graph, operations: [{ type: 'add_node', node: knowledgeNode('node-b', '节点B', 5000, 5000) }] }])
-        store.commitBatchToGraphs([{
-            graph: store.graphRegistry.get(ROOT)!,
-            operations: [{
-                type: 'update_node',
-                node: createNode({ id: 'node-b' as NodeId, graphId: ROOT, label: '节点B', position: { x: 5000, y: 5000 }, summary: '补充摘要' }),
-            }],
-        }])
-        store.commitBatchToGraphs([{ graph: store.graphRegistry.get(ROOT)!, operations: [{ type: 'delete_node', nodeId: 'node-b' as NodeId }] }])
+        store.commitBatchToGraphs([
+            {
+                graph,
+                operations: [
+                    {
+                        type: 'add_node',
+                        node: knowledgeNode('node-b', '节点B', 5000, 5000),
+                    },
+                ],
+            },
+        ])
+        store.commitBatchToGraphs([
+            {
+                graph: store.graphRegistry.get(ROOT)!,
+                operations: [
+                    {
+                        type: 'update_node',
+                        node: createNode({
+                            id: 'node-b' as NodeId,
+                            graphId: ROOT,
+                            label: '节点B',
+                            position: { x: 5000, y: 5000 },
+                            summary: '补充摘要',
+                        }),
+                    },
+                ],
+            },
+        ])
+        store.commitBatchToGraphs([
+            {
+                graph: store.graphRegistry.get(ROOT)!,
+                operations: [
+                    { type: 'delete_node', nodeId: 'node-b' as NodeId },
+                ],
+            },
+        ])
 
         expect(store.operationLog.entries).toHaveLength(3)
         expect(store.operationLog.cursor).toBe(2)
@@ -211,21 +338,33 @@ describe('undo 链', () => {
         // ── undo 1（delete_node）：删除的节点带回 summary ──
         expect(store.undo()).toBe(true)
         let current = store.graphRegistry.get(ROOT)!
-        expect((current.nodes.find(n => n.id === 'node-b') as KnowledgeNodeData | undefined)?.summary).toBe('补充摘要')
+        expect(
+            (
+                current.nodes.find((n) => n.id === 'node-b') as
+                    | KnowledgeNodeData
+                    | undefined
+            )?.summary,
+        ).toBe('补充摘要')
         expect(store.operationLog.cursor).toBe(1)
         expect(store.redoStack).toEqual([2])
 
         // ── undo 2（update_node）：更新回退旧值（summary 消失）──
         expect(store.undo()).toBe(true)
         current = store.graphRegistry.get(ROOT)!
-        expect((current.nodes.find(n => n.id === 'node-b') as KnowledgeNodeData | undefined)?.summary).toBeUndefined()
+        expect(
+            (
+                current.nodes.find((n) => n.id === 'node-b') as
+                    | KnowledgeNodeData
+                    | undefined
+            )?.summary,
+        ).toBeUndefined()
         expect(store.operationLog.cursor).toBe(0)
         expect(store.redoStack).toEqual([2, 1])
 
         // ── undo 3（add_node）：新增消失 —— 当前实现在此抛 DataCloneError（缺陷 #2）──
         expect(store.undo()).toBe(true)
         current = store.graphRegistry.get(ROOT)!
-        expect(current.nodes.map(n => n.id)).toEqual(['node-a'])
+        expect(current.nodes.map((n) => n.id)).toEqual(['node-a'])
         expect(store.operationLog.cursor).toBe(-1)
         expect(store.redoStack).toEqual([2, 1, 0])
     })
@@ -237,10 +376,24 @@ describe('undo 链', () => {
             knowledgeNode('node-b', '节点B', 5000, 5000),
         ])
 
-        store.commitBatchToGraphs([{
-            graph,
-            operations: [{ type: 'add_edge', edge: createEdge({ id: 'edge-ab' as EdgeId, graphId: ROOT, source: 'node-a' as NodeId, target: 'node-b' as NodeId, kind: 'real' as const, direction: 'directed' as const }) }],
-        }])
+        store.commitBatchToGraphs([
+            {
+                graph,
+                operations: [
+                    {
+                        type: 'add_edge',
+                        edge: createEdge({
+                            id: 'edge-ab' as EdgeId,
+                            graphId: ROOT,
+                            source: 'node-a' as NodeId,
+                            target: 'node-b' as NodeId,
+                            kind: 'real' as const,
+                            direction: 'directed' as const,
+                        }),
+                    },
+                ],
+            },
+        ])
         expect(store.graphRegistry.get(ROOT)!.edges).toHaveLength(1)
 
         expect(store.undo()).toBe(true)
@@ -251,36 +404,92 @@ describe('undo 链', () => {
 
     test('折叠链：collapse_dependency → expand_dependency 后 undo，折叠状态恢复（含 foldedNodeIds 成员）', () => {
         const store = useGraphStore()
-        const graph = makeGraph(ROOT, [
-            knowledgeNode('node-t', '目标', 0, 0),
-            knowledgeNode('node-d', '依赖', 200, 0),
-        ], [
-            createEdge({ id: 'edge-td' as EdgeId, graphId: ROOT, source: 'node-d' as NodeId, target: 'node-t' as NodeId, kind: 'real' as const, direction: 'directed' as const }),
+        const graph = makeGraph(
+            ROOT,
+            [
+                knowledgeNode('node-t', '目标', 0, 0),
+                knowledgeNode('node-d', '依赖', 200, 0),
+            ],
+            [
+                createEdge({
+                    id: 'edge-td' as EdgeId,
+                    graphId: ROOT,
+                    source: 'node-d' as NodeId,
+                    target: 'node-t' as NodeId,
+                    kind: 'real' as const,
+                    direction: 'directed' as const,
+                }),
+            ],
+        )
+
+        store.commitBatchToGraphs([
+            {
+                graph,
+                operations: [
+                    {
+                        type: 'collapse_dependency',
+                        targetNodeId: 'node-t' as NodeId,
+                    },
+                ],
+            },
+        ])
+        store.commitBatchToGraphs([
+            {
+                graph: store.graphRegistry.get(ROOT)!,
+                operations: [
+                    {
+                        type: 'expand_dependency',
+                        targetNodeId: 'node-t' as NodeId,
+                    },
+                ],
+            },
         ])
 
-        store.commitBatchToGraphs([{ graph, operations: [{ type: 'collapse_dependency', targetNodeId: 'node-t' as NodeId }] }])
-        store.commitBatchToGraphs([{ graph: store.graphRegistry.get(ROOT)!, operations: [{ type: 'expand_dependency', targetNodeId: 'node-t' as NodeId }] }])
-
         // 展开后折叠状态为空
-        expect(store.graphRegistry.get(ROOT)!.cognitiveState?.foldedDependencies).toEqual([])
+        expect(
+            store.graphRegistry.get(ROOT)!.cognitiveState?.foldedDependencies,
+        ).toEqual([])
 
         // undo expand → 折叠条目恢复（expand 的逆元 collapse 携带原折叠成员名单）
         expect(store.undo()).toBe(true)
-        expect(store.graphRegistry.get(ROOT)!.cognitiveState?.foldedDependencies).toEqual([
-            { targetNodeId: 'node-t', foldedNodeIds: ['node-d'] },
-        ])
+        expect(
+            store.graphRegistry.get(ROOT)!.cognitiveState?.foldedDependencies,
+        ).toEqual([{ targetNodeId: 'node-t', foldedNodeIds: ['node-d'] }])
 
         // 继续 undo collapse → 完全展开
         expect(store.undo()).toBe(true)
-        expect(store.graphRegistry.get(ROOT)!.cognitiveState?.foldedDependencies ?? []).toEqual([])
+        expect(
+            store.graphRegistry.get(ROOT)!.cognitiveState?.foldedDependencies ??
+                [],
+        ).toEqual([])
     })
 
     test('undo 后执行新操作 → 旧 entry 保留（分支）+ redoStack 清空', () => {
         const store = useGraphStore()
         const graph = makeGraph(ROOT, [knowledgeNode('node-a', '节点A', 0, 0)])
 
-        store.commitBatchToGraphs([{ graph, operations: [{ type: 'add_node', node: knowledgeNode('node-b', '节点B', 5000, 5000) }] }])
-        store.commitBatchToGraphs([{ graph: store.graphRegistry.get(ROOT)!, operations: [{ type: 'add_node', node: knowledgeNode('node-c', '节点C', 6000, 5000) }] }])
+        store.commitBatchToGraphs([
+            {
+                graph,
+                operations: [
+                    {
+                        type: 'add_node',
+                        node: knowledgeNode('node-b', '节点B', 5000, 5000),
+                    },
+                ],
+            },
+        ])
+        store.commitBatchToGraphs([
+            {
+                graph: store.graphRegistry.get(ROOT)!,
+                operations: [
+                    {
+                        type: 'add_node',
+                        node: knowledgeNode('node-c', '节点C', 6000, 5000),
+                    },
+                ],
+            },
+        ])
 
         // undo → cursor 回到 entry 0（B 的父索引），redoStack 记录 entry 1
         expect(store.undo()).toBe(true)
@@ -288,18 +497,35 @@ describe('undo 链', () => {
         expect(store.redoStack).toEqual([1])
 
         // 新操作 → 分支：新 entry 挂在 cursor 0 下，旧分支保留，redoStack 清空
-        store.commitBatchToGraphs([{ graph: store.graphRegistry.get(ROOT)!, operations: [{ type: 'add_node', node: knowledgeNode('node-d', '节点D', 7000, 5000) }] }])
+        store.commitBatchToGraphs([
+            {
+                graph: store.graphRegistry.get(ROOT)!,
+                operations: [
+                    {
+                        type: 'add_node',
+                        node: knowledgeNode('node-d', '节点D', 7000, 5000),
+                    },
+                ],
+            },
+        ])
 
         expect(store.operationLog.entries).toHaveLength(3)
         expect(store.operationLog.cursor).toBe(2)
         expect(store.operationLog.entries[2]!.parentIndex).toBe(0) // 分支挂在被撤销点
         expect(store.redoStack).toEqual([])
         // 旧分支 entry（add node-c）仍保留在日志中
-        expect(store.operationLog.entries[1]!.operation[0]!.operations[0]).toEqual(
-            { type: 'add_node', node: expect.objectContaining({ id: 'node-c' }) },
-        )
+        expect(
+            store.operationLog.entries[1]!.operation[0]!.operations[0],
+        ).toEqual({
+            type: 'add_node',
+            node: expect.objectContaining({ id: 'node-c' }),
+        })
         // 图数据 = 基线 + B + D（C 被撤销、D 新加）
-        expect(store.graphRegistry.get(ROOT)!.nodes.map(n => n.id)).toEqual(['node-a', 'node-b', 'node-d'])
+        expect(store.graphRegistry.get(ROOT)!.nodes.map((n) => n.id)).toEqual([
+            'node-a',
+            'node-b',
+            'node-d',
+        ])
     })
 })
 
@@ -319,14 +545,41 @@ describe('redo 链', () => {
         const store = useGraphStore()
         const graph = makeGraph(ROOT, [knowledgeNode('node-a', '节点A', 0, 0)])
 
-        store.commitBatchToGraphs([{ graph, operations: [{ type: 'add_node', node: knowledgeNode('node-b', '节点B', 5000, 5000) }] }])
-        store.commitBatchToGraphs([{ graph: store.graphRegistry.get(ROOT)!, operations: [{ type: 'add_node', node: knowledgeNode('node-c', '节点C', 6000, 5000) }] }])
+        store.commitBatchToGraphs([
+            {
+                graph,
+                operations: [
+                    {
+                        type: 'add_node',
+                        node: knowledgeNode('node-b', '节点B', 5000, 5000),
+                    },
+                ],
+            },
+        ])
+        store.commitBatchToGraphs([
+            {
+                graph: store.graphRegistry.get(ROOT)!,
+                operations: [
+                    {
+                        type: 'add_node',
+                        node: knowledgeNode('node-c', '节点C', 6000, 5000),
+                    },
+                ],
+            },
+        ])
 
         expect(store.undo()).toBe(true)
-        expect(store.graphRegistry.get(ROOT)!.nodes.map(n => n.id)).toEqual(['node-a', 'node-b'])
+        expect(store.graphRegistry.get(ROOT)!.nodes.map((n) => n.id)).toEqual([
+            'node-a',
+            'node-b',
+        ])
 
         expect(store.redo()).toBe(true)
-        expect(store.graphRegistry.get(ROOT)!.nodes.map(n => n.id)).toEqual(['node-a', 'node-b', 'node-c'])
+        expect(store.graphRegistry.get(ROOT)!.nodes.map((n) => n.id)).toEqual([
+            'node-a',
+            'node-b',
+            'node-c',
+        ])
         expect(store.operationLog.cursor).toBe(1)
         expect(store.redoStack).toEqual([])
     })
@@ -341,7 +594,17 @@ describe('redo 链', () => {
         expect(store.operationLog.entries).toHaveLength(0)
         expect(store.redoStack).toEqual([])
 
-        store.commitBatchToGraphs([{ graph, operations: [{ type: 'add_node', node: knowledgeNode('node-b', '节点B', 5000, 5000) }] }])
+        store.commitBatchToGraphs([
+            {
+                graph,
+                operations: [
+                    {
+                        type: 'add_node',
+                        node: knowledgeNode('node-b', '节点B', 5000, 5000),
+                    },
+                ],
+            },
+        ])
 
         // 提交后仍未 undo：redo 依旧 false
         expect(store.redo()).toBe(false)
@@ -353,14 +616,44 @@ describe('redo 链', () => {
         const store = useGraphStore()
         const graph = makeGraph(ROOT, [knowledgeNode('node-a', '节点A', 0, 0)])
 
-        store.commitBatchToGraphs([{ graph, operations: [{ type: 'add_node', node: knowledgeNode('node-b', '节点B', 5000, 5000) }] }])
-        store.commitBatchToGraphs([{ graph: store.graphRegistry.get(ROOT)!, operations: [{ type: 'add_node', node: knowledgeNode('node-c', '节点C', 6000, 5000) }] }])
+        store.commitBatchToGraphs([
+            {
+                graph,
+                operations: [
+                    {
+                        type: 'add_node',
+                        node: knowledgeNode('node-b', '节点B', 5000, 5000),
+                    },
+                ],
+            },
+        ])
+        store.commitBatchToGraphs([
+            {
+                graph: store.graphRegistry.get(ROOT)!,
+                operations: [
+                    {
+                        type: 'add_node',
+                        node: knowledgeNode('node-c', '节点C', 6000, 5000),
+                    },
+                ],
+            },
+        ])
 
         expect(store.undo()).toBe(true)
         expect(store.redoStack).toEqual([1])
 
         // 新操作清空 redoStack → redo 失效
-        store.commitBatchToGraphs([{ graph: store.graphRegistry.get(ROOT)!, operations: [{ type: 'add_node', node: knowledgeNode('node-d', '节点D', 7000, 5000) }] }])
+        store.commitBatchToGraphs([
+            {
+                graph: store.graphRegistry.get(ROOT)!,
+                operations: [
+                    {
+                        type: 'add_node',
+                        node: knowledgeNode('node-d', '节点D', 7000, 5000),
+                    },
+                ],
+            },
+        ])
         expect(store.redoStack).toEqual([])
         expect(store.redo()).toBe(false)
         expect(store.operationLog.cursor).toBe(2) // 状态未被 redo 触碰
@@ -381,20 +674,38 @@ describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
 
     test('含 add_graph 的批（add_graph + 子图内 add_node）：undo 注销子图（持久化保留）/ redo 重新注册且节点完整', () => {
         const store = useGraphStore()
-        const sub = makeGraph('graph-sub', [], [], { kind: 'subgraph', parentGraphId: ROOT, ownerNodeId: 'node-owner' as NodeId })
+        const sub = makeGraph('graph-sub', [], [], {
+            kind: 'subgraph',
+            parentGraphId: ROOT,
+            ownerNodeId: 'node-owner' as NodeId,
+        })
 
         // 模拟 induce 子图批：add_graph 空壳 + 子图内 add_node 填充
-        store.commitBatchToGraphs([{
-            graph: sub,
-            operations: [
-                { type: 'add_graph', graph: sub },
-                { type: 'add_node', node: createNode({ id: 'sub-1' as NodeId, graphId: 'graph-sub' as GraphId, label: '子节点1', position: { x: 0, y: 0 } }) },
-            ],
-        }])
+        store.commitBatchToGraphs([
+            {
+                graph: sub,
+                operations: [
+                    { type: 'add_graph', graph: sub },
+                    {
+                        type: 'add_node',
+                        node: createNode({
+                            id: 'sub-1' as NodeId,
+                            graphId: 'graph-sub' as GraphId,
+                            label: '子节点1',
+                            position: { x: 0, y: 0 },
+                        }),
+                    },
+                ],
+            },
+        ])
 
         // 提交后：子图已注册且含填充节点；entry 提取 graphSignals.added
-        expect(lookupGraph(store.graphRegistry, 'graph-sub')!.nodes).toHaveLength(1)
-        expect(store.operationLog.entries[0]!.graphSignals.added).toEqual(['graph-sub'])
+        expect(
+            lookupGraph(store.graphRegistry, 'graph-sub')!.nodes,
+        ).toHaveLength(1)
+        expect(store.operationLog.entries[0]!.graphSignals.added).toEqual([
+            'graph-sub',
+        ])
 
         // undo：子图从 registry 注销，持久化保留填充版内容（修复 1：逆元批跳过 added 图
         // 的 item，不再把中间态空壳写回持久化覆盖正向批保存的填充版）
@@ -404,36 +715,63 @@ describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
         expect(persistedSub.ok).toBe(true)
         if (persistedSub.ok) {
             // 持久化内容完整（节点仍在，非空壳）——刷新/新操作（redo 失效）后子图内容不丢失
-            expect(persistedSub.graph.nodes.map(n => n.id)).toEqual(['sub-1'])
+            expect(persistedSub.graph.nodes.map((n) => n.id)).toEqual(['sub-1'])
         }
         expect(store.operationLog.cursor).toBe(-1)
 
         // redo：子图重新注册（add_graph.graph 空壳作入参 + add_node 重新填充），节点完整
         expect(store.redo()).toBe(true)
-        expect(lookupGraph(store.graphRegistry, 'graph-sub')!.nodes.map(n => n.id)).toEqual(['sub-1'])
+        expect(
+            lookupGraph(store.graphRegistry, 'graph-sub')!.nodes.map(
+                (n) => n.id,
+            ),
+        ).toEqual(['sub-1'])
         expect(store.operationLog.cursor).toBe(0)
     })
 
     test('含 delete_graph 的批：undo 从持久化恢复注册 / redo 再次注销', () => {
         const store = useGraphStore()
         const root = makeGraph(ROOT)
-        const sub = makeGraph('graph-sub', [createNode({ id: 'sub-1' as NodeId, graphId: 'graph-sub' as GraphId, label: '子节点1', position: { x: 0, y: 0 } })], [], {
-            kind: 'subgraph', parentGraphId: ROOT, ownerNodeId: 'node-owner' as NodeId,
-        })
+        const sub = makeGraph(
+            'graph-sub',
+            [
+                createNode({
+                    id: 'sub-1' as NodeId,
+                    graphId: 'graph-sub' as GraphId,
+                    label: '子节点1',
+                    position: { x: 0, y: 0 },
+                }),
+            ],
+            [],
+            {
+                kind: 'subgraph',
+                parentGraphId: ROOT,
+                ownerNodeId: 'node-owner' as NodeId,
+            },
+        )
 
         // 先注册 root + sub（add_graph 批注册 + 持久化 sub）
-        store.commitBatchToGraphs([{ graph: root, operations: [{ type: 'add_graph', graph: sub }] }])
+        store.commitBatchToGraphs([
+            { graph: root, operations: [{ type: 'add_graph', graph: sub }] },
+        ])
         expect(lookupGraph(store.graphRegistry, 'graph-sub')).toBeDefined()
 
         // delete_graph：软删（registry 注销，持久化保留）
-        store.commitBatchToGraphs([{ graph: store.graphRegistry.get(ROOT)!, operations: [{ type: 'delete_graph', graphId: 'graph-sub' as GraphId }] }])
+        store.commitBatchToGraphs([
+            {
+                graph: store.graphRegistry.get(ROOT)!,
+                operations: [
+                    { type: 'delete_graph', graphId: 'graph-sub' as GraphId },
+                ],
+            },
+        ])
         expect(lookupGraph(store.graphRegistry, 'graph-sub')).toBeUndefined()
 
         // undo：从持久化 loadGraph 恢复注册
         expect(store.undo()).toBe(true)
         const restored = lookupGraph(store.graphRegistry, 'graph-sub')
         expect(restored).toBeDefined()
-        expect(restored!.nodes.map(n => n.id)).toEqual(['sub-1'])
+        expect(restored!.nodes.map((n) => n.id)).toEqual(['sub-1'])
 
         // redo：再次注销
         expect(store.redo()).toBe(true)
@@ -446,20 +784,34 @@ describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
     test('视图一致性：graphView 指向子图时 undo（撤销含 add_graph 的批）→ 上溯到父图 + graphPath 重算', () => {
         const store = useGraphStore()
         const root = makeGraph(ROOT)
-        const sub = makeGraph('graph-sub', [], [], { kind: 'subgraph', parentGraphId: ROOT, ownerNodeId: 'node-owner' as NodeId })
+        const sub = makeGraph('graph-sub', [], [], {
+            kind: 'subgraph',
+            parentGraphId: ROOT,
+            ownerNodeId: 'node-owner' as NodeId,
+        })
 
         // root 先持久化并加载为视图（保证 undo 上溯时父图在 registry 中可达）
         saveGraph(root)
         store.loadGraphToView(ROOT)
 
         // 提交 add_graph + 子图内 add_node 的批
-        store.commitBatchToGraphs([{
-            graph: sub,
-            operations: [
-                { type: 'add_graph', graph: sub },
-                { type: 'add_node', node: createNode({ id: 'sub-1' as NodeId, graphId: 'graph-sub' as GraphId, label: '子节点1', position: { x: 0, y: 0 } }) },
-            ],
-        }])
+        store.commitBatchToGraphs([
+            {
+                graph: sub,
+                operations: [
+                    { type: 'add_graph', graph: sub },
+                    {
+                        type: 'add_node',
+                        node: createNode({
+                            id: 'sub-1' as NodeId,
+                            graphId: 'graph-sub' as GraphId,
+                            label: '子节点1',
+                            position: { x: 0, y: 0 },
+                        }),
+                    },
+                ],
+            },
+        ])
 
         // 用户导航进子图：graphView 指向子图，graphPath = [根, 子图]
         store.loadGraphToView('graph-sub' as GraphId)
@@ -476,11 +828,17 @@ describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
     test('graphView 为 null 时 undo 不崩溃', () => {
         const store = useGraphStore()
         const root = makeGraph(ROOT)
-        const sub = makeGraph('graph-sub', [], [], { kind: 'subgraph', parentGraphId: ROOT, ownerNodeId: 'node-owner' as NodeId })
+        const sub = makeGraph('graph-sub', [], [], {
+            kind: 'subgraph',
+            parentGraphId: ROOT,
+            ownerNodeId: 'node-owner' as NodeId,
+        })
 
         saveGraph(root)
         store.loadGraphToView(ROOT)
-        store.commitBatchToGraphs([{ graph: sub, operations: [{ type: 'add_graph', graph: sub }] }])
+        store.commitBatchToGraphs([
+            { graph: sub, operations: [{ type: 'add_graph', graph: sub }] },
+        ])
 
         // 无公开卸载入口，直接置空 graphView 模拟视图清空
         store.graphView = null
@@ -519,7 +877,17 @@ describe('边界', () => {
         const store = useGraphStore()
         const graph = makeGraph(ROOT, [knowledgeNode('node-a', '节点A', 0, 0)])
 
-        store.commitBatchToGraphs([{ graph, operations: [{ type: 'add_node', node: knowledgeNode('node-b', '节点B', 5000, 5000) }] }])
+        store.commitBatchToGraphs([
+            {
+                graph,
+                operations: [
+                    {
+                        type: 'add_node',
+                        node: knowledgeNode('node-b', '节点B', 5000, 5000),
+                    },
+                ],
+            },
+        ])
         expect(store.undo()).toBe(true)
         expect(store.operationLog.cursor).toBe(-1)
 
@@ -563,24 +931,54 @@ describe('缺陷修复回归（D1 级联撤销 / D2 多级 undo）', () => {
 
     test('D1 回归：delete_node 级联边撤销恢复节点（含 summary）与关联边', () => {
         const store = useGraphStore()
-        const graph = makeGraph(ROOT, [
-            createNode({ id: 'node-a' as NodeId, graphId: ROOT, label: '节点A', summary: '原始摘要', position: { x: 0, y: 0 } }),
-            knowledgeNode('node-x', '节点X', 200, 0),
-        ], [
-            createEdge({ id: 'edge-ax' as EdgeId, graphId: ROOT, source: 'node-a' as NodeId, target: 'node-x' as NodeId, kind: 'real' as const, direction: 'directed' as const }),
-        ])
+        const graph = makeGraph(
+            ROOT,
+            [
+                createNode({
+                    id: 'node-a' as NodeId,
+                    graphId: ROOT,
+                    label: '节点A',
+                    summary: '原始摘要',
+                    position: { x: 0, y: 0 },
+                }),
+                knowledgeNode('node-x', '节点X', 200, 0),
+            ],
+            [
+                createEdge({
+                    id: 'edge-ax' as EdgeId,
+                    graphId: ROOT,
+                    source: 'node-a' as NodeId,
+                    target: 'node-x' as NodeId,
+                    kind: 'real' as const,
+                    direction: 'directed' as const,
+                }),
+            ],
+        )
 
-        store.commitBatchToGraphs([{ graph, operations: [{ type: 'delete_node', nodeId: 'node-a' as NodeId }] }])
+        store.commitBatchToGraphs([
+            {
+                graph,
+                operations: [
+                    { type: 'delete_node', nodeId: 'node-a' as NodeId },
+                ],
+            },
+        ])
 
         // 提交后：节点与关联边均被删除
         const afterDelete = store.graphRegistry.get(ROOT)!
-        expect(afterDelete.nodes.find(n => n.id === 'node-a')).toBeUndefined()
+        expect(afterDelete.nodes.find((n) => n.id === 'node-a')).toBeUndefined()
         expect(afterDelete.edges).toHaveLength(0)
 
         // 期望：undo 恢复节点（含 summary）与关联边（修复后 undo 返回 true）
         expect(store.undo()).toBe(true)
         const restored = store.graphRegistry.get(ROOT)!
-        expect((restored.nodes.find(n => n.id === 'node-a') as KnowledgeNodeData | undefined)?.summary).toBe('原始摘要')
-        expect(restored.edges.map(e => e.id)).toEqual(['edge-ax'])
+        expect(
+            (
+                restored.nodes.find((n) => n.id === 'node-a') as
+                    | KnowledgeNodeData
+                    | undefined
+            )?.summary,
+        ).toBe('原始摘要')
+        expect(restored.edges.map((e) => e.id)).toEqual(['edge-ax'])
     })
 })

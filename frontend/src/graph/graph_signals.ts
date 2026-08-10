@@ -23,7 +23,10 @@ import { registerGraph, unregisterGraph } from '@/graph/graph_registry'
 
 import { loadGraph } from '@/graph/graph_persistence'
 
-import { reportCorruptedGraph, reportMissingGraph } from '@/graph/utils/data_integrity_reporter'
+import {
+    reportCorruptedGraph,
+    reportMissingGraph,
+} from '@/graph/utils/data_integrity_reporter'
 
 /**
  * 说明：
@@ -49,7 +52,10 @@ export function applyAddGraph(registry: GraphRegistry, graph: GraphData): void {
  *     registry — 图注册表
  *     graphId  — 要注销的图 ID
  */
-export function applyDeleteGraph(registry: GraphRegistry, graphId: GraphId): void {
+export function applyDeleteGraph(
+    registry: GraphRegistry,
+    graphId: GraphId,
+): void {
     unregisterGraph(registry, graphId)
 }
 
@@ -63,7 +69,10 @@ export function applyDeleteGraph(registry: GraphRegistry, graphId: GraphId): voi
  *     registry — 图注册表
  *     graphId  — 要注销的图 ID
  */
-export function revertAddGraph(registry: GraphRegistry, graphId: GraphId): void {
+export function revertAddGraph(
+    registry: GraphRegistry,
+    graphId: GraphId,
+): void {
     unregisterGraph(registry, graphId)
 }
 
@@ -87,7 +96,10 @@ export function revertAddGraph(registry: GraphRegistry, graphId: GraphId): void 
  *
  *     恢复成功 true；missing / corrupted 返回 false。
  */
-export function revertDeleteGraph(registry: GraphRegistry, graphId: GraphId): boolean {
+export function revertDeleteGraph(
+    registry: GraphRegistry,
+    graphId: GraphId,
+): boolean {
     const result = loadGraph(graphId)
 
     if (!result.ok) {

@@ -10,7 +10,6 @@
 import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
 import type { NodeId, NodePosition } from '@my-project/graph-engine'
 
-
 /**
  * 功能：
  *
@@ -43,7 +42,7 @@ export function computeEdgeWidth(
 ): number {
     const k = 4 * DEFAULT_LAYOUT_RULES.unitDistance
     if (dist <= 0) return 2
-    const edgeWidth = Math.round(k * srcMass * tgtMass / dist)
+    const edgeWidth = Math.round((k * srcMass * tgtMass) / dist)
     return Math.max(1, Math.min(8, edgeWidth))
 }
 

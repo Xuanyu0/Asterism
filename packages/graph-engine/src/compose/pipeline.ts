@@ -45,7 +45,10 @@ import type { ValidationResult } from '../types/validation'
 import { validateOperation } from '../core/validate'
 import { executeOperation } from '../core/execute'
 import type { GlobalRulesTable } from '../core/validators/global_rules'
-import { DEFAULT_GLOBAL_RULES_TABLE, runGlobalRules } from '../core/validators/global_rules'
+import {
+    DEFAULT_GLOBAL_RULES_TABLE,
+    runGlobalRules,
+} from '../core/validators/global_rules'
 
 /**
  * 功能：
@@ -77,7 +80,10 @@ export interface BatchOptions {
      * 每原子操作执行前的回调。在逐操作执行循环（Phase 2）中、executeOperation
      * 之前调用，入参为该操作与其执行前的图状态（中间态）。未传时不调用（零行为变化）。
      */
-    onBeforeEachOperation?: (op: GraphOperation, graphBeforeOp: GraphData) => void
+    onBeforeEachOperation?: (
+        op: GraphOperation,
+        graphBeforeOp: GraphData,
+    ) => void
 
     /**
      * 跳过 Phase 1 逐条前提校验（默认 false）。正常正向操作保持默认校验；
@@ -151,7 +157,8 @@ export function applyBatch(
     const dryRun = options?.dryRun ?? false
     const stopOnFirst = options?.stopOnFirst ?? false
     const skipValidate = options?.skipValidate ?? false
-    const globalRulesTable = options?.globalRulesTable ?? DEFAULT_GLOBAL_RULES_TABLE
+    const globalRulesTable =
+        options?.globalRulesTable ?? DEFAULT_GLOBAL_RULES_TABLE
 
     // Phase 1 — 逐条校验操作前提条件
     // skipValidate（undo/redo 恢复型逆元批）：跳过全部前提校验，直接 Phase 2——
@@ -168,8 +175,8 @@ export function applyBatch(
         }
     }
 
-    const localIssues = results.flatMap(r => r.validation.issues)
-    const hasLocalFailure = results.some(r => !r.validation.valid)
+    const localIssues = results.flatMap((r) => r.validation.issues)
+    const hasLocalFailure = results.some((r) => !r.validation.valid)
 
     if (hasLocalFailure) {
         return {
@@ -190,12 +197,17 @@ export function applyBatch(
 
     // Phase 3 — 对 resultGraph 运行全局不变量规则
     const globalIssues = runGlobalRules(resultGraph, globalRulesTable)
-    const hasGlobalFailure = globalIssues.some(issue => issue.severity === 'error')
+    const hasGlobalFailure = globalIssues.some(
+        (issue) => issue.severity === 'error',
+    )
 
     if (hasGlobalFailure) {
         return {
             graph,
-            validation: { valid: false, issues: [...localIssues, ...globalIssues] },
+            validation: {
+                valid: false,
+                issues: [...localIssues, ...globalIssues],
+            },
             results,
         }
     }
@@ -204,7 +216,10 @@ export function applyBatch(
     if (dryRun) {
         return {
             graph,
-            validation: { valid: true, issues: [...localIssues, ...globalIssues] },
+            validation: {
+                valid: true,
+                issues: [...localIssues, ...globalIssues],
+            },
             results,
         }
     }

@@ -18,10 +18,7 @@
                 <slot />
             </div>
 
-            <div
-                v-if="$slots.actions"
-                class="notification-panel-actions"
-            >
+            <div v-if="$slots.actions" class="notification-panel-actions">
                 <slot name="actions" />
             </div>
         </div>
@@ -130,7 +127,9 @@ const accentClass = computed(() => `accent-${props.accent}`)
 
 .slide-up-enter-active,
 .slide-up-leave-active {
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    transition:
+        opacity 0.2s ease,
+        transform 0.2s ease;
 }
 
 .slide-up-enter-from,

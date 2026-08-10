@@ -44,7 +44,10 @@ import { findReferenceNodesPointingTo } from './utils/traversal'
  *     返回值是一个数组——部分操作的逆需要多个原子操作才能完成。
  *     目标缺失时抛异常（显式错误信号），前端回调捕获后阻断整批提交。
  */
-export function createReversal(graph: GraphData, operation: GraphOperation): GraphOperation[] {
+export function createReversal(
+    graph: GraphData,
+    operation: GraphOperation,
+): GraphOperation[] {
     switch (operation.type) {
         case 'add_node':
             return createReversalForAddNode(operation)
@@ -81,7 +84,9 @@ export function createReversal(graph: GraphData, operation: GraphOperation): Gra
 
 // add — 无信息丢失，逆操作仅需 ID
 
-function createReversalForAddNode(operation: AddNodeOperation): GraphOperation[] {
+function createReversalForAddNode(
+    operation: AddNodeOperation,
+): GraphOperation[] {
     const inverse: DeleteNodeOperation = {
         type: 'delete_node',
         nodeId: operation.node.id,
@@ -89,7 +94,9 @@ function createReversalForAddNode(operation: AddNodeOperation): GraphOperation[]
     return [inverse]
 }
 
-function createReversalForAddEdge(operation: AddEdgeOperation): GraphOperation[] {
+function createReversalForAddEdge(
+    operation: AddEdgeOperation,
+): GraphOperation[] {
     const inverse: DeleteEdgeOperation = {
         type: 'delete_edge',
         edgeId: operation.edge.id,
@@ -99,22 +106,35 @@ function createReversalForAddEdge(operation: AddEdgeOperation): GraphOperation[]
 
 // delete — 需要从 graph 中捕获被删对象的完整快照
 
-function createReversalForDeleteNode(graph: GraphData, operation: DeleteNodeOperation): GraphOperation[] {
-    const deletedNode = graph.nodes.find(node => node.id === operation.nodeId)
+function createReversalForDeleteNode(
+    graph: GraphData,
+    operation: DeleteNodeOperation,
+): GraphOperation[] {
+    const deletedNode = graph.nodes.find((node) => node.id === operation.nodeId)
 
     if (!deletedNode) {
-        throw new Error(`createReversal: delete_node 目标节点不存在: ${operation.nodeId}`)
+        throw new Error(
+            `createReversal: delete_node 目标节点不存在: ${operation.nodeId}`,
+        )
     }
 
     // 级联删除面镜像（executeDeleteNode）：
     // 同图内所有指向被删节点的引用节点一并删除，恢复时同样需要重建。
-    const cascadedReferenceNodes = findReferenceNodesPointingTo(graph, operation.nodeId)
+    const cascadedReferenceNodes = findReferenceNodesPointingTo(
+        graph,
+        operation.nodeId,
+    )
 
-    const allDeletedNodeIds = new Set([operation.nodeId, ...cascadedReferenceNodes.map(node => node.id)])
+    const allDeletedNodeIds = new Set([
+        operation.nodeId,
+        ...cascadedReferenceNodes.map((node) => node.id),
+    ])
 
     // 捕获被删节点 + 级联引用节点关联的所有边（execute 删除面：任一端点在被删集合即删除）
     const deletedEdges = graph.edges.filter(
-        edge => allDeletedNodeIds.has(edge.source) || allDeletedNodeIds.has(edge.target),
+        (edge) =>
+            allDeletedNodeIds.has(edge.source) ||
+            allDeletedNodeIds.has(edge.target),
     )
 
     const reversals: GraphOperation[] = []
@@ -140,11 +160,16 @@ function createReversalForDeleteNode(graph: GraphData, operation: DeleteNodeOper
     return reversals
 }
 
-function createReversalForDeleteEdge(graph: GraphData, operation: DeleteEdgeOperation): GraphOperation[] {
-    const deletedEdge = graph.edges.find(edge => edge.id === operation.edgeId)
+function createReversalForDeleteEdge(
+    graph: GraphData,
+    operation: DeleteEdgeOperation,
+): GraphOperation[] {
+    const deletedEdge = graph.edges.find((edge) => edge.id === operation.edgeId)
 
     if (!deletedEdge) {
-        throw new Error(`createReversal: delete_edge 目标边不存在: ${operation.edgeId}`)
+        throw new Error(
+            `createReversal: delete_edge 目标边不存在: ${operation.edgeId}`,
+        )
     }
 
     const inverse: AddEdgeOperation = {
@@ -157,11 +182,16 @@ function createReversalForDeleteEdge(graph: GraphData, operation: DeleteEdgeOper
 
 // update — 需要从 graph 中捕获修改前的完整对象
 
-function createReversalForUpdateNode(graph: GraphData, operation: UpdateNodeOperation): GraphOperation[] {
-    const oldNode = graph.nodes.find(node => node.id === operation.node.id)
+function createReversalForUpdateNode(
+    graph: GraphData,
+    operation: UpdateNodeOperation,
+): GraphOperation[] {
+    const oldNode = graph.nodes.find((node) => node.id === operation.node.id)
 
     if (!oldNode) {
-        throw new Error(`createReversal: update_node 目标节点不存在: ${operation.node.id}`)
+        throw new Error(
+            `createReversal: update_node 目标节点不存在: ${operation.node.id}`,
+        )
     }
 
     const inverse: UpdateNodeOperation = {
@@ -172,11 +202,16 @@ function createReversalForUpdateNode(graph: GraphData, operation: UpdateNodeOper
     return [inverse]
 }
 
-function createReversalForUpdateEdge(graph: GraphData, operation: UpdateEdgeOperation): GraphOperation[] {
-    const oldEdge = graph.edges.find(edge => edge.id === operation.edge.id)
+function createReversalForUpdateEdge(
+    graph: GraphData,
+    operation: UpdateEdgeOperation,
+): GraphOperation[] {
+    const oldEdge = graph.edges.find((edge) => edge.id === operation.edge.id)
 
     if (!oldEdge) {
-        throw new Error(`createReversal: update_edge 目标边不存在: ${operation.edge.id}`)
+        throw new Error(
+            `createReversal: update_edge 目标边不存在: ${operation.edge.id}`,
+        )
     }
 
     const inverse: UpdateEdgeOperation = {
@@ -189,12 +224,17 @@ function createReversalForUpdateEdge(graph: GraphData, operation: UpdateEdgeOper
 
 // move — 从 graph 中捕获旧位置
 
-function createReversalForMoveNode(graph: GraphData, operation: MoveNodeOperation): GraphOperation[] {
-    const current = graph.nodes.find(node => node.id === operation.nodeId)
+function createReversalForMoveNode(
+    graph: GraphData,
+    operation: MoveNodeOperation,
+): GraphOperation[] {
+    const current = graph.nodes.find((node) => node.id === operation.nodeId)
 
     // 双条件：节点缺失 或 节点无 position 字段，均视为目标缺失
     if (!current || !current.position) {
-        throw new Error(`createReversal: move_node 目标节点不存在或无位置: ${operation.nodeId}`)
+        throw new Error(
+            `createReversal: move_node 目标节点不存在或无位置: ${operation.nodeId}`,
+        )
     }
 
     const inverse: MoveNodeOperation = {
@@ -225,13 +265,17 @@ function createReversalForExpandDependency(
     operation: ExpandDependencyOperation,
 ): GraphOperation[] {
     // 捕获展开前的折叠条目，逆元照名单恢复（而非重算——undo 链中间时刻重算会数错）
-    const currentCognitiveState = graph.cognitiveState ?? { foldedDependencies: [] }
+    const currentCognitiveState = graph.cognitiveState ?? {
+        foldedDependencies: [],
+    }
     const existingEntry = currentCognitiveState.foldedDependencies.find(
-        item => item.targetNodeId === operation.targetNodeId,
+        (item) => item.targetNodeId === operation.targetNodeId,
     )
 
     if (!existingEntry) {
-        throw new Error(`createReversal: expand_dependency 目标折叠条目不存在: ${operation.targetNodeId}`)
+        throw new Error(
+            `createReversal: expand_dependency 目标折叠条目不存在: ${operation.targetNodeId}`,
+        )
     }
 
     const inverse: CollapseDependencyOperation = {

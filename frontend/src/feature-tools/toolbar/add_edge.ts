@@ -20,18 +20,13 @@ import type { GraphData, NodeId } from '@my-project/graph-engine'
 
 import type { ToolId, ToolHandler, ToolNotification } from '../types'
 
-
 export function useAddEdgeTool(
     kind: 'real' | 'virtual',
     direction: 'directed' | 'undirected',
 ): ToolHandler {
     const graphStore = useGraphStore()
     const operations = useGraphOperationAdapter()
-    const {
-        syncFromGraphData,
-        addNodeClass,
-        clearAllPreviews,
-    } = useRenderer()
+    const { syncFromGraphData, addNodeClass, clearAllPreviews } = useRenderer()
     const id: ToolId = `add-${kind}-${direction}`
 
     const isActive = ref(false)
@@ -93,19 +88,22 @@ export function useAddEdgeTool(
         if (nodeId === sourceNodeId.value) return
         if (!graphStore.graphView) return
 
-        const { previewGraph, valid, sourceCollides, targetCollides } = previewAddEdge(
-            graphStore.graphView,
-            {
+        const { previewGraph, valid, sourceCollides, targetCollides } =
+            previewAddEdge(graphStore.graphView, {
                 sourceId: sourceNodeId.value,
                 targetId: nodeId as NodeId,
                 kind,
                 direction,
-            },
-        )
+            })
 
         if (valid === false) return
 
-        applyHoverPreview(previewGraph, nodeId as NodeId, sourceCollides, targetCollides)
+        applyHoverPreview(
+            previewGraph,
+            nodeId as NodeId,
+            sourceCollides,
+            targetCollides,
+        )
     }
 
     /**
@@ -182,10 +180,15 @@ export function useAddEdgeTool(
             label: '',
         }
 
-        const validation = operations.commitToCurrentGraph([{
-            type: 'add_edge',
-            edge,
-        }], { source: id })
+        const validation = operations.commitToCurrentGraph(
+            [
+                {
+                    type: 'add_edge',
+                    edge,
+                },
+            ],
+            { source: id },
+        )
 
         if (validation.valid) {
             clearAllPreviews('add-edge')
@@ -193,7 +196,6 @@ export function useAddEdgeTool(
             sourceNodeId.value = null
         }
         // 失败后保持源节点不变，可继续添加下一条边
-
     }
 
     function applyHoverPreview(
@@ -219,14 +221,20 @@ export function useAddEdgeTool(
 
     const handler: ToolHandler = {
         id,
-        get isActive() { return isActive.value },
+        get isActive() {
+            return isActive.value
+        },
         activate,
         deactivate,
         onNodeClick,
         onNodeHover,
         onNodeHoverOut,
-        get cursorClass() { return cursorClass.value },
-        get notification() { return notification.value },
+        get cursorClass() {
+            return cursorClass.value
+        },
+        get notification() {
+            return notification.value
+        },
     }
     return handler
 }

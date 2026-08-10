@@ -137,7 +137,7 @@ export function createCytoscapeStyle() {
             selector: '.add-node-preview',
             style: {
                 opacity: 0.5,
-                'events': 'no' as const,
+                events: 'no' as const,
             },
         },
         // 移动工具：已拾取节点半透明

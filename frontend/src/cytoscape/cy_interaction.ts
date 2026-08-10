@@ -71,16 +71,10 @@ export function bindCyEvents(
                 x: event.position.x,
                 y: event.position.y,
             })
-        }
-        else if (event.target.isNode()) {
-            handlers.onNodeClicked?.(
-                event.target.id() as NodeId,
-            )
-        }
-        else if (event.target.isEdge()) {
-            handlers.onEdgeClicked?.(
-                event.target.id() as EdgeId,
-            )
+        } else if (event.target.isNode()) {
+            handlers.onNodeClicked?.(event.target.id() as NodeId)
+        } else if (event.target.isEdge()) {
+            handlers.onEdgeClicked?.(event.target.id() as EdgeId)
         }
     })
 
@@ -90,9 +84,7 @@ export function bindCyEvents(
 
     cy.on('dblclick', (event: EventObject) => {
         if (event.target.isNode()) {
-            handlers.onNodeDoubleClicked?.(
-                event.target.id() as NodeId,
-            )
+            handlers.onNodeDoubleClicked?.(event.target.id() as NodeId)
         }
 
         // 画布双击和边双击：不处理（不调用任何 handler）
@@ -100,15 +92,11 @@ export function bindCyEvents(
 
     // hover 事件目标可能是画布/边/节点，只对节点产生语义事件
     cy.on('mouseover', 'node', (event: EventObject) => {
-        handlers.onNodeHovered?.(
-            event.target.id() as NodeId,
-        )
+        handlers.onNodeHovered?.(event.target.id() as NodeId)
     })
 
     cy.on('mouseout', 'node', (event: EventObject) => {
-        handlers.onNodeHoverOut?.(
-            event.target.id() as NodeId,
-        )
+        handlers.onNodeHoverOut?.(event.target.id() as NodeId)
     })
 
     return {

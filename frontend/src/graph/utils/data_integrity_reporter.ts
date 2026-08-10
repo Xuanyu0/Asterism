@@ -24,7 +24,9 @@ export const DATA_INTEGRITY_PREFIX = '[data-integrity]'
  */
 export function reportCorruptedGraph(graphId: GraphId, context?: string): void {
     const suffix = context ? `，${context}` : ''
-    console.warn(`${DATA_INTEGRITY_PREFIX} [CORRUPTED_GRAPH] 图谱 "${graphId}" 持久化数据损坏（JSON 解析失败）${suffix}`)
+    console.warn(
+        `${DATA_INTEGRITY_PREFIX} [CORRUPTED_GRAPH] 图谱 "${graphId}" 持久化数据损坏（JSON 解析失败）${suffix}`,
+    )
 }
 
 /**
@@ -39,5 +41,7 @@ export function reportCorruptedGraph(graphId: GraphId, context?: string): void {
  */
 export function reportMissingGraph(graphId: GraphId, context?: string): void {
     const suffix = context ? `，${context}` : ''
-    console.warn(`${DATA_INTEGRITY_PREFIX} [GRAPH_MISSING] 图谱 "${graphId}" 不存在于持久化${suffix}`)
+    console.warn(
+        `${DATA_INTEGRITY_PREFIX} [GRAPH_MISSING] 图谱 "${graphId}" 不存在于持久化${suffix}`,
+    )
 }

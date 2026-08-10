@@ -71,7 +71,9 @@ export function validateNodeLabels(graph: GraphData): ValidationIssue[] {
     const issues: ValidationIssue[] = []
 
     for (const node of graph.nodes) {
-        if ((node.label ?? '').length > DEFAULT_GRAPH_RULES.nodeLabelMaxLength) {
+        if (
+            (node.label ?? '').length > DEFAULT_GRAPH_RULES.nodeLabelMaxLength
+        ) {
             issues.push({
                 severity: 'error',
                 code: 'NODE_LABEL_TOO_LONG',
@@ -90,7 +92,10 @@ export function validateNodeSummaries(graph: GraphData): ValidationIssue[] {
 
     for (const node of graph.nodes) {
         if (node.role === 'knowledge') {
-            if ((node.summary ?? '').length > DEFAULT_GRAPH_RULES.summaryMaxLength) {
+            if (
+                (node.summary ?? '').length >
+                DEFAULT_GRAPH_RULES.summaryMaxLength
+            ) {
                 issues.push({
                     severity: 'error',
                     code: 'NODE_SUMMARY_TOO_LONG',
@@ -102,7 +107,10 @@ export function validateNodeSummaries(graph: GraphData): ValidationIssue[] {
         }
 
         if (node.role === 'reference' && node.referenceKind === 'heuristic') {
-            if ((node.contextSummary ?? '').length > DEFAULT_GRAPH_RULES.summaryMaxLength) {
+            if (
+                (node.contextSummary ?? '').length >
+                DEFAULT_GRAPH_RULES.summaryMaxLength
+            ) {
                 issues.push({
                     severity: 'error',
                     code: 'NODE_SUMMARY_TOO_LONG',
@@ -119,49 +127,67 @@ export function validateNodeSummaries(graph: GraphData): ValidationIssue[] {
 
 // ═══════════ 节点数量规则 ═══════════
 
-export function validateNodeCountSoftLimit(graph: GraphData): ValidationIssue[] {
+export function validateNodeCountSoftLimit(
+    graph: GraphData,
+): ValidationIssue[] {
     const nodeCount = graph.nodes.length
 
-    if (nodeCount > DEFAULT_GRAPH_RULES.nodeSoftLimit && nodeCount <= DEFAULT_GRAPH_RULES.nodeWarningLimit) {
-        return [{
-            severity: 'info',
-            code: 'NODE_COUNT_SOFT_LIMIT_EXCEEDED',
-            message: `节点数超过 ${DEFAULT_GRAPH_RULES.nodeSoftLimit}，建议抽象。`,
-            targetType: 'graph',
-            targetId: graph.id,
-        }]
+    if (
+        nodeCount > DEFAULT_GRAPH_RULES.nodeSoftLimit &&
+        nodeCount <= DEFAULT_GRAPH_RULES.nodeWarningLimit
+    ) {
+        return [
+            {
+                severity: 'info',
+                code: 'NODE_COUNT_SOFT_LIMIT_EXCEEDED',
+                message: `节点数超过 ${DEFAULT_GRAPH_RULES.nodeSoftLimit}，建议抽象。`,
+                targetType: 'graph',
+                targetId: graph.id,
+            },
+        ]
     }
 
     return []
 }
 
-export function validateNodeCountWarningLimit(graph: GraphData): ValidationIssue[] {
+export function validateNodeCountWarningLimit(
+    graph: GraphData,
+): ValidationIssue[] {
     const nodeCount = graph.nodes.length
 
-    if (nodeCount > DEFAULT_GRAPH_RULES.nodeWarningLimit && nodeCount <= DEFAULT_GRAPH_RULES.nodeHardLimit) {
-        return [{
-            severity: 'warning',
-            code: 'NODE_COUNT_WARNING_LIMIT_EXCEEDED',
-            message: `节点数超过 ${DEFAULT_GRAPH_RULES.nodeWarningLimit}，强烈建议抽象。`,
-            targetType: 'graph',
-            targetId: graph.id,
-        }]
+    if (
+        nodeCount > DEFAULT_GRAPH_RULES.nodeWarningLimit &&
+        nodeCount <= DEFAULT_GRAPH_RULES.nodeHardLimit
+    ) {
+        return [
+            {
+                severity: 'warning',
+                code: 'NODE_COUNT_WARNING_LIMIT_EXCEEDED',
+                message: `节点数超过 ${DEFAULT_GRAPH_RULES.nodeWarningLimit}，强烈建议抽象。`,
+                targetType: 'graph',
+                targetId: graph.id,
+            },
+        ]
     }
 
     return []
 }
 
-export function validateNodeCountHardLimit(graph: GraphData): ValidationIssue[] {
+export function validateNodeCountHardLimit(
+    graph: GraphData,
+): ValidationIssue[] {
     const nodeCount = graph.nodes.length
 
     if (nodeCount > DEFAULT_GRAPH_RULES.nodeHardLimit) {
-        return [{
-            severity: 'error',
-            code: 'NODE_COUNT_HARD_LIMIT_EXCEEDED',
-            message: `节点数超过 ${DEFAULT_GRAPH_RULES.nodeHardLimit}，禁止继续添加。`,
-            targetType: 'graph',
-            targetId: graph.id,
-        }]
+        return [
+            {
+                severity: 'error',
+                code: 'NODE_COUNT_HARD_LIMIT_EXCEEDED',
+                message: `节点数超过 ${DEFAULT_GRAPH_RULES.nodeHardLimit}，禁止继续添加。`,
+                targetType: 'graph',
+                targetId: graph.id,
+            },
+        ]
     }
 
     return []
@@ -173,7 +199,9 @@ export function validateEdgeLabels(graph: GraphData): ValidationIssue[] {
     const issues: ValidationIssue[] = []
 
     for (const edge of graph.edges) {
-        if ((edge.label ?? '').length > DEFAULT_GRAPH_RULES.edgeLabelMaxLength) {
+        if (
+            (edge.label ?? '').length > DEFAULT_GRAPH_RULES.edgeLabelMaxLength
+        ) {
             issues.push({
                 severity: 'error',
                 code: 'EDGE_LABEL_TOO_LONG',
@@ -210,9 +238,10 @@ export function validateDuplicateEdges(graph: GraphData): ValidationIssue[] {
     const seen = new Set<string>()
 
     for (const edge of graph.edges) {
-        const key = edge.source < edge.target
-            ? `${edge.source}|${edge.target}`
-            : `${edge.target}|${edge.source}`
+        const key =
+            edge.source < edge.target
+                ? `${edge.source}|${edge.target}`
+                : `${edge.target}|${edge.source}`
 
         if (seen.has(key)) {
             issues.push({
@@ -232,17 +261,21 @@ export function validateDuplicateEdges(graph: GraphData): ValidationIssue[] {
 
 // ═══════════ 虚节点连接规则 ═══════════
 
-export function validateVirtualNodeEdgeType(graph: GraphData): ValidationIssue[] {
+export function validateVirtualNodeEdgeType(
+    graph: GraphData,
+): ValidationIssue[] {
     const issues: ValidationIssue[] = []
-    const nodeMap = new Map(graph.nodes.map(node => [node.id, node]))
+    const nodeMap = new Map(graph.nodes.map((node) => [node.id, node]))
 
     for (const edge of graph.edges) {
         const sourceNode = nodeMap.get(edge.source)
         const targetNode = nodeMap.get(edge.target)
 
         if (!sourceNode || !targetNode) continue
-        if (sourceNode.role !== 'knowledge' || targetNode.role !== 'knowledge') continue
-        if (sourceNode.kind !== 'virtual' && targetNode.kind !== 'virtual') continue
+        if (sourceNode.role !== 'knowledge' || targetNode.role !== 'knowledge')
+            continue
+        if (sourceNode.kind !== 'virtual' && targetNode.kind !== 'virtual')
+            continue
 
         if (edge.kind !== 'virtual' || edge.direction !== 'undirected') {
             issues.push({
@@ -258,9 +291,11 @@ export function validateVirtualNodeEdgeType(graph: GraphData): ValidationIssue[]
     return issues
 }
 
-export function validateVirtualNodeNeighborCount(graph: GraphData): ValidationIssue[] {
+export function validateVirtualNodeNeighborCount(
+    graph: GraphData,
+): ValidationIssue[] {
     const issues: ValidationIssue[] = []
-    const nodeMap = new Map(graph.nodes.map(node => [node.id, node]))
+    const nodeMap = new Map(graph.nodes.map((node) => [node.id, node]))
 
     const countVirtualNeighbors = (nodeId: string): number => {
         let count = 0
@@ -270,7 +305,10 @@ export function validateVirtualNodeNeighborCount(graph: GraphData): ValidationIs
             if (otherId === nodeId) continue
 
             const otherNode = nodeMap.get(otherId)
-            if (otherNode?.role === 'knowledge' && otherNode.kind === 'virtual') {
+            if (
+                otherNode?.role === 'knowledge' &&
+                otherNode.kind === 'virtual'
+            ) {
                 count++
             }
         }
@@ -297,16 +335,22 @@ export function validateVirtualNodeNeighborCount(graph: GraphData): ValidationIs
 
 // ═══════════ 启发节点边类型规则 ═══════════
 
-export function validateHeuristicReferences(graph: GraphData): ValidationIssue[] {
+export function validateHeuristicReferences(
+    graph: GraphData,
+): ValidationIssue[] {
     const issues: ValidationIssue[] = []
-    const nodeMap = new Map(graph.nodes.map(node => [node.id, node]))
+    const nodeMap = new Map(graph.nodes.map((node) => [node.id, node]))
 
     for (const edge of graph.edges) {
         const sourceNode = nodeMap.get(edge.source)
         const targetNode = nodeMap.get(edge.target)
 
-        const sourceIsHeuristic = sourceNode?.role === 'reference' && sourceNode.referenceKind === 'heuristic'
-        const targetIsHeuristic = targetNode?.role === 'reference' && targetNode.referenceKind === 'heuristic'
+        const sourceIsHeuristic =
+            sourceNode?.role === 'reference' &&
+            sourceNode.referenceKind === 'heuristic'
+        const targetIsHeuristic =
+            targetNode?.role === 'reference' &&
+            targetNode.referenceKind === 'heuristic'
 
         if (!sourceIsHeuristic && !targetIsHeuristic) continue
 
@@ -360,13 +404,15 @@ export function validateRealDirectedCycle(graph: GraphData): ValidationIssue[] {
 
     for (const node of graph.nodes) {
         if (dfs(node.id)) {
-            return [{
-                severity: 'error',
-                code: 'REAL_DIRECTED_CYCLE_FORBIDDEN',
-                message: '禁止只通过有向实边形成环。',
-                targetType: 'graph',
-                targetId: graph.id,
-            }]
+            return [
+                {
+                    severity: 'error',
+                    code: 'REAL_DIRECTED_CYCLE_FORBIDDEN',
+                    message: '禁止只通过有向实边形成环。',
+                    targetType: 'graph',
+                    targetId: graph.id,
+                },
+            ]
         }
     }
 
@@ -375,14 +421,19 @@ export function validateRealDirectedCycle(graph: GraphData): ValidationIssue[] {
 
 // ═══════════ 引用节点一致性 ═══════════
 
-export function validateReferenceNodeConsistency(graph: GraphData): ValidationIssue[] {
+export function validateReferenceNodeConsistency(
+    graph: GraphData,
+): ValidationIssue[] {
     const issues: ValidationIssue[] = []
-    const nodeIdSet = new Set(graph.nodes.map(node => node.id))
+    const nodeIdSet = new Set(graph.nodes.map((node) => node.id))
 
     for (const node of graph.nodes) {
         if (node.role !== 'reference') continue
 
-        if (node.sourceGraphId === graph.id && !nodeIdSet.has(node.sourceNodeId)) {
+        if (
+            node.sourceGraphId === graph.id &&
+            !nodeIdSet.has(node.sourceNodeId)
+        ) {
             issues.push({
                 severity: 'error',
                 code: 'DANGLING_REFERENCE',
@@ -412,14 +463,32 @@ export const GLOBAL_RULES: Array<{
     { code: 'EDGE_LABEL_TOO_LONG', check: validateEdgeLabels },
     { code: 'SELF_LOOP_FORBIDDEN', check: validateSelfLoops },
     { code: 'DUPLICATE_EDGE_FORBIDDEN', check: validateDuplicateEdges },
-    { code: 'VIRTUAL_NODE_EDGE_TYPE_INVALID', check: validateVirtualNodeEdgeType },
-    { code: 'VIRTUAL_NODE_TOO_MANY_VIRTUAL_NEIGHBORS', check: validateVirtualNodeNeighborCount },
-    { code: 'HEURISTIC_NODE_EDGE_TYPE_INVALID', check: validateHeuristicReferences },
+    {
+        code: 'VIRTUAL_NODE_EDGE_TYPE_INVALID',
+        check: validateVirtualNodeEdgeType,
+    },
+    {
+        code: 'VIRTUAL_NODE_TOO_MANY_VIRTUAL_NEIGHBORS',
+        check: validateVirtualNodeNeighborCount,
+    },
+    {
+        code: 'HEURISTIC_NODE_EDGE_TYPE_INVALID',
+        check: validateHeuristicReferences,
+    },
     { code: 'REAL_DIRECTED_CYCLE_FORBIDDEN', check: validateRealDirectedCycle },
     { code: 'DANGLING_REFERENCE', check: validateReferenceNodeConsistency },
-    { code: 'NODE_COUNT_SOFT_LIMIT_EXCEEDED', check: validateNodeCountSoftLimit },
-    { code: 'NODE_COUNT_WARNING_LIMIT_EXCEEDED', check: validateNodeCountWarningLimit },
-    { code: 'NODE_COUNT_HARD_LIMIT_EXCEEDED', check: validateNodeCountHardLimit },
+    {
+        code: 'NODE_COUNT_SOFT_LIMIT_EXCEEDED',
+        check: validateNodeCountSoftLimit,
+    },
+    {
+        code: 'NODE_COUNT_WARNING_LIMIT_EXCEEDED',
+        check: validateNodeCountWarningLimit,
+    },
+    {
+        code: 'NODE_COUNT_HARD_LIMIT_EXCEEDED',
+        check: validateNodeCountHardLimit,
+    },
 ]
 
 /**

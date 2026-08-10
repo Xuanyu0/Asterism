@@ -28,9 +28,18 @@
  *     })
  */
 
-import type { EdgeData, NodeData, NodeId, NodePosition } from '../../types/graph_data'
+import type {
+    EdgeData,
+    NodeData,
+    NodeId,
+    NodePosition,
+} from '../../types/graph_data'
 import type { NodeRadiusMap } from '../../types/infrastructure_types'
-import type { ComposeIssue, ComposeResult, DraftPosition } from '../../types/compose_types'
+import type {
+    ComposeIssue,
+    ComposeResult,
+    DraftPosition,
+} from '../../types/compose_types'
 import { distributeOnLine } from '../../infrastructure/placement'
 import { hasCollisionInDrafts } from '../../infrastructure/collision'
 
@@ -79,18 +88,26 @@ export interface PathParams {
  *     见 PathParams。
  */
 export function pathLayout(params: PathParams): ComposeResult<DraftPosition> {
-    const { axis, pathNodes, direction, spacing, allNodes, allEdges, nodeRadiusOverrides } = params
+    const {
+        axis,
+        pathNodes,
+        direction,
+        spacing,
+        allNodes,
+        allEdges,
+        nodeRadiusOverrides,
+    } = params
 
     const issues: ComposeIssue[] = []
 
     // ── 校验：每个路径节点必须通过有向实边连接轴心 ──
     for (const pn of pathNodes) {
         const hasDirectedRealEdge = allEdges.some(
-            edge =>
+            (edge) =>
                 edge.kind === 'real' &&
                 edge.direction === 'directed' &&
                 ((edge.source === axis.id && edge.target === pn.id) ||
-                 (edge.source === pn.id && edge.target === axis.id)),
+                    (edge.source === pn.id && edge.target === axis.id)),
         )
 
         if (!hasDirectedRealEdge) {
@@ -103,7 +120,12 @@ export function pathLayout(params: PathParams): ComposeResult<DraftPosition> {
     }
 
     // ── 位置计算 ──
-    const positions = distributeOnLine(axis.position, direction, pathNodes.length, spacing)
+    const positions = distributeOnLine(
+        axis.position,
+        direction,
+        pathNodes.length,
+        spacing,
+    )
 
     const drafts: DraftPosition[] = pathNodes.map((pn, i) => ({
         nodeId: pn.id,
@@ -122,7 +144,7 @@ export function pathLayout(params: PathParams): ComposeResult<DraftPosition> {
     }
 
     // ── 组装 operations ──
-    const operations = drafts.map(draft => ({
+    const operations = drafts.map((draft) => ({
         type: 'move_node' as const,
         nodeId: draft.nodeId,
         position: draft.position,

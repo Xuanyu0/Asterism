@@ -18,7 +18,6 @@
 import type { GraphData, NodeRadiusMap } from '@my-project/graph-engine'
 import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
 
-
 /**
  * 功能：
  *     计算当前图全部节点的外接圆半径覆盖表。
@@ -29,7 +28,9 @@ import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
  * 参数：
  *     graphView — 当前图的 GraphData 实例。
  */
-export function computeNodeRadiusOverrides(graphView: GraphData): NodeRadiusMap {
+export function computeNodeRadiusOverrides(
+    graphView: GraphData,
+): NodeRadiusMap {
     const overrides: NodeRadiusMap = new Map()
 
     for (const node of graphView.nodes) {

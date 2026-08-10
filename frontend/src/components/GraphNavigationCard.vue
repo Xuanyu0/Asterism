@@ -45,7 +45,7 @@ const drag = useDragPosition({
     storageKey: 'nav-card-position',
     defaultPosition: { x: 64, y: 16 },
     margin: 16,
-    snapthreshold: 32
+    snapthreshold: 32,
 })
 const {
     position: cardPosition,
@@ -82,9 +82,15 @@ function toggleSearchPanel(): void {
 // ── 面板自适应（展开后不越过视口） ──
 const viewportHeight = ref(window.innerHeight)
 const viewportWidth = ref(window.innerWidth)
-const panelOpensUpward = computed(() => cardPosition.value.y > viewportHeight.value * 0.5)
-const panelAlignRight = computed(() => cardPosition.value.x + 290 > viewportWidth.value)
-const panelTransitionName = computed(() => (panelOpensUpward.value ? 'panel-rise' : 'panel-drop'))
+const panelOpensUpward = computed(
+    () => cardPosition.value.y > viewportHeight.value * 0.5,
+)
+const panelAlignRight = computed(
+    () => cardPosition.value.x + 290 > viewportWidth.value,
+)
+const panelTransitionName = computed(() =>
+    panelOpensUpward.value ? 'panel-rise' : 'panel-drop',
+)
 
 // ── 自动淡化 ──
 const { isFaded, onPointerEnter, onPointerLeave } = useAutoFade({
@@ -92,7 +98,14 @@ const { isFaded, onPointerEnter, onPointerLeave } = useAutoFade({
 })
 
 // ── 路径与位置（经导航适配层派生） ──
-const { breadcrumb: pathSegments, currentRootId, isAtRoot, parentGraphId, hasCurrentGraph, goToGraph } = useNavigationAdapter()
+const {
+    breadcrumb: pathSegments,
+    currentRootId,
+    isAtRoot,
+    parentGraphId,
+    hasCurrentGraph,
+    goToGraph,
+} = useNavigationAdapter()
 
 /**
  * 功能：
@@ -189,7 +202,10 @@ onBeforeUnmount(() => {
             faded: isFaded,
             dragging: isDragging,
         }"
-        v-bind:style="{ left: cardPosition.x + 'px', top: cardPosition.y + 'px' }"
+        v-bind:style="{
+            left: cardPosition.x + 'px',
+            top: cardPosition.y + 'px',
+        }"
         v-on:pointerenter="onPointerEnter"
         v-on:pointerleave="onPointerLeave"
     >
@@ -221,7 +237,9 @@ onBeforeUnmount(() => {
                 key="search"
                 v-bind:panel-opens-upward="panelOpensUpward"
                 v-bind:panel-align-right="panelAlignRight"
-                v-on:focus-element="(id: string) => canvasFocus.requestCanvasFocus(id)"
+                v-on:focus-element="
+                    (id: string) => canvasFocus.requestCanvasFocus(id)
+                "
                 v-on:close="closePanels"
             />
         </Transition>
@@ -268,7 +286,9 @@ onBeforeUnmount(() => {
 .panel-drop-leave-active,
 .panel-rise-enter-active,
 .panel-rise-leave-active {
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition:
+        opacity 0.3s ease,
+        transform 0.3s ease;
 }
 
 .panel-drop-enter-from,

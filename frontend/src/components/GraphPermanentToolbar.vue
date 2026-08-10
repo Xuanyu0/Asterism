@@ -4,7 +4,10 @@
         class="permanent-toolbar absolute top-4 left-1/2 z-999 flex -translate-x-1/2 items-center gap-2 rounded-full border border-slate-200 bg-white/50 px-2 py-1 shadow-sm backdrop-blur-sm"
     >
         <template v-for="(btn, index) in permanentToolbar" v-bind:key="btn.id">
-            <span v-if="isGroupStart(index)" class="h-6 w-0.5 bg-slate-100"></span>
+            <span
+                v-if="isGroupStart(index)"
+                class="h-6 w-0.5 bg-slate-100"
+            ></span>
             <button
                 class="cursor-pointer rounded-full border border-slate-300 bg-white px-2 py-2 text-xs whitespace-nowrap transition-all duration-150 hover:-translate-y-px hover:bg-blue-50 hover:shadow-sm data-active:border-blue-500 data-active:bg-blue-200"
                 v-bind:data-active="activeToolId === btn.id ? '' : undefined"

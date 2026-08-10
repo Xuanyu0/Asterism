@@ -29,16 +29,33 @@
 
 /** 消费者：全部前端模块（类型注解、接口契约）。 */
 export type {
-    GraphPosition, GraphId, NodeId, EdgeId, GraphKind,
-    GraphData, GraphCognitiveState, FoldedDependencyState,
-    NodeRole, KnowledgeNodeKind, RealNodeForm, ReferenceNodeKind,
-    NodePosition, NodeBase, KnowledgeNodeData, ReferenceNodeData, NodeData,
-    EdgeKind, EdgeDirection, EdgeData,
+    GraphPosition,
+    GraphId,
+    NodeId,
+    EdgeId,
+    GraphKind,
+    GraphData,
+    GraphCognitiveState,
+    FoldedDependencyState,
+    NodeRole,
+    KnowledgeNodeKind,
+    RealNodeForm,
+    ReferenceNodeKind,
+    NodePosition,
+    NodeBase,
+    KnowledgeNodeData,
+    ReferenceNodeData,
+    NodeData,
+    EdgeKind,
+    EdgeDirection,
+    EdgeData,
 } from './types/graph_data'
 
 /** 消费者：前端 graph_store / operation_controller、引擎 compose 层。 */
 export type {
-    GraphLookup, SearchResult, NodeRadiusMap,
+    GraphLookup,
+    SearchResult,
+    NodeRadiusMap,
 } from './types/infrastructure_types'
 
 /** 消费者：引擎内部 & 前端渲染层。 */
@@ -46,28 +63,47 @@ export type { LayoutRules } from './core/layout_rules'
 
 /** 消费者：graph_store.applyBatch / operation_controller / 操作日志。 */
 export type {
-    AddNodeOperation, AddEdgeOperation, DeleteNodeOperation, DeleteEdgeOperation,
-    UpdateNodeOperation, UpdateEdgeOperation, MoveNodeOperation,
-    CollapseDependencyOperation, ExpandDependencyOperation,
-    AddGraphOperation, DeleteGraphOperation,
-    AtomicOperation, GraphOperation,
+    AddNodeOperation,
+    AddEdgeOperation,
+    DeleteNodeOperation,
+    DeleteEdgeOperation,
+    UpdateNodeOperation,
+    UpdateEdgeOperation,
+    MoveNodeOperation,
+    CollapseDependencyOperation,
+    ExpandDependencyOperation,
+    AddGraphOperation,
+    DeleteGraphOperation,
+    AtomicOperation,
+    GraphOperation,
 } from './types/atomic_operations'
 
 /** 消费者：operation_controller（Cognition 模式类型标签）。 */
 export type {
-    ExploreOperation, UnearthOperation,
-    DeconstructOperation, InduceOperation, InternalizeOperation,
-    CognitiveOperation, CognitiveResult,
+    ExploreOperation,
+    UnearthOperation,
+    DeconstructOperation,
+    InduceOperation,
+    InternalizeOperation,
+    CognitiveOperation,
+    CognitiveResult,
 } from './types/cognitive_operations'
 
 /** 消费者：graph_store（校验返回值）。 */
 export type {
-    ValidationSeverity, ValidationTargetType,
-    ValidationIssue, ValidationResult,
+    ValidationSeverity,
+    ValidationTargetType,
+    ValidationIssue,
+    ValidationResult,
 } from './types/validation'
 
 /** 消费者：graph_store（操作日志 & undo/redo）。 */
-export type { ItemOperations, OperationLogEntry, OperationLog, State } from './types/operation_log'
+export type {
+    ItemOperations,
+    OperationLogEntry,
+    OperationLog,
+    State,
+} from './types/operation_log'
 
 /** 消费者：graph_persistence.ts（localStorage 实现 SPI 契约）。Phase 3 扩展点。 */
 export type { PersistenceAdapter } from './spi/persistence'
@@ -177,14 +213,28 @@ export { createReversal } from './core/reversal'
  */
 export {
     // arrangement
-    moveNode, adjustDistance, adjustOrbit, orbit, pathLayout,
+    moveNode,
+    adjustDistance,
+    adjustOrbit,
+    orbit,
+    pathLayout,
     // cognitive
-    deconstruct, diverge, induce, internalize,
+    deconstruct,
+    diverge,
+    induce,
+    internalize,
 } from './compose'
 export type {
-    DraftPosition, ComposeIssue, ComposeResult,
-    DraftOrbitPosition, OrbitParams, PathParams,
-    DeconstructParams, DivergeParams, InduceParams, InternalizeParams,
+    DraftPosition,
+    ComposeIssue,
+    ComposeResult,
+    DraftOrbitPosition,
+    OrbitParams,
+    PathParams,
+    DeconstructParams,
+    DivergeParams,
+    InduceParams,
+    InternalizeParams,
 } from './compose'
 
 // ═══════════════════════════════════════════════════════════════════
@@ -275,6 +325,10 @@ export { validateGraph } from './core/validators/whole_graph_validator'
  *     const edgeId = generateEdgeId()
  *     const graphId = generateGraphId()
  */
-export { generateNodeId, generateEdgeId, generateGraphId } from './core/utils/id'
+export {
+    generateNodeId,
+    generateEdgeId,
+    generateGraphId,
+} from './core/utils/id'
 
 export { DEFAULT_LAYOUT_RULES } from './core/layout_rules'

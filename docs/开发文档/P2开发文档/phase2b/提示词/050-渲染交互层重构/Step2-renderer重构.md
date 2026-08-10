@@ -67,11 +67,11 @@ move_node.ts                      Graph.vue
 
 ## 涉及文件
 
-| 文件 | 改动 | 职责 |
-|------|------|------|
-| `frontend/src/cytoscape/useRenderer.ts` | 重构 | 删除裸实例导出；新增 9 个模块级语义方法；`syncElements` → `syncFromGraphData` |
-| `frontend/src/feature-tools/toolbar/move_node.ts` | 重构 | 移除 `getCyInstance` import；所有 Cy 操作改为调 renderer 语义方法 |
-| `frontend/src/views/Graph.vue` | 清理 | 移除 mapper import；`syncElements` → `syncFromGraphData`；删除 `watchPendingTarget`；改用 `bindHighlight` |
+| 文件                                              | 改动 | 职责                                                                                                      |
+| ------------------------------------------------- | ---- | --------------------------------------------------------------------------------------------------------- |
+| `frontend/src/cytoscape/useRenderer.ts`           | 重构 | 删除裸实例导出；新增 9 个模块级语义方法；`syncElements` → `syncFromGraphData`                             |
+| `frontend/src/feature-tools/toolbar/move_node.ts` | 重构 | 移除 `getCyInstance` import；所有 Cy 操作改为调 renderer 语义方法                                         |
+| `frontend/src/views/Graph.vue`                    | 清理 | 移除 mapper import；`syncElements` → `syncFromGraphData`；删除 `watchPendingTarget`；改用 `bindHighlight` |
 
 ---
 
@@ -91,6 +91,7 @@ move_node.ts                      Graph.vue
 将当前 `syncElements(elements: CyElements)`（外部调 mapper → 传 CyElements 进来）改为 `syncFromGraphData(graphData: GraphData)`（内部调 mapper + `cy.json()` + 清 transient）。
 
 `syncFromGraphData` 的行为：
+
 - 内部调用 `mapGraphDataToCyElements(graphData)` 得到 `CyElements`
 - 调用 `cy.json({ elements })` 同步渲染
 - 清除全部 transient 视觉状态（所有 owner 的 class 预览、高亮、位置缓存）
@@ -152,21 +153,21 @@ import {
 
 **逐函数映射**（当前 → 目标）：
 
-| 位置 | 当前调用 | 替换为 |
-|------|---------|--------|
-| `onNodeClick` (L148) | `getCyInstance()` → `cy.getElementById()` | 保存 `pickedNodeId`；用 `getNodePosition`/`setNodePosition` |
-| `onNodeClick` (L166) | `cyNode.style('opacity', 0.4)` | `addNodeClass(nodeId, 'move-picked', 'move')` |
-| `onNodeClick` (L177-180) | `cyNode.position({...})` | `setNodePosition(nodeId, pos)` |
-| `bindMousemove` (L215) | `getCyInstance()` → `cy.container().addEventListener` | `trackCursor(callback)`，保存返回的 `tracking` handle |
-| `bindMousemove` (L243) | `cyNode.position(modelPos)` | 在 trackCursor callback 内调 `setNodePosition(nodeId, modelPos)` |
-| `bindMousemove` (L256) | `cyNode.addClass('move-collision')` | `addNodeClass(nodeId, 'move-collision', 'move')` |
-| `bindMousemove` (L258) | `cyNode.removeClass('move-collision')` | `removeNodeClass(nodeId, 'move-collision', 'move')` |
-| `unbindMousemove` (L281) | `getCyInstance()` → `cy.container().removeEventListener` | `tracking.stop()` |
-| `cancelPick` (L307) | `getCyInstance()` → `cy.getElementById()` | 用 `resetNodePosition` / `clearAllPreviews` |
-| `cancelPick` (L312-314) | `cyNode.position(original)` + `.removeClass` + `.style('opacity', '')` | `resetNodePosition(nodeId)` + `clearAllPreviews('move')` |
-| `placeAttempt` (L340) | `getCyInstance()` → `cy.getElementById()` | `getNodePosition(nodeId)` 读取当前视觉位置 |
-| `placeAttempt` (L361) | `cyNode.addClass('move-collision')` | `addNodeClass(nodeId, 'move-collision', 'move')` |
-| `placeAttempt` (L375) | `cyNode.removeStyle('opacity')` | `removeNodeClass(nodeId, 'move-picked', 'move')` |
+| 位置                     | 当前调用                                                               | 替换为                                                           |
+| ------------------------ | ---------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `onNodeClick` (L148)     | `getCyInstance()` → `cy.getElementById()`                              | 保存 `pickedNodeId`；用 `getNodePosition`/`setNodePosition`      |
+| `onNodeClick` (L166)     | `cyNode.style('opacity', 0.4)`                                         | `addNodeClass(nodeId, 'move-picked', 'move')`                    |
+| `onNodeClick` (L177-180) | `cyNode.position({...})`                                               | `setNodePosition(nodeId, pos)`                                   |
+| `bindMousemove` (L215)   | `getCyInstance()` → `cy.container().addEventListener`                  | `trackCursor(callback)`，保存返回的 `tracking` handle            |
+| `bindMousemove` (L243)   | `cyNode.position(modelPos)`                                            | 在 trackCursor callback 内调 `setNodePosition(nodeId, modelPos)` |
+| `bindMousemove` (L256)   | `cyNode.addClass('move-collision')`                                    | `addNodeClass(nodeId, 'move-collision', 'move')`                 |
+| `bindMousemove` (L258)   | `cyNode.removeClass('move-collision')`                                 | `removeNodeClass(nodeId, 'move-collision', 'move')`              |
+| `unbindMousemove` (L281) | `getCyInstance()` → `cy.container().removeEventListener`               | `tracking.stop()`                                                |
+| `cancelPick` (L307)      | `getCyInstance()` → `cy.getElementById()`                              | 用 `resetNodePosition` / `clearAllPreviews`                      |
+| `cancelPick` (L312-314)  | `cyNode.position(original)` + `.removeClass` + `.style('opacity', '')` | `resetNodePosition(nodeId)` + `clearAllPreviews('move')`         |
+| `placeAttempt` (L340)    | `getCyInstance()` → `cy.getElementById()`                              | `getNodePosition(nodeId)` 读取当前视觉位置                       |
+| `placeAttempt` (L361)    | `cyNode.addClass('move-collision')`                                    | `addNodeClass(nodeId, 'move-collision', 'move')`                 |
+| `placeAttempt` (L375)    | `cyNode.removeStyle('opacity')`                                        | `removeNodeClass(nodeId, 'move-picked', 'move')`                 |
 
 **`activate` / `deactivate` 变更**：
 
@@ -194,16 +195,16 @@ import {
 
 - 删除 `function watchPendingTarget(getter, className)` 定义及内部 `cy.getElementById().addClass/removeClass`
 - 在 `onMounted` / setup 内改为：
-  ```ts
-  renderer.bindHighlight(
-      () => mediator.activeHandler.value?.highlightNode,
-      'delete-target'
-  )
-  renderer.bindHighlight(
-      () => mediator.activeHandler.value?.highlightEdge,
-      'delete-target'
-  )
-  ```
+    ```ts
+    renderer.bindHighlight(
+        () => mediator.activeHandler.value?.highlightNode,
+        'delete-target',
+    )
+    renderer.bindHighlight(
+        () => mediator.activeHandler.value?.highlightEdge,
+        'delete-target',
+    )
+    ```
 - 同样用 `bindHighlight` 处理 add-edge 的 `edge-source-target` 高亮
 
 **c) 事件绑定移入 renderer**
@@ -252,6 +253,7 @@ import {
 ## task 返回要求
 
 完成后返回：
+
 1. 修改了哪些文件（列表）
 2. 每个文件的关键改动（一句话描述）
 3. `pnpm --filter frontend test` 结果

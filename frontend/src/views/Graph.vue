@@ -87,12 +87,17 @@ function handleUndoRedoKeydown(event: KeyboardEvent): void {
 const canvasErrorIssues = computed(() => {
     const validation = graphStore.lastValidationResult
     if (!validation || !validation.valid) {
-        return validation?.issues.filter(issue => issue.severity === 'error') ?? []
+        return (
+            validation?.issues.filter((issue) => issue.severity === 'error') ??
+            []
+        )
     }
     return []
 })
 
-const activeNotification = computed(() => mediator.activeHandler.value?.notification ?? null)
+const activeNotification = computed(
+    () => mediator.activeHandler.value?.notification ?? null,
+)
 
 onMounted(() => {
     // 临时快捷键接线（010 §3.2）：注册后随组件卸载移除
@@ -101,8 +106,10 @@ onMounted(() => {
     // 加载上次激活的根图谱
     graphStore.initRegistry()
     // 哨兵模式：确定要加载的根图 ID
-    let rootId = (graphStore.graphRegistry.size > 0)
-        ? graphStore.graphRegistry.keys().next().value : null
+    let rootId =
+        graphStore.graphRegistry.size > 0
+            ? graphStore.graphRegistry.keys().next().value
+            : null
     // 尝试加载已存在的根图
     if (rootId && !graphStore.loadGraphToView(rootId)) {
         // 持久化数据损坏或丢失：降级为创建新根图
@@ -211,7 +218,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="relative h-screen w-screen bg-slate-50" v-on:contextmenu.prevent>
+    <div
+        class="relative h-screen w-screen bg-slate-50"
+        v-on:contextmenu.prevent
+    >
         <!--
             功能：
                 Cytoscape 真正挂载的 DOM 容器。
@@ -290,13 +300,17 @@ onBeforeUnmount(() => {
             v-bind:visible="activeNotification?.visible ?? false"
             accent="red"
         >
-            <span v-if="activeNotification">{{ activeNotification.message }}</span>
+            <span v-if="activeNotification">{{
+                activeNotification.message
+            }}</span>
             <template #actions>
                 <button
                     type="button"
                     class="btn-secondary delete-cancel-btn"
                     v-on:click.stop="activeNotification?.onCancel()"
-                >取消</button>
+                >
+                    取消
+                </button>
             </template>
         </NotificationPanel>
     </div>

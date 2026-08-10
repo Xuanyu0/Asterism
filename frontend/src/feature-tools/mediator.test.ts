@@ -23,7 +23,6 @@ import { useFoldTool } from './toolbar/fold'
 import type { ToolMediatorAPI } from './mediator'
 import type { ToolHandler } from './types'
 
-
 // ── Mock useRenderer ──
 // useAddNodeTool 构造时调用 useRenderer（实时预览接线）；jsdom 无 Cytoscape 容器，
 // 需拦截为 no-op 以保持纯 handler 状态机测试。
@@ -38,7 +37,6 @@ vi.mock('@/cytoscape/useRenderer', () => ({
     }),
 }))
 
-
 beforeEach(() => {
     setActivePinia(createPinia())
     localStorage.clear()
@@ -51,14 +49,17 @@ beforeEach(() => {
     const mockDefault: ToolHandler = {
         id: 'default',
         isActive: false,
-        activate() { (mockDefault as any).isActive = true },
-        deactivate() { (mockDefault as any).isActive = false },
+        activate() {
+            ;(mockDefault as any).isActive = true
+        },
+        deactivate() {
+            ;(mockDefault as any).isActive = false
+        },
         cursorClass: null,
         notification: null,
     }
     mediator.register('default', mockDefault)
 })
-
 
 describe('useToolMediator', () => {
     let mediator: ToolMediatorAPI
@@ -119,8 +120,12 @@ describe('useToolMediator', () => {
         const handler: ToolHandler = {
             id: 'add-real-node',
             isActive: false,
-            activate() { (handler as any).isActive = true },
-            deactivate() { (handler as any).isActive = false },
+            activate() {
+                ;(handler as any).isActive = true
+            },
+            deactivate() {
+                ;(handler as any).isActive = false
+            },
             onCanvasClick(pos: { x: number; y: number }) {
                 canvasCalled = true
                 capturedPos = pos

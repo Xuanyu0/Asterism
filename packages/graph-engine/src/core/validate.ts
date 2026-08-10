@@ -42,7 +42,10 @@ import { hasCollisionAt } from '../infrastructure/collision'
  *
  *     applyBatch 内部 Phase 1 调用。
  */
-export function validateOperation(graph: GraphData, operation: GraphOperation): ValidationResult {
+export function validateOperation(
+    graph: GraphData,
+    operation: GraphOperation,
+): ValidationResult {
     switch (operation.type) {
         case 'add_node':
             return validateAddNode(graph, operation)
@@ -80,23 +83,25 @@ export function validateOperation(graph: GraphData, operation: GraphOperation): 
     }
 }
 
-
 // ═══════════ 工具函数 ═══════════
 
 function hasNode(graph: GraphData, nodeId: NodeId): boolean {
-    return graph.nodes.some(node => node.id === nodeId)
+    return graph.nodes.some((node) => node.id === nodeId)
 }
 
 function createResult(issues: ValidationIssue[]): ValidationResult {
     return {
-        valid: issues.every(issue => issue.severity !== 'error'),
+        valid: issues.every((issue) => issue.severity !== 'error'),
         issues,
     }
 }
 
 // ═══════════ 操作校验 ═══════════
 
-function validateAddNode(graph: GraphData, operation: { type: 'add_node'; node: NodeData }): ValidationResult {
+function validateAddNode(
+    graph: GraphData,
+    operation: { type: 'add_node'; node: NodeData },
+): ValidationResult {
     const issues: ValidationIssue[] = []
 
     // 图规则：label 非空（trim 后），空标签节点禁止添加
@@ -110,7 +115,7 @@ function validateAddNode(graph: GraphData, operation: { type: 'add_node'; node: 
         })
     }
 
-    if (graph.nodes.some(node => node.id === operation.node.id)) {
+    if (graph.nodes.some((node) => node.id === operation.node.id)) {
         issues.push({
             severity: 'error',
             code: 'NODE_ID_DUPLICATED',
@@ -131,12 +136,15 @@ function validateAddNode(graph: GraphData, operation: { type: 'add_node'; node: 
     }
 
     // 新节点位置碰撞检测：Phase 1 局部规则，只检测新节点与已有节点是否重叠
-    if (operation.node.position && hasCollisionAt(
-        operation.node.id,
-        operation.node.position,
-        graph.nodes,
-        new Map(),
-    )) {
+    if (
+        operation.node.position &&
+        hasCollisionAt(
+            operation.node.id,
+            operation.node.position,
+            graph.nodes,
+            new Map(),
+        )
+    ) {
         issues.push({
             severity: 'error',
             code: 'NODE_COLLISION',
@@ -149,7 +157,10 @@ function validateAddNode(graph: GraphData, operation: { type: 'add_node'; node: 
     return createResult(issues)
 }
 
-function validateAddEdge(graph: GraphData, operation: { type: 'add_edge'; edge: EdgeData }): ValidationResult {
+function validateAddEdge(
+    graph: GraphData,
+    operation: { type: 'add_edge'; edge: EdgeData },
+): ValidationResult {
     const issues: ValidationIssue[] = []
 
     issues.push(...validateEdgeEndpointExists(graph, operation.edge))
@@ -157,7 +168,10 @@ function validateAddEdge(graph: GraphData, operation: { type: 'add_edge'; edge: 
     return createResult(issues)
 }
 
-function validateDeleteNode(graph: GraphData, operation: { type: 'delete_node'; nodeId: NodeId }): ValidationResult {
+function validateDeleteNode(
+    graph: GraphData,
+    operation: { type: 'delete_node'; nodeId: NodeId },
+): ValidationResult {
     const issues: ValidationIssue[] = []
 
     if (!hasNode(graph, operation.nodeId)) {
@@ -173,10 +187,13 @@ function validateDeleteNode(graph: GraphData, operation: { type: 'delete_node'; 
     return createResult(issues)
 }
 
-function validateDeleteEdge(graph: GraphData, operation: { type: 'delete_edge'; edgeId: string }): ValidationResult {
+function validateDeleteEdge(
+    graph: GraphData,
+    operation: { type: 'delete_edge'; edgeId: string },
+): ValidationResult {
     const issues: ValidationIssue[] = []
 
-    if (!graph.edges.some(edge => edge.id === operation.edgeId)) {
+    if (!graph.edges.some((edge) => edge.id === operation.edgeId)) {
         issues.push({
             severity: 'error',
             code: 'EDGE_NOT_FOUND',
@@ -189,7 +206,10 @@ function validateDeleteEdge(graph: GraphData, operation: { type: 'delete_edge'; 
     return createResult(issues)
 }
 
-function validateUpdateNode(graph: GraphData, operation: { type: 'update_node'; node: NodeData }): ValidationResult {
+function validateUpdateNode(
+    graph: GraphData,
+    operation: { type: 'update_node'; node: NodeData },
+): ValidationResult {
     const issues: ValidationIssue[] = []
 
     if (!hasNode(graph, operation.node.id)) {
@@ -205,10 +225,13 @@ function validateUpdateNode(graph: GraphData, operation: { type: 'update_node'; 
     return createResult(issues)
 }
 
-function validateUpdateEdge(graph: GraphData, operation: { type: 'update_edge'; edge: EdgeData }): ValidationResult {
+function validateUpdateEdge(
+    graph: GraphData,
+    operation: { type: 'update_edge'; edge: EdgeData },
+): ValidationResult {
     const issues: ValidationIssue[] = []
 
-    if (!graph.edges.some(edge => edge.id === operation.edge.id)) {
+    if (!graph.edges.some((edge) => edge.id === operation.edge.id)) {
         issues.push({
             severity: 'error',
             code: 'EDGE_NOT_FOUND',
@@ -223,7 +246,14 @@ function validateUpdateEdge(graph: GraphData, operation: { type: 'update_edge'; 
     return createResult(issues)
 }
 
-function validateMoveNode(graph: GraphData, operation: { type: 'move_node'; nodeId: NodeId; position: { x: number; y: number } }): ValidationResult {
+function validateMoveNode(
+    graph: GraphData,
+    operation: {
+        type: 'move_node'
+        nodeId: NodeId
+        position: { x: number; y: number }
+    },
+): ValidationResult {
     const issues: ValidationIssue[] = []
 
     if (!hasNode(graph, operation.nodeId)) {
@@ -236,7 +266,10 @@ function validateMoveNode(graph: GraphData, operation: { type: 'move_node'; node
         })
     }
 
-    if (!Number.isFinite(operation.position.x) || !Number.isFinite(operation.position.y)) {
+    if (
+        !Number.isFinite(operation.position.x) ||
+        !Number.isFinite(operation.position.y)
+    ) {
         issues.push({
             severity: 'error',
             code: 'INVALID_NODE_POSITION',
@@ -251,7 +284,11 @@ function validateMoveNode(graph: GraphData, operation: { type: 'move_node'; node
 
 function validateCollapseDependency(
     graph: GraphData,
-    operation: { type: 'collapse_dependency'; targetNodeId: NodeId; foldedNodeIds?: NodeId[] },
+    operation: {
+        type: 'collapse_dependency'
+        targetNodeId: NodeId
+        foldedNodeIds?: NodeId[]
+    },
 ): ValidationResult {
     const issues: ValidationIssue[] = []
     // 显式折叠成员（undo 逆元路径）：成员来自操作前快照，必然非空，
@@ -269,7 +306,10 @@ function validateCollapseDependency(
     }
 
     if (!hasExplicitMembers) {
-        const dependencyNodeIds = collectDependencyNodeIds(graph, operation.targetNodeId)
+        const dependencyNodeIds = collectDependencyNodeIds(
+            graph,
+            operation.targetNodeId,
+        )
 
         if (dependencyNodeIds.length === 0) {
             issues.push({
@@ -281,7 +321,12 @@ function validateCollapseDependency(
             })
         }
 
-        if (hasUndirectedEdgeInsideNodeSet(graph, [...dependencyNodeIds, operation.targetNodeId])) {
+        if (
+            hasUndirectedEdgeInsideNodeSet(graph, [
+                ...dependencyNodeIds,
+                operation.targetNodeId,
+            ])
+        ) {
             issues.push({
                 severity: 'error',
                 code: 'DEPENDENCY_REGION_HAS_UNDIRECTED_EDGE',
@@ -295,7 +340,10 @@ function validateCollapseDependency(
     return createResult(issues)
 }
 
-function validateExpandDependency(graph: GraphData, operation: { type: 'expand_dependency'; targetNodeId: NodeId }): ValidationResult {
+function validateExpandDependency(
+    graph: GraphData,
+    operation: { type: 'expand_dependency'; targetNodeId: NodeId },
+): ValidationResult {
     const issues: ValidationIssue[] = []
 
     if (!hasNode(graph, operation.targetNodeId)) {
@@ -311,7 +359,10 @@ function validateExpandDependency(graph: GraphData, operation: { type: 'expand_d
     return createResult(issues)
 }
 
-function validateEdgeEndpointExists(graph: GraphData, edge: EdgeData): ValidationIssue[] {
+function validateEdgeEndpointExists(
+    graph: GraphData,
+    edge: EdgeData,
+): ValidationIssue[] {
     const issues: ValidationIssue[] = []
 
     if (!hasNode(graph, edge.source)) {
@@ -337,13 +388,16 @@ function validateEdgeEndpointExists(graph: GraphData, edge: EdgeData): Validatio
     return issues
 }
 
-function hasUndirectedEdgeInsideNodeSet(graph: GraphData, nodeIds: NodeId[]): boolean {
+function hasUndirectedEdgeInsideNodeSet(
+    graph: GraphData,
+    nodeIds: NodeId[],
+): boolean {
     const nodeIdSet = new Set(nodeIds)
 
-    return graph.edges.some(edge =>
-        edge.direction === 'undirected'
-        && nodeIdSet.has(edge.source)
-        && nodeIdSet.has(edge.target),
+    return graph.edges.some(
+        (edge) =>
+            edge.direction === 'undirected' &&
+            nodeIdSet.has(edge.source) &&
+            nodeIdSet.has(edge.target),
     )
 }
-

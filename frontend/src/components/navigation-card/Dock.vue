@@ -23,7 +23,11 @@
  */
 
 import { watch, onMounted, ref } from 'vue'
-import { ChevronLeftIcon, ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
+import {
+    ChevronLeftIcon,
+    ChevronDownIcon,
+    MagnifyingGlassIcon,
+} from '@heroicons/vue/24/outline'
 
 import type { GraphId } from '@my-project/graph-engine'
 
@@ -54,16 +58,19 @@ const emits = defineEmits<{
 
 // ── 路径截断检测 ──
 const pathStripElement = ref<HTMLElement | null>(null)
-const { isOverflowing: isPathTruncated, measure } = useOverflowDetection(pathStripElement)
+const { isOverflowing: isPathTruncated, measure } =
+    useOverflowDetection(pathStripElement)
 
 onMounted(() => {
     void measure()
 })
 
-watch(() => props.pathSegments, () => {
-    void measure()
-})
-
+watch(
+    () => props.pathSegments,
+    () => {
+        void measure()
+    },
+)
 </script>
 
 <template>
@@ -76,7 +83,13 @@ watch(() => props.pathSegments, () => {
             v-on:pointerup="dragHandlers.onPointerup"
             v-on:pointercancel="dragHandlers.onPointerup"
         >
-            <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" aria-hidden="true">
+            <svg
+                width="10"
+                height="16"
+                viewBox="0 0 10 16"
+                fill="currentColor"
+                aria-hidden="true"
+            >
                 <circle cx="2.5" cy="3" r="1.3" />
                 <circle cx="7.5" cy="3" r="1.3" />
                 <circle cx="2.5" cy="8" r="1.3" />
@@ -117,17 +130,18 @@ watch(() => props.pathSegments, () => {
                 v-bind:key="segment.graphId"
             >
                 <span v-if="index > 0" class="path-separator">›</span>
-                <span
-                    v-if="segment.isCurrent"
-                    class="path-segment current"
-                >{{ segment.title }}</span>
+                <span v-if="segment.isCurrent" class="path-segment current">{{
+                    segment.title
+                }}</span>
                 <button
                     v-else
                     type="button"
                     class="path-segment ancestor"
                     v-bind:title="'跳转到 ' + segment.title"
                     v-on:click="emits('goSegmentGraph', segment.graphId)"
-                >{{ segment.title }}</button>
+                >
+                    {{ segment.title }}
+                </button>
             </template>
         </div>
 
@@ -146,11 +160,13 @@ watch(() => props.pathSegments, () => {
         <button
             type="button"
             class="icon-btn"
-            v-bind:title="activePanel === 'navigation' ? '收起导航面板' : '展开导航面板'"
+            v-bind:title="
+                activePanel === 'navigation' ? '收起导航面板' : '展开导航面板'
+            "
             v-on:click="emits('toggleNavigation')"
         >
             <ChevronDownIcon
-                class="size-4 chevron-icon"
+                class="chevron-icon size-4"
                 v-bind:class="{ rotated: activePanel === 'navigation' }"
             />
         </button>
@@ -180,7 +196,9 @@ watch(() => props.pathSegments, () => {
     color: #cbd5e1;
     cursor: grab;
     touch-action: none;
-    transition: color 0.15s, background 0.15s;
+    transition:
+        color 0.15s,
+        background 0.15s;
 }
 
 .dock-row:hover .grip-handle {
@@ -205,7 +223,9 @@ watch(() => props.pathSegments, () => {
     color: #475569;
     cursor: pointer;
     flex-shrink: 0;
-    transition: background 0.15s, color 0.15s;
+    transition:
+        background 0.15s,
+        color 0.15s;
 }
 
 .icon-btn:hover:not(:disabled) {
@@ -289,7 +309,9 @@ watch(() => props.pathSegments, () => {
     color: #64748b;
     cursor: pointer;
     border-radius: 4px;
-    transition: color 0.15s, background 0.15s;
+    transition:
+        color 0.15s,
+        background 0.15s;
 }
 
 .path-segment.ancestor:hover {

@@ -51,18 +51,13 @@ export interface DraftNode {
     summary: string
 }
 
-
 export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
     const graphStore = useGraphStore()
     const operations = useGraphOperationAdapter()
-    const {
-        syncFromGraphData,
-        addNodeClass,
-        clearAllPreviews,
-        trackCursor,
-    } = useRenderer()
+    const { syncFromGraphData, addNodeClass, clearAllPreviews, trackCursor } =
+        useRenderer()
 
-    const id: ToolId = (kind === 'real' ? 'add-real-node' : 'add-virtual-node')
+    const id: ToolId = kind === 'real' ? 'add-real-node' : 'add-virtual-node'
 
     const isActive = ref(false)
     const draftNode = ref<DraftNode | null>(null)
@@ -86,7 +81,9 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
         return {
             visible: true,
             message: collisionMessage.value,
-            onCancel: () => { collisionMessage.value = null },
+            onCancel: () => {
+                collisionMessage.value = null
+            },
         }
     })
 
@@ -167,10 +164,15 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
             },
         }
 
-        const validation = operations.commitToCurrentGraph([{
-            type: 'add_node',
-            node,
-        }], { source: id })
+        const validation = operations.commitToCurrentGraph(
+            [
+                {
+                    type: 'add_node',
+                    node,
+                },
+            ],
+            { source: id },
+        )
 
         if (validation.valid) {
             draftNode.value = null
@@ -212,10 +214,17 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
      *          nodeId 为预览生成的占位节点 ID（graphView 缺失时为 null，
      *          onCanvasClick 定格时写入 draftNode.nodeId 供浮空窗锚定）
      */
-    function applyAddNodePreview(pos: NodePosition): { collides: boolean; nodeId: string | null } {
+    function applyAddNodePreview(pos: NodePosition): {
+        collides: boolean
+        nodeId: string | null
+    } {
         if (!graphStore.graphView) return { collides: false, nodeId: null }
 
-        const { previewGraph, collides, nodeId } = previewAddNode(graphStore.graphView, pos, kind)
+        const { previewGraph, collides, nodeId } = previewAddNode(
+            graphStore.graphView,
+            pos,
+            kind,
+        )
 
         syncFromGraphData(previewGraph)
         addNodeClass(nodeId, 'add-node-preview', 'add-node')
@@ -228,15 +237,23 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
 
     return {
         id,
-        get isActive() { return isActive.value },
+        get isActive() {
+            return isActive.value
+        },
         activate,
         deactivate,
         onCanvasClick,
         onConfirm,
         onCancel,
-        get cursorClass() { return cursorClass.value },
-        get notification() { return notification.value },
-        get draftNode() { return draftNode.value },
+        get cursorClass() {
+            return cursorClass.value
+        },
+        get notification() {
+            return notification.value
+        },
+        get draftNode() {
+            return draftNode.value
+        },
         updateDraftNode,
     }
 }

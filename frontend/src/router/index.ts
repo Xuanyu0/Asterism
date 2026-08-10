@@ -13,12 +13,12 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Graph from '@/views/Graph.vue'
 
 const router = createRouter({
-    history: createWebHistory(import.meta.env.BASE_URL),    // 使用 HTML5 History 模式
+    history: createWebHistory(import.meta.env.BASE_URL), // 使用 HTML5 History 模式
     routes: [
         {
             path: '/',
             name: 'graph',
-            component: Graph,    // 主图谱页面
+            component: Graph, // 主图谱页面
         },
     ],
 })

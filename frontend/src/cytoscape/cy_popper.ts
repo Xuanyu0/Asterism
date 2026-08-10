@@ -75,7 +75,10 @@ export function popperFactory(
 ): { update(): void } {
     // 默认 middleware 在工厂创建时定型一次——update 随 pan/zoom/position 高频触发，
     // 每次重建 flip/shift 实例是纯浪费（options.middleware 显式传入时覆盖此默认）
-    const defaultMiddleware: Middleware[] = [flip(), shift({ limiter: limitShift() })]
+    const defaultMiddleware: Middleware[] = [
+        flip(),
+        shift({ limiter: limitShift() }),
+    ]
 
     const update = (): void => {
         // computePosition 为异步：坐标就绪后写 left/top（position 由调用方 CSS 提供）。
@@ -127,7 +130,10 @@ export function attachElementPopper(
 
     // ele.popper 由 registerPopperExtension 注入；返回值为 popperFactory 的返回值。
     // destroy 为防御性调用（当前 factory 只返回 update，floating-ui computePosition 无持久资源）。
-    const popper = ele.popper({ content: contentEl, popper: options }) as { update(): void; destroy?: () => void }
+    const popper = ele.popper({ content: contentEl, popper: options }) as {
+        update(): void
+        destroy?: () => void
+    }
 
     const update = (): void => {
         popper.update()

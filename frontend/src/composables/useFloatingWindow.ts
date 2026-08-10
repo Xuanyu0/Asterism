@@ -113,7 +113,11 @@ function createFloatingWindow(): FloatingWindowAPI {
         // instanceof Node 收窄 target 类型——contains 只接受 Node，
         // window 等非节点目标直接落入"外部点击"分支。
         const target = event.target
-        if (containerEl && target instanceof Node && containerEl.contains(target)) {
+        if (
+            containerEl &&
+            target instanceof Node &&
+            containerEl.contains(target)
+        ) {
             return
         }
 

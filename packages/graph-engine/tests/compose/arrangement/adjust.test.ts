@@ -4,8 +4,15 @@
  * Adjust Distance 和 Adjust Orbit 测试。
  */
 
-import type { GraphId, NodeId, NodeRadiusMap } from '../../../src/types/graph_data'
-import { adjustDistance, adjustOrbit } from '../../../src/compose/arrangement/adjust'
+import type {
+    GraphId,
+    NodeId,
+    NodeRadiusMap,
+} from '../../../src/types/graph_data'
+import {
+    adjustDistance,
+    adjustOrbit,
+} from '../../../src/compose/arrangement/adjust'
 import { createNode, assembleGraph } from '../../test_case_factory'
 import { DEFAULT_LAYOUT_RULES } from '../../../src/core/layout_rules'
 
@@ -15,7 +22,11 @@ const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
 
 describe('adjustDistance', () => {
     test('连续距离调整', () => {
-        const node = createNode({ id: 'a' as NodeId, graphId: G, position: { x: 0, y: 0 } })
+        const node = createNode({
+            id: 'a' as NodeId,
+            graphId: G,
+            position: { x: 0, y: 0 },
+        })
         const graph = assembleGraph({ id: G, nodes: [node], edges: [] })
 
         const result = adjustDistance({
@@ -33,7 +44,11 @@ describe('adjustDistance', () => {
 
 describe('adjustOrbit', () => {
     test('离散层级吸附', () => {
-        const node = createNode({ id: 'a' as NodeId, graphId: G, position: { x: 0, y: 0 } })
+        const node = createNode({
+            id: 'a' as NodeId,
+            graphId: G,
+            position: { x: 0, y: 0 },
+        })
         const graph = assembleGraph({ id: G, nodes: [node], edges: [] })
 
         const result = adjustOrbit({

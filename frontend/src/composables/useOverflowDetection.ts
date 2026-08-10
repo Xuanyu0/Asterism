@@ -28,9 +28,7 @@ import type { Ref } from 'vue'
  *
  *     element — 被检测元素的 Ref。可为 null（元素尚未挂载）。
  */
-export function useOverflowDetection(
-    element: Ref<HTMLElement | null>,
-): {
+export function useOverflowDetection(element: Ref<HTMLElement | null>): {
     /** 是否处于水平溢出状态。 */
     isOverflowing: Ref<boolean>
     /**

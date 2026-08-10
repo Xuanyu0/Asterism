@@ -17,7 +17,6 @@ import { saveGraph } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 import { useDeleteTool } from './delete'
 
-
 beforeEach(() => {
     setActivePinia(createPinia())
     localStorage.clear()
@@ -26,7 +25,6 @@ beforeEach(() => {
     const store = useGraphStore()
     store.loadGraphToView(golden.id)
 })
-
 
 describe('useDeleteTool', () => {
     let handler: ReturnType<typeof useDeleteTool>
@@ -61,7 +59,7 @@ describe('useDeleteTool', () => {
         const store = useGraphStore()
         // node-g3 是 edge-g23 (g2→g3) 的 target
         expect(store.graphView!.nodes.length).toBe(5)
-        expect(store.graphView!.edges.length).toBe(3)  // 4 → 3 (edge-g23 被级联移除)
+        expect(store.graphView!.edges.length).toBe(3) // 4 → 3 (edge-g23 被级联移除)
     })
 
     test('两次点击不同节点切换目标', () => {

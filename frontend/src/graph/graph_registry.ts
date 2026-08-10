@@ -43,7 +43,10 @@ export function registerGraph(registry: GraphRegistry, graph: GraphData): void {
  *
  *     按 graphId 查找对应 GraphData。体现 "id → GraphData" 映射语义。
  */
-export function lookupGraph(registry: GraphRegistry, graphId: GraphId): GraphData | undefined {
+export function lookupGraph(
+    registry: GraphRegistry,
+    graphId: GraphId,
+): GraphData | undefined {
     return registry.get(graphId)
 }
 
@@ -51,8 +54,9 @@ export function hasGraph(registry: GraphRegistry, graphId: GraphId): boolean {
     return registry.has(graphId)
 }
 
-export function unregisterGraph(registry: GraphRegistry, graphId: GraphId): boolean {
+export function unregisterGraph(
+    registry: GraphRegistry,
+    graphId: GraphId,
+): boolean {
     return registry.delete(graphId)
 }
-
-

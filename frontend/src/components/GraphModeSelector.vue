@@ -2,19 +2,13 @@
     <!-- 模式按钮 + 子操作（左上角） -->
     <div class="mode-toolbar">
         <div class="toolbar-column main-column">
-            <button
-                class="mode-btn"
-                v-on:click="toggleModeSelector"
-            >
+            <button class="mode-btn" v-on:click="toggleModeSelector">
                 {{ modeButtonLabel }}
             </button>
 
             <!-- 模式选择子列表 -->
             <Transition name="slide-left">
-                <div
-                    v-if="showModeSelector"
-                    class="mode-selector-list"
-                >
+                <div v-if="showModeSelector" class="mode-selector-list">
                     <button
                         v-bind:class="{ active: activeMode === 'cognition' }"
                         v-on:click="setMode('cognition')"
@@ -36,21 +30,18 @@
                     v-if="!showModeSelector && activeMode === 'cognition'"
                     class="cognition-action-list"
                 >
-                    <button v-on:click="controller.explore()">
-                        Explore
-                    </button>
-                    <button v-on:click="controller.unearth()">
-                        Unearth
-                    </button>
+                    <button v-on:click="controller.explore()">Explore</button>
+                    <button v-on:click="controller.unearth()">Unearth</button>
                     <button
-                        v-bind:class="{ active: mediator.activeToolId.value === 'deconstruct' }"
+                        v-bind:class="{
+                            active:
+                                mediator.activeToolId.value === 'deconstruct',
+                        }"
                         v-on:click="mediator.activate('deconstruct')"
                     >
                         Deconstruct
                     </button>
-                    <button v-on:click="controller.induce([])">
-                        Induce
-                    </button>
+                    <button v-on:click="controller.induce([])">Induce</button>
                     <button v-on:click="controller.internalize([])">
                         Internalize
                     </button>
@@ -193,7 +184,9 @@ function setMode(mode: 'cognition' | 'arrangement'): void {
 
 .slide-left-enter-active,
 .slide-left-leave-active {
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition:
+        opacity 0.3s ease,
+        transform 0.3s ease;
 }
 
 .slide-left-enter-from,

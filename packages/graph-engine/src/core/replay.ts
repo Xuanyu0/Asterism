@@ -27,8 +27,14 @@ import { executeOperation } from './execute'
  * 使用：
  *     历史回溯：从最近的基线快照重建当前状态。
  */
-export function replayGraph(baseGraph: GraphData, operations: GraphOperation[]): GraphData {
-    return operations.reduce((graph, op) => executeOperation(graph, op), baseGraph)
+export function replayGraph(
+    baseGraph: GraphData,
+    operations: GraphOperation[],
+): GraphData {
+    return operations.reduce(
+        (graph, op) => executeOperation(graph, op),
+        baseGraph,
+    )
 }
 
 /**
@@ -42,9 +48,14 @@ export function replayGraph(baseGraph: GraphData, operations: GraphOperation[]):
  * 使用：
  *     历史浏览：临时 fork 出中间状态供只读查看，不修改当前 GraphData。
  */
-export function replayToStep(baseGraph: GraphData, operations: GraphOperation[], step: number): GraphData {
+export function replayToStep(
+    baseGraph: GraphData,
+    operations: GraphOperation[],
+    step: number,
+): GraphData {
     const clampedStep = Math.max(0, Math.min(step, operations.length))
 
-    return operations.slice(0, clampedStep).reduce((graph, op) => executeOperation(graph, op), baseGraph)
+    return operations
+        .slice(0, clampedStep)
+        .reduce((graph, op) => executeOperation(graph, op), baseGraph)
 }
-

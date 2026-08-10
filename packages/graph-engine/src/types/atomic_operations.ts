@@ -17,7 +17,15 @@
  *     import type { AtomicOperation, AddNodeOperation } from '@my-project/graph-engine'
  */
 
-import type { EdgeData, EdgeId, GraphData, GraphId, NodeData, NodeId, NodePosition } from './graph_data'
+import type {
+    EdgeData,
+    EdgeId,
+    GraphData,
+    GraphId,
+    NodeData,
+    NodeId,
+    NodePosition,
+} from './graph_data'
 
 export interface AddNodeOperation {
     type: 'add_node'

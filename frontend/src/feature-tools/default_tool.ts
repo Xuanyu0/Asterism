@@ -16,7 +16,11 @@ import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdap
 import { useCanvasFocus } from '@/composables/useCanvasFocus'
 import { useFloatingWindow } from '@/composables/useFloatingWindow'
 
-import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
+import type {
+    NodeData,
+    EdgeData,
+    KnowledgeNodeData,
+} from '@my-project/graph-engine'
 import type { ToolHandler, ToolId } from './types'
 
 /**
@@ -58,7 +62,7 @@ export function useDefaultTool(): ToolHandler {
      *     处理节点点击——在 graphView 中查找节点并打开浮空窗。
      */
     function onNodeClick(nodeId: string): void {
-        const node = graphStore.graphView?.nodes.find(n => n.id === nodeId)
+        const node = graphStore.graphView?.nodes.find((n) => n.id === nodeId)
         if (node) {
             floatingWindow.open(node)
         }
@@ -70,7 +74,7 @@ export function useDefaultTool(): ToolHandler {
      *     处理边点击——在 graphView 中查找边并打开浮空窗。
      */
     function onEdgeClick(edgeId: string): void {
-        const edge = graphStore.graphView?.edges.find(e => e.id === edgeId)
+        const edge = graphStore.graphView?.edges.find((e) => e.id === edgeId)
         if (edge) {
             floatingWindow.open(edge)
         }
@@ -93,7 +97,7 @@ export function useDefaultTool(): ToolHandler {
     function onNodeDoubleClick(nodeId: string): void {
         if (!graphStore.graphView) return
 
-        const node = graphStore.graphView.nodes.find(n => n.id === nodeId)
+        const node = graphStore.graphView.nodes.find((n) => n.id === nodeId)
         if (!node) return
 
         // 按优先级决定导航目标
@@ -146,7 +150,10 @@ export function useDefaultTool(): ToolHandler {
             // 边编辑
             const edge: EdgeData = { ...original, label }
 
-            const validation = operations.commitToCurrentGraph([{ type: 'update_edge', edge }], { source: id })
+            const validation = operations.commitToCurrentGraph(
+                [{ type: 'update_edge', edge }],
+                { source: id },
+            )
 
             if (validation.valid) {
                 floatingWindow.close()
@@ -156,10 +163,13 @@ export function useDefaultTool(): ToolHandler {
             const node: NodeData = { ...original, label }
 
             if (original.role === 'knowledge') {
-                (node as KnowledgeNodeData).summary = summary
+                ;(node as KnowledgeNodeData).summary = summary
             }
 
-            const validation = operations.commitToCurrentGraph([{ type: 'update_node', node }], { source: id })
+            const validation = operations.commitToCurrentGraph(
+                [{ type: 'update_node', node }],
+                { source: id },
+            )
 
             if (validation.valid) {
                 floatingWindow.close()
@@ -176,15 +186,23 @@ export function useDefaultTool(): ToolHandler {
 
     return {
         id,
-        get isActive() { return isActive.value },
+        get isActive() {
+            return isActive.value
+        },
         activate,
         deactivate,
         onNodeClick,
         onEdgeClick,
         onNodeDoubleClick,
         onConfirm,
-        get floatingWindowData() { return floatingWindow.floatingData.value },
-        get cursorClass() { return null },
-        get notification() { return null },
+        get floatingWindowData() {
+            return floatingWindow.floatingData.value
+        },
+        get cursorClass() {
+            return null
+        },
+        get notification() {
+            return null
+        },
     }
 }

@@ -26,7 +26,6 @@ import type { NodeId, EdgeId } from '@my-project/graph-engine'
 
 import type { ToolId, ToolHandler, ToolNotification } from '../types'
 
-
 export function useDeleteTool(): ToolHandler {
     const graphStore = useGraphStore()
     const operations = useGraphOperationAdapter()
@@ -42,14 +41,19 @@ export function useDeleteTool(): ToolHandler {
 
     const notification = computed<ToolNotification | null>(() => {
         if (!isActive.value) return null
-        if (pendingDeleteNodeId.value === null && pendingDeleteEdgeId.value === null) {
+        if (
+            pendingDeleteNodeId.value === null &&
+            pendingDeleteEdgeId.value === null
+        ) {
             return null
         }
 
         const nodeId = pendingDeleteNodeId.value
         let targetLabel = '此边'
         if (nodeId !== null) {
-            const node = graphStore.graphView?.nodes.find(n => n.id === nodeId)
+            const node = graphStore.graphView?.nodes.find(
+                (n) => n.id === nodeId,
+            )
             targetLabel = node?.label ?? '此节点'
         }
 
@@ -111,31 +115,51 @@ export function useDeleteTool(): ToolHandler {
     function executeDeleteNode(nodeId: NodeId): void {
         if (!graphStore.graphView) return
 
-        operations.commitToCurrentGraph([{
-            type: 'delete_node',
-            nodeId,
-        }], { source: id })
+        operations.commitToCurrentGraph(
+            [
+                {
+                    type: 'delete_node',
+                    nodeId,
+                },
+            ],
+            { source: id },
+        )
     }
 
     function executeDeleteEdge(edgeId: EdgeId): void {
         if (!graphStore.graphView) return
 
-        operations.commitToCurrentGraph([{
-            type: 'delete_edge',
-            edgeId,
-        }], { source: id })
+        operations.commitToCurrentGraph(
+            [
+                {
+                    type: 'delete_edge',
+                    edgeId,
+                },
+            ],
+            { source: id },
+        )
     }
 
     return {
         id,
-        get isActive() { return isActive.value },
+        get isActive() {
+            return isActive.value
+        },
         activate,
         deactivate,
         onNodeClick,
         onEdgeClick,
-        get cursorClass() { return cursorClass.value },
-        get notification() { return notification.value },
-        get highlightNode() { return pendingDeleteNodeId.value },
-        get highlightEdge() { return pendingDeleteEdgeId.value },
+        get cursorClass() {
+            return cursorClass.value
+        },
+        get notification() {
+            return notification.value
+        },
+        get highlightNode() {
+            return pendingDeleteNodeId.value
+        },
+        get highlightEdge() {
+            return pendingDeleteEdgeId.value
+        },
     }
 }

@@ -24,7 +24,13 @@ import { ref, computed, onMounted } from 'vue'
 
 import type { GraphId } from '@my-project/graph-engine'
 
-import { PlusIcon, TrashIcon, BookOpenIcon, GlobeAltIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
+import {
+    PlusIcon,
+    TrashIcon,
+    BookOpenIcon,
+    GlobeAltIcon,
+    Cog6ToothIcon,
+} from '@heroicons/vue/24/outline'
 import AsterismLogo from '@/assets/icon-asterism.svg?component'
 
 import { useNavigationAdapter } from '@/graph/adapters/useNavigationAdapter'
@@ -112,35 +118,39 @@ function requestDeleteRoot(info: RootGraphInfo): void {
 </script>
 
 <template>
-    <div class="floating-panel" v-bind:class="{ 'opens-upward': panelOpensUpward, 'align-right': panelAlignRight }">
+    <div
+        class="floating-panel"
+        v-bind:class="{
+            'opens-upward': panelOpensUpward,
+            'align-right': panelAlignRight,
+        }"
+    >
         <div class="panel-section-label">根图谱</div>
 
         <ul class="root-list">
-            <li
-                v-for="info in rootInfos"
-                v-bind:key="info.id"
-            >
+            <li v-for="info in rootInfos" v-bind:key="info.id">
                 <button
                     type="button"
                     class="root-item"
                     v-bind:class="{ current: info.id === currentRootId }"
                     v-on:click="selectRootGraph(info)"
                 >
-                    <AsterismLogo class="size-3.5 root-item-icon" />
+                    <AsterismLogo class="root-item-icon size-3.5" />
                     <span class="root-item-title">{{ info.title }}</span>
-                    <span
-                        v-if="info.id === currentRootId"
-                        class="current-badge"
-                    >当前</span>
+                    <span v-if="info.id === currentRootId" class="current-badge"
+                        >当前</span
+                    >
                 </button>
                 <button
                     v-if="info.id !== currentRootId"
                     type="button"
                     class="root-delete-btn"
                     v-bind:class="{ armed: armedDeleteId === info.id }"
-                    v-bind:title="armedDeleteId === info.id
-                        ? '再次点击确认删除（含全部子图）'
-                        : '删除图谱'"
+                    v-bind:title="
+                        armedDeleteId === info.id
+                            ? '再次点击确认删除（含全部子图）'
+                            : '删除图谱'
+                    "
                     v-on:click.stop="requestDeleteRoot(info)"
                 >
                     <span v-if="armedDeleteId === info.id">确认</span>
@@ -302,7 +312,10 @@ function requestDeleteRoot(info: RootGraphInfo): void {
     font-size: 11px;
     cursor: pointer;
     opacity: 0;
-    transition: opacity 0.15s, background 0.15s, color 0.15s;
+    transition:
+        opacity 0.15s,
+        background 0.15s,
+        color 0.15s;
 }
 
 .root-list li:hover .root-delete-btn,

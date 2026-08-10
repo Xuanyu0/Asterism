@@ -38,10 +38,7 @@ function addNodeOp(id: string, label: string): GraphOperation {
 describe('applyBatch', () => {
     test('executes all ops when all valid', () => {
         const graph = emptyGraph()
-        const ops = [
-            addNodeOp('a', 'Node A'),
-            addNodeOp('b', 'Node B'),
-        ]
+        const ops = [addNodeOp('a', 'Node A'), addNodeOp('b', 'Node B')]
 
         const result = applyBatch(graph, ops)
 
@@ -80,7 +77,7 @@ describe('applyBatch', () => {
         const graph = emptyGraph()
         const ops = [
             addNodeOp('x', 'Valid'),
-            addNodeOp('x', 'Dupe'),      // 重复 ID → 校验失败（graph 中不存在 x）
+            addNodeOp('x', 'Dupe'), // 重复 ID → 校验失败（graph 中不存在 x）
             addNodeOp('y', 'Valid'),
         ]
 

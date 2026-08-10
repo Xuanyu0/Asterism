@@ -9,23 +9,25 @@
 - `CLAUDE.md` §架构分层：Cytoscape 只是 Renderer，GraphData 是唯一事实源
 - `CLAUDE.md` §两个 Pinia Store：graphStore 持有 GraphData，不持有 Cy 状态
 - [05-步骤-共依赖.md](../../../P2开发文档/phase2b/05-步骤-共依赖.md) §3.0-5 已确认决策：
-  - Cy 角色："交互层 + 渲染层"
-  - 目录重命名：`render/` → `cytoscape/`
-  - 术语："投影" → "映射"/"拷贝"
-  - Cy `data` 最小字段：仅 `id` / `label`
-  - 严格去耦合：`cytoscape/` 外禁止 import cytoscape
+    - Cy 角色："交互层 + 渲染层"
+    - 目录重命名：`render/` → `cytoscape/`
+    - 术语："投影" → "映射"/"拷贝"
+    - Cy `data` 最小字段：仅 `id` / `label`
+    - 严格去耦合：`cytoscape/` 外禁止 import cytoscape
 
 ---
 
 ## 当前状态
 
 `frontend/src/render/` 目录下 4 个文件：
+
 - `use_cytoscape_renderer.ts`（244 行）
 - `graph_interaction.ts`（当前 `use_graph_interaction.ts`，101 行）
 - `graph_element_mapper.ts`（263 行）
 - `cytoscape_style.ts`（154 行）
 
 核心问题：
+
 - `CyNodeData` 携带 `role`/`kind`/`form`/`degree`/`abstractionLevel` — 这些字段在 `getNodeClasses` 内消费完毕后对 Cy 无意义
 - `CyEdgeData` 中 `kind`/`direction` 同理
 - `getFoldedNodeIds` / `getFoldedParentNodeIds` 各被调用一次且 export，违反项目规范（≥2 次调用才拆）
@@ -36,16 +38,17 @@
 
 ## 涉及文件
 
-| 文件 | 改动 | 职责 |
-|------|------|------|
-| `frontend/src/render/` → `frontend/src/cytoscape/` | 重命名 | 目录迁移（4 个文件） |
-| `frontend/src/cytoscape/graph_element_mapper.ts` | 修改 | 精简 CyNodeData/CyEdgeData；内联 getFoldedNodeIds/getFoldedParentNodeIds；更新注释术语 |
-| `frontend/src/cytoscape/cytoscape_style.ts` | 修改 | 新增 `move-picked` class |
-| `frontend/src/cytoscape/use_graph_interaction.ts` → `graph_interaction.ts` | 重构 | 去 `use` 前缀，改为普通函数，加 cleanup 返回 |
-| 所有 import `@/render/` 的文件 | 修改 | 路径更新为 `@/cytoscape/` |
-| 所有 import `use_graph_interaction` 的文件 | 修改 | 改为 `import { bindCyEvents }` |
+| 文件                                                                       | 改动   | 职责                                                                                   |
+| -------------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------- |
+| `frontend/src/render/` → `frontend/src/cytoscape/`                         | 重命名 | 目录迁移（4 个文件）                                                                   |
+| `frontend/src/cytoscape/graph_element_mapper.ts`                           | 修改   | 精简 CyNodeData/CyEdgeData；内联 getFoldedNodeIds/getFoldedParentNodeIds；更新注释术语 |
+| `frontend/src/cytoscape/cytoscape_style.ts`                                | 修改   | 新增 `move-picked` class                                                               |
+| `frontend/src/cytoscape/use_graph_interaction.ts` → `graph_interaction.ts` | 重构   | 去 `use` 前缀，改为普通函数，加 cleanup 返回                                           |
+| 所有 import `@/render/` 的文件                                             | 修改   | 路径更新为 `@/cytoscape/`                                                              |
+| 所有 import `use_graph_interaction` 的文件                                 | 修改   | 改为 `import { bindCyEvents }`                                                         |
 
 **不涉及的文件**（Step 2 的工作）：
+
 - `use_cytoscape_renderer.ts`
 - `feature-tools/toolbar/move_node.ts`
 - `views/Graph.vue`
@@ -63,6 +66,7 @@
 ### 2. CyNodeData / CyEdgeData 精简
 
 `CyNodeData` 仅保留 Cy 渲染所需的字段：
+
 ```ts
 export interface CyNodeData {
     id: NodeId
@@ -71,10 +75,12 @@ export interface CyNodeData {
 ```
 
 移除以下字段（它们在 `getNodeClasses` 中消费完后不再需要进入 Cy `data`）：
+
 - `role`、`kind`、`form`、`referenceKind`（由 getNodeClasses 消费转 class）
 - `degree`、`abstractionLevel`（Cy 不渲染这些）
 
 `CyEdgeData` 仅保留：
+
 ```ts
 export interface CyEdgeData {
     id: EdgeId
@@ -95,6 +101,7 @@ export interface CyEdgeData {
 ### 4. 注释术语更新
 
 在 `graph_element_mapper.ts` 中：
+
 - 文件头注释："投影" → "映射" / "拷贝"
 - `CyNodeData` 注释：说明"仅包含 Cy 渲染所需的最小字段"
 - `CyEdgeData` 注释：同上
@@ -103,6 +110,7 @@ export interface CyEdgeData {
 ### 5. 新增 move-picked class
 
 在 `cytoscape_style.ts` 的节点样式区添加（放在 `.move-collision` 附近）：
+
 ```ts
 {
     selector: '.move-picked',
@@ -111,6 +119,7 @@ export interface CyEdgeData {
     },
 },
 ```
+
 这替代 `move_node.ts` 中 `.style('opacity', 0.4)` 的硬编码值。Step 2 执行时 move_node 改为 `addNodeClass('move-picked', 'move')`。
 
 ### 6. use_graph_interaction 重构
@@ -154,6 +163,7 @@ export interface CyEdgeData {
 ## task 返回要求
 
 完成后返回：
+
 1. 修改了哪些文件（列表）
 2. 每个文件改了什么（一句话）
 3. 测试是否通过

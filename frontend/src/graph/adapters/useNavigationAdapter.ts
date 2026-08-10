@@ -18,7 +18,14 @@ import { computed, type ComputedRef } from 'vue'
 import type { GraphData, GraphId } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
-import { listRootGraphIds, listSavedGraphIds, loadGraph, deleteGraph, loadLastActiveRootId, clearLastActiveRootId } from '@/graph/graph_persistence'
+import {
+    listRootGraphIds,
+    listSavedGraphIds,
+    loadGraph,
+    deleteGraph,
+    loadLastActiveRootId,
+    clearLastActiveRootId,
+} from '@/graph/graph_persistence'
 import { lookupGraph, unregisterGraph } from '@/graph/graph_registry'
 import { isInRootTree } from '@/graph/utils/graph_tree'
 
@@ -166,10 +173,18 @@ function createNavigationAdapter(): NavigationAdapterAPI {
         }))
     })
 
-    const currentRootId = computed<GraphId | null>(() => useGraphStore().graphPath[0] ?? null)
-    const isAtRoot = computed<boolean>(() => useGraphStore().graphPath.length <= 1)
-    const parentGraphId = computed<GraphId | null>(() => useGraphStore().graphView?.parentGraphId ?? null)
-    const hasCurrentGraph = computed<boolean>(() => useGraphStore().graphView !== null)
+    const currentRootId = computed<GraphId | null>(
+        () => useGraphStore().graphPath[0] ?? null,
+    )
+    const isAtRoot = computed<boolean>(
+        () => useGraphStore().graphPath.length <= 1,
+    )
+    const parentGraphId = computed<GraphId | null>(
+        () => useGraphStore().graphView?.parentGraphId ?? null,
+    )
+    const hasCurrentGraph = computed<boolean>(
+        () => useGraphStore().graphView !== null,
+    )
 
     function goToGraph(graphId: GraphId): boolean {
         return useGraphStore().loadGraphToView(graphId)
@@ -186,10 +201,16 @@ function createNavigationAdapter(): NavigationAdapterAPI {
             const result = loadGraph(graphId)
             if (!result.ok) continue
             const graph = result.graph
-            infos.push({ id: graph.id, title: graph.title, updatedAt: graph.updatedAt })
+            infos.push({
+                id: graph.id,
+                title: graph.title,
+                updatedAt: graph.updatedAt,
+            })
         }
 
-        return infos.sort((a, b) => a.title.localeCompare(b.title, 'zh-Hans-CN'))
+        return infos.sort((a, b) =>
+            a.title.localeCompare(b.title, 'zh-Hans-CN'),
+        )
     }
 
     function createRootGraph(title: string): GraphId {

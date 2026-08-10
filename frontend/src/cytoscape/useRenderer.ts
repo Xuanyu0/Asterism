@@ -213,7 +213,10 @@ interface RendererAPI {
      *     getter — 返回需要高亮的元素 ID
      *     className — 要施加/移除的 class 名
      */
-    bindHighlight(getter: () => string | null | undefined, className: string): void
+    bindHighlight(
+        getter: () => string | null | undefined,
+        className: string,
+    ): void
 
     /**
      * 将 DOM 元素锚定到指定 Cytoscape 元素（节点/边），跟随目标位移与画布平移缩放。
@@ -262,7 +265,7 @@ export function useRenderer(
     if (!containerRef) {
         throw new Error(
             '[useRenderer] First call must provide containerRef. ' +
-            'Call useRenderer(cyContainer) from Graph.vue setup before tools access it.',
+                'Call useRenderer(cyContainer) from Graph.vue setup before tools access it.',
         )
     }
 
@@ -294,7 +297,7 @@ export function useRenderer(
             elements: [],
             style: createCytoscapeStyle(),
             layout: {
-                name: 'preset',  // 必须用 preset，避免自动布局覆盖 GraphData.position
+                name: 'preset', // 必须用 preset，避免自动布局覆盖 GraphData.position
             },
             userPanningEnabled: true,
             userZoomingEnabled: true,
@@ -308,9 +311,9 @@ export function useRenderer(
         // 格点背景：cyCanvas 插件提供一张独立 canvas 层（canvas 默认全透明，本层只画圆点）。
         // zIndex 0 使其垫在 Cytoscape 主画布之下——格点从主画布透明像素中透出，不遮节点/边。
         gridBackgroundLayer = cy.cyCanvas({ zIndex: 0 })
-        gridBackgroundLayer.getCanvas().style.pointerEvents = 'none'  // 鼠标穿透到主画布，否则平移/点击会被本层挡住
-        cy.on('render cyCanvas.resize', drawDotGrid)  // 视口重绘或画布尺寸变化时重画，保证格点跟随视口对齐
-        drawDotGrid()  // 首次调用时，主动绘制一次格点背景
+        gridBackgroundLayer.getCanvas().style.pointerEvents = 'none' // 鼠标穿透到主画布，否则平移/点击会被本层挡住
+        cy.on('render cyCanvas.resize', drawDotGrid) // 视口重绘或画布尺寸变化时重画，保证格点跟随视口对齐
+        drawDotGrid() // 首次调用时，主动绘制一次格点背景
     }
 
     function destroy(): void {
@@ -325,7 +328,7 @@ export function useRenderer(
         }
 
         if (gridBackgroundLayer && cy) {
-            cy.off('render cyCanvas.resize', drawDotGrid)  // 先于 cy.destroy() 解绑：off 依赖存活的 cy
+            cy.off('render cyCanvas.resize', drawDotGrid) // 先于 cy.destroy() 解绑：off 依赖存活的 cy
             gridBackgroundLayer = null
         }
 
@@ -350,7 +353,6 @@ export function useRenderer(
         classOwners.clear()
     }
 
-
     // ── 视口定位 ──
 
     function centerOnElement(elementId: string): void {
@@ -363,12 +365,15 @@ export function useRenderer(
             return
         }
 
-        cy.animate({
-            center: { eles: element },
-            zoom: Math.max(cy.zoom(), 1),
-        }, {
-            duration: 300,
-        })
+        cy.animate(
+            {
+                center: { eles: element },
+                zoom: Math.max(cy.zoom(), 1),
+            },
+            {
+                duration: 300,
+            },
+        )
 
         if (highlightClearTimer !== null) {
             clearTimeout(highlightClearTimer)
@@ -395,7 +400,11 @@ export function useRenderer(
         return { x: pos.x, y: pos.y }
     }
 
-    function addNodeClass(nodeId: string, className: string, owner: string): void {
+    function addNodeClass(
+        nodeId: string,
+        className: string,
+        owner: string,
+    ): void {
         if (!cy) {
             return
         }
@@ -424,7 +433,11 @@ export function useRenderer(
         classSet.add(className)
     }
 
-    function removeNodeClass(nodeId: string, className: string, owner: string): void {
+    function removeNodeClass(
+        nodeId: string,
+        className: string,
+        owner: string,
+    ): void {
         if (!cy) {
             return
         }
@@ -473,9 +486,9 @@ export function useRenderer(
         classOwners.delete(owner)
     }
 
-    function trackCursor(
-        callback: (modelPos: NodePosition) => void,
-    ): { stop(): void } {
+    function trackCursor(callback: (modelPos: NodePosition) => void): {
+        stop(): void
+    } {
         const currentCy = cy
         if (!currentCy) {
             return { stop() {} }
@@ -489,8 +502,12 @@ export function useRenderer(
         const handler = (event: MouseEvent) => {
             const rect = container.getBoundingClientRect()
             const modelPos = {
-                x: (event.clientX - rect.left - currentCy.pan().x) / currentCy.zoom(),
-                y: (event.clientY - rect.top - currentCy.pan().y) / currentCy.zoom(),
+                x:
+                    (event.clientX - rect.left - currentCy.pan().x) /
+                    currentCy.zoom(),
+                y:
+                    (event.clientY - rect.top - currentCy.pan().y) /
+                    currentCy.zoom(),
             }
             callback(modelPos)
         }
@@ -508,27 +525,24 @@ export function useRenderer(
         getter: () => string | null | undefined,
         className: string,
     ): void {
-        watch(
-            getter,
-            (id, prevId) => {
-                if (!cy) {
-                    return
-                }
+        watch(getter, (id, prevId) => {
+            if (!cy) {
+                return
+            }
 
-                if (prevId) {
-                    const prev = cy.getElementById(prevId)
-                    if (prev.length > 0) {
-                        prev.removeClass(className)
-                    }
+            if (prevId) {
+                const prev = cy.getElementById(prevId)
+                if (prev.length > 0) {
+                    prev.removeClass(className)
                 }
-                if (id) {
-                    const target = cy.getElementById(id)
-                    if (target.length > 0) {
-                        target.addClass(className)
-                    }
+            }
+            if (id) {
+                const target = cy.getElementById(id)
+                if (target.length > 0) {
+                    target.addClass(className)
                 }
-            },
-        )
+            }
+        })
     }
 
     function attachPopper(
@@ -569,7 +583,7 @@ export function useRenderer(
         gridBackgroundLayer.setTransform(ctx)
 
         const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
-        const dotRadius = 1.4  // 模型空间圆点半径，zoom=1 时对应 1.4 CSS px
+        const dotRadius = 1.4 // 模型空间圆点半径，zoom=1 时对应 1.4 CSS px
 
         // 可视范围（模型坐标）
         const extent = cy.extent()

@@ -12,17 +12,31 @@ import { createNode, createEdge, assembleGraph } from '../test_case_factory'
 const G = 'test-pl' as GraphId
 
 function makeBase(): GraphData {
-    return assembleGraph({ id: G, nodes: [
-        createNode({ id: 'n0' as NodeId, graphId: G }),
-        createNode({ id: 'n1' as NodeId, graphId: G }),
-    ], edges: [] })
+    return assembleGraph({
+        id: G,
+        nodes: [
+            createNode({ id: 'n0' as NodeId, graphId: G }),
+            createNode({ id: 'n1' as NodeId, graphId: G }),
+        ],
+        edges: [],
+    })
 }
 
 describe('applyBatch', () => {
     test('全通过时全部执行', () => {
         const graph = makeBase()
         const ops = [
-            { type: 'add_edge' as const, edge: createEdge({ id: 'e0' as NodeId, graphId: G, source: 'n0' as NodeId, target: 'n1' as NodeId, kind: 'real', direction: 'directed' }) },
+            {
+                type: 'add_edge' as const,
+                edge: createEdge({
+                    id: 'e0' as NodeId,
+                    graphId: G,
+                    source: 'n0' as NodeId,
+                    target: 'n1' as NodeId,
+                    kind: 'real',
+                    direction: 'directed',
+                }),
+            },
         ]
         const result = applyBatch(graph, ops)
         expect(result.validation.valid).toBe(true)
@@ -32,8 +46,28 @@ describe('applyBatch', () => {
     test('任一失败则整批丢弃', () => {
         const graph = makeBase()
         const ops = [
-            { type: 'add_edge' as const, edge: createEdge({ id: 'e0' as NodeId, graphId: G, source: 'n0' as NodeId, target: 'n1' as NodeId, kind: 'real', direction: 'directed' }) },
-            { type: 'add_edge' as const, edge: createEdge({ id: 'e1' as NodeId, graphId: G, source: 'n-x' as NodeId, target: 'n1' as NodeId, kind: 'real', direction: 'directed' }) }, // 失败
+            {
+                type: 'add_edge' as const,
+                edge: createEdge({
+                    id: 'e0' as NodeId,
+                    graphId: G,
+                    source: 'n0' as NodeId,
+                    target: 'n1' as NodeId,
+                    kind: 'real',
+                    direction: 'directed',
+                }),
+            },
+            {
+                type: 'add_edge' as const,
+                edge: createEdge({
+                    id: 'e1' as NodeId,
+                    graphId: G,
+                    source: 'n-x' as NodeId,
+                    target: 'n1' as NodeId,
+                    kind: 'real',
+                    direction: 'directed',
+                }),
+            }, // 失败
         ]
         const result = applyBatch(graph, ops)
         expect(result.validation.valid).toBe(false)
@@ -43,7 +77,17 @@ describe('applyBatch', () => {
     test('dryRun 模式：校验但不执行', () => {
         const graph = makeBase()
         const ops = [
-            { type: 'add_edge' as const, edge: createEdge({ id: 'e0' as NodeId, graphId: G, source: 'n0' as NodeId, target: 'n1' as NodeId, kind: 'real', direction: 'directed' }) },
+            {
+                type: 'add_edge' as const,
+                edge: createEdge({
+                    id: 'e0' as NodeId,
+                    graphId: G,
+                    source: 'n0' as NodeId,
+                    target: 'n1' as NodeId,
+                    kind: 'real',
+                    direction: 'directed',
+                }),
+            },
         ]
         const result = applyBatch(graph, ops, { dryRun: true })
         expect(result.validation.valid).toBe(true)
@@ -53,7 +97,17 @@ describe('applyBatch', () => {
     test('stopOnFirst：遇第一个失败即停', () => {
         const graph = makeBase()
         const ops = [
-            { type: 'add_edge' as const, edge: createEdge({ id: 'e-bad' as NodeId, graphId: G, source: 'n-x' as NodeId, target: 'n0' as NodeId, kind: 'real', direction: 'directed' }) },
+            {
+                type: 'add_edge' as const,
+                edge: createEdge({
+                    id: 'e-bad' as NodeId,
+                    graphId: G,
+                    source: 'n-x' as NodeId,
+                    target: 'n0' as NodeId,
+                    kind: 'real',
+                    direction: 'directed',
+                }),
+            },
             createNode({ id: 'n2' as NodeId, graphId: G }), // not a valid op for add_edge, 会被后续 validate 拦截——但 stopOnFirst 会让它不被校验
         ]
         const result = applyBatch(graph, ops, { stopOnFirst: true })
@@ -63,10 +117,13 @@ describe('applyBatch', () => {
 
     test('add_graph 校验通过并返回原图不变', () => {
         const graph = makeBase()
-        const child = assembleGraph({ id: 'child-pl' as GraphId, nodes: [], edges: [], kind: 'subgraph' })
-        const ops = [
-            { type: 'add_graph' as const, graph: child },
-        ]
+        const child = assembleGraph({
+            id: 'child-pl' as GraphId,
+            nodes: [],
+            edges: [],
+            kind: 'subgraph',
+        })
+        const ops = [{ type: 'add_graph' as const, graph: child }]
         const result = applyBatch(graph, ops)
         expect(result.validation.valid).toBe(true)
         // 当前图不变——add_graph 只声明子图的存在，registry 写操作由 Runtime 处理
@@ -90,7 +147,11 @@ describe('applyBatch', () => {
         ]
         const result = applyBatch(graph, ops)
         expect(result.validation.valid).toBe(false)
-        expect(result.validation.issues.some(i => i.code === 'SELF_LOOP_FORBIDDEN')).toBe(true)
+        expect(
+            result.validation.issues.some(
+                (i) => i.code === 'SELF_LOOP_FORBIDDEN',
+            ),
+        ).toBe(true)
         expect(result.graph.edges.length).toBe(0)
     })
 
@@ -122,7 +183,11 @@ describe('applyBatch', () => {
         ]
         const result = applyBatch(graph, ops)
         expect(result.validation.valid).toBe(false)
-        expect(result.validation.issues.some(i => i.code === 'DUPLICATE_EDGE_FORBIDDEN')).toBe(true)
+        expect(
+            result.validation.issues.some(
+                (i) => i.code === 'DUPLICATE_EDGE_FORBIDDEN',
+            ),
+        ).toBe(true)
         expect(result.graph.edges.length).toBe(0)
     })
 
@@ -156,12 +221,20 @@ describe('applyBatch', () => {
     test('onBeforeEachOperation：传回调时每个原子操作触发一次', () => {
         const graph = makeBase()
         const ops = [
-            { type: 'add_node' as const, node: createNode({ id: 'n2' as NodeId, graphId: G }) },
-            { type: 'add_node' as const, node: createNode({ id: 'n3' as NodeId, graphId: G }) },
+            {
+                type: 'add_node' as const,
+                node: createNode({ id: 'n2' as NodeId, graphId: G }),
+            },
+            {
+                type: 'add_node' as const,
+                node: createNode({ id: 'n3' as NodeId, graphId: G }),
+            },
         ]
         const callback = vi.fn()
 
-        const result = applyBatch(graph, ops, { onBeforeEachOperation: callback })
+        const result = applyBatch(graph, ops, {
+            onBeforeEachOperation: callback,
+        })
 
         expect(callback).toHaveBeenCalledTimes(ops.length) // 2 个原子操作 → 2 次
         expect(result.validation.valid).toBe(true)
@@ -170,8 +243,14 @@ describe('applyBatch', () => {
     test('onBeforeEachOperation：graphBeforeOp 为逐操作执行前的中间态', () => {
         const graph = makeBase() // n0, n1
         const ops = [
-            { type: 'add_node' as const, node: createNode({ id: 'n2' as NodeId, graphId: G }) },
-            { type: 'add_node' as const, node: createNode({ id: 'n3' as NodeId, graphId: G }) },
+            {
+                type: 'add_node' as const,
+                node: createNode({ id: 'n2' as NodeId, graphId: G }),
+            },
+            {
+                type: 'add_node' as const,
+                node: createNode({ id: 'n3' as NodeId, graphId: G }),
+            },
         ]
         const seenOps: GraphOperation[] = []
         const snapshots: string[][] = []
@@ -179,7 +258,7 @@ describe('applyBatch', () => {
         applyBatch(graph, ops, {
             onBeforeEachOperation: (op, graphBeforeOp) => {
                 seenOps.push(op)
-                snapshots.push(graphBeforeOp.nodes.map(n => n.id))
+                snapshots.push(graphBeforeOp.nodes.map((n) => n.id))
             },
         })
 
@@ -187,22 +266,30 @@ describe('applyBatch', () => {
         expect(seenOps).toEqual(ops)
         // 第 k 次回调的图 = 前 k-1 个操作执行后的状态
         expect(snapshots).toEqual([
-            ['n0', 'n1'],        // 第 1 次：基图（无操作执行）
-            ['n0', 'n1', 'n2'],  // 第 2 次：n2 已入图，n3 尚未执行
+            ['n0', 'n1'], // 第 1 次：基图（无操作执行）
+            ['n0', 'n1', 'n2'], // 第 2 次：n2 已入图，n3 尚未执行
         ])
     })
 
     test('onBeforeEachOperation：未传时零行为变化（不触发）', () => {
         const graph = makeBase()
         const ops = [
-            { type: 'add_node' as const, node: createNode({ id: 'n2' as NodeId, graphId: G }) },
-            { type: 'add_node' as const, node: createNode({ id: 'n3' as NodeId, graphId: G }) },
+            {
+                type: 'add_node' as const,
+                node: createNode({ id: 'n2' as NodeId, graphId: G }),
+            },
+            {
+                type: 'add_node' as const,
+                node: createNode({ id: 'n3' as NodeId, graphId: G }),
+            },
         ]
 
         // 未传回调无可观测的"调用"；可观测契约 = 零行为变化。
         // 显式传入 undefined 走 options?.onBeforeEachOperation?.() 短路分支。
         const baseline = applyBatch(graph, ops)
-        const explicitUndefined = applyBatch(graph, ops, { onBeforeEachOperation: undefined })
+        const explicitUndefined = applyBatch(graph, ops, {
+            onBeforeEachOperation: undefined,
+        })
 
         expect(explicitUndefined.graph).toEqual(baseline.graph)
         expect(explicitUndefined.validation).toEqual(baseline.validation)
@@ -212,12 +299,21 @@ describe('applyBatch', () => {
     test('onBeforeEachOperation：dryRun 模式同样触发', () => {
         const graph = makeBase()
         const ops = [
-            { type: 'add_node' as const, node: createNode({ id: 'n2' as NodeId, graphId: G }) },
-            { type: 'add_node' as const, node: createNode({ id: 'n3' as NodeId, graphId: G }) },
+            {
+                type: 'add_node' as const,
+                node: createNode({ id: 'n2' as NodeId, graphId: G }),
+            },
+            {
+                type: 'add_node' as const,
+                node: createNode({ id: 'n3' as NodeId, graphId: G }),
+            },
         ]
         const callback = vi.fn()
 
-        const result = applyBatch(graph, ops, { dryRun: true, onBeforeEachOperation: callback })
+        const result = applyBatch(graph, ops, {
+            dryRun: true,
+            onBeforeEachOperation: callback,
+        })
 
         // Phase 2 dry-run 循环在 dryRun 下同样执行 → 回调触发
         expect(callback).toHaveBeenCalledTimes(2)

@@ -24,7 +24,9 @@ interface FoldFilter {
 export function extractFoldFilter(graph: GraphData): FoldFilter {
     const foldedDeps = graph.cognitiveState?.foldedDependencies ?? []
     return {
-        foldedNodeIds: new Set(foldedDeps.flatMap((state) => state.foldedNodeIds)),
+        foldedNodeIds: new Set(
+            foldedDeps.flatMap((state) => state.foldedNodeIds),
+        ),
         foldedParentIds: new Set(foldedDeps.map((state) => state.targetNodeId)),
     }
 }

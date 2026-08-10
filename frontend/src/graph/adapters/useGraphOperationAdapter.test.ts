@@ -44,21 +44,23 @@ describe('useGraphOperationAdapter', () => {
     test('commitToCurrentGraph 提交后同步 lastValidationResult 并原样返回校验结果', () => {
         const nodeCountBefore = store.graphView!.nodes.length
 
-        const validation = operations.commitToCurrentGraph([{
-            type: 'add_node',
-            node: {
-                id: 'node-new' as NodeId,
-                graphId: store.graphView!.id,
-                role: 'knowledge' as const,
-                kind: 'real' as const,
-                form: 'atomic' as const,
-                label: '新增节点',
-                degree: 0,
-                abstractionLevel: 0,
-                // 远离既有节点，避免触发碰撞校验
-                position: { x: 5000, y: 5000 },
+        const validation = operations.commitToCurrentGraph([
+            {
+                type: 'add_node',
+                node: {
+                    id: 'node-new' as NodeId,
+                    graphId: store.graphView!.id,
+                    role: 'knowledge' as const,
+                    kind: 'real' as const,
+                    form: 'atomic' as const,
+                    label: '新增节点',
+                    degree: 0,
+                    abstractionLevel: 0,
+                    // 远离既有节点，避免触发碰撞校验
+                    position: { x: 5000, y: 5000 },
+                },
             },
-        }])
+        ])
 
         expect(validation.valid).toBe(true)
         // store 中的校验结果是响应式包装，用深度相等验证"原样同步"
@@ -69,20 +71,30 @@ describe('useGraphOperationAdapter', () => {
     test('commitToCurrentGraph 校验失败时同步失败结果且不改动图', () => {
         const nodeCountBefore = store.graphView!.nodes.length
 
-        const validation = operations.commitToCurrentGraph([{
-            type: 'delete_node',
-            nodeId: 'node-nonexistent' as NodeId,
-        }])
+        const validation = operations.commitToCurrentGraph([
+            {
+                type: 'delete_node',
+                nodeId: 'node-nonexistent' as NodeId,
+            },
+        ])
 
         expect(validation.valid).toBe(false)
         expect(store.lastValidationResult).toEqual(validation)
-        expect(store.lastValidationResult!.issues[0]?.code).toBe('NODE_NOT_FOUND')
+        expect(store.lastValidationResult!.issues[0]?.code).toBe(
+            'NODE_NOT_FOUND',
+        )
         expect(store.graphView!.nodes.length).toBe(nodeCountBefore)
     })
 
     test('reportComposeValidation 含 error → 写 lastValidationResult 并返回 true', () => {
         const failed = operations.reportComposeValidation(
-            [{ severity: 'error', code: 'EMPTY_LABEL', message: '节点标签不能为空。' }],
+            [
+                {
+                    severity: 'error',
+                    code: 'EMPTY_LABEL',
+                    message: '节点标签不能为空。',
+                },
+            ],
             'node',
             'node-1' as NodeId,
         )
@@ -90,13 +102,15 @@ describe('useGraphOperationAdapter', () => {
         expect(failed).toBe(true)
         expect(store.lastValidationResult).toEqual({
             valid: false,
-            issues: [{
-                severity: 'error',
-                code: 'EMPTY_LABEL',
-                message: '节点标签不能为空。',
-                targetType: 'node',
-                targetId: 'node-1',
-            }],
+            issues: [
+                {
+                    severity: 'error',
+                    code: 'EMPTY_LABEL',
+                    message: '节点标签不能为空。',
+                    targetType: 'node',
+                    targetId: 'node-1',
+                },
+            ],
         })
     })
 
@@ -117,20 +131,22 @@ describe('useGraphOperationAdapter', () => {
     test('commitToCurrentGraph 经 commitBatchToGraphs 提交（不再经单图包装）', () => {
         const spy = vi.spyOn(store, 'commitBatchToGraphs')
 
-        const validation = operations.commitToCurrentGraph([{
-            type: 'add_node',
-            node: {
-                id: 'node-spy' as NodeId,
-                graphId: store.graphView!.id,
-                role: 'knowledge' as const,
-                kind: 'real' as const,
-                form: 'atomic' as const,
-                label: '提交测试',
-                degree: 0,
-                abstractionLevel: 0,
-                position: { x: 5000, y: 5000 },
+        const validation = operations.commitToCurrentGraph([
+            {
+                type: 'add_node',
+                node: {
+                    id: 'node-spy' as NodeId,
+                    graphId: store.graphView!.id,
+                    role: 'knowledge' as const,
+                    kind: 'real' as const,
+                    form: 'atomic' as const,
+                    label: '提交测试',
+                    degree: 0,
+                    abstractionLevel: 0,
+                    position: { x: 5000, y: 5000 },
+                },
             },
-        }])
+        ])
 
         expect(spy).toHaveBeenCalledTimes(1)
         expect(validation.valid).toBe(true)

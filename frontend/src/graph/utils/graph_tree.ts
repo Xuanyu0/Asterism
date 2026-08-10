@@ -36,7 +36,7 @@ export function isInRootTree(graph: GraphData, rootId: GraphId): boolean {
     const visited = new Set<GraphId>([graph.id])
     while (current.parentGraphId) {
         if (current.parentGraphId === rootId) return true
-        if (visited.has(current.parentGraphId)) return false  // 环检测
+        if (visited.has(current.parentGraphId)) return false // 环检测
         visited.add(current.parentGraphId)
 
         const result = loadGraph(current.parentGraphId)
@@ -44,5 +44,5 @@ export function isInRootTree(graph: GraphData, rootId: GraphId): boolean {
 
         current = result.graph
     }
-    return false  // 抵达某根图（parentGraphId === undefined），但不是我们的根图
+    return false // 抵达某根图（parentGraphId === undefined），但不是我们的根图
 }

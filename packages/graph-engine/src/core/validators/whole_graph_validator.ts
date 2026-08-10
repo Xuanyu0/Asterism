@@ -27,7 +27,7 @@ export function validateGraph(graph: GraphData): ValidationResult {
     const issues = runGlobalRules(graph)
 
     return {
-        valid: issues.every(issue => issue.severity !== 'error'),
+        valid: issues.every((issue) => issue.severity !== 'error'),
         issues,
     }
 }

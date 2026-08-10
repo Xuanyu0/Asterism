@@ -25,27 +25,55 @@ import { ref, toRaw, markRaw } from 'vue'
 import type { GraphData, GraphId } from '@my-project/graph-engine'
 import type { GraphOperation } from '@my-project/graph-engine'
 import type { ValidationResult } from '@my-project/graph-engine'
-import type { ItemOperations, OperationLog, OperationLogEntry } from '@my-project/graph-engine'
+import type {
+    ItemOperations,
+    OperationLog,
+    OperationLogEntry,
+} from '@my-project/graph-engine'
 
-import { applyBatch, createReversal, ensureDefaultCognitiveState, generateGraphId } from '@my-project/graph-engine'
+import {
+    applyBatch,
+    createReversal,
+    ensureDefaultCognitiveState,
+    generateGraphId,
+} from '@my-project/graph-engine'
 
 import type { GraphRegistry } from '@/graph/graph_registry'
-import { createRegistry, registerGraph, lookupGraph, hasGraph } from '@/graph/graph_registry'
+import {
+    createRegistry,
+    registerGraph,
+    lookupGraph,
+    hasGraph,
+} from '@/graph/graph_registry'
 
-import { saveGraph, loadGraph, listSavedGraphIds, saveLastActiveRootId, loadLastActiveRootId } from '@/graph/graph_persistence'
+import {
+    saveGraph,
+    loadGraph,
+    listSavedGraphIds,
+    saveLastActiveRootId,
+    loadLastActiveRootId,
+} from '@/graph/graph_persistence'
 
-import { applyAddGraph, applyDeleteGraph, revertAddGraph, revertDeleteGraph } from '@/graph/graph_signals'
+import {
+    applyAddGraph,
+    applyDeleteGraph,
+    revertAddGraph,
+    revertDeleteGraph,
+} from '@/graph/graph_signals'
 
 import { isInRootTree } from '@/graph/utils/graph_tree'
-import { DATA_INTEGRITY_PREFIX, reportCorruptedGraph } from '@/graph/utils/data_integrity_reporter'
+import {
+    DATA_INTEGRITY_PREFIX,
+    reportCorruptedGraph,
+} from '@/graph/utils/data_integrity_reporter'
 
 /**
  * 一次批量提交中的单个图项：目标图与其待执行操作序列。
  * commitBatchToGraphs 入参元素与 applyEntry 组装 batch 时复用同一形态。
  */
-type OperationBatchItem = { 
-    graph: GraphData;
-    operations: GraphOperation[] 
+type OperationBatchItem = {
+    graph: GraphData
+    operations: GraphOperation[]
 }
 
 /**
@@ -105,12 +133,16 @@ export const useGraphStore = defineStore('graph_store', () => {
 
         // 构建当前图在根图树中的路径（根→叶），供导航卡片渲染面包屑与"是否在根"判断
         const { path, terminal } = buildGraphPath(graph)
-        
+
         graphPath.value = path
-        
+
         const previousRootId = graphPath.value[0]
         // 生命周期：根图谱 = 日志
-        if (path.length > 0 && previousRootId !== undefined && previousRootId !== path[0]) {
+        if (
+            path.length > 0 &&
+            previousRootId !== undefined &&
+            previousRootId !== path[0]
+        ) {
             operationLog.value = { entries: [], cursor: -1 }
             redoStack.value = []
         }
@@ -162,7 +194,11 @@ export const useGraphStore = defineStore('graph_store', () => {
         // 预加载当前根图树的所有子图
         const allIds = listSavedGraphIds()
         for (const graphId of allIds) {
-            if (graphId === lastRootId || hasGraph(graphRegistry.value, graphId)) continue
+            if (
+                graphId === lastRootId ||
+                hasGraph(graphRegistry.value, graphId)
+            )
+                continue
             const result = loadGraph(graphId)
             if (!result.ok) {
                 if (result.reason === 'corrupted') {
@@ -262,7 +298,11 @@ export const useGraphStore = defineStore('graph_store', () => {
      */
     function commitBatchToGraphs(
         operationBatch: OperationBatchItem[],
-        options?: { recordLog?: boolean; skipValidate?: boolean; source?: string },
+        options?: {
+            recordLog?: boolean
+            skipValidate?: boolean
+            source?: string
+        },
     ): { validation: ValidationResult } {
         // 第一阶段：按顺序执行所有项，用 latestGraphs 跟踪同一图的中间状态；
         // 逐操作经 onBeforeEachOperation 回调构造逆元（仅图内操作，图级操作跳过）
@@ -276,18 +316,31 @@ export const useGraphStore = defineStore('graph_store', () => {
             // toRaw: 解包 Pinia reactive proxy
             // 因为引擎 createReversal 内部使用 structuredClone 无法克隆 proxy
             // 所以在此处统一解包。
-            const inputGraph = toRaw(latestGraphs.get(item.graph.id) ?? item.graph)
+            const inputGraph = toRaw(
+                latestGraphs.get(item.graph.id) ?? item.graph,
+            )
             const perOpReversals: GraphOperation[][] = []
 
-            const { graph: resultGraph, validation } = applyBatch(inputGraph, item.operations, {
-                skipValidate: options?.skipValidate,  // 由 undo/redo传入，以跳过校验
-                onBeforeEachOperation: options?.recordLog === false
-                    ? undefined  // undo/redo 执行时不收集逆元（日志已有）
-                    : (op, graphBeforeOp) => {
-                        if (op.type === 'add_graph' || op.type === 'delete_graph') return  //  图级操作由 graph_signals 在第三阶段正/逆向执行
-                        perOpReversals.push(createReversal(graphBeforeOp, op))
-                    },
-            })
+            const { graph: resultGraph, validation } = applyBatch(
+                inputGraph,
+                item.operations,
+                {
+                    skipValidate: options?.skipValidate, // 由 undo/redo传入，以跳过校验
+                    onBeforeEachOperation:
+                        options?.recordLog === false
+                            ? undefined // undo/redo 执行时不收集逆元（日志已有）
+                            : (op, graphBeforeOp) => {
+                                  if (
+                                      op.type === 'add_graph' ||
+                                      op.type === 'delete_graph'
+                                  )
+                                      return //  图级操作由 graph_signals 在第三阶段正/逆向执行
+                                  perOpReversals.push(
+                                      createReversal(graphBeforeOp, op),
+                                  )
+                              },
+                },
+            )
 
             if (!validation.valid) {
                 lastValidationResult.value = validation
@@ -300,9 +353,9 @@ export const useGraphStore = defineStore('graph_store', () => {
 
             // 收尾：单次 Item 逆元收集
             if (perOpReversals.length > 0) {
-                reversalItems.push({ 
+                reversalItems.push({
                     graphId: item.graph.id,
-                    operations: perOpReversals.reverse().flat()  // Item “内”逆序收集并打平，保证 undo 时正向执行顺序
+                    operations: perOpReversals.reverse().flat(), // Item “内”逆序收集并打平，保证 undo 时正向执行顺序
                 })
             }
         }
@@ -328,7 +381,7 @@ export const useGraphStore = defineStore('graph_store', () => {
             for (const operation of item.operations) {
                 if (operation.type === 'add_graph') {
                     const builtGraph = latestGraphs.get(operation.graph.id)
-                    const targetGraph = builtGraph ?? operation.graph  // 有由批操作构造完的图就用它，否则用 add_graph 自带的图
+                    const targetGraph = builtGraph ?? operation.graph // 有由批操作构造完的图就用它，否则用 add_graph 自带的图
 
                     applyAddGraph(graphRegistry.value, targetGraph)
 
@@ -350,7 +403,9 @@ export const useGraphStore = defineStore('graph_store', () => {
         }
 
         // 若当前视图图被持久化，记录最近一次保存时间。
-        const hasGraphViewTarget = operationBatch.some(item => item.graph.id === graphView.value?.id)
+        const hasGraphViewTarget = operationBatch.some(
+            (item) => item.graph.id === graphView.value?.id,
+        )
         if (hasGraphViewTarget) {
             lastSaveTime.value = Date.now()
         }
@@ -359,22 +414,30 @@ export const useGraphStore = defineStore('graph_store', () => {
         // 整批成功后组装 entry 追加、cursor 前进、清空 redoStack
         // 用户新操作使 redo 失效
         if (options?.recordLog !== false && operationBatch.length > 0) {
-            const graphSignals: OperationLogEntry['graphSignals'] = { added: [], deleted: [] }
+            const graphSignals: OperationLogEntry['graphSignals'] = {
+                added: [],
+                deleted: [],
+            }
 
             for (const item of operationBatch) {
                 for (const operation of item.operations) {
-                    if (operation.type === 'add_graph') graphSignals.added.push(operation.graph.id)
-                    if (operation.type === 'delete_graph') graphSignals.deleted.push(operation.graphId)
+                    if (operation.type === 'add_graph')
+                        graphSignals.added.push(operation.graph.id)
+                    if (operation.type === 'delete_graph')
+                        graphSignals.deleted.push(operation.graphId)
                 }
             }
 
             const entry: OperationLogEntry = {
-                operation: operationBatch.map(item => ({ graphId: item.graph.id, operations: item.operations })),
-                reversalOperations: reversalItems.reverse(),  // item “间”逆序
+                operation: operationBatch.map((item) => ({
+                    graphId: item.graph.id,
+                    operations: item.operations,
+                })),
+                reversalOperations: reversalItems.reverse(), // item “间”逆序
                 graphSignals,
                 parentIndex: operationLog.value.cursor,
                 timestamp: new Date().toISOString(),
-                source: options?.source,  // 来源工具标识，缺省 undefined = 未知来源
+                source: options?.source, // 来源工具标识，缺省 undefined = 未知来源
             }
 
             // entry 整体 markRaw 再入栈——operationLog 为 reactive ref，
@@ -462,9 +525,9 @@ export const useGraphStore = defineStore('graph_store', () => {
      *     统一对称的撤销模型：
      *     - undo = 逆序执行 entry 的全部逆元；
      *     - redo = 正序执行 entry 的全部操作。
-     *     
+     *
      *     图内与图级以各自形态参与同一序列：
-     * 
+     *
      *         - 图内逆元：操作对象（createReversal 精确反转）
      *         - 图级逆元：兑现逻辑
      *           - add_graph 的逆元： 整体注销（内容随图消失，不单独动数据）
@@ -495,7 +558,10 @@ export const useGraphStore = defineStore('graph_store', () => {
      *
      *     执行成功 true；entry 不存在或防御性失败 false。
      */
-    function applyEntry(entryIndex: number, direction: 'forward' | 'reverse'): boolean {
+    function applyEntry(
+        entryIndex: number,
+        direction: 'forward' | 'reverse',
+    ): boolean {
         const entry = operationLog.value.entries[entryIndex]
 
         if (!entry) {
@@ -516,11 +582,17 @@ export const useGraphStore = defineStore('graph_store', () => {
             const batch: OperationBatchItem[] = []
             for (const reversalItem of entry.reversalOperations) {
                 if (reversalItem.operations.length === 0) continue
-                if (addedGraphIds.has(reversalItem.graphId)) continue  // 跳过 added 图的 item：模型本质要求（见JSDoc）
+                if (addedGraphIds.has(reversalItem.graphId)) continue // 跳过 added 图的 item：模型本质要求（见JSDoc）
 
-                const graph = lookupGraph(graphRegistry.value, reversalItem.graphId)
+                const graph = lookupGraph(
+                    graphRegistry.value,
+                    reversalItem.graphId,
+                )
                 if (!graph) {
-                    reportRegistryResolveFailure(reversalItem.graphId, 'undo 逆元执行')  // 正常不可达：跳过
+                    reportRegistryResolveFailure(
+                        reversalItem.graphId,
+                        'undo 逆元执行',
+                    ) // 正常不可达：跳过
                     continue
                 }
 
@@ -529,10 +601,13 @@ export const useGraphStore = defineStore('graph_store', () => {
 
             if (batch.length > 0) {
                 // skipValidate: 恢复型逆元批的前提依赖批内顺序，静态校验必然误报
-                const result = commitBatchToGraphs(batch, { recordLog: false, skipValidate: true })
+                const result = commitBatchToGraphs(batch, {
+                    recordLog: false,
+                    skipValidate: true,
+                })
 
                 if (result.validation.valid === false) {
-                    reportReversalApplyFailure(entryIndex, 'undo')  // 防御：正常不可达
+                    reportReversalApplyFailure(entryIndex, 'undo') // 防御：正常不可达
                     return false
                 }
             }
@@ -542,22 +617,29 @@ export const useGraphStore = defineStore('graph_store', () => {
                 revertAddGraph(graphRegistry.value, graphId)
             }
 
-            operationLog.value.cursor = entry.parentIndex 
+            operationLog.value.cursor = entry.parentIndex
             return true
-
         } else if (direction === 'forward') {
             // forward（redo）：operation 顺序遍历组装 commitBatchToGraphs 可执行的 batch
             const batch: OperationBatchItem[] = []
             for (const forwardItem of entry.operation) {
-                let graph = lookupGraph(graphRegistry.value, forwardItem.graphId)
+                let graph = lookupGraph(
+                    graphRegistry.value,
+                    forwardItem.graphId,
+                )
 
                 if (!graph) {
                     // registry 缺失（undo 注销的 added 图）→ 用 add_graph.graph 兜底
-                    const addGraphOp = forwardItem.operations.find(op => op.type === 'add_graph')
+                    const addGraphOp = forwardItem.operations.find(
+                        (op) => op.type === 'add_graph',
+                    )
                     if (addGraphOp && addGraphOp.type === 'add_graph') {
                         graph = addGraphOp.graph
                     } else {
-                        reportRegistryResolveFailure(forwardItem.graphId, 'redo 正向执行')
+                        reportRegistryResolveFailure(
+                            forwardItem.graphId,
+                            'redo 正向执行',
+                        )
                         continue
                     }
                 }
@@ -567,10 +649,13 @@ export const useGraphStore = defineStore('graph_store', () => {
 
             if (batch.length > 0) {
                 // redo 重走已验证操作，跳过校验
-                const result = commitBatchToGraphs(batch, { recordLog: false, skipValidate: true })
+                const result = commitBatchToGraphs(batch, {
+                    recordLog: false,
+                    skipValidate: true,
+                })
 
                 if (result.validation.valid === false) {
-                    reportReversalApplyFailure(entryIndex, 'redo')  // 防御：正常不可达
+                    reportReversalApplyFailure(entryIndex, 'redo') // 防御：正常不可达
                     return false
                 }
             }
@@ -618,7 +703,11 @@ export const useGraphStore = defineStore('graph_store', () => {
             if (!parent) {
                 // 数据损坏：被注销图的父图在 registry 与持久化均不可达（正常流程软删保留数据），
                 // 开发者通道报告后走 root 兜底
-                reportBrokenAncestorChain(currentView.id, cursorGraph.id, parentId)
+                reportBrokenAncestorChain(
+                    currentView.id,
+                    cursorGraph.id,
+                    parentId,
+                )
                 break
             }
 
@@ -667,7 +756,10 @@ export const useGraphStore = defineStore('graph_store', () => {
      *     3. 返回 terminal：链末端图（根图或断裂处），调用方据此判断是否到达根。
      *     4. 环 / 父缺失的 console.warn 记录在回溯处就地完成，调用方无需重复报告。
      */
-    function buildGraphPath(graph: GraphData): { path: GraphId[]; terminal: GraphData } {
+    function buildGraphPath(graph: GraphData): {
+        path: GraphId[]
+        terminal: GraphData
+    } {
         const path: GraphId[] = [graph.id]
         const visited = new Set<GraphId>([graph.id])
         let currentGraph: GraphData = graph
@@ -737,7 +829,10 @@ export const useGraphStore = defineStore('graph_store', () => {
  *
  *     父图 GraphData；registry 与持久化均不可达时返回 undefined，调用方据此判定链断裂。
  */
-function findParentGraph(registry: GraphRegistry, parentId: GraphId): GraphData | undefined {
+function findParentGraph(
+    registry: GraphRegistry,
+    parentId: GraphId,
+): GraphData | undefined {
     const inRegistry = lookupGraph(registry, parentId)
     if (inRegistry) return inRegistry
 
@@ -763,8 +858,14 @@ function findParentGraph(registry: GraphRegistry, parentId: GraphId): GraphData 
  *     terminalId       — 链断裂处（最后成功回溯到的图 ID）
  *     missingParentId  — 缺失的父图 ID
  */
-function reportBrokenAncestorChain(graphId: GraphId, terminalId: GraphId, missingParentId: GraphId): void {
-    console.warn(`${DATA_INTEGRITY_PREFIX} [ANCESTOR_CHAIN_BROKEN] 图谱 "${graphId}" 的父链在 "${terminalId}" 处中断：祖先图谱 "${missingParentId}" 不可达`)
+function reportBrokenAncestorChain(
+    graphId: GraphId,
+    terminalId: GraphId,
+    missingParentId: GraphId,
+): void {
+    console.warn(
+        `${DATA_INTEGRITY_PREFIX} [ANCESTOR_CHAIN_BROKEN] 图谱 "${graphId}" 的父链在 "${terminalId}" 处中断：祖先图谱 "${missingParentId}" 不可达`,
+    )
 }
 
 /**
@@ -777,7 +878,9 @@ function reportBrokenAncestorChain(graphId: GraphId, terminalId: GraphId, missin
  *     parentId — 导致回退的重复父图 ID（环的入口）
  */
 function reportCycleDetected(parentId: GraphId): void {
-    console.warn(`${DATA_INTEGRITY_PREFIX} [CYCLE_DETECTED] parentGraphId 链检测到环：图谱 "${parentId}" 被重复访问，已中断回溯`)
+    console.warn(
+        `${DATA_INTEGRITY_PREFIX} [CYCLE_DETECTED] parentGraphId 链检测到环：图谱 "${parentId}" 被重复访问，已中断回溯`,
+    )
 }
 
 /**
@@ -792,7 +895,9 @@ function reportCycleDetected(parentId: GraphId): void {
  *     context — 发生场景（'undo 逆元执行' / 'redo 正向执行'）
  */
 function reportRegistryResolveFailure(graphId: GraphId, context: string): void {
-    console.warn(`${DATA_INTEGRITY_PREFIX} [REGISTRY_RESOLVE_FAILED] ${context}：图谱 "${graphId}" 不在注册表且无兜底，已跳过该 item`)
+    console.warn(
+        `${DATA_INTEGRITY_PREFIX} [REGISTRY_RESOLVE_FAILED] ${context}：图谱 "${graphId}" 不在注册表且无兜底，已跳过该 item`,
+    )
 }
 
 /**
@@ -806,6 +911,11 @@ function reportRegistryResolveFailure(graphId: GraphId, context: string): void {
  *     entryIndex — 失败的日志 entry 索引
  *     direction  — 'undo' 或 'redo'
  */
-function reportReversalApplyFailure(entryIndex: number, direction: 'undo' | 'redo'): void {
-    console.warn(`${DATA_INTEGRITY_PREFIX} [REVERSAL_APPLY_FAILED] ${direction} 执行 entry #${entryIndex} 时校验失败（正常流程不可达），已中断`)
+function reportReversalApplyFailure(
+    entryIndex: number,
+    direction: 'undo' | 'redo',
+): void {
+    console.warn(
+        `${DATA_INTEGRITY_PREFIX} [REVERSAL_APPLY_FAILED] ${direction} 执行 entry #${entryIndex} 时校验失败（正常流程不可达），已中断`,
+    )
 }

@@ -21,11 +21,7 @@
  *     3. 所有图操作通过引擎 compose → graphStore.applyBatch 链路执行。
  */
 
-import type {
-    NodeId,
-    EdgeId,
-    GraphData,
-} from '@my-project/graph-engine'
+import type { NodeId, EdgeId, GraphData } from '@my-project/graph-engine'
 import type { GraphRegistry } from '@/graph/graph_registry'
 
 import { useGraphStore } from '@/graph/graph_store'
@@ -38,7 +34,6 @@ import { computeNodeRadiusOverrides } from '@/graph/utils/node_radius'
 import { induce as composeInduce } from '@my-project/graph-engine'
 import { internalize as composeInternalize } from '@my-project/graph-engine'
 import { diverge as composeDiverge } from '@my-project/graph-engine'
-
 
 // ── 模块级私有辅助函数 ──
 
@@ -127,7 +122,9 @@ export function useOperationController() {
             parentGraph: graphStore.graphView,
             // 待 operation_controller 迁移后移除：经适配层取 makeLookup
             lookupGraph: graphOperations.makeLookup(),
-            nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.graphView),
+            nodeRadiusOverrides: computeNodeRadiusOverrides(
+                graphStore.graphView,
+            ),
             allEdges: graphStore.graphView.edges,
         })
 
@@ -183,7 +180,9 @@ export function useOperationController() {
         if (!commonLayer) {
             // 编程错误通道：internalize 前置条件违约（常识层图缺失，当前不可达）。
             // 前端不再构造规则展示给用户——由调用方保证常识层图存在（initRegistry 建立）
-            throw new Error('COMMON_LAYER_NOT_FOUND: 未找到常识层图谱，无法执行内化操作。')
+            throw new Error(
+                'COMMON_LAYER_NOT_FOUND: 未找到常识层图谱，无法执行内化操作。',
+            )
         }
 
         const result = composeInternalize({
@@ -192,7 +191,9 @@ export function useOperationController() {
             commonLayer,
             // 待 operation_controller 迁移后移除：经适配层取 makeLookup
             lookupGraph: graphOperations.makeLookup(),
-            nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.graphView),
+            nodeRadiusOverrides: computeNodeRadiusOverrides(
+                graphStore.graphView,
+            ),
         })
 
         // compose 校验收口在适配层：失败则写 lastValidationResult 并阻断本次操作
@@ -232,7 +233,11 @@ export function useOperationController() {
      *        heuristicPosition 非 null 时在点击位置创建启发节点（跨图）。
      *     3. commitBatchToGraphs 批量提交 current 与 peer。
      */
-    function diverge(sourceNodeId: NodeId, targetNodeId: NodeId, heuristicPosition: { x: number; y: number } | null): void {
+    function diverge(
+        sourceNodeId: NodeId,
+        targetNodeId: NodeId,
+        heuristicPosition: { x: number; y: number } | null,
+    ): void {
         if (!graphStore.graphView) {
             return
         }
@@ -264,7 +269,10 @@ export function useOperationController() {
         if (result.operations.peer.length > 0) {
             // 对端图：通过 registry 查找 peer 操作目标图
             for (const draft of result.drafts) {
-                if ('graphId' in draft && draft.graphId !== graphStore.graphView?.id) {
+                if (
+                    'graphId' in draft &&
+                    draft.graphId !== graphStore.graphView?.id
+                ) {
                     // 待 operation_controller 迁移后移除：经适配层取 getGraphById
                     const peerGraph = navigation.getGraphById(draft.graphId)
 

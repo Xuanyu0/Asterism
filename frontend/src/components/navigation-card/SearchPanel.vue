@@ -16,7 +16,7 @@
 
 import { ref, computed, onMounted, nextTick } from 'vue'
 
-import type { SearchResult } from './types';
+import type { SearchResult } from './types'
 
 import { useGraphStore } from '@/graph/graph_store'
 
@@ -94,7 +94,13 @@ function onSearchInputEnter(): void {
 </script>
 
 <template>
-    <div class="floating-panel" v-bind:class="{ 'opens-upward': panelOpensUpward, 'align-right': panelAlignRight }">
+    <div
+        class="floating-panel"
+        v-bind:class="{
+            'opens-upward': panelOpensUpward,
+            'align-right': panelAlignRight,
+        }"
+    >
         <input
             ref="searchInputElement"
             v-model="searchQuery"
@@ -124,12 +130,11 @@ function onSearchInputEnter(): void {
                     class="result-item"
                     v-on:click="selectSearchResult(result)"
                 >
-                    <span
-                        class="result-dot"
-                        v-bind:class="result.kind"
-                    ></span>
+                    <span class="result-dot" v-bind:class="result.kind"></span>
                     <span class="result-item-title">{{ result.label }}</span>
-                    <span class="result-kind">{{ result.kind === 'node' ? '节点' : '边' }}</span>
+                    <span class="result-kind">{{
+                        result.kind === 'node' ? '节点' : '边'
+                    }}</span>
                 </button>
             </li>
         </ul>

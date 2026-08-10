@@ -59,7 +59,6 @@ export interface TierAssignment {
     nodeIds: NodeId[]
 }
 
-
 /**
  * 功能：
  *
@@ -109,9 +108,10 @@ export function computeTierSpacing(
     centerRadius: number,
     satelliteRadii: number[],
 ): number {
-    const maxSatR = satelliteRadii.length > 0
-        ? Math.max(...satelliteRadii)
-        : DEFAULT_LAYOUT_RULES.unitDistance
+    const maxSatR =
+        satelliteRadii.length > 0
+            ? Math.max(...satelliteRadii)
+            : DEFAULT_LAYOUT_RULES.unitDistance
 
     return centerRadius + maxSatR + unitDistance
 }
@@ -137,13 +137,15 @@ export function computeTierSpacing(
  *
  *     内化操作用（单节点找空位），Cloud 布局循环调用。
  */
-export function scatterInCircle(center: NodePosition, maxRadius: number): NodePosition {
+export function scatterInCircle(
+    center: NodePosition,
+    maxRadius: number,
+): NodePosition {
     const r = maxRadius * Math.sqrt(Math.random())
     const angle = Math.random() * 2 * Math.PI
 
     return positionOnCircle(center, r, angle)
 }
-
 
 /**
  * 功能：
@@ -199,7 +201,6 @@ export function snapOrbit(
     }
 }
 
-
 /**
  * 功能：
  *
@@ -234,12 +235,19 @@ export function distributeOnTiers(
     tiers: TierAssignment[],
     startAngle = 0,
 ): { nodeId: NodeId; position: NodePosition }[] {
-    const satMap = new Map(satellites.map(satellite => [satellite.id, satellite]))
-
-    const allSatRadii = tiers.flatMap(
-        tier => tier.nodeIds.map(id => satMap.get(id)?.radius ?? DEFAULT_LAYOUT_RULES.unitDistance),
+    const satMap = new Map(
+        satellites.map((satellite) => [satellite.id, satellite]),
     )
-    const maxSatR = allSatRadii.length > 0 ? Math.max(...allSatRadii) : DEFAULT_LAYOUT_RULES.unitDistance
+
+    const allSatRadii = tiers.flatMap((tier) =>
+        tier.nodeIds.map(
+            (id) => satMap.get(id)?.radius ?? DEFAULT_LAYOUT_RULES.unitDistance,
+        ),
+    )
+    const maxSatR =
+        allSatRadii.length > 0
+            ? Math.max(...allSatRadii)
+            : DEFAULT_LAYOUT_RULES.unitDistance
 
     // D₀ 基础值（约束 A + B）。层间留 unitDistance 间隙，保证可容纳一个孤立节点。
     let D0 = center.radius + maxSatR + unitDistance
@@ -249,12 +257,18 @@ export function distributeOnTiers(
         const N = tier.nodeIds.length
         if (N <= 1) continue
 
-        const tierRadii = tier.nodeIds.map(id => satMap.get(id)?.radius ?? DEFAULT_LAYOUT_RULES.unitDistance)
+        const tierRadii = tier.nodeIds.map(
+            (id) => satMap.get(id)?.radius ?? DEFAULT_LAYOUT_RULES.unitDistance,
+        )
         const tierMaxR = Math.max(...tierRadii)
         const orbitRadius = (tier.tier + 1) * D0
 
-        if (2 * orbitRadius * Math.sin(Math.PI / N) < 2 * tierMaxR + unitDistance) {
-            const minOrbitRadius = (2 * tierMaxR + unitDistance) / (2 * Math.sin(Math.PI / N))
+        if (
+            2 * orbitRadius * Math.sin(Math.PI / N) <
+            2 * tierMaxR + unitDistance
+        ) {
+            const minOrbitRadius =
+                (2 * tierMaxR + unitDistance) / (2 * Math.sin(Math.PI / N))
             D0 = Math.max(D0, minOrbitRadius / (tier.tier + 1))
         }
     }
@@ -267,7 +281,8 @@ export function distributeOnTiers(
 
         for (let i = 0; i < N; i++) {
             const nodeId = tier.nodeIds[i]!
-            const angle = N === 1 ? startAngle : startAngle + (2 * Math.PI * i) / N
+            const angle =
+                N === 1 ? startAngle : startAngle + (2 * Math.PI * i) / N
 
             result.push({
                 nodeId,
@@ -314,6 +329,3 @@ export function distributeOnLine(
 
     return result
 }
-
-
-

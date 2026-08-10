@@ -31,15 +31,14 @@ import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 import { useMoveNodeTool } from './move_node'
 import { useRenderer } from '@/cytoscape/useRenderer'
 
-
 // ── vi.hoisted：共享可变状态 ──
 // 在 vi.mock factory 和测试代码间共享 capturedCallback、nodePositionsMap 和 stopFn。
 // vi.mock 是文件级（影响本文件所有 import），vi.hoisted 保证变量提升次序正确。
 
 const { capturedCallback, nodePositionsMap, stopFn } = vi.hoisted(() => {
-    const capturedCallback:
-        { current: ((pos: { x: number; y: number }) => void) | null }
-        = { current: null }
+    const capturedCallback: {
+        current: ((pos: { x: number; y: number }) => void) | null
+    } = { current: null }
 
     const nodePositionsMap = new Map<string, { x: number; y: number }>()
 
@@ -64,12 +63,17 @@ const { capturedCallback, nodePositionsMap, stopFn } = vi.hoisted(() => {
 
 vi.mock('@/cytoscape/useRenderer', () => {
     const mockSyncFromGraphData = vi.fn(
-        (graph: { nodes: Array<{ id: string; position?: { x: number; y: number } }> }) => {
+        (graph: {
+            nodes: Array<{ id: string; position?: { x: number; y: number } }>
+        }) => {
             // 模拟真实 sync 语义：cy 节点位置 = 图位置（供 getNodePosition mock 读取）
             nodePositionsMap.clear()
             for (const node of graph.nodes) {
                 if (node.position) {
-                    nodePositionsMap.set(node.id, { x: node.position.x, y: node.position.y })
+                    nodePositionsMap.set(node.id, {
+                        x: node.position.x,
+                        y: node.position.y,
+                    })
                 }
             }
         },
@@ -100,7 +104,6 @@ vi.mock('@/cytoscape/useRenderer', () => {
     }
 })
 
-
 // ── 重置工具函数 ──
 
 function resetNodePositionsToGolden(): void {
@@ -112,7 +115,6 @@ function resetNodePositionsToGolden(): void {
     nodePositionsMap.set('node-g5', { x: 50, y: 500 })
     nodePositionsMap.set('node-g6', { x: 350, y: 500 })
 }
-
 
 // ── 顶层 beforeEach：重置 Pinia + 持久化 + 加载金牌图 ──
 
@@ -128,7 +130,6 @@ beforeEach(() => {
     resetNodePositionsToGolden()
     capturedCallback.current = null
 })
-
 
 // ── 测试用例 ──
 
@@ -199,7 +200,6 @@ describe('deactivate', () => {
     })
 })
 
-
 // ── idle → picked 状态转换（onNodeClick） ──
 
 describe('idle → picked', () => {
@@ -215,7 +215,9 @@ describe('idle → picked', () => {
         handler.onNodeClick!('node-g1')
 
         expect(renderer.addNodeClass).toHaveBeenCalledWith(
-            'node-g1', 'move-picked', 'move',
+            'node-g1',
+            'move-picked',
+            'move',
         )
     })
 
@@ -229,11 +231,15 @@ describe('idle → picked', () => {
         const syncMock = vi.mocked(renderer.syncFromGraphData)
         expect(syncMock).toHaveBeenCalledTimes(1)
         const previewGraph = syncMock.mock.calls[0]![0]
-        const moved = previewGraph.nodes.find((node: { id: string }) => node.id === 'node-g1')!
+        const moved = previewGraph.nodes.find(
+            (node: { id: string }) => node.id === 'node-g1',
+        )!
         expect(moved.position).toEqual({ x: 300, y: 400 })
         // sync 后重施 move-picked（applyPreviewMove 内部）
         expect(renderer.addNodeClass).toHaveBeenCalledWith(
-            'node-g1', 'move-picked', 'move',
+            'node-g1',
+            'move-picked',
+            'move',
         )
     })
 
@@ -248,10 +254,14 @@ describe('idle → picked', () => {
         const syncMock = vi.mocked(renderer.syncFromGraphData)
         expect(syncMock).toHaveBeenCalledTimes(2)
         const lastGraph = syncMock.mock.calls.at(-1)![0]
-        const moved = lastGraph.nodes.find((node: { id: string }) => node.id === 'node-g1')!
+        const moved = lastGraph.nodes.find(
+            (node: { id: string }) => node.id === 'node-g1',
+        )!
         expect(moved.position).toEqual({ x: 600, y: 350 })
         expect(renderer.addNodeClass).toHaveBeenCalledWith(
-            'node-g1', 'move-picked', 'move',
+            'node-g1',
+            'move-picked',
+            'move',
         )
     })
 
@@ -264,7 +274,9 @@ describe('idle → picked', () => {
 
         expect(renderer.syncFromGraphData).toHaveBeenCalledTimes(1)
         expect(renderer.addNodeClass).toHaveBeenCalledWith(
-            'node-g1', 'preview-collision', 'move',
+            'node-g1',
+            'preview-collision',
+            'move',
         )
     })
 
@@ -275,7 +287,9 @@ describe('idle → picked', () => {
         capturedCallback.current!({ x: 1000, y: 400 })
 
         expect(renderer.addNodeClass).not.toHaveBeenCalledWith(
-            'node-g1', 'preview-collision', 'move',
+            'node-g1',
+            'preview-collision',
+            'move',
         )
     })
 
@@ -290,7 +304,6 @@ describe('idle → picked', () => {
 
     // 注：onNodeClick 无 isActive 守卫，未激活时调用同样触发拾取逻辑。
 })
-
 
 // ── picked → idle 放置成功（无碰撞） ──
 
@@ -312,7 +325,7 @@ describe('picked → idle 无碰撞放置', () => {
     test('无碰撞放置后 commitBatchToGraph 被调用', () => {
         const store = useGraphStore()
         const nodeBefore = store.graphView!.nodes.find(
-            n => n.id === 'node-g1',
+            (n) => n.id === 'node-g1',
         )!
         // 验证原始位置
         expect(nodeBefore.position).toEqual({ x: 50, y: 200 })
@@ -322,7 +335,7 @@ describe('picked → idle 无碰撞放置', () => {
 
         // 验证 graphView 中节点位置已更新
         const nodeAfter = store.graphView!.nodes.find(
-            n => n.id === 'node-g1',
+            (n) => n.id === 'node-g1',
         )!
         expect(nodeAfter.position).toEqual({ x: 2000, y: 2000 })
     })
@@ -332,7 +345,9 @@ describe('picked → idle 无碰撞放置', () => {
         handler.onCanvasClick!({ x: 2000, y: 2000 })
 
         expect(renderer.removeNodeClass).toHaveBeenCalledWith(
-            'node-g1', 'move-picked', 'move',
+            'node-g1',
+            'move-picked',
+            'move',
         )
     })
 
@@ -351,7 +366,6 @@ describe('picked → idle 无碰撞放置', () => {
         expect(handler.notification).toBeNull()
     })
 })
-
 
 // ── cancelPick（弹回） ──
 //
@@ -389,7 +403,9 @@ describe('cancelPick', () => {
         const calls = vi.mocked(renderer.syncFromGraphData).mock.calls
         expect(calls).toHaveLength(2)
         const realGraph = calls[1]![0]
-        const g1 = realGraph.nodes.find((node: { id: string }) => node.id === 'node-g1')!
+        const g1 = realGraph.nodes.find(
+            (node: { id: string }) => node.id === 'node-g1',
+        )!
         expect(g1.position).toEqual({ x: 50, y: 200 })
     })
 
@@ -422,7 +438,6 @@ describe('cancelPick', () => {
         expect(stopFn).toHaveBeenCalledTimes(1)
     })
 })
-
 
 // ── cursorClass / notification 计算属性 ──
 

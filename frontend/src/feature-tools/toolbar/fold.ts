@@ -24,7 +24,6 @@ import type { NodeId } from '@my-project/graph-engine'
 
 import type { ToolId, ToolHandler, ToolNotification } from '../types'
 
-
 export function useFoldTool(): ToolHandler {
     const graphStore = useGraphStore()
     const operations = useGraphOperationAdapter()
@@ -55,26 +54,38 @@ export function useFoldTool(): ToolHandler {
             return
         }
 
-        const foldedDeps = graphStore.graphView.cognitiveState?.foldedDependencies ?? []
-        const isFolded = foldedDeps.some(f => f.targetNodeId === nodeId)
+        const foldedDeps =
+            graphStore.graphView.cognitiveState?.foldedDependencies ?? []
+        const isFolded = foldedDeps.some((f) => f.targetNodeId === nodeId)
 
         const operationType = isFolded
             ? ('expand_dependency' as const)
             : ('collapse_dependency' as const)
 
-        operations.commitToCurrentGraph([{
-            type: operationType,
-            targetNodeId: nodeId as NodeId,
-        }], { source: id })
+        operations.commitToCurrentGraph(
+            [
+                {
+                    type: operationType,
+                    targetNodeId: nodeId as NodeId,
+                },
+            ],
+            { source: id },
+        )
     }
 
     return {
         id,
-        get isActive() { return isActive.value },
+        get isActive() {
+            return isActive.value
+        },
         activate,
         deactivate,
         onNodeClick,
-        get cursorClass() { return cursorClass.value },
-        get notification() { return notification.value },
+        get cursorClass() {
+            return cursorClass.value
+        },
+        get notification() {
+            return notification.value
+        },
     }
 }

@@ -97,7 +97,7 @@ describe('useNavigationAdapter', () => {
         loadGoldenGraph()
 
         const infos = navigation.listRootGraphInfos()
-        expect(infos.some(info => info.id === 'graph-golden')).toBe(true)
+        expect(infos.some((info) => info.id === 'graph-golden')).toBe(true)
     })
 
     test('listRootGraphInfos 按标题排序（zh-Hans-CN）', () => {
@@ -106,15 +106,21 @@ describe('useNavigationAdapter', () => {
         navigation.createRootGraph('甲图')
         navigation.createRootGraph('乙图')
 
-        const titles = navigation.listRootGraphInfos().map(info => info.title)
-        expect(titles).toEqual([...titles].sort((a, b) => a.localeCompare(b, 'zh-Hans-CN')))
+        const titles = navigation.listRootGraphInfos().map((info) => info.title)
+        expect(titles).toEqual(
+            [...titles].sort((a, b) => a.localeCompare(b, 'zh-Hans-CN')),
+        )
     })
 
     test('getGraphById 按 ID 查询当前注册表', () => {
         loadGoldenGraph()
 
-        expect(navigation.getGraphById('graph-golden' as GraphId)?.title).toBe('金牌测试图')
-        expect(navigation.getGraphById('graph-nonexistent' as GraphId)).toBeUndefined()
+        expect(navigation.getGraphById('graph-golden' as GraphId)?.title).toBe(
+            '金牌测试图',
+        )
+        expect(
+            navigation.getGraphById('graph-nonexistent' as GraphId),
+        ).toBeUndefined()
     })
 
     test('createRootGraph 创建根图并立即持久化，listRootGraphInfos 可见', () => {
@@ -122,17 +128,25 @@ describe('useNavigationAdapter', () => {
 
         const id = navigation.createRootGraph('新建根图')
         expect(id).toBeTruthy()
-        expect(navigation.listRootGraphInfos().some(info => info.id === id && info.title === '新建根图')).toBe(true)
+        expect(
+            navigation
+                .listRootGraphInfos()
+                .some((info) => info.id === id && info.title === '新建根图'),
+        ).toBe(true)
     })
 
     test('deleteRootGraphTree 级联删除根图，listRootGraphInfos 不再可见', () => {
         loadGoldenGraph()
 
         const id = navigation.createRootGraph('待删除图')
-        expect(navigation.listRootGraphInfos().some(info => info.id === id)).toBe(true)
+        expect(
+            navigation.listRootGraphInfos().some((info) => info.id === id),
+        ).toBe(true)
 
         navigation.deleteRootGraphTree(id)
-        expect(navigation.listRootGraphInfos().some(info => info.id === id)).toBe(false)
+        expect(
+            navigation.listRootGraphInfos().some((info) => info.id === id),
+        ).toBe(false)
     })
 
     test('deleteRootGraphTree 级联删除根图及其子图', () => {
@@ -151,12 +165,19 @@ describe('useNavigationAdapter', () => {
             cognitiveState: { foldedDependencies: [] },
         })
 
-        expect(navigation.listRootGraphInfos().some(info => info.id === rootId)).toBe(true)
+        expect(
+            navigation.listRootGraphInfos().some((info) => info.id === rootId),
+        ).toBe(true)
 
         navigation.deleteRootGraphTree(rootId)
 
-        expect(navigation.listRootGraphInfos().some(info => info.id === rootId)).toBe(false)
-        expect(loadGraph('sub-todelete' as GraphId)).toEqual({ ok: false, reason: 'missing' })
+        expect(
+            navigation.listRootGraphInfos().some((info) => info.id === rootId),
+        ).toBe(false)
+        expect(loadGraph('sub-todelete' as GraphId)).toEqual({
+            ok: false,
+            reason: 'missing',
+        })
     })
 
     test('deleteRootGraphTree 防御：当前视图所在根图不可删除', () => {
@@ -164,6 +185,10 @@ describe('useNavigationAdapter', () => {
 
         navigation.deleteRootGraphTree('graph-golden' as GraphId)
 
-        expect(navigation.listRootGraphInfos().some(info => info.id === 'graph-golden')).toBe(true)
+        expect(
+            navigation
+                .listRootGraphInfos()
+                .some((info) => info.id === 'graph-golden'),
+        ).toBe(true)
     })
 })

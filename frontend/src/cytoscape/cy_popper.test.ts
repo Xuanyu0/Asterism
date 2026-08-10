@@ -10,10 +10,13 @@
  * - attachElementPopper 使用 mock cy（getElementById / on / off / popper）
  */
 
-import { attachElementPopper, popperFactory, registerPopperExtension } from './cy_popper'
+import {
+    attachElementPopper,
+    popperFactory,
+    registerPopperExtension,
+} from './cy_popper'
 
 import type { Core } from 'cytoscape'
-
 
 const { mockComputePosition } = vi.hoisted(() => ({
     mockComputePosition: vi.fn(),
@@ -27,7 +30,6 @@ vi.mock('@floating-ui/dom', async (importOriginal) => {
     }
 })
 
-
 describe('registerPopperExtension', () => {
     test('可重复调用不抛错（cytoscape 重复注册扩展为覆盖写）', () => {
         expect(() => {
@@ -37,23 +39,35 @@ describe('registerPopperExtension', () => {
     })
 })
 
-
 describe('popperFactory', () => {
     test('middleware 含 flip + shift(limiter: limitShift)，初始定位写入 left/top', async () => {
         const content = document.createElement('div')
         const ref = {
-            getBoundingClientRect: () => ({ left: 0, top: 0, width: 10, height: 10, right: 10, bottom: 10 }),
+            getBoundingClientRect: () => ({
+                left: 0,
+                top: 0,
+                width: 10,
+                height: 10,
+                right: 10,
+                bottom: 10,
+            }),
         }
 
         mockComputePosition.mockResolvedValue({ x: 100, y: 200 })
 
-        const handle = popperFactory(ref as unknown as Pick<Element, 'getBoundingClientRect'>, content)
+        const handle = popperFactory(
+            ref as unknown as Pick<Element, 'getBoundingClientRect'>,
+            content,
+        )
         handle.update()
 
         expect(mockComputePosition).toHaveBeenCalledTimes(2)
 
         const options = mockComputePosition.mock.calls.at(-1)![2]
-        const middleware = options.middleware as Array<{ name: string; options?: { limiter?: unknown } }>
+        const middleware = options.middleware as Array<{
+            name: string
+            options?: { limiter?: unknown }
+        }>
 
         // 缺省 placement 必须为 'right'（"目标右侧"验收契约；floating-ui 默认是 'bottom'）
         expect(options.placement).toBe('right')
@@ -62,9 +76,9 @@ describe('popperFactory', () => {
         // 浮窗撑大文档触发滚动条，fixed 不撑大文档、浮窗钉在视口位置）
         expect(options.strategy).toBe('fixed')
 
-        expect(middleware.some(m => m.name === 'flip')).toBe(true)
+        expect(middleware.some((m) => m.name === 'flip')).toBe(true)
 
-        const shiftMiddleware = middleware.find(m => m.name === 'shift')
+        const shiftMiddleware = middleware.find((m) => m.name === 'shift')
         expect(shiftMiddleware).toBeDefined()
         // limitShift() 返回 middleware 对象（{ fn, options }）——shift 的 limiter 必须是它（视口边缘不截断）
         expect(shiftMiddleware?.options?.limiter).toBeDefined()
@@ -79,12 +93,23 @@ describe('popperFactory', () => {
     test('调用方 options 可覆盖 middleware', () => {
         const content = document.createElement('div')
         const ref = {
-            getBoundingClientRect: () => ({ left: 0, top: 0, width: 10, height: 10, right: 10, bottom: 10 }),
+            getBoundingClientRect: () => ({
+                left: 0,
+                top: 0,
+                width: 10,
+                height: 10,
+                right: 10,
+                bottom: 10,
+            }),
         }
 
         mockComputePosition.mockResolvedValue({ x: 0, y: 0 })
 
-        popperFactory(ref as unknown as Pick<Element, 'getBoundingClientRect'>, content, { middleware: [] })
+        popperFactory(
+            ref as unknown as Pick<Element, 'getBoundingClientRect'>,
+            content,
+            { middleware: [] },
+        )
 
         const options = mockComputePosition.mock.calls.at(-1)![2]
         expect(options.middleware).toEqual([])
@@ -93,18 +118,28 @@ describe('popperFactory', () => {
     test('调用方显式传 options.placement 可覆盖默认 right', () => {
         const content = document.createElement('div')
         const ref = {
-            getBoundingClientRect: () => ({ left: 0, top: 0, width: 10, height: 10, right: 10, bottom: 10 }),
+            getBoundingClientRect: () => ({
+                left: 0,
+                top: 0,
+                width: 10,
+                height: 10,
+                right: 10,
+                bottom: 10,
+            }),
         }
 
         mockComputePosition.mockResolvedValue({ x: 0, y: 0 })
 
-        popperFactory(ref as unknown as Pick<Element, 'getBoundingClientRect'>, content, { placement: 'bottom-start' })
+        popperFactory(
+            ref as unknown as Pick<Element, 'getBoundingClientRect'>,
+            content,
+            { placement: 'bottom-start' },
+        )
 
         const options = mockComputePosition.mock.calls.at(-1)![2]
         expect(options.placement).toBe('bottom-start')
     })
 })
-
 
 describe('attachElementPopper', () => {
     test('返回 update/destroy；update 调 popper.update；destroy 解绑事件并清理 popper', () => {
@@ -115,7 +150,10 @@ describe('attachElementPopper', () => {
         const mockCyOn = vi.fn()
         const mockCyOff = vi.fn()
 
-        const mockPopper = vi.fn(() => ({ update: mockUpdate, destroy: mockPopperDestroy }))
+        const mockPopper = vi.fn(() => ({
+            update: mockUpdate,
+            destroy: mockPopperDestroy,
+        }))
         const ele = {
             length: 1,
             popper: mockPopper,
@@ -129,25 +167,44 @@ describe('attachElementPopper', () => {
         }
 
         const contentEl = document.createElement('div')
-        const handle = attachElementPopper(cy as unknown as Core, 'node-g1', contentEl)
+        const handle = attachElementPopper(
+            cy as unknown as Core,
+            'node-g1',
+            contentEl,
+        )
 
         expect(cy.getElementById).toHaveBeenCalledWith('node-g1')
         // content 传入 + popper 选项；不覆盖 renderedPosition（沿用扩展默认锚点）
-        expect(mockPopper).toHaveBeenCalledWith({ content: contentEl, popper: undefined })
+        expect(mockPopper).toHaveBeenCalledWith({
+            content: contentEl,
+            popper: undefined,
+        })
         expect(mockEleOn).toHaveBeenCalledWith('position', expect.any(Function))
-        expect(mockCyOn).toHaveBeenCalledWith('pan zoom resize', expect.any(Function))
+        expect(mockCyOn).toHaveBeenCalledWith(
+            'pan zoom resize',
+            expect.any(Function),
+        )
 
         handle.update()
         expect(mockUpdate).toHaveBeenCalledTimes(1)
 
         handle.destroy()
-        expect(mockEleOff).toHaveBeenCalledWith('position', undefined, expect.any(Function))
-        expect(mockCyOff).toHaveBeenCalledWith('pan zoom resize', expect.any(Function))
+        expect(mockEleOff).toHaveBeenCalledWith(
+            'position',
+            undefined,
+            expect.any(Function),
+        )
+        expect(mockCyOff).toHaveBeenCalledWith(
+            'pan zoom resize',
+            expect.any(Function),
+        )
         expect(mockPopperDestroy).toHaveBeenCalledTimes(1)
     })
 
     test('边锚定：不覆盖 renderedPosition，沿用 cytoscape-popper 默认包围盒中心（即中点）', () => {
-        const mockPopper = vi.fn((_opts: Record<string, unknown>) => ({ update: vi.fn() }))
+        const mockPopper = vi.fn((_opts: Record<string, unknown>) => ({
+            update: vi.fn(),
+        }))
         const ele = { length: 1, popper: mockPopper, on: vi.fn(), off: vi.fn() }
         const cy = {
             getElementById: vi.fn(() => ele),
@@ -171,7 +228,11 @@ describe('attachElementPopper', () => {
         }
 
         const contentEl = document.createElement('div')
-        const handle = attachElementPopper(cy as unknown as Core, 'missing', contentEl)
+        const handle = attachElementPopper(
+            cy as unknown as Core,
+            'missing',
+            contentEl,
+        )
 
         expect(() => {
             handle.update()

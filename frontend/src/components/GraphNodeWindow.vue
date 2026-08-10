@@ -2,7 +2,11 @@
     <!-- 物理挂 body，逻辑仍组件树；popper 注入 left/top 实现锚定到目标 -->
     <Teleport to="body">
         <!-- DraftNode 浮空窗 -->
-        <div v-if="draftNode" v-bind:ref="registerWindowRoot" class="floating-window">
+        <div
+            v-if="draftNode"
+            v-bind:ref="registerWindowRoot"
+            class="floating-window"
+        >
             <h3>Draft Node</h3>
 
             <label class="field-label">Labzel</label>
@@ -22,12 +26,21 @@
             <div class="button-row">
                 <button v-on:click="handleConfirmDraftNode">Confirm</button>
 
-                <button class="btn-secondary" v-on:click="handleCancelDraftNode">Cancel</button>
+                <button
+                    class="btn-secondary"
+                    v-on:click="handleCancelDraftNode"
+                >
+                    Cancel
+                </button>
             </div>
         </div>
 
         <!-- 已有节点/边编辑浮空窗 -->
-        <div v-else-if="floatingData" v-bind:ref="registerWindowRoot" class="floating-window">
+        <div
+            v-else-if="floatingData"
+            v-bind:ref="registerWindowRoot"
+            class="floating-window"
+        >
             <div class="floating-window-header">
                 <h3>{{ isEdge ? 'Edit Edge' : 'Edit Node' }}</h3>
 
@@ -90,13 +103,19 @@ import { useFloatingWindow } from '@/composables/useFloatingWindow'
 import { useRenderer } from '@/cytoscape/useRenderer'
 
 import type { ComponentPublicInstance } from 'vue'
-import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
+import type {
+    NodeData,
+    EdgeData,
+    KnowledgeNodeData,
+} from '@my-project/graph-engine'
 
 const mediator = useToolMediator()
 const floatingWindow = useFloatingWindow()
 const renderer = useRenderer()
 
-const draftNode = computed(() => mediator.activeHandler.value?.draftNode ?? null)
+const draftNode = computed(
+    () => mediator.activeHandler.value?.draftNode ?? null,
+)
 
 // 数据源切换：经 default handler 门面转发单例状态（getter 在 computed 内访问以建立响应式依赖）
 const defaultHandler = mediator.registry.get('default')
@@ -114,7 +133,9 @@ const isEdge = computed(() => {
 
 const isKnowledgeNode = computed(() => {
     const data = floatingData.value
-    return !!data && !isEdge.value && 'role' in data && data.role === 'knowledge'
+    return (
+        !!data && !isEdge.value && 'role' in data && data.role === 'knowledge'
+    )
 })
 
 const floatingSummary = computed(() => {
@@ -219,7 +240,9 @@ onBeforeUnmount(() => {
  *
  * @param el - ref 回调参数（本窗口根元素是原生 div，卸载时为 null）
  */
-function registerWindowRoot(el: Element | ComponentPublicInstance | null): void {
+function registerWindowRoot(
+    el: Element | ComponentPublicInstance | null,
+): void {
     // Vue 的 ref 回调参数类型较宽；本窗口根元素是原生 div，卸载时为 null
     const htmlEl = el instanceof HTMLElement ? el : null
     windowRootEl.value = htmlEl
@@ -252,14 +275,19 @@ function handleFloatingSummaryInput(event: Event): void {
         editingData = { ...floatingData.value! }
     }
 
-    editingData = { ...(editingData as KnowledgeNodeData), summary: target.value }
+    editingData = {
+        ...(editingData as KnowledgeNodeData),
+        summary: target.value,
+    }
 }
 
 function handleFloatingConfirm(): void {
     if (!editingData) return
 
     const label = editingData.label ?? ''
-    const summary = isKnowledgeNode.value ? ((editingData as KnowledgeNodeData).summary ?? '') : ''
+    const summary = isKnowledgeNode.value
+        ? ((editingData as KnowledgeNodeData).summary ?? '')
+        : ''
 
     mediator.activeHandler.value?.onConfirm?.(label, summary)
 

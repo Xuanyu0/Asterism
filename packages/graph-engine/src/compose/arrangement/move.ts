@@ -45,7 +45,7 @@ import { hasCollisionAt } from '../../infrastructure/collision'
  *
  *     1. 碰撞检测使用 hasCollisionAt——只查草稿位置是否与已有节点重叠。
  *        不存在草稿互碰（单节点）。
-     *     2. 目标节点不在 allNodes 中时，hasCollisionAt 内部用 unitDistance 回退。
+ *     2. 目标节点不在 allNodes 中时，hasCollisionAt 内部用 unitDistance 回退。
  *
  * 参数：
  *
@@ -62,7 +62,12 @@ export function moveNode(params: {
 }): ComposeResult<DraftPosition> {
     const { nodeId, desiredPosition, allNodes, nodeRadiusOverrides } = params
 
-    const blocked = hasCollisionAt(nodeId, desiredPosition, allNodes, nodeRadiusOverrides)
+    const blocked = hasCollisionAt(
+        nodeId,
+        desiredPosition,
+        allNodes,
+        nodeRadiusOverrides,
+    )
 
     const draft: DraftPosition = {
         nodeId,
@@ -70,18 +75,22 @@ export function moveNode(params: {
     }
 
     const issues = blocked
-        ? [{
-            severity: 'error' as const,
-            code: 'MOVE_NODE_COLLISION',
-            message: `节点 ${nodeId} 在目标位置与已有节点碰撞，无法放置。`,
-        }]
+        ? [
+              {
+                  severity: 'error' as const,
+                  code: 'MOVE_NODE_COLLISION',
+                  message: `节点 ${nodeId} 在目标位置与已有节点碰撞，无法放置。`,
+              },
+          ]
         : []
 
-    const operations = [{
-        type: 'move_node' as const,
-        nodeId,
-        position: desiredPosition,
-    }]
+    const operations = [
+        {
+            type: 'move_node' as const,
+            nodeId,
+            position: desiredPosition,
+        },
+    ]
 
     return { drafts: [draft], issues, operations }
 }

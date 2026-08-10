@@ -6,7 +6,14 @@
  */
 
 import type { NodeId } from '../../src/types/graph_data'
-import { positionOnCircle, snapOrbit, distributeOnTiers, distributeOnLine, scatterInCircle, computeTierSpacing } from '../../src/infrastructure/placement'
+import {
+    positionOnCircle,
+    snapOrbit,
+    distributeOnTiers,
+    distributeOnLine,
+    scatterInCircle,
+    computeTierSpacing,
+} from '../../src/infrastructure/placement'
 import { distance } from '../../src/infrastructure/geometry'
 import { DEFAULT_LAYOUT_RULES } from '../../src/core/layout_rules'
 
@@ -40,13 +47,22 @@ describe('snapOrbit', () => {
 
 describe('distributeOnTiers', () => {
     test('单层均分圆周', () => {
-        const center = { id: 'c' as NodeId, position: { x: 0, y: 0 }, radius: 10 }
+        const center = {
+            id: 'c' as NodeId,
+            position: { x: 0, y: 0 },
+            radius: 10,
+        }
         const satellites = [
             { id: 'a' as NodeId, radius: 5 },
             { id: 'b' as NodeId, radius: 5 },
             { id: 'c-sat' as NodeId, radius: 5 },
         ]
-        const tiers = [{ tier: 0, nodeIds: ['a' as NodeId, 'b' as NodeId, 'c-sat' as NodeId] }]
+        const tiers = [
+            {
+                tier: 0,
+                nodeIds: ['a' as NodeId, 'b' as NodeId, 'c-sat' as NodeId],
+            },
+        ]
         const result = distributeOnTiers(center, satellites, tiers, 0)
         expect(result).toHaveLength(3)
         // 三个点在同一圆上

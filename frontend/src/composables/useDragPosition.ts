@@ -4,7 +4,7 @@
  * 功能：
  *
  *     通用的窗口拖拽能力。
- *     捕获 Pointer Events 
+ *     捕获 Pointer Events
  *     实现拖拽、视口边界钳制、松手后边缘吸附
  *     以及 localStorage 位置持久化。
  *
@@ -29,7 +29,7 @@ export function useDragPosition(options: {
     margin?: number
     /**
      * 边缘吸附参数：
-     * 
+     *
      *     - threshold — 距边缘多近时触发吸附
      *     - margin — 吸附后距边缘的距离
      */
@@ -85,10 +85,12 @@ export function useDragPosition(options: {
             if (raw) {
                 const parsed: unknown = JSON.parse(raw)
                 if (
-                    typeof parsed === 'object' && parsed !== null
-                    && 'x' in parsed && 'y' in parsed
-                    && typeof (parsed as Record<string, unknown>).x === 'number'
-                    && typeof (parsed as Record<string, unknown>).y === 'number'
+                    typeof parsed === 'object' &&
+                    parsed !== null &&
+                    'x' in parsed &&
+                    'y' in parsed &&
+                    typeof (parsed as Record<string, unknown>).x === 'number' &&
+                    typeof (parsed as Record<string, unknown>).y === 'number'
                 ) {
                     return parsed as { x: number; y: number }
                 }
@@ -111,7 +113,12 @@ export function useDragPosition(options: {
     }
 
     // 内部函数
-    function clampCardToViewport(x: number, y: number, width: number, height: number): { x: number; y: number } {
+    function clampCardToViewport(
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+    ): { x: number; y: number } {
         const maxX = Math.max(margin, window.innerWidth - width - margin)
         const maxY = Math.max(margin, window.innerHeight - height - margin)
 
@@ -149,13 +156,16 @@ export function useDragPosition(options: {
      *     1. x / y 两轴独立判定，可只吸附一边。
      *     2. 不提供 snap 参数则不执行吸附，原样返回。
      */
-    function snapToEdges(pos: { x: number; y: number }): { x: number; y: number } {
+    function snapToEdges(pos: { x: number; y: number }): {
+        x: number
+        y: number
+    } {
         if (!snapthreshold) return pos
 
         const { width, height } = dragElementSize
         let { x, y } = pos
 
-        const snapMargin =  margin
+        const snapMargin = margin
 
         if (x < snapthreshold) {
             x = snapMargin
@@ -184,7 +194,7 @@ export function useDragPosition(options: {
     function onPointerdown(event: PointerEvent): void {
         if (event.button !== 0) return
 
-        (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+        ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
         event.preventDefault()
 
         const el = elementRef.value

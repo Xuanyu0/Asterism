@@ -27,9 +27,15 @@
 
 import type { GraphData, NodeId } from '../types/graph_data'
 import type { GraphOperation } from '../types/atomic_operations'
-import { collectDependencyNodeIds, findReferenceNodesPointingTo } from './utils/traversal'
+import {
+    collectDependencyNodeIds,
+    findReferenceNodesPointingTo,
+} from './utils/traversal'
 
-export function executeOperation(graph: GraphData, operation: GraphOperation): GraphData {
+export function executeOperation(
+    graph: GraphData,
+    operation: GraphOperation,
+): GraphData {
     switch (operation.type) {
         // ── 图内变更：修改当前图中的节点/边，返回新的 GraphData ──
         case 'add_node':
@@ -67,22 +73,34 @@ export function executeOperation(graph: GraphData, operation: GraphOperation): G
 
 // ------------------------------ add / delete / update / move / fold / expand -----------------------------------------
 
-function executeAddNode(graph: GraphData, operation: { type: 'add_node'; node: GraphData['nodes'][number] }): GraphData {
+function executeAddNode(
+    graph: GraphData,
+    operation: { type: 'add_node'; node: GraphData['nodes'][number] },
+): GraphData {
     const now = new Date().toISOString()
 
     return {
         ...graph,
-        nodes: [...graph.nodes, { ...operation.node, createdAt: now, updatedAt: now }],
+        nodes: [
+            ...graph.nodes,
+            { ...operation.node, createdAt: now, updatedAt: now },
+        ],
         updatedAt: now,
     }
 }
 
-function executeAddEdge(graph: GraphData, operation: { type: 'add_edge'; edge: GraphData['edges'][number] }): GraphData {
+function executeAddEdge(
+    graph: GraphData,
+    operation: { type: 'add_edge'; edge: GraphData['edges'][number] },
+): GraphData {
     const now = new Date().toISOString()
 
     // 度数只按本图边数计算：仅两端节点 degree +1，引用节点不跟随源节点度数
-    const nodes = graph.nodes.map(node => {
-        if (node.id === operation.edge.source || node.id === operation.edge.target) {
+    const nodes = graph.nodes.map((node) => {
+        if (
+            node.id === operation.edge.source ||
+            node.id === operation.edge.target
+        ) {
             return { ...node, degree: node.degree + 1 }
         }
 
@@ -92,14 +110,22 @@ function executeAddEdge(graph: GraphData, operation: { type: 'add_edge'; edge: G
     return {
         ...graph,
         nodes,
-        edges: [...graph.edges, { ...operation.edge, createdAt: now, updatedAt: now }],
+        edges: [
+            ...graph.edges,
+            { ...operation.edge, createdAt: now, updatedAt: now },
+        ],
         updatedAt: now,
     }
 }
 
-function executeDeleteNode(graph: GraphData, operation: { type: 'delete_node'; nodeId: NodeId }): GraphData {
+function executeDeleteNode(
+    graph: GraphData,
+    operation: { type: 'delete_node'; nodeId: NodeId },
+): GraphData {
     const deletedEdges = graph.edges.filter(
-        edge => edge.source === operation.nodeId || edge.target === operation.nodeId,
+        (edge) =>
+            edge.source === operation.nodeId ||
+            edge.target === operation.nodeId,
     )
 
     const degreeLoss = new Map<string, number>()
@@ -115,31 +141,48 @@ function executeDeleteNode(graph: GraphData, operation: { type: 'delete_node'; n
     // 引用节点级联删除。
     // 删除知识节点时，同图内所有指向它的引用节点同步移除。
     const cascadedReferenceNodeIds = new Set(
-        findReferenceNodesPointingTo(graph, operation.nodeId).map(node => node.id),
+        findReferenceNodesPointingTo(graph, operation.nodeId).map(
+            (node) => node.id,
+        ),
     )
 
     for (const refNodeId of cascadedReferenceNodeIds) {
         for (const edge of graph.edges) {
             if (edge.source === refNodeId || edge.target === refNodeId) {
-                if (edge.source !== refNodeId && !cascadedReferenceNodeIds.has(edge.source)) {
-                    degreeLoss.set(edge.source, (degreeLoss.get(edge.source) ?? 0) + 1)
+                if (
+                    edge.source !== refNodeId &&
+                    !cascadedReferenceNodeIds.has(edge.source)
+                ) {
+                    degreeLoss.set(
+                        edge.source,
+                        (degreeLoss.get(edge.source) ?? 0) + 1,
+                    )
                 }
-                if (edge.target !== refNodeId && !cascadedReferenceNodeIds.has(edge.target)) {
-                    degreeLoss.set(edge.target, (degreeLoss.get(edge.target) ?? 0) + 1)
+                if (
+                    edge.target !== refNodeId &&
+                    !cascadedReferenceNodeIds.has(edge.target)
+                ) {
+                    degreeLoss.set(
+                        edge.target,
+                        (degreeLoss.get(edge.target) ?? 0) + 1,
+                    )
                 }
             }
         }
     }
 
-    const allDeletedNodeIds = new Set([operation.nodeId, ...cascadedReferenceNodeIds])
+    const allDeletedNodeIds = new Set([
+        operation.nodeId,
+        ...cascadedReferenceNodeIds,
+    ])
 
     const now = new Date().toISOString()
 
     let result: GraphData = {
         ...graph,
         nodes: graph.nodes
-            .filter(node => !allDeletedNodeIds.has(node.id))
-            .map(node => {
+            .filter((node) => !allDeletedNodeIds.has(node.id))
+            .map((node) => {
                 const loss = degreeLoss.get(node.id) ?? 0
 
                 if (loss > 0) {
@@ -148,26 +191,34 @@ function executeDeleteNode(graph: GraphData, operation: { type: 'delete_node'; n
 
                 return node
             }),
-        edges: graph.edges.filter(edge => !allDeletedNodeIds.has(edge.source) && !allDeletedNodeIds.has(edge.target)),
+        edges: graph.edges.filter(
+            (edge) =>
+                !allDeletedNodeIds.has(edge.source) &&
+                !allDeletedNodeIds.has(edge.target),
+        ),
         updatedAt: now,
     }
 
     // 清理折叠状态中对被删节点的引用。
     // 移除以被删节点为折叠目标的项，从剩余项的 foldedNodeIds 中移除被删节点，整项清空时移除。
     for (const deletedId of allDeletedNodeIds) {
-        const cognitiveState = result.cognitiveState ?? { foldedDependencies: [] }
+        const cognitiveState = result.cognitiveState ?? {
+            foldedDependencies: [],
+        }
 
         result = {
             ...result,
             cognitiveState: {
                 ...cognitiveState,
                 foldedDependencies: cognitiveState.foldedDependencies
-                    .filter(item => item.targetNodeId !== deletedId)
-                    .map(item => ({
+                    .filter((item) => item.targetNodeId !== deletedId)
+                    .map((item) => ({
                         ...item,
-                        foldedNodeIds: item.foldedNodeIds.filter(nodeId => nodeId !== deletedId),
+                        foldedNodeIds: item.foldedNodeIds.filter(
+                            (nodeId) => nodeId !== deletedId,
+                        ),
                     }))
-                    .filter(item => item.foldedNodeIds.length > 0),
+                    .filter((item) => item.foldedNodeIds.length > 0),
             },
         }
     }
@@ -175,13 +226,19 @@ function executeDeleteNode(graph: GraphData, operation: { type: 'delete_node'; n
     return result
 }
 
-function executeDeleteEdge(graph: GraphData, operation: { type: 'delete_edge'; edgeId: string }): GraphData {
-    const deletedEdge = graph.edges.find(edge => edge.id === operation.edgeId)
+function executeDeleteEdge(
+    graph: GraphData,
+    operation: { type: 'delete_edge'; edgeId: string },
+): GraphData {
+    const deletedEdge = graph.edges.find((edge) => edge.id === operation.edgeId)
     const now = new Date().toISOString()
 
     // 度数只按本图边数计算：仅两端节点 degree -1，引用节点不跟随源节点度数
-    const nodes = graph.nodes.map(node => {
-        if (deletedEdge && (node.id === deletedEdge.source || node.id === deletedEdge.target)) {
+    const nodes = graph.nodes.map((node) => {
+        if (
+            deletedEdge &&
+            (node.id === deletedEdge.source || node.id === deletedEdge.target)
+        ) {
             return { ...node, degree: Math.max(0, node.degree - 1) }
         }
 
@@ -191,7 +248,7 @@ function executeDeleteEdge(graph: GraphData, operation: { type: 'delete_edge'; e
     return {
         ...graph,
         nodes,
-        edges: graph.edges.filter(edge => edge.id !== operation.edgeId),
+        edges: graph.edges.filter((edge) => edge.id !== operation.edgeId),
         updatedAt: now,
     }
 }
@@ -204,10 +261,13 @@ function executeDeleteEdge(graph: GraphData, operation: { type: 'delete_edge'; e
  *     1. 完全替换匹配节点（不是增量合并）。
  *     2. 引用节点 label 同步回源节点 label。contextSummary 不穿透（启发节点独立修改）。
  */
-function executeUpdateNode(graph: GraphData, operation: { type: 'update_node'; node: GraphData['nodes'][number] }): GraphData {
+function executeUpdateNode(
+    graph: GraphData,
+    operation: { type: 'update_node'; node: GraphData['nodes'][number] },
+): GraphData {
     const now = new Date().toISOString()
 
-    let nodes = graph.nodes.map(node => {
+    let nodes = graph.nodes.map((node) => {
         if (node.id !== operation.node.id) return node
 
         return { ...operation.node, updatedAt: now }
@@ -215,9 +275,14 @@ function executeUpdateNode(graph: GraphData, operation: { type: 'update_node'; n
 
     // 引用节点穿透：label 同步到源节点。
     // 启发节点的 contextSummary 独立修改，不穿透。
-    if (operation.node.role === 'reference' && operation.node.sourceGraphId === graph.id) {
+    if (
+        operation.node.role === 'reference' &&
+        operation.node.sourceGraphId === graph.id
+    ) {
         const refNode = operation.node
-        const sourceNodeIdx = nodes.findIndex(node => node.id === refNode.sourceNodeId)
+        const sourceNodeIdx = nodes.findIndex(
+            (node) => node.id === refNode.sourceNodeId,
+        )
 
         if (sourceNodeIdx >= 0 && nodes[sourceNodeIdx]) {
             nodes[sourceNodeIdx] = {
@@ -235,12 +300,15 @@ function executeUpdateNode(graph: GraphData, operation: { type: 'update_node'; n
     }
 }
 
-function executeUpdateEdge(graph: GraphData, operation: { type: 'update_edge'; edge: GraphData['edges'][number] }): GraphData {
+function executeUpdateEdge(
+    graph: GraphData,
+    operation: { type: 'update_edge'; edge: GraphData['edges'][number] },
+): GraphData {
     const now = new Date().toISOString()
 
     return {
         ...graph,
-        edges: graph.edges.map(edge =>
+        edges: graph.edges.map((edge) =>
             edge.id === operation.edge.id
                 ? { ...operation.edge, updatedAt: now }
                 : edge,
@@ -249,35 +317,57 @@ function executeUpdateEdge(graph: GraphData, operation: { type: 'update_edge'; e
     }
 }
 
-function executeMoveNode(graph: GraphData, operation: { type: 'move_node'; nodeId: NodeId; position: { x: number; y: number } }): GraphData {
+function executeMoveNode(
+    graph: GraphData,
+    operation: {
+        type: 'move_node'
+        nodeId: NodeId
+        position: { x: number; y: number }
+    },
+): GraphData {
     const now = new Date().toISOString()
 
     return {
         ...graph,
-        nodes: graph.nodes.map(node => node.id === operation.nodeId ? {
-            ...node,
-            position: operation.position,
-            updatedAt: now,
-        } : node),
+        nodes: graph.nodes.map((node) =>
+            node.id === operation.nodeId
+                ? {
+                      ...node,
+                      position: operation.position,
+                      updatedAt: now,
+                  }
+                : node,
+        ),
         updatedAt: now,
     }
 }
 
 function executeCollapseDependency(
     graph: GraphData,
-    operation: { type: 'collapse_dependency'; targetNodeId: NodeId; foldedNodeIds?: NodeId[] },
+    operation: {
+        type: 'collapse_dependency'
+        targetNodeId: NodeId
+        foldedNodeIds?: NodeId[]
+    },
 ): GraphData {
     // 有显式折叠成员时照名单恢复（undo 逆元路径）；缺省时重算（正常折叠路径）。
     // 字段为空数组与无字段重算结果为空同理：不写折叠条目（空成员静默 no-op）。
-    const foldedNodeIds = operation.foldedNodeIds ?? collectDependencyNodeIds(graph, operation.targetNodeId)
+    const foldedNodeIds =
+        operation.foldedNodeIds ??
+        collectDependencyNodeIds(graph, operation.targetNodeId)
 
     if (foldedNodeIds.length === 0) {
         return graph
     }
 
     const now = new Date().toISOString()
-    const currentCognitiveState = graph.cognitiveState ?? { foldedDependencies: [] }
-    const otherFoldedDependencies = currentCognitiveState.foldedDependencies.filter(item => item.targetNodeId !== operation.targetNodeId)
+    const currentCognitiveState = graph.cognitiveState ?? {
+        foldedDependencies: [],
+    }
+    const otherFoldedDependencies =
+        currentCognitiveState.foldedDependencies.filter(
+            (item) => item.targetNodeId !== operation.targetNodeId,
+        )
 
     return {
         ...graph,
@@ -295,15 +385,22 @@ function executeCollapseDependency(
     }
 }
 
-function executeExpandDependency(graph: GraphData, operation: { type: 'expand_dependency'; targetNodeId: NodeId }): GraphData {
-    const currentCognitiveState = graph.cognitiveState ?? { foldedDependencies: [] }
+function executeExpandDependency(
+    graph: GraphData,
+    operation: { type: 'expand_dependency'; targetNodeId: NodeId },
+): GraphData {
+    const currentCognitiveState = graph.cognitiveState ?? {
+        foldedDependencies: [],
+    }
     const now = new Date().toISOString()
 
     return {
         ...graph,
         cognitiveState: {
             ...currentCognitiveState,
-            foldedDependencies: currentCognitiveState.foldedDependencies.filter(item => item.targetNodeId !== operation.targetNodeId),
+            foldedDependencies: currentCognitiveState.foldedDependencies.filter(
+                (item) => item.targetNodeId !== operation.targetNodeId,
+            ),
         },
         updatedAt: now,
     }

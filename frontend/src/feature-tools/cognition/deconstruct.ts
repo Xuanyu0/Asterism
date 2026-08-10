@@ -25,7 +25,6 @@ import { useToolMediator } from '@/feature-tools/mediator'
 
 import type { ToolHandler } from '@/feature-tools/types'
 
-
 export function useDeconstructTool(): ToolHandler {
     const graphStore = useGraphStore()
     const operations = useGraphOperationAdapter()
@@ -71,7 +70,9 @@ export function useDeconstructTool(): ToolHandler {
             return
         }
 
-        operations.commitToCurrentGraph(result.operations, { source: 'deconstruct' })
+        operations.commitToCurrentGraph(result.operations, {
+            source: 'deconstruct',
+        })
 
         // 单次操作完成后自动退出
         mediator.deactivate()
@@ -79,11 +80,17 @@ export function useDeconstructTool(): ToolHandler {
 
     return {
         id: 'deconstruct',
-        get isActive() { return isActive.value },
+        get isActive() {
+            return isActive.value
+        },
         activate,
         deactivate,
         onNodeClick,
-        get cursorClass() { return cursorClass.value },
-        get notification() { return null },
+        get cursorClass() {
+            return cursorClass.value
+        },
+        get notification() {
+            return null
+        },
     }
 }

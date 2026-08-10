@@ -71,7 +71,12 @@ export function previewAddNode(
     graph: GraphData,
     position: NodePosition,
     kind: 'real' | 'virtual',
-): { previewGraph: GraphData; valid: boolean; collides: boolean; nodeId: NodeId } {
+): {
+    previewGraph: GraphData
+    valid: boolean
+    collides: boolean
+    nodeId: NodeId
+} {
     const clone = cloneGraph(graph)
 
     const nodeId = generateNodeId()
@@ -168,7 +173,12 @@ export function previewAddEdge(
     const result = applyBatch(clone, [addEdgeOp])
 
     if (result.validation.valid === false) {
-        return { previewGraph: clone, valid: false, sourceCollides: false, targetCollides: false }
+        return {
+            previewGraph: clone,
+            valid: false,
+            sourceCollides: false,
+            targetCollides: false,
+        }
     }
 
     const previewGraph = result.graph
@@ -176,11 +186,21 @@ export function previewAddEdge(
     const target = previewGraph.nodes.find((node) => node.id === edge.targetId)
 
     const sourceCollides = source?.position
-        ? hasCollisionAt(edge.sourceId, source.position, previewGraph.nodes, new Map())
+        ? hasCollisionAt(
+              edge.sourceId,
+              source.position,
+              previewGraph.nodes,
+              new Map(),
+          )
         : false
 
     const targetCollides = target?.position
-        ? hasCollisionAt(edge.targetId, target.position, previewGraph.nodes, new Map())
+        ? hasCollisionAt(
+              edge.targetId,
+              target.position,
+              previewGraph.nodes,
+              new Map(),
+          )
         : false
 
     return { previewGraph, valid: true, sourceCollides, targetCollides }

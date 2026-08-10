@@ -73,7 +73,7 @@ export function deconstruct(params: DeconstructParams): {
 
     // ── 语义预检 ──
 
-    const targetNode = parentGraph.nodes.find(node => node.id === nodeId)
+    const targetNode = parentGraph.nodes.find((node) => node.id === nodeId)
 
     if (!targetNode) {
         issues.push({
@@ -123,7 +123,9 @@ export function deconstruct(params: DeconstructParams): {
         }
     }
 
-    const neighbors = parentGraph.nodes.filter(node => neighborIds.has(node.id))
+    const neighbors = parentGraph.nodes.filter((node) =>
+        neighborIds.has(node.id),
+    )
 
     // ── 构造子图 ──
 
@@ -134,14 +136,17 @@ export function deconstruct(params: DeconstructParams): {
     const communicationCenter: NodePosition = { x: 0, y: 0 }
     const neighborCount = neighbors.length
     // 半径：确保相邻节点不重叠（每个节点直径 2*unitDistance，圆周上 n 个节点均匀分布）
-    const orbitRadius = neighborCount > 0
-        ? Math.max(DEFAULT_LAYOUT_RULES.unitDistance * 2, neighborCount * DEFAULT_LAYOUT_RULES.unitDistance / Math.PI)
-        : 0
+    const orbitRadius =
+        neighborCount > 0
+            ? Math.max(
+                  DEFAULT_LAYOUT_RULES.unitDistance * 2,
+                  (neighborCount * DEFAULT_LAYOUT_RULES.unitDistance) / Math.PI,
+              )
+            : 0
 
     const communicationNodes = neighbors.map((neighbor, index) => {
-        const angle = neighborCount > 0
-            ? (2 * Math.PI * index) / neighborCount
-            : 0
+        const angle =
+            neighborCount > 0 ? (2 * Math.PI * index) / neighborCount : 0
 
         return {
             id: generateNodeId(),

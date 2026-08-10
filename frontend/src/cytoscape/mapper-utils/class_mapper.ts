@@ -6,7 +6,6 @@
 
 import type { EdgeData, NodeData, NodeId } from '@my-project/graph-engine'
 
-
 /**
  * 功能：
  *
@@ -17,7 +16,10 @@ import type { EdgeData, NodeData, NodeId } from '@my-project/graph-engine'
  *     1. 只读取节点字段。
  *     2. 不修改节点数据。
  */
-export function getNodeClasses(node: NodeData, foldedParentIds?: Set<NodeId>): string[] {
+export function getNodeClasses(
+    node: NodeData,
+    foldedParentIds?: Set<NodeId>,
+): string[] {
     const classes: string[] = []
 
     if (node.role === 'knowledge') {
@@ -46,8 +48,7 @@ export function getNodeClasses(node: NodeData, foldedParentIds?: Set<NodeId>): s
  *     2. 不修改边数据。
  */
 export function getEdgeClasses(edge: EdgeData): string[] {
-    return [
-        `edge-${edge.kind}`,
-        `edge-${edge.direction}`,
-    ].filter((className) => className.length > 0)
+    return [`edge-${edge.kind}`, `edge-${edge.direction}`].filter(
+        (className) => className.length > 0,
+    )
 }

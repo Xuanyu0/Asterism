@@ -28,7 +28,6 @@ import type { NodeId, NodePosition } from '@my-project/graph-engine'
 
 import type { ToolId, ToolHandler, ToolNotification } from '../types'
 
-
 // ── useMoveNodeTool ──
 
 /**
@@ -269,7 +268,9 @@ export function useMoveNodeTool(): ToolHandler {
             nodeId: pickedNodeId as NodeId,
             desiredPosition,
             allNodes: graphStore.graphView.nodes,
-            nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.graphView),
+            nodeRadiusOverrides: computeNodeRadiusOverrides(
+                graphStore.graphView,
+            ),
         })
 
         // 有碰撞 → 拒绝放置
@@ -282,7 +283,9 @@ export function useMoveNodeTool(): ToolHandler {
         }
 
         // 无碰撞 → 写入 GraphData
-        const validation = operations.commitToCurrentGraph(result.operations, { source: id })
+        const validation = operations.commitToCurrentGraph(result.operations, {
+            source: id,
+        })
 
         if (validation.valid) {
             // 清除透明度 preview
@@ -301,12 +304,18 @@ export function useMoveNodeTool(): ToolHandler {
 
     return {
         id,
-        get isActive() { return isActive.value },
+        get isActive() {
+            return isActive.value
+        },
         activate,
         deactivate,
         onNodeClick,
         onCanvasClick,
-        get cursorClass() { return cursorClass.value },
-        get notification() { return notification.value },
+        get cursorClass() {
+            return cursorClass.value
+        },
+        get notification() {
+            return notification.value
+        },
     }
 }

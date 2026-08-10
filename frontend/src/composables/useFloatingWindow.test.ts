@@ -73,7 +73,9 @@ describe('useFloatingWindow', () => {
         floatingWindow.registerContainer(container)
 
         // jsdom 无 PointerEvent，用 MouseEvent 代替（监听器只读 event.target）
-        container.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }))
+        container.dispatchEvent(
+            new MouseEvent('pointerdown', { bubbles: true }),
+        )
 
         expect(floatingWindow.floatingData.value).toEqual(fixtureNode)
     })

@@ -25,16 +25,13 @@ handler 是其所有 transient class 的唯一 owner——通过 `useRenderer()`
 `Graph.vue` 中当前有一段：
 
 ```ts
-renderer.bindHighlight(
-    () => {
-        const handler = mediator.activeHandler.value
-        if (!handler) return null
-        const id = handler.id as string
-        if (!id.includes('directed') && !id.includes('undirected')) return null
-        return handler.highlightNode ?? null
-    },
-    'edge-source-target',
-)
+renderer.bindHighlight(() => {
+    const handler = mediator.activeHandler.value
+    if (!handler) return null
+    const id = handler.id as string
+    if (!id.includes('directed') && !id.includes('undirected')) return null
+    return handler.highlightNode ?? null
+}, 'edge-source-target')
 ```
 
 **删除这段绑定**。source 高亮所有权移交 add_edge handler 管理（下方子任务）。`delete-target` 的 bindHighlight 保留不动。
@@ -48,9 +45,9 @@ renderer.bindHighlight(
 3. 若 `valid === false` → 跳过（校验失败，不渲染预览）
 4. `syncFromGraphData(previewGraph)` ← **整图切换到预览图**
 5. **sync 之后**依次施加：
-   - `addNodeClass(sourceId, 'edge-source-target', 'add-edge')` — 重施 source 高亮
-   - `sourceCollides` → `addNodeClass(sourceId, 'preview-collision', 'add-edge')`
-   - `targetCollides` → `addNodeClass(targetId, 'preview-collision', 'add-edge')`
+    - `addNodeClass(sourceId, 'edge-source-target', 'add-edge')` — 重施 source 高亮
+    - `sourceCollides` → `addNodeClass(sourceId, 'preview-collision', 'add-edge')`
+    - `targetCollides` → `addNodeClass(targetId, 'preview-collision', 'add-edge')`
 6. 更新 `hoverTargetId.value = nodeId`
 
 ### 3. 实现 onNodeHoverOut
@@ -79,15 +76,16 @@ renderer.bindHighlight(
 
 ## 新增/修改文件
 
-| 文件 | 职责 | 操作 |
-|------|------|------|
-| `frontend/src/feature-tools/toolbar/add_edge.ts` | add-edge 工具 handler | 修改（hover 预览 + 碰撞拦截） |
-| `frontend/src/feature-tools/toolbar/add_edge.test.ts` | 工具测试 | 修改（适配新流程） |
-| `frontend/src/views/Graph.vue` | 移除 edge-source-target bindHighlight | 修改 |
+| 文件                                                  | 职责                                  | 操作                          |
+| ----------------------------------------------------- | ------------------------------------- | ----------------------------- |
+| `frontend/src/feature-tools/toolbar/add_edge.ts`      | add-edge 工具 handler                 | 修改（hover 预览 + 碰撞拦截） |
+| `frontend/src/feature-tools/toolbar/add_edge.test.ts` | 工具测试                              | 修改（适配新流程）            |
+| `frontend/src/views/Graph.vue`                        | 移除 edge-source-target bindHighlight | 修改                          |
 
 ## 变更边界
 
 **禁止修改**：
+
 - `mediator.ts` / `types.ts` — 已在 051-2 完成
 - `preview_engine.ts` — 已在 051-3 完成
 - 其他 `toolbar/` 下 handler（add_node / delete / fold / move_node）

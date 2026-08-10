@@ -246,8 +246,10 @@ export const localStorageAdapter: PersistenceAdapter = {
         const ids = listSavedGraphIds()
 
         return ids
-            .map(id => loadGraph(id))
-            .filter((result): result is LoadGraphResult & { ok: true } => result.ok)
-            .map(result => result.graph)
+            .map((id) => loadGraph(id))
+            .filter(
+                (result): result is LoadGraphResult & { ok: true } => result.ok,
+            )
+            .map((result) => result.graph)
     },
 }

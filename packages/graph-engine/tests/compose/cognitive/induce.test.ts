@@ -6,7 +6,12 @@
 
 import type { GraphId, NodeId } from '../../../src/types/graph_data'
 import { induce } from '../../../src/compose/cognitive/induce'
-import { createInduceInputGraph, createInduceWithHeuristicInputGraph, createNode, assembleGraph } from '../../test_case_factory'
+import {
+    createInduceInputGraph,
+    createInduceWithHeuristicInputGraph,
+    createNode,
+    assembleGraph,
+} from '../../test_case_factory'
 
 const R = new Map()
 
@@ -20,7 +25,9 @@ describe('induce', () => {
             nodeRadiusOverrides: R,
             allEdges: graph.edges,
         })
-        expect(result.issues.filter(i => i.severity === 'error')).toHaveLength(0)
+        expect(
+            result.issues.filter((i) => i.severity === 'error'),
+        ).toHaveLength(0)
         // 子图 ops 存在
         expect(result.operations.child.length).toBeGreaterThan(0)
         // 父图 ops 存在
@@ -38,14 +45,30 @@ describe('induce', () => {
             nodeRadiusOverrides: R,
             allEdges: graph.edges,
         })
-        expect(result.issues.filter(i => i.severity === 'error')).toHaveLength(0)
+        expect(
+            result.issues.filter((i) => i.severity === 'error'),
+        ).toHaveLength(0)
     })
 
     test('沟通节点拒绝', () => {
-        const graph = assembleGraph({ id: 'test-ind-comm' as GraphId, nodes: [
-            createNode({ id: 'k' as NodeId, graphId: 'test-ind-comm' as GraphId }),
-            createNode({ id: 'c' as NodeId, graphId: 'test-ind-comm' as GraphId, role: 'reference', referenceKind: 'communication', sourceGraphId: 'g' as GraphId, sourceNodeId: 's' as NodeId }),
-        ], edges: [] })
+        const graph = assembleGraph({
+            id: 'test-ind-comm' as GraphId,
+            nodes: [
+                createNode({
+                    id: 'k' as NodeId,
+                    graphId: 'test-ind-comm' as GraphId,
+                }),
+                createNode({
+                    id: 'c' as NodeId,
+                    graphId: 'test-ind-comm' as GraphId,
+                    role: 'reference',
+                    referenceKind: 'communication',
+                    sourceGraphId: 'g' as GraphId,
+                    sourceNodeId: 's' as NodeId,
+                }),
+            ],
+            edges: [],
+        })
         const result = induce({
             nodeIds: ['k', 'c'] as NodeId[],
             parentGraph: graph,
@@ -53,7 +76,9 @@ describe('induce', () => {
             nodeRadiusOverrides: R,
             allEdges: graph.edges,
         })
-        expect(result.issues.some(i => i.message.includes('沟通节点'))).toBe(true)
+        expect(result.issues.some((i) => i.message.includes('沟通节点'))).toBe(
+            true,
+        )
     })
 
     test('< 2 节点拒绝', () => {
@@ -65,6 +90,8 @@ describe('induce', () => {
             nodeRadiusOverrides: R,
             allEdges: graph.edges,
         })
-        expect(result.issues.some(i => i.message.includes('至少需要两个'))).toBe(true)
+        expect(
+            result.issues.some((i) => i.message.includes('至少需要两个')),
+        ).toBe(true)
     })
 })

@@ -29,9 +29,18 @@
  *     })
  */
 
-import type { EdgeData, NodeData, NodeId, NodePosition } from '../../types/graph_data'
+import type {
+    EdgeData,
+    NodeData,
+    NodeId,
+    NodePosition,
+} from '../../types/graph_data'
 import type { NodeRadiusMap } from '../../types/infrastructure_types'
-import type { ComposeIssue, ComposeResult, DraftPosition } from '../../types/compose_types'
+import type {
+    ComposeIssue,
+    ComposeResult,
+    DraftPosition,
+} from '../../types/compose_types'
 import { computeTierSpacing, snapOrbit } from '../../infrastructure/placement'
 import { hasCollisionInDrafts } from '../../infrastructure/collision'
 
@@ -101,10 +110,11 @@ export function orbit(params: OrbitParams): ComposeResult<DraftPosition> {
     // ── 校验：每个卫星必须通过实边连接中心 ──
     for (const satellite of satellites) {
         const hasRealEdge = allEdges.some(
-            edge => 
+            (edge) =>
                 edge.kind === 'real' &&
                 ((edge.source === center.id && edge.target === satellite.id) ||
-                 (edge.source === satellite.id && edge.target === center.id)),
+                    (edge.source === satellite.id &&
+                        edge.target === center.id)),
         )
 
         if (!hasRealEdge) {
@@ -117,10 +127,13 @@ export function orbit(params: OrbitParams): ComposeResult<DraftPosition> {
     }
 
     // ── D₀ 计算 ──
-    const D0 = computeTierSpacing(center.radius, satellites.map(satellite => satellite.radius))
+    const D0 = computeTierSpacing(
+        center.radius,
+        satellites.map((satellite) => satellite.radius),
+    )
 
     // ── 位置计算：逐节点吸附至最近层级轨道，保留当前角度 ──
-    const nodePosMap = new Map(allNodes.map(node => [node.id, node.position]))
+    const nodePosMap = new Map(allNodes.map((node) => [node.id, node.position]))
     const drafts: DraftPosition[] = []
 
     for (const satellite of satellites) {
@@ -149,7 +162,7 @@ export function orbit(params: OrbitParams): ComposeResult<DraftPosition> {
     }
 
     // ── 组装 operations ──
-    const operations = drafts.map(draft => ({
+    const operations = drafts.map((draft) => ({
         type: 'move_node' as const,
         nodeId: draft.nodeId,
         position: draft.position,

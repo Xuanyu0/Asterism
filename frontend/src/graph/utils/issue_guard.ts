@@ -26,5 +26,5 @@ import type { ComposeIssue } from '@my-project/graph-engine'
  *     含 error 时操作不可提交，前端应展示错误并阻断。
  */
 export function hasErrors(issues: ComposeIssue[]): boolean {
-    return issues.some(issue => issue.severity === 'error')
+    return issues.some((issue) => issue.severity === 'error')
 }

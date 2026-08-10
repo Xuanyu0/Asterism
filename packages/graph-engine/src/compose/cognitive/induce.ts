@@ -26,14 +26,32 @@
  *     // applyBatch(parentGraph, result.operations.parent)
  */
 
-import type { EdgeData, GraphData, NodeId, NodePosition } from '../../types/graph_data'
-import type { GraphLookup, NodeRadiusMap } from '../../types/infrastructure_types'
+import type {
+    EdgeData,
+    GraphData,
+    NodeId,
+    NodePosition,
+} from '../../types/graph_data'
+import type {
+    GraphLookup,
+    NodeRadiusMap,
+} from '../../types/infrastructure_types'
 import type { ComposeIssue } from '../../types/compose_types'
 import type { GraphOperation } from '../../types/atomic_operations'
-import { generateGraphId, generateNodeId, generateEdgeId } from '../../core/utils/id'
-import { distributeOnTiers, scatterInCircle } from '../../infrastructure/placement'
+import {
+    generateGraphId,
+    generateNodeId,
+    generateEdgeId,
+} from '../../core/utils/id'
+import {
+    distributeOnTiers,
+    scatterInCircle,
+} from '../../infrastructure/placement'
 import type { TierAssignment } from '../../infrastructure/placement'
-import { hasCollisionInDrafts, hasCollisionAt } from '../../infrastructure/collision'
+import {
+    hasCollisionInDrafts,
+    hasCollisionAt,
+} from '../../infrastructure/collision'
 import { distance } from '../../infrastructure/geometry'
 import { DEFAULT_LAYOUT_RULES } from '../../core/layout_rules'
 
@@ -101,32 +119,49 @@ export function induce(params: InduceParams): {
             code: 'INDUCE_INSUFFICIENT_NODES',
             message: `归纳操作至少需要两个节点。`,
         })
-        return { operations: { child: [], parent: [] }, childGraphData: null!, issues }
+        return {
+            operations: { child: [], parent: [] },
+            childGraphData: null!,
+            issues,
+        }
     }
 
     const selectedSet = new Set(nodeIds)
-    const selectedNodes = parentGraph.nodes.filter(node => selectedSet.has(node.id))
+    const selectedNodes = parentGraph.nodes.filter((node) =>
+        selectedSet.has(node.id),
+    )
 
     if (selectedNodes.length !== nodeIds.length) {
-        const foundIds = new Set(selectedNodes.map(node => node.id))
-        for (const missingId of nodeIds.filter(id => !foundIds.has(id))) {
+        const foundIds = new Set(selectedNodes.map((node) => node.id))
+        for (const missingId of nodeIds.filter((id) => !foundIds.has(id))) {
             issues.push({
                 severity: 'error',
                 code: 'INDUCE_TARGET_NOT_FOUND',
                 message: `节点 ${missingId} 在当前图谱中不存在。`,
             })
         }
-        return { operations: { child: [], parent: [] }, childGraphData: null!, issues }
+        return {
+            operations: { child: [], parent: [] },
+            childGraphData: null!,
+            issues,
+        }
     }
 
     for (const node of selectedNodes) {
-        if (node.role === 'reference' && node.referenceKind === 'communication') {
+        if (
+            node.role === 'reference' &&
+            node.referenceKind === 'communication'
+        ) {
             issues.push({
                 severity: 'error',
                 code: 'INDUCE_COMMUNICATION_NODE_FORBIDDEN',
                 message: `节点 ${node.id} 是沟通节点，不能参与归纳。沟通节点是父图邻居在子图中的透明投影，不应被二次归纳。`,
             })
-            return { operations: { child: [], parent: [] }, childGraphData: null!, issues }
+            return {
+                operations: { child: [], parent: [] },
+                childGraphData: null!,
+                issues,
+            }
         }
     }
 
@@ -152,7 +187,9 @@ export function induce(params: InduceParams): {
         }
     }
 
-    const neighbors = parentGraph.nodes.filter(node => neighborIds.has(node.id))
+    const neighbors = parentGraph.nodes.filter((node) =>
+        neighborIds.has(node.id),
+    )
 
     // ── 重边冲突检查 ──
 
@@ -161,8 +198,12 @@ export function induce(params: InduceParams): {
         for (const edge of edges) {
             // 归纳后边在子图中指向沟通节点：source 或 target 中被选的一端保持不变，
             // 另一端变为沟通节点 ID
-            const projectedSource = selectedSet.has(edge.source) ? edge.source : `comm:${neighborId}`
-            const projectedTarget = selectedSet.has(edge.target) ? edge.target : `comm:${neighborId}`
+            const projectedSource = selectedSet.has(edge.source)
+                ? edge.source
+                : `comm:${neighborId}`
+            const projectedTarget = selectedSet.has(edge.target)
+                ? edge.target
+                : `comm:${neighborId}`
             const key = `${projectedSource}|${projectedTarget}|${edge.kind}|${edge.direction}`
 
             if (seen.has(key)) {
@@ -171,7 +212,11 @@ export function induce(params: InduceParams): {
                     code: 'INDUCE_DUPLICATE_EDGE_CONFLICT',
                     message: `归纳操作将对邻居 ${neighborId} 产生重边冲突（kind=${edge.kind}, direction=${edge.direction}），当前不支持此拓扑。`,
                 })
-                return { operations: { child: [], parent: [] }, childGraphData: null!, issues }
+                return {
+                    operations: { child: [], parent: [] },
+                    childGraphData: null!,
+                    issues,
+                }
             }
             seen.add(key)
         }
@@ -179,19 +224,27 @@ export function induce(params: InduceParams): {
 
     // ── 计算形心 ──
 
-    const nodesWithPos = selectedNodes.filter(node => node.position)
+    const nodesWithPos = selectedNodes.filter((node) => node.position)
     if (nodesWithPos.length === 0) {
         issues.push({
             severity: 'error',
             code: 'INDUCE_NO_POSITION',
             message: `被选节点均无位置信息，无法计算形心。`,
         })
-        return { operations: { child: [], parent: [] }, childGraphData: null!, issues }
+        return {
+            operations: { child: [], parent: [] },
+            childGraphData: null!,
+            issues,
+        }
     }
 
     const centroid: NodePosition = {
-        x: nodesWithPos.reduce((sum, node) => sum + node.position!.x, 0) / nodesWithPos.length,
-        y: nodesWithPos.reduce((sum, node) => sum + node.position!.y, 0) / nodesWithPos.length,
+        x:
+            nodesWithPos.reduce((sum, node) => sum + node.position!.x, 0) /
+            nodesWithPos.length,
+        y:
+            nodesWithPos.reduce((sum, node) => sum + node.position!.y, 0) /
+            nodesWithPos.length,
     }
 
     // ── 子图 ID 与时间戳 ──
@@ -202,12 +255,15 @@ export function induce(params: InduceParams): {
     // ── 半径辅助 ──
 
     function getNodeRadius(node: { id: NodeId; degree: number }): number {
-        return nodeRadiusOverrides.get(node.id) ?? unitDistance * Math.sqrt(1 + node.degree)
+        return (
+            nodeRadiusOverrides.get(node.id) ??
+            unitDistance * Math.sqrt(1 + node.degree)
+        )
     }
 
     // ── 确定沟通节点位置（碰撞则迭代） ──
 
-    const maxCommRadius = unitDistance  // 沟通节点 degree = 0，radius = unitDistance
+    const maxCommRadius = unitDistance // 沟通节点 degree = 0，radius = unitDistance
 
     let commDrafts: { nodeId: NodeId; position: NodePosition }[] = []
     let commPositionsFound = false
@@ -216,29 +272,47 @@ export function induce(params: InduceParams): {
         const commNodeIds = neighbors.map(() => generateNodeId())
 
         // 模拟子图：被选节点迁入后
-        const simulatedNodes = selectedNodes.map(node => ({
+        const simulatedNodes = selectedNodes.map((node) => ({
             ...node,
             graphId: childGraphId,
             position: node.position ?? { x: 0, y: 0 },
         }))
 
-        const satelliteSpecs = neighbors.map((_neighbor, i) => ({ id: commNodeIds[i]!, radius: maxCommRadius }))
+        const satelliteSpecs = neighbors.map((_neighbor, i) => ({
+            id: commNodeIds[i]!,
+            radius: maxCommRadius,
+        }))
         const tiers: TierAssignment[] = [{ tier: 0, nodeIds: commNodeIds }]
 
         // 最远被选节点距形心的距离。distributeOnTiers 内部 D0 = centerRadius + maxSatR + unitDistance，
         // 将 centerRadius 设为此值即得 idealOrbitRadius = maxSelectedDist + maxCommRadius + unitDistance。
         let centerRadius = Math.max(
-            ...selectedNodes.map(node => {
+            ...selectedNodes.map((node) => {
                 if (!node.position) return 0
                 return distance(node.position, centroid) + getNodeRadius(node)
             }),
         )
 
         for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-            const vCenter = { id: '__virtual__' as NodeId, position: centroid, radius: centerRadius }
-            const positions = distributeOnTiers(vCenter, satelliteSpecs, tiers, 0)
+            const vCenter = {
+                id: '__virtual__' as NodeId,
+                position: centroid,
+                radius: centerRadius,
+            }
+            const positions = distributeOnTiers(
+                vCenter,
+                satelliteSpecs,
+                tiers,
+                0,
+            )
 
-            if (!hasCollisionInDrafts(positions, simulatedNodes, nodeRadiusOverrides)) {
+            if (
+                !hasCollisionInDrafts(
+                    positions,
+                    simulatedNodes,
+                    nodeRadiusOverrides,
+                )
+            ) {
                 commDrafts = positions
                 commPositionsFound = true
                 break
@@ -253,7 +327,11 @@ export function induce(params: InduceParams): {
                 code: 'INDUCE_COMM_NODE_PLACEMENT_FAILED',
                 message: `无法为沟通节点找到不碰撞的位置（已重试 ${MAX_RETRIES} 次）。`,
             })
-            return { operations: { child: [], parent: [] }, childGraphData: null!, issues }
+            return {
+                operations: { child: [], parent: [] },
+                childGraphData: null!,
+                issues,
+            }
         }
     }
 
@@ -294,7 +372,7 @@ export function induce(params: InduceParams): {
     const emptyChildGraph: GraphData = {
         id: childGraphId,
         kind: 'subgraph',
-        title: selectedNodes.map(node => node.label).join(' / '),
+        title: selectedNodes.map((node) => node.label).join(' / '),
         parentGraphId: parentGraph.id,
         ownerNodeId: '', // 由后续 abstract node 的 id 回填——此处暂空，add_graph 后 update
         nodes: [],
@@ -327,8 +405,12 @@ export function induce(params: InduceParams): {
         const commId = commNodeMap.get(neighborId)!
 
         for (const edge of edges) {
-            const sourceInChild = selectedSet.has(edge.source) ? edge.source : commId
-            const targetInChild = selectedSet.has(edge.target) ? edge.target : commId
+            const sourceInChild = selectedSet.has(edge.source)
+                ? edge.source
+                : commId
+            const targetInChild = selectedSet.has(edge.target)
+                ? edge.target
+                : commId
 
             childOps.push({
                 type: 'add_edge',
@@ -368,7 +450,15 @@ export function induce(params: InduceParams): {
 
     // 碰撞检测：抽象节点 vs 父图剩余节点
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-        if (!hasCollisionAt(abstractId, abstractPosition, parentGraph.nodes, nodeRadiusOverrides, selectedSet)) {
+        if (
+            !hasCollisionAt(
+                abstractId,
+                abstractPosition,
+                parentGraph.nodes,
+                nodeRadiusOverrides,
+                selectedSet,
+            )
+        ) {
             break
         }
 
@@ -378,10 +468,17 @@ export function induce(params: InduceParams): {
                 code: 'INDUCE_ABSTRACT_NODE_PLACEMENT_FAILED',
                 message: `无法为抽象节点找到不碰撞的位置（已重试 ${MAX_RETRIES} 次）。`,
             })
-            return { operations: { child: [], parent: [] }, childGraphData: null!, issues }
+            return {
+                operations: { child: [], parent: [] },
+                childGraphData: null!,
+                issues,
+            }
         }
 
-        abstractPosition = scatterInCircle(centroid, unitDistance * (attempt + 1))
+        abstractPosition = scatterInCircle(
+            centroid,
+            unitDistance * (attempt + 1),
+        )
     }
 
     // 回填 childGraph 的 ownerNodeId
@@ -402,7 +499,7 @@ export function induce(params: InduceParams): {
         role: 'knowledge' as const,
         kind: 'real' as const,
         form: 'abstract' as const,
-        label: selectedNodes.map(node => node.label).join(' / '),
+        label: selectedNodes.map((node) => node.label).join(' / '),
         degree: abstractDegree,
         position: abstractPosition,
         abstractionLevel: 0,
@@ -439,5 +536,9 @@ export function induce(params: InduceParams): {
         })
     }
 
-    return { operations: { child: childOps, parent: parentOps }, childGraphData: childGraph, issues }
+    return {
+        operations: { child: childOps, parent: parentOps },
+        childGraphData: childGraph,
+        issues,
+    }
 }

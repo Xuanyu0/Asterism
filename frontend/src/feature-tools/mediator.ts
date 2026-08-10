@@ -127,7 +127,8 @@ function createMediator(): ToolMediatorAPI {
     handlerRegistry.set('default', defaultHandler)
 
     const activeToolId: Ref<ToolId> = ref<ToolId>('default')
-    const activeHandler: ShallowRef<ToolHandler> = shallowRef<ToolHandler>(defaultHandler)
+    const activeHandler: ShallowRef<ToolHandler> =
+        shallowRef<ToolHandler>(defaultHandler)
     defaultHandler.activate()
 
     function register(id: ToolId, handler: ToolHandler): void {

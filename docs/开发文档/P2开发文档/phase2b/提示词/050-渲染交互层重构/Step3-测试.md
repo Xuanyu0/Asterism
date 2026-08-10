@@ -10,12 +10,12 @@
 - `CLAUDE.md` §两个 Pinia Store：graphStore 持有 GraphData，不持有 Cy 状态
 - [050-步骤-渲染交互层重构.md](../../../P2开发文档/phase2b/步骤/050-渲染交互层重构.md) §Step 2 已完成——move_node 的视觉预览走 renderer 语义接口，不再直接依赖 Cy 实例
 - [050-步骤-渲染交互层重构.md](../../../P2开发文档/phase2b/步骤/050-渲染交互层重构.md) §Step 3 已确定决策：
-  - Mock renderer API，不 mock engine
-  - 测试文件位置：`src/feature-tools/toolbar/move-node.test.ts`
-  - Mock 策略：`vi.mock('@/cytoscape/useRenderer')` 拦截 `useRenderer()` 返回
-  - 测试数据：复用 `createGoldenTestGraphV2()` 金牌图
-  - 断言使用 `test()`，不用 `it()`
-  - vitest `globals: true` 已启用——`test` / `describe` / `expect` / `beforeEach` / `vi` 均为全局函数，测试文件中**无需** `import` vitest 相关函数
+    - Mock renderer API，不 mock engine
+    - 测试文件位置：`src/feature-tools/toolbar/move-node.test.ts`
+    - Mock 策略：`vi.mock('@/cytoscape/useRenderer')` 拦截 `useRenderer()` 返回
+    - 测试数据：复用 `createGoldenTestGraphV2()` 金牌图
+    - 断言使用 `test()`，不用 `it()`
+    - vitest `globals: true` 已启用——`test` / `describe` / `expect` / `beforeEach` / `vi` 均为全局函数，测试文件中**无需** `import` vitest 相关函数
 
 ---
 
@@ -24,6 +24,7 @@
 `frontend/src/feature-tools/toolbar/move_node.ts`（317 行）实现了 `useMoveNodeTool(): ToolHandler`，内部维护拾取放置状态机。
 
 **依赖关系**：
+
 ```
 move_node.ts
     ├── useGraphStore()          → graphStore（Pinia，jsdom 下正常）
@@ -36,14 +37,15 @@ move_node.ts
 **唯一需要 mock 的边界**：`useRenderer()` —— Cytoscape 需要 Canvas API，jsdom 不支持。
 
 **现有测试模式**（参考 `add-edge.test.ts`）：
+
 ```ts
 beforeEach(() => {
-    setActivePinia(createPinia())     // 重置 Pinia
-    localStorage.clear()              // 清空持久化
-    const golden = createGoldenTestGraphV2()  // 构造金牌图
-    saveGraph(golden)                 // 持久化
+    setActivePinia(createPinia()) // 重置 Pinia
+    localStorage.clear() // 清空持久化
+    const golden = createGoldenTestGraphV2() // 构造金牌图
+    saveGraph(golden) // 持久化
     const store = useGraphStore()
-    store.loadGraphToView(golden.id)  // 加载到视图
+    store.loadGraphToView(golden.id) // 加载到视图
 })
 ```
 
@@ -51,14 +53,14 @@ move_node 测试需要在此基础之上增加 `vi.mock('@/cytoscape/useRenderer
 
 **金牌图节点坐标**（用于选择测试节点和构造无碰撞放置位置）：
 
-| 节点 ID | label | 位置 (x, y) |
-|---------|-------|-------------|
-| `node-g1` | 知识节点A | (50, 200) |
-| `node-g2` | 知识节点B | (350, 200) |
-| `node-g3` | 抽象节点 | (650, 200) |
-| `node-g4` | 虚节点 | (950, 200) |
-| `node-g5` | 跳转银牌 | (50, 500) |
-| `node-g6` | 知识节点C | (350, 500) |
+| 节点 ID   | label     | 位置 (x, y) |
+| --------- | --------- | ----------- |
+| `node-g1` | 知识节点A | (50, 200)   |
+| `node-g2` | 知识节点B | (350, 200)  |
+| `node-g3` | 抽象节点  | (650, 200)  |
+| `node-g4` | 虚节点    | (950, 200)  |
+| `node-g5` | 跳转银牌  | (50, 500)   |
+| `node-g6` | 知识节点C | (350, 500)  |
 
 ---
 
@@ -78,6 +80,7 @@ move_node 测试需要在此基础之上增加 `vi.mock('@/cytoscape/useRenderer
 - **每次测试前重置**：`beforeEach` 中 `vi.clearAllMocks()` 确保 mock 调用记录隔离。
 
 **trackCursor mock 参考**：
+
 ```ts
 let capturedCallback: ((pos: { x: number; y: number }) => void) | null = null
 
@@ -90,6 +93,7 @@ const mockTrackCursor = vi.fn((cb: (pos: { x: number; y: number }) => void) => {
 `vi.mock()` 需放在文件顶部（import 之前），vitest 会自动提升。
 
 **测试骨架**（与现有测试一致）：
+
 - 顶层 `beforeEach`：Pinia 重置 + localStorage 清空 + 金牌图加载
 - 每个 `describe` 块的 `beforeEach`：`vi.clearAllMocks()` + 创建 handler + `handler.activate()`
 - 所有断言用 `test()`（不用 `it()`）
@@ -101,12 +105,14 @@ const mockTrackCursor = vi.fn((cb: (pos: { x: number; y: number }) => void) => {
 需要覆盖：
 
 **activate**：
+
 - `test('激活后 isActive 为 true')`：`handler.activate()` → `expect(handler.isActive).toBe(true)`
 - `test('激活后 cursorClass 为 cursor-crosshair')`：`handler.activate()` → `expect(handler.cursorClass).toBe('cursor-crosshair')`
 - `test('激活后 trackCursor 被调用')`：`handler.activate()` → `expect(mockTrackCursor).toHaveBeenCalledTimes(1)`
 - `test('激活后 notification 为 null')`：未拾取、无碰撞 → `expect(handler.notification).toBeNull()`
 
 **deactivate**：
+
 - `test('deactivate 后 isActive 为 false')`：`handler.deactivate()` → `expect(handler.isActive).toBe(false)`
 - `test('deactivate 后 cursorClass 为 null')`：`handler.deactivate()` → `expect(handler.cursorClass).toBeNull()`
 - `test('deactivate 后 trackCursor stop 被调用')`：在 `capturedCallback` 可用前调用 `handler.deactivate()`，验证 `tracking.stop` 被调。
@@ -119,6 +125,7 @@ const mockTrackCursor = vi.fn((cb: (pos: { x: number; y: number }) => void) => {
 **getNodePosition mock**：需对金牌图已知节点返回正确坐标（如 `'node-g1'` → `{ x: 50, y: 200 }`），使其通过位置检查。
 
 需要覆盖：
+
 - `test('onNodeClick 拾取节点后 isPicked 状态反映'）`：无法直接读 `isPicked`（私有变量），通过**可观测的公开契约**验证——拾取后 `cursorClass` 变化、`addNodeClass` 被调用。
 - `test('onNodeClick 拾取后 addNodeClass move-picked 被调用')`：`handler.onNodeClick!('node-g1')` → `expect(mockAddNodeClass).toHaveBeenCalledWith('node-g1', 'move-picked', 'move')`
 - `test('onNodeClick 拾取后 setNodePosition 吸附到当前光标位置')`：先手动触发 `capturedCallback({ x: 300, y: 400 })` 更新 `lastModelPos`，再 `handler.onNodeClick!('node-g1')` → `expect(mockSetNodePosition).toHaveBeenCalledWith('node-g1', { x: 300, y: 400 })`
@@ -133,6 +140,7 @@ const mockTrackCursor = vi.fn((cb: (pos: { x: number; y: number }) => void) => {
 **getNodePosition mock** 在 picked 状态下需要从 renderer 返回当前预览位置（即 `setNodePosition` 最后设置的值），测试中 mock 应维护一个简单的 `Map<nodeId, position>` 内部状态来模拟此行为。
 
 需要覆盖：
+
 - `test('无碰撞放置后 applyBatchToGraph 被调用')`：`handler.onCanvasClick!({ x: 2000, y: 2000 })` → 验证 `graphStore.graphView` 中节点位置已更新。
 - `test('无碰撞放置后 removeNodeClass move-picked 被调用')`：放置成功后 `expect(mockRemoveNodeClass).toHaveBeenCalledWith('node-g1', 'move-picked', 'move')`
 - `test('无碰撞放置后 isActive 仍为 true（工具未停用）')`：放置成功后 `expect(handler.isActive).toBe(true)`
@@ -146,6 +154,7 @@ const mockTrackCursor = vi.fn((cb: (pos: { x: number; y: number }) => void) => {
 `cancelPick` 的触发路径：notification 的 `onCancel` 回调。测试通过 `handler.notification.onCancel()` 调用来模拟右键取消。
 
 需要覆盖：
+
 - `test('cancelPick 调用 resetNodePosition')`：`handler.notification!.onCancel()` → `expect(mockResetNodePosition).toHaveBeenCalledWith('node-g1')`
 - `test('cancelPick 调用 clearAllPreviews move')`：`expect(mockClearAllPreviews).toHaveBeenCalledWith('move')`
 - `test('cancelPick 后 cursorClass 回到 cursor-crosshair')`：回到 idle → `expect(handler.cursorClass).toBe('cursor-crosshair')`
@@ -157,10 +166,12 @@ const mockTrackCursor = vi.fn((cb: (pos: { x: number; y: number }) => void) => {
 `cursorClass` 和 `notification` 是 `computed` 属性，只读、反应式。验证不同状态下的输出：
 
 **cursorClass**：
+
 - `test('未激活时 cursorClass 为 null')`：不调 activate → `expect(handler.cursorClass).toBeNull()`
 - `test('激活且未拾取时 cursorClass 为 cursor-crosshair')`：activate 后、未 onNodeClick → `expect(handler.cursorClass).toBe('cursor-crosshair')`
 
 **notification**：
+
 - `test('未激活时 notification 为 null')`：不调 activate → `expect(handler.notification).toBeNull()`
 - `test('激活且未拾取时 notification 为 null')`：activate 后 → `expect(handler.notification).toBeNull()`
 
@@ -170,11 +181,12 @@ const mockTrackCursor = vi.fn((cb: (pos: { x: number; y: number }) => void) => {
 
 ## 新增/修改文件
 
-| 文件 | 职责 | 操作 |
-|------|------|------|
+| 文件                                                   | 职责                     | 操作     |
+| ------------------------------------------------------ | ------------------------ | -------- |
 | `frontend/src/feature-tools/toolbar/move-node.test.ts` | move_node 状态机单元测试 | **新增** |
 
 **不修改的文件**（红线）：
+
 - `move_node.ts`（源码）
 - `useRenderer.ts`、`graph_element_mapper.ts`、`cytoscape_style.ts`、`graph_interaction.ts`（renderer 层）
 - `graph_store.ts`、`ui_store.ts`（Pinia store）
@@ -186,6 +198,7 @@ const mockTrackCursor = vi.fn((cb: (pos: { x: number; y: number }) => void) => {
 ## 变更边界
 
 **禁止修改**：
+
 - `move_node.ts` 源码（包括但不限于：导出额外内部状态供测试读取、将私有变量改为 ref、添加 test-only 函数）
 - `useRenderer.ts`（包括：添加 mock 专用接口、暴露内部状态）
 - 任何 `feature-tools/toolbar/` 下的其他源文件
@@ -194,12 +207,14 @@ const mockTrackCursor = vi.fn((cb: (pos: { x: number; y: number }) => void) => {
 - `vitest.config.ts`
 
 **允许**：
+
 - 在 `move-node.test.ts` 内部使用 `vi.mock()`、`vi.fn()`、`vi.clearAllMocks()`
 - 在测试中调用 `handler.notification.onCancel()` 触发 cancelPick 路径
 - 在测试中手动调用 `capturedCallback()` 模拟光标移动
 - 在 mock `useRenderer` 中维护内部状态模拟 `getNodePosition` 的返回值
 
 **Mock 隔离要求**：
+
 - `vi.mock('@/cytoscape/useRenderer')` 的 mock 实现仅影响 `move-node.test.ts`，不影响其他测试文件
 - 每个 `test()` 用例独立——`beforeEach` 中 `vi.clearAllMocks()` + 重新创建 handler
 
@@ -226,6 +241,7 @@ const mockTrackCursor = vi.fn((cb: (pos: { x: number; y: number }) => void) => {
 ## subagent task 返回要求
 
 完成后返回：
+
 1. 测试文件完整路径
 2. 用例清单（每个 `test()` 一句说明 + 覆盖的状态转换/公开契约）
 3. mock `useRenderer` 的内部实现说明（getNodePosition 的坐标映射逻辑、trackCursor 回调捕获机制）
