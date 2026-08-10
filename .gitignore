@@ -26,6 +26,7 @@ backend/venv/
 # 临时文件
 git_log.txt
 docs/临时文档/
+prototypes/
 
 # 个人配置
 .opencode/
