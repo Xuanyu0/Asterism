@@ -153,7 +153,7 @@ export function useOperationController() {
         }
 
         // commitBatchToGraphs 内部已同步校验结果到 lastValidationResult，无需重复写入
-        graphStore.commitBatchToGraphs(targets)
+        graphStore.commitBatchToGraphs(targets, { source: 'induce' })
     }
 
     /**
@@ -217,7 +217,7 @@ export function useOperationController() {
         }
 
         // commitBatchToGraphs 内部已同步校验结果到 lastValidationResult，无需重复写入
-        graphStore.commitBatchToGraphs(targets)
+        graphStore.commitBatchToGraphs(targets, { source: 'internalize' })
     }
 
     /**
@@ -281,7 +281,7 @@ export function useOperationController() {
         }
 
         // commitBatchToGraphs 内部已同步校验结果到 lastValidationResult，无需重复写入
-        graphStore.commitBatchToGraphs(targets)
+        graphStore.commitBatchToGraphs(targets, { source: 'diverge' })
     }
 
     // ── 公开 API ──

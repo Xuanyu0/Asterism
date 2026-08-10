@@ -65,7 +65,7 @@ export function useFoldTool(): ToolHandler {
         operations.commitToCurrentGraph([{
             type: operationType,
             targetNodeId: nodeId as NodeId,
-        }])
+        }], { source: id })
     }
 
     return {

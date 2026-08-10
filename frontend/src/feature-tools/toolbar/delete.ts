@@ -114,7 +114,7 @@ export function useDeleteTool(): ToolHandler {
         operations.commitToCurrentGraph([{
             type: 'delete_node',
             nodeId,
-        }])
+        }], { source: id })
     }
 
     function executeDeleteEdge(edgeId: EdgeId): void {
@@ -123,7 +123,7 @@ export function useDeleteTool(): ToolHandler {
         operations.commitToCurrentGraph([{
             type: 'delete_edge',
             edgeId,
-        }])
+        }], { source: id })
     }
 
     return {

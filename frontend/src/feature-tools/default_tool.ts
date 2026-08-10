@@ -146,7 +146,7 @@ export function useDefaultTool(): ToolHandler {
             // 边编辑
             const edge: EdgeData = { ...original, label }
 
-            const validation = operations.commitToCurrentGraph([{ type: 'update_edge', edge }])
+            const validation = operations.commitToCurrentGraph([{ type: 'update_edge', edge }], { source: id })
 
             if (validation.valid) {
                 floatingWindow.close()
@@ -159,7 +159,7 @@ export function useDefaultTool(): ToolHandler {
                 (node as KnowledgeNodeData).summary = summary
             }
 
-            const validation = operations.commitToCurrentGraph([{ type: 'update_node', node }])
+            const validation = operations.commitToCurrentGraph([{ type: 'update_node', node }], { source: id })
 
             if (validation.valid) {
                 floatingWindow.close()

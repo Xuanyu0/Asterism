@@ -42,8 +42,10 @@ export interface GraphOperationAdapterAPI {
      * 参数：
      *
      *     operations — 要执行的原子操作序列。
+     *     options    — [可选] source：操作来源的工具标识，透传至 commitBatchToGraphs
+     *                  （写入 entry.source，缺省 undefined = 未知来源）。
      */
-    commitToCurrentGraph(operations: GraphOperation[]): ValidationResult
+    commitToCurrentGraph(operations: GraphOperation[], options?: { source?: string }): ValidationResult
 
     /**
      * 说明：
@@ -123,7 +125,7 @@ export function useGraphOperationAdapter(): GraphOperationAdapterAPI {
 }
 
 function createGraphOperationAdapter(): GraphOperationAdapterAPI {
-    function commitToCurrentGraph(operations: GraphOperation[]): ValidationResult {
+    function commitToCurrentGraph(operations: GraphOperation[], options?: { source?: string }): ValidationResult {
         const graphStore = useGraphStore()
         const graphView = graphStore.graphView
         if (!graphView) {
@@ -131,7 +133,7 @@ function createGraphOperationAdapter(): GraphOperationAdapterAPI {
             throw new Error('commitToCurrentGraph: 当前无 graphView，无法提交操作')
         }
 
-        const result = graphStore.commitBatchToGraphs([{ graph: graphView, operations }])
+        const result = graphStore.commitBatchToGraphs([{ graph: graphView, operations }], options)
 
         return result.validation
     }

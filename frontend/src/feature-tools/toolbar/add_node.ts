@@ -110,7 +110,7 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
         const validation = operations.commitToCurrentGraph([{
             type: 'add_node',
             node,
-        }])
+        }], { source: id })
 
         if (validation.valid) {
             draftNode.value = null

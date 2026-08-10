@@ -282,7 +282,7 @@ export function useMoveNodeTool(): ToolHandler {
         }
 
         // 无碰撞 → 写入 GraphData
-        const validation = operations.commitToCurrentGraph(result.operations)
+        const validation = operations.commitToCurrentGraph(result.operations, { source: id })
 
         if (validation.valid) {
             // 清除透明度 preview

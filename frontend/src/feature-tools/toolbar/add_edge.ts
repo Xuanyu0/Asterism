@@ -185,7 +185,7 @@ export function useAddEdgeTool(
         const validation = operations.commitToCurrentGraph([{
             type: 'add_edge',
             edge,
-        }])
+        }], { source: id })
 
         if (validation.valid) {
             clearAllPreviews('add-edge')

@@ -256,11 +256,13 @@ export const useGraphStore = defineStore('graph_store', () => {
      *     operationBatch — 图与其对应的操作序列的配对数组
      *     options        — [可选] recordLog：是否写入操作日志（默认 true）；
      *                       skipValidate：透传引擎 applyBatch，跳过 Phase 1 前提校验
-     *                       （undo/redo 恢复型逆元批传 true，正向用户操作默认 false）
+     *                       （undo/redo 恢复型逆元批传 true，正向用户操作默认 false）；
+     *                       source：操作来源的工具标识，透传写入 entry.source
+     *                       （缺省 undefined = 未知来源，供操作日志树 UI 按来源分类）
      */
     function commitBatchToGraphs(
         operationBatch: OperationBatchItem[],
-        options?: { recordLog?: boolean; skipValidate?: boolean },
+        options?: { recordLog?: boolean; skipValidate?: boolean; source?: string },
     ): { validation: ValidationResult } {
         // 第一阶段：按顺序执行所有项，用 latestGraphs 跟踪同一图的中间状态；
         // 逐操作经 onBeforeEachOperation 回调构造逆元（仅图内操作，图级操作跳过）
@@ -372,6 +374,7 @@ export const useGraphStore = defineStore('graph_store', () => {
                 graphSignals,
                 parentIndex: operationLog.value.cursor,
                 timestamp: new Date().toISOString(),
+                source: options?.source,  // 来源工具标识，缺省 undefined = 未知来源
             }
 
             // entry 整体 markRaw 再入栈——operationLog 为 reactive ref，

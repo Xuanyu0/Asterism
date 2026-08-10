@@ -71,7 +71,7 @@ export function useDeconstructTool(): ToolHandler {
             return
         }
 
-        operations.commitToCurrentGraph(result.operations)
+        operations.commitToCurrentGraph(result.operations, { source: 'deconstruct' })
 
         // 单次操作完成后自动退出
         mediator.deactivate()

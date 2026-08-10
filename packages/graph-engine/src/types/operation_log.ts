@@ -49,6 +49,7 @@ export interface ItemOperations {
  *     - operation：一批正向操作，按图分组
  *     - reversalOperations：一批逆元，undo 执行顺序——item 间逆序 + item 内逆序
  *     - graphSignals：图级元数据（新增 / 删除的图）
+ *     - source：操作来源的工具标识（如前端 ToolId），可选，缺省表示未知来源
  */
 export interface OperationLogEntry {
     operation: ItemOperations[]
@@ -56,6 +57,11 @@ export interface OperationLogEntry {
     graphSignals: { added: GraphId[]; deleted: GraphId[] }
     parentIndex: number
     timestamp: string
+    /**
+     * 操作来源的工具标识（如前端 ToolId）。
+     * 可选——缺省表示未知来源（旧数据兼容）；引擎不做校验，仅为前端渲染分类提供信息。
+     */
+    source?: string
 }
 
 /**
