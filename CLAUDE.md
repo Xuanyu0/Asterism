@@ -8,6 +8,10 @@
 [Tailwind CSS 参考文档](https://tailwindcss.zhcndoc.com/docs/styling-with-utility-classes)
 [Cytoscape 参考文档](https://js.cytoscape.org/)
 
+## 项目编码参考资料
+
+编写任何代码注释前，首先阅读：[注释资料](FOR-AGENTS/注释资料.md)
+
 ## 核心定义
 
 - **狭义 GraphData**：`packages/graph-engine/src/types/graph_data.ts` 定义的图结构类型。
@@ -225,57 +229,74 @@ Cytoscape Renderer
 * 警示后人：防止再度由于同一种原因导致 BUG
 * TODO 说明：代码中占位并给出初步编写方向
 
-#### 对于 JSDoc 注释的规范
+#### 对于 TSDoc 注释的规范
 
-核心原则：根据实际需要，灵活选择 JSDoc 注释，因为这种注释很贵
-* 最低编写限度：至少包含说明条目（可以是对其功能、角色 / 作用、架构地位的说明）
-* 按需：引入函数传入的参数说明条目
-* 按需：引入注释对象在项目架构中的地位
-* 按需：引入其他个人觉得必要的条目
-* 对于契约复杂的函数：必须编写 调用契约/代码修改契约 条目
-* 对于有潜在风险的函数：必须编写注意条目
+核心原则：根据实际需要，灵活选择 TSDoc 注释，因为这种注释很贵
+
+TSDoc 是微软提出的 TypeScript 文档注释标准（tsdoc.org），VS Code / vue-tsc 原生识别。tag 分三类：
+
+* **Block tags**（块级，独占一行）：`@param` `@returns` `@remarks` `@typeParam` `@deprecated`（Core 必备组）；`@example` `@defaultValue` `@throws` `@see` `@inheritDoc`（Extended 扩展组）
+* **Modifier tags**（修饰，标记 API 性质，放注释底部单行）：`@internal` `@public` `@alpha` `@beta` `@experimental` `@override` `@sealed` `@virtual` `@readonly` 等
+* **Inline tags**（行内，花括号形式）：`{@link}` 等
+
+关键概念：
+
+* **summary 不是 tag**——注释里第一个 block tag 之前的那段文本即 summary（简要说明），无需 tag。
+* **`@remarks`** 承载 summary 之外的全部细节，用 markdown 语法书写。
+* 官方无"调用契约 / 副作用"专属 tag——此类内容放 `@remarks`。
+
+书写规范：
+
+* tag 名固定英文 + camelCase（`@defaultValue` 非 `@defaultvalue`）。
+* `@param` 语法：`@param name - 描述`（名 + 连字符 + 描述）。
+* 顺序惯例：summary（首段）→ `@remarks` → `@param`/`@returns`/`@throws` → `@example` → 底部 modifier。
+* block tag 之间以空行分隔——空行 = markdown 段落分隔，不加则 LSP hover 会把标题与内容挤成一段。
+* tag 名固定英文，描述内容尽可能用自然语言书写。
 
 几点说明：
-1. JSDoc 本质是 markdown。各条目的小节标题后必须空一行，再写内容。
-   空行 = markdown 段落分隔。不加空行则 LSP hover 浮空窗会把标题和后续内容挤成同一段，不换行显示。
+1. TSDoc 本质是 markdown。tag 内容可含 markdown 元素与 inline tag（`{@link}`）。
 2. 文件头注释的编写可以直接参考这里的建议
-3. 公开函数一定要有 JSDoc，非公开函数、接口等按需决定
+3. 公开函数一定要有 TSDoc，非公开函数、接口等按需决定
 4. 文件头不要写文件名
 5. 注释应该按照其所在的地方有针对性
 
-JSDoc 基础模板：
-```
+TSDoc 基础模板：
+````
 /**
- * 说明：
- *     
- *     (...)
+ * <summary：一句话本质，无需 tag。会被单独展示在索引/列表页，须独立读懂；
+ *  不重复签名已展示的类型/参数信息，只讲"是什么/做什么">
+ *
+ * @remarks
+ * <详细说明：动机、调用契约、前置条件、边界情况、副作用。一个 tag 最多解释一个内容>
+ *
+ * @param paramName - <是什么 / 从哪来 / 特殊规则>
+ * @returns <返回值说明>
  */
-```
+````
 
-扩展条目按需追加，格式同"说明"，小节标题后空一行再写内容。如：
-```
+完整示例：
+````
 /**
- * 说明：
- * 
- *     (...)
+ * 浮空窗定位引擎的实现：给定锚点与浮窗 DOM，决定浮窗的摆放方位与视口边缘行为。
  *
- * 参数：
+ * @remarks
+ * 是 cytoscape-popper 注入的定位插槽。调用契约：
+ * - 调用方须持有句柄，在关闭 / 切换目标 / 卸载时调 destroy
+ * - update 随 pan/zoom/position 高频触发
  *
- *     paramName — 是什么 / 从哪来 / 特殊规则
+ * @param ref - 锚点引用对象（cytoscape-popper 注入）
+ * @param content - 被锚定的内容元素
+ * @returns 可重算的定位句柄 { update }
  *
- * 调用契约：
- *
- *     (...)
- *
- * 代码修改契约：
- *
- *     (...)
- *
- * 注意：
- *
- *     (...)
+ * @example
+ * ```ts
+ * const handle = attachElementPopper(cy, nodeId, el)
+ * handle.update()   // 目标位移后重算
+ * handle.destroy()  // 关闭时清理
+ * ```
  */
-```
+````
+
 
 ### Import 组织规范
 
