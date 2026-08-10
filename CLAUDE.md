@@ -18,34 +18,38 @@
 - **广义 GraphData**：一切需要持久化存储的数据（狭义 GraphData + OperationLog + 其他持久化数据）。
 - **GraphEngine**：框架无关、本项目特定义下无副作用（不通过引用修改外部数据）的广义 GraphData 状态迁移引擎，是系统中所有 GraphData 转换操作的唯一入口。
   （隐患：execute 内部 `new Date().toISOString()` 产生非确定性时间戳。当前快照式 undo 无影响，若未来升级 Event Sourcing 需提升为参数由 Runtime 传入）
-  - 负责：定义类型、validate / execute / compose / replay
-  - 不负责：I/O、持久化、持有状态
-  - 与框架无关
+    - 负责：定义类型、validate / execute / compose / replay
+    - 不负责：I/O、持久化、持有状态
+    - 与框架无关
 - **Runtime 层**：位于前端的 GraphData 状态所有者，负责持有运行时状态、编排引擎操作（调 Engine → 后处理）、实现持久化 I/O。Runtime 不负责 UI 渲染和纯函数转换，一定是框架绑定的（当前为 Pinia + Vue）。Runtime 层内部再分两层：
-  - **graph_store.ts（数据核心）**：内部的函数满足 **Graph.vue 调用 ∨ 唯一图数据修改入口 ∨ 唯一图数据回溯入口**。
-  - **adapters/（业务适配层）**：图数据业务逻辑的封装，经 store 公开状态访问共享运行时数据，不持有状态本身。依赖方向：业务 → 适配层 → store（单向）
+    - **graph_store.ts（数据核心）**：内部的函数满足 **Graph.vue 调用 ∨ 唯一图数据修改入口 ∨ 唯一图数据回溯入口**。
+    - **adapters/（业务适配层）**：图数据业务逻辑的封装，经 store 公开状态访问共享运行时数据，不持有状态本身。依赖方向：业务 → 适配层 → store（单向）
 - **Cytoscape 渲染/交互层**：GraphData 的只读映射/拷贝。接收 GraphData 渲染到画布，捕获交互事件后经交互逻辑层（feature-tools/）回流至 Runtime。禁止持有 GraphData 引用、禁止保存业务状态、禁止直接修改 GraphData
 - **工具**：前端页面中用户主动激活的状态。在此状态下，用户的画布交互（点击、拖拽）被解释为该工具特有的语义，并最终转化为对 GraphData 的修改。工具不直接操作 GraphData，通过 Runtime 层写入。目前按交互入口分为两类：
-  - 常驻操作栏工具：通过工具栏按钮激活，生命周期由 `feature-tools/mediator.ts` 管理
-  - 模式工具：先进入 Cogniton 或 Arrangement 模式，再选择具体操作
-  - 规则：同一时刻最多一个工具处于激活状态，多个入口共享此互斥约束
+    - 常驻操作栏工具：通过工具栏按钮激活，生命周期由 `feature-tools/mediator.ts` 管理
+    - 模式工具：先进入 Cogniton 或 Arrangement 模式，再选择具体操作
+    - 规则：同一时刻最多一个工具处于激活状态，多个入口共享此互斥约束
 - **交互逻辑层**：用户与工具的交互通道。采用"水平分层 + 垂直自包含"混合架构，以下是其包含的内容：
-  - 水平分层（所有工具共享）：
-    - 按钮 UI 定义：`feature-tools/toolbar/config.ts`（图标、标签、处理器工厂）+ `GraphPermanentToolbar.vue`（渲染）
-    - 生命周期管理：`feature-tools/mediator.ts`（注册、激活/取消、互斥保证）
-    - 事件捕获与转发：`cytoscape/cy_interaction.ts`（Cytoscape 事件 → 语义事件）→ `feature-tools/mediator.ts`（转发至活跃 handler）
-  - 垂直自包含（每个工具独立）：
-    - 工具逻辑 + 中间变量：每个工具拥有自己的激活状态、光标样式、画布点击处理、操作构造
-    - 数据修改：经工具层适配 `useGraphOperationAdapter.commitToCurrentGraph` 委托 Runtime（提交 + 校验同步）
-  - 不负责：GraphData 存储、持久化、UI 模式切换
+    - 水平分层（所有工具共享）：
+        - 按钮 UI 定义：`feature-tools/toolbar/config.ts`（图标、标签、处理器工厂）+ `GraphPermanentToolbar.vue`（渲染）
+        - 生命周期管理：`feature-tools/mediator.ts`（注册、激活/取消、互斥保证）
+        - 事件捕获与转发：`cytoscape/cy_interaction.ts`（Cytoscape 事件 → 语义事件）→ `feature-tools/mediator.ts`（转发至活跃 handler）
+    - 垂直自包含（每个工具独立）：
+        - 工具逻辑 + 中间变量：每个工具拥有自己的激活状态、光标样式、画布点击处理、操作构造
+        - 数据修改：经工具层适配 `useGraphOperationAdapter.commitToCurrentGraph` 委托 Runtime（提交 + 校验同步）
+    - 不负责：GraphData 存储、持久化、UI 模式切换
 
-## 测试命令
+## 命令
 
 ```bash
 # 跑所有前端测试
 pnpm --filter frontend test
 # 跑所有 GE 测试
 pnpm --filter @my-project/graph-engine test
+# 格式化全项目代码（frontend + graph-engine + docs + md）
+pnpm format
+# 格式化单个文件（自动读取根 .prettierrc.json 配置）
+npx prettier --write <文件路径>
 ```
 
 ### 测试文件约定
@@ -61,6 +65,7 @@ pnpm --filter @my-project/graph-engine test
 ## 技术栈
 
 ### 前端
+
 - Vue 3 (Composition API + `<script setup>`)
 - TypeScript 6.0
 - Pinia (1 个 Store)
@@ -69,16 +74,20 @@ pnpm --filter @my-project/graph-engine test
 - pnpm（禁止 npm / yarn）
 
 ### 后端（规划中）
+
 - FastAPI (Python)
 
 ### 数据库（规划中）
+
 - Supabase
 
 ### AI（规划中）
+
 - LangChain
 - LangGraph
 
 ### 开发环境
+
 - WSL Ubuntu + VSCode
 
 ### MVP 阶段暂不启动
@@ -92,9 +101,9 @@ pnpm --filter @my-project/graph-engine test
 2. **Cytoscape 只是 Renderer**，永远不是事实源
 3. **Local First** — 当前用 localStorage 持久化
 4. **禁止 `watch` 使用 `deep: true`**：
-   - GraphData 变更永远走引用替换（引擎返回新对象），浅层 watch 足够
-   - 必要时的替代方案：去掉 `deep`，或窄化到具体叶子属性：`watch(() => store.x.y, cb)`
-   - 理由：有经过测试的未知非预期行为
+    - GraphData 变更永远走引用替换（引擎返回新对象），浅层 watch 足够
+    - 必要时的替代方案：去掉 `deep`，或窄化到具体叶子属性：`watch(() => store.x.y, cb)`
+    - 理由：有经过测试的未知非预期行为
 
 ## 项目架构（严格单向数据流）
 
@@ -105,7 +114,7 @@ Cytoscape Renderer
     ↓  原始事件
 渲染/交互层 (cytoscape/)              — 严格隔离 Cytoscape 外部库；GraphData 为只读拷贝并映射
     ├── useRenderer.ts     — 渲染运行时 Cy 单例持有者（mount / destroy；syncFromGraphData 是唯一接收 GraphData 的渲染入口）
-    ├── cy_element_mapper.ts + mapper-utils/ — GraphData → CyElements 
+    ├── cy_element_mapper.ts + mapper-utils/ — GraphData → CyElements
     │                        （私有 mapper： fold_filter 折叠过滤 / visual_mapper 视觉映射 / class_mapper class 高亮）
     ├── cy_style.ts        — Cy 视觉样式配置
     └── cy_interaction.ts  — Cy 事件 → 语义事件（只翻译，不转发）
@@ -161,8 +170,8 @@ Cytoscape Renderer
 
 ## Pinia Store
 
-| Store | 职责 | 禁止 |
-|-------|------|------|
+| Store       | 职责                                                        | 禁止                     |
+| ----------- | ----------------------------------------------------------- | ------------------------ |
 | graph_store | GraphData 唯一事实源 + 共享运行时状态 + 底层能力 + 唯一入口 | Draft/Cytoscape 禁止进入 |
 
 > 图数据业务逻辑（导航 / 工具提交 / 查询包装）在 `graph/adapters/` 两个适配层，不进入 store。
@@ -187,23 +196,24 @@ Cytoscape Renderer
 
 ### 变量命名规则
 
-* 长度随作用域变化（即：局部变量短小即可）
-* 模块级作用域或对象内部跨多个函数体的共享变量命名必须明确，可以被检索
+- 长度随作用域变化（即：局部变量短小即可）
+- 模块级作用域或对象内部跨多个函数体的共享变量命名必须明确，可以被检索
 
 ### 文件命名（snake_case）
 
 所有 `.ts` 文件统一 `snake_case`：
+
 - ✅ `graph_store.ts`, `graph_registry.ts`, `graph_persistence.ts`
 - ❌ `GraphStore.ts`, `graphStore.ts`, `Graph_Store.ts`
 
 其他两类：
 
 1. **Vue 组件文件**（`.vue`）：统一 **PascalCase**（Vue 生态约定）
-   - ✅ `KnowledgeGraph.vue`, `NodeWindow.vue`, `OperationToolbar.vue`
+    - ✅ `KnowledgeGraph.vue`, `NodeWindow.vue`, `OperationToolbar.vue`
 
 2. **Vue 组合式函数**（以 `use` 开头的 `.ts` 文件）：统一 **camelCase**（Vue 生态约定 + 区分于普通工具函数）
-   - ✅ `useRenderer.ts`, `useDragPosition.ts`, `useOverflowDetection.ts`
-   - ❌ `use_renderer.ts`, `useDrag_Position.ts`
+    - ✅ `useRenderer.ts`, `useDragPosition.ts`, `useOverflowDetection.ts`
+    - ❌ `use_renderer.ts`, `useDrag_Position.ts`
 
 ### 缩进规范
 
@@ -211,23 +221,23 @@ Cytoscape Renderer
 
 ### 注释规范
 
-* 项目里注释规范的落实文件可以参考并学习：`frontend/src/graph/graph_store.ts` 和 `frontend/src/cytoscape/useRenderer.ts`
+- 项目里注释规范的落实文件可以参考并学习：`frontend/src/graph/graph_store.ts` 和 `frontend/src/cytoscape/useRenderer.ts`
 
 #### 写注释的核心前提
 
-* 当代码本身没有办法或者很难通过一种显而易见的方法表现出它的**意图、功能、使用限制、内在结构**的时候，则才需要使用到注释。
-* 否则，应该尽可能尝试使用更优秀，且是唯一决定程序行为事实的**代码**来表达。因为注释越少，需要维护成本就越少
+- 当代码本身没有办法或者很难通过一种显而易见的方法表现出它的**意图、功能、使用限制、内在结构**的时候，则才需要使用到注释。
+- 否则，应该尽可能尝试使用更优秀，且是唯一决定程序行为事实的**代码**来表达。因为注释越少，需要维护成本就越少
 
 #### 写单行注释的推荐情况
 
 > 注：以下情形仅供参考，不涵盖所有情况
 
-* 法律信息
-* 提供信息：包括编写时决策的上下文或者程序在此处容易遗漏的重要上下文，或者对单行代码中的细微值得说明之处，通过注释放大
-* 对不寻常的实现解释意图：可能包括作者本身的权衡
-* 阐释陌生代码：如小众外部 API 库的调用规则说明，以及项目内代码的不常见特殊用法和实现（注意：判断范围是项目内）
-* 警示后人：防止再度由于同一种原因导致 BUG
-* TODO 说明：代码中占位并给出初步编写方向
+- 法律信息
+- 提供信息：包括编写时决策的上下文或者程序在此处容易遗漏的重要上下文，或者对单行代码中的细微值得说明之处，通过注释放大
+- 对不寻常的实现解释意图：可能包括作者本身的权衡
+- 阐释陌生代码：如小众外部 API 库的调用规则说明，以及项目内代码的不常见特殊用法和实现（注意：判断范围是项目内）
+- 警示后人：防止再度由于同一种原因导致 BUG
+- TODO 说明：代码中占位并给出初步编写方向
 
 #### 对于 TSDoc 注释的规范
 
@@ -235,25 +245,26 @@ Cytoscape Renderer
 
 TSDoc 是微软提出的 TypeScript 文档注释标准（tsdoc.org），VS Code / vue-tsc 原生识别。tag 分三类：
 
-* **Block tags**（块级，独占一行）：`@param` `@returns` `@remarks` `@typeParam` `@deprecated`（Core 必备组）；`@example` `@defaultValue` `@throws` `@see` `@inheritDoc`（Extended 扩展组）
-* **Modifier tags**（修饰，标记 API 性质，放注释底部单行）：`@internal` `@public` `@alpha` `@beta` `@experimental` `@override` `@sealed` `@virtual` `@readonly` 等
-* **Inline tags**（行内，花括号形式）：`{@link}` 等
+- **Block tags**（块级，独占一行）：`@param` `@returns` `@remarks` `@typeParam` `@deprecated`（Core 必备组）；`@example` `@defaultValue` `@throws` `@see` `@inheritDoc`（Extended 扩展组）
+- **Modifier tags**（修饰，标记 API 性质，放注释底部单行）：`@internal` `@public` `@alpha` `@beta` `@experimental` `@override` `@sealed` `@virtual` `@readonly` 等
+- **Inline tags**（行内，花括号形式）：`{@link}` 等
 
 关键概念：
 
-* **summary 不是 tag**——注释里第一个 block tag 之前的那段文本即 summary（简要说明），无需 tag。
-* **`@remarks`** 承载 summary 之外的全部细节，用 markdown 语法书写。
-* 官方无"调用契约 / 副作用"专属 tag——此类内容放 `@remarks`。
+- **summary 不是 tag**——注释里第一个 block tag 之前的那段文本即 summary（简要说明），无需 tag。
+- **`@remarks`** 承载 summary 之外的全部细节，用 markdown 语法书写。
+- 官方无"调用契约 / 副作用"专属 tag——此类内容放 `@remarks`。
 
 书写规范：
 
-* tag 名固定英文 + camelCase（`@defaultValue` 非 `@defaultvalue`）。
-* `@param` 语法：`@param name - 描述`（名 + 连字符 + 描述）。
-* 顺序惯例：summary（首段）→ `@remarks` → `@param`/`@returns`/`@throws` → `@example` → 底部 modifier。
-* block tag 之间以空行分隔——空行 = markdown 段落分隔，不加则 LSP hover 会把标题与内容挤成一段。
-* tag 名固定英文，描述内容尽可能用自然语言书写。
+- tag 名固定英文 + camelCase（`@defaultValue` 非 `@defaultvalue`）。
+- `@param` 语法：`@param name - 描述`（名 + 连字符 + 描述）。
+- 顺序惯例：summary（首段）→ `@remarks` → `@param`/`@returns`/`@throws` → `@example` → 底部 modifier。
+- block tag 之间以空行分隔——空行 = markdown 段落分隔，不加则 LSP hover 会把标题与内容挤成一段。
+- tag 名固定英文，描述内容尽可能用自然语言书写。
 
 几点说明：
+
 1. TSDoc 本质是 markdown。tag 内容可含 markdown 元素与 inline tag（`{@link}`）。
 2. 文件头注释的编写可以直接参考这里的建议
 3. 公开函数一定要有 TSDoc，非公开函数、接口等按需决定
@@ -261,7 +272,8 @@ TSDoc 是微软提出的 TypeScript 文档注释标准（tsdoc.org），VS Code 
 5. 注释应该按照其所在的地方有针对性
 
 TSDoc 基础模板：
-````
+
+```
 /**
  * <summary：一句话本质，无需 tag。会被单独展示在索引/列表页，须独立读懂；
  *  不重复签名已展示的类型/参数信息，只讲"是什么/做什么">
@@ -272,9 +284,10 @@ TSDoc 基础模板：
  * @param paramName - <是什么 / 从哪来 / 特殊规则>
  * @returns <返回值说明>
  */
-````
+```
 
 完整示例：
+
 ````
 /**
  * 浮空窗定位引擎的实现：给定锚点与浮窗 DOM，决定浮窗的摆放方位与视口边缘行为。
@@ -297,11 +310,11 @@ TSDoc 基础模板：
  */
 ````
 
-
 ### Import 组织规范
 
 强制分组 + 空行分隔
 规则：
+
 - 每组之间空一行
 - `type` import 和普通 import 不要混在同一组
 
@@ -309,12 +322,12 @@ TSDoc 基础模板：
 
 内联的价值是防止阅读时跳来跳去，但前提是和提取成工具函数后一样"职责清晰、分块明显、注意力引导明确"。判断依据是**参数数量**——参数数量约等于提取的理解成本与耦合度：
 
-| 场景 | 拆不拆 |
-|------|--------|
-| 无参 / 单参，只调 1 次 | ✅ 允许提取（提取成本低、函数名即注意力引导），不强制内联 |
-| 多参，只调 1 次 | ❌ 倾向内联（多参提取会把与主流程的耦合摊到函数签名上，读者仍需停下来想） |
-| 被 ≥2 个函数调用 | ✅ 拆为辅助函数 |
-| export 为公开 API | ✅ 独立函数及文档注释 |
+| 场景                   | 拆不拆                                                                    |
+| ---------------------- | ------------------------------------------------------------------------- |
+| 无参 / 单参，只调 1 次 | ✅ 允许提取（提取成本低、函数名即注意力引导），不强制内联                 |
+| 多参，只调 1 次        | ❌ 倾向内联（多参提取会把与主流程的耦合摊到函数签名上，读者仍需停下来想） |
+| 被 ≥2 个函数调用       | ✅ 拆为辅助函数                                                           |
+| export 为公开 API      | ✅ 独立函数及文档注释                                                     |
 
 ### 私有函数放在文件末尾
 
@@ -334,12 +347,12 @@ function helperB() { ... }
 
 ## 设计决策权限
 
-| 行为 | 允许 | 禁止 |
-|------|------|------|
-| 在对话中提供设计建议、架构方案 | ✅ | |
-| 将自发的设计决策写入文档文件（`docs/` 下的任何 `.md`） | | ❌ |
-| 经用户明确许可后修改文档 | ✅ | |
-| 修改代码（`.ts` / `.vue` 等源文件） | ✅ 按现有规范执行 | |
+| 行为                                                   | 允许              | 禁止 |
+| ------------------------------------------------------ | ----------------- | ---- |
+| 在对话中提供设计建议、架构方案                         | ✅                |      |
+| 将自发的设计决策写入文档文件（`docs/` 下的任何 `.md`） |                   | ❌   |
+| 经用户明确许可后修改文档                               | ✅                |      |
+| 修改代码（`.ts` / `.vue` 等源文件）                    | ✅ 按现有规范执行 |      |
 
 规则：
 
@@ -352,11 +365,11 @@ function helperB() { ... }
 
 `docs/` 下三个子目录存在严格的权威层级：
 
-| 层级 | 目录 | 角色 | 生命周期 | 内容 |
-|------|------|------|---------|------|
-| L1 | `docs/设计/` | 产品 spec | 持久 | 用户亲手书写的设计定义、交互规则、视觉规范。描述产品意图与用户体验目标。 |
-| L2 | `docs/*开发文档/` | 过程文档 | 临时（完成后归档） | 步骤文档（步骤划分、进度跟踪、难度评估、产出 commit 的引用）和发现文档（BUG / 改进 / 不确定项）。服务于实现过程，不可违背 L1。 |
-| L3 | `*开发文档/提示词/` | 施工手册 | 一次性 | Agent 执行时的工程契约。包含功能需求、验收标准、scope guard、交互规则。溯源引用 L1 |
+| 层级 | 目录                | 角色      | 生命周期           | 内容                                                                                                                           |
+| ---- | ------------------- | --------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| L1   | `docs/设计/`        | 产品 spec | 持久               | 用户亲手书写的设计定义、交互规则、视觉规范。描述产品意图与用户体验目标。                                                       |
+| L2   | `docs/*开发文档/`   | 过程文档  | 临时（完成后归档） | 步骤文档（步骤划分、进度跟踪、难度评估、产出 commit 的引用）和发现文档（BUG / 改进 / 不确定项）。服务于实现过程，不可违背 L1。 |
+| L3   | `*开发文档/提示词/` | 施工手册  | 一次性             | Agent 执行时的工程契约。包含功能需求、验收标准、scope guard、交互规则。溯源引用 L1                                             |
 
 **冲突处理规则**：
 
@@ -368,10 +381,10 @@ function helperB() { ... }
 
 #### 两种检索机制
 
-| 机制 | 触发方式 | 适用场景 |
-|------|---------|---------|
-| **注意力** | 默认开启，无需显式调用 | 当前上下文已有的内容、近期讨论过的规则 |
-| **grep（Bash 工具）** | 显式执行 shell 命令 | 跨文件定位、精确匹配、存在性确认 |
+| 机制                  | 触发方式               | 适用场景                               |
+| --------------------- | ---------------------- | -------------------------------------- |
+| **注意力**            | 默认开启，无需显式调用 | 当前上下文已有的内容、近期讨论过的规则 |
+| **grep（Bash 工具）** | 显式执行 shell 命令    | 跨文件定位、精确匹配、存在性确认       |
 
 注意力 + grep 协同使用：注意力判断"该不该搜"，grep 执行"精确搜"。
 
@@ -396,19 +409,20 @@ docs/spec/        ← 最后检索
 
 #### 必须 grep 的场景
 
-| 场景 | 说明 |
-|------|------|
-| **功能设计查证** | 当前上下文中不存在的设计概念、不确定的规则约束 |
+| 场景                 | 说明                                                     |
+| -------------------- | -------------------------------------------------------- |
+| **功能设计查证**     | 当前上下文中不存在的设计概念、不确定的规则约束           |
 | **跨文件连通性验证** | 某个函数/类型/变量"在哪里被调用""是否被读取""是否被导出" |
-| **存在性确认** | 某个标识符/功能/组件是否存在 |
-| **改动影响面评估** | 修改前查所有调用方 |
-| **术语映射** | 用户说的中文术语和代码中的英文标识符之间的对应 |
-| **冲突裁决** | 需要同时查 L1/L2/L3 对同一概念的表述时 |
+| **存在性确认**       | 某个标识符/功能/组件是否存在                             |
+| **改动影响面评估**   | 修改前查所有调用方                                       |
+| **术语映射**         | 用户说的中文术语和代码中的英文标识符之间的对应           |
+| **冲突裁决**         | 需要同时查 L1/L2/L3 对同一概念的表述时                   |
 
-* 若没有找到，就作为不确定项标记，然后直接向用户报告
+- 若没有找到，就作为不确定项标记，然后直接向用户报告
 
-## 该项目 Debug 的特效药 
+## 该项目 Debug 的特效药
 
 **注意**：修 BUG 时，不要一直推测，如果发现一个 BUG 有多个不确定的修改方向，应主动和用户协商尝试使用以下 Debug 的方法
-* 个人推荐首先尝试 log 大法：在项目的流单向数据流下，专治**某一层数据修改异常**、**设计与执行不一致**、**没有 Debug 线索**
-* 其次是针对 GE 的单元测试：GE 纯函数式编程，输出可复现。
+
+- 个人推荐首先尝试 log 大法：在项目的流单向数据流下，专治**某一层数据修改异常**、**设计与执行不一致**、**没有 Debug 线索**
+- 其次是针对 GE 的单元测试：GE 纯函数式编程，输出可复现。
