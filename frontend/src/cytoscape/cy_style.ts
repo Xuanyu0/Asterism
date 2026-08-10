@@ -8,8 +8,6 @@
  *     1. createCytoscapeStyle()
  */
 
-
-
 /**
  * 功能：
  *
@@ -27,8 +25,8 @@ export function createCytoscapeStyle() {
         {
             selector: 'node',
             style: {
-                'width': 'data(nodeDiameter)',
-                'height': 'data(nodeDiameter)',
+                width: 'data(nodeDiameter)',
+                height: 'data(nodeDiameter)',
                 'font-size': 'data(fontSize)',
                 'background-color': `#f0f0f0`,
                 'border-color': '#3d3d3d',
@@ -86,7 +84,7 @@ export function createCytoscapeStyle() {
         {
             selector: 'node.ref-communication',
             style: {
-                'opacity': 0.5,
+                opacity: 0.5,
             },
         },
         // 删除目标高亮
@@ -131,11 +129,22 @@ export function createCytoscapeStyle() {
                 'border-color': '#ef4444',
             },
         },
+        // 添加节点工具：光标跟随占位节点（半透明 = "预览中"；
+        // 碰撞时叠加 preview-collision 红框）
+        // events: 'no' — 预览节点不接收事件、点击穿透到画布，
+        // 否则跟随光标的预览节点会拦截 tap，onCanvasClicked 不触发。
+        {
+            selector: '.add-node-preview',
+            style: {
+                opacity: 0.5,
+                'events': 'no' as const,
+            },
+        },
         // 移动工具：已拾取节点半透明
         {
             selector: '.move-picked',
             style: {
-                'opacity': 0.4,
+                opacity: 0.4,
             },
         },
         // 搜索定位提示（revealElement 施加，1.2s 后移除）
@@ -151,7 +160,7 @@ export function createCytoscapeStyle() {
             selector: 'edge.search-focus',
             style: {
                 'line-color': '#3b82f6',
-                'width': 4,
+                width: 4,
                 'target-arrow-color': '#3b82f6',
             },
         },

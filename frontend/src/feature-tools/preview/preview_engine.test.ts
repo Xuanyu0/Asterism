@@ -1,17 +1,18 @@
 /**
  * 说明：
  *
- *     previewAddEdge / previewMoveNode 的单元测试。
+ *     previewAddEdge / previewMoveNode / previewAddNode 的单元测试。
  *     覆盖：稀疏图不碰撞对、密集图两端碰撞、单端碰撞、degree +1、
  *     入参隔离（JSON 序列化克隆，兼容响应式 Proxy）、校验失败路径、
- *     kind / direction 透传、移动位置与碰撞判定。
+ *     kind / direction 透传、移动位置与碰撞判定、
+ *     添加节点占位预览（位置 / kind 透传 / 碰撞 / 入参隔离 / reactive 兼容）。
  */
 
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 import { reactive } from 'vue'
-import { previewAddEdge, previewMoveNode } from './preview_engine'
+import { previewAddEdge, previewAddNode, previewMoveNode } from './preview_engine'
 
-import type { EdgeData, GraphData, GraphId, NodeData, NodeId } from '@my-project/graph-engine'
+import type { EdgeData, GraphData, GraphId, KnowledgeNodeData, NodeData, NodeId } from '@my-project/graph-engine'
 
 
 describe('previewAddEdge', () => {
@@ -205,6 +206,69 @@ describe('previewMoveNode', () => {
         expect(result.collides).toBe(false)
         expect(result.previewGraph.nodes.find(node => node.id === 'node-g1')?.position)
             .toEqual({ x: 1000, y: 400 })
+    })
+})
+
+
+describe('previewAddNode', () => {
+    let golden: GraphData
+
+    beforeEach(() => {
+        localStorage.clear()
+        golden = createGoldenTestGraphV2()
+    })
+
+    test('金牌图空位 (1000,400)：valid true、不碰撞、节点数 +1、position 正确、kind 透传', () => {
+        const result = previewAddNode(golden, { x: 1000, y: 400 }, 'real')
+
+        expect(result.valid).toBe(true)
+        expect(result.collides).toBe(false)
+        expect(result.previewGraph.nodes.length).toBe(golden.nodes.length + 1)
+
+        const added = result.previewGraph.nodes.find(node => node.id === result.nodeId) as KnowledgeNodeData | undefined
+        expect(added?.position).toEqual({ x: 1000, y: 400 })
+        expect(added?.kind).toBe('real')
+    })
+
+    test('与 node-g1 位置 (50,200) 重叠：collides true（previewGraph 仍含新节点）', () => {
+        const result = previewAddNode(golden, { x: 50, y: 200 }, 'real')
+
+        expect(result.valid).toBe(true)
+        expect(result.collides).toBe(true)
+        expect(result.previewGraph.nodes.some(node => node.id === result.nodeId)).toBe(true)
+    })
+
+    test('不修改入参 graph', () => {
+        const nodesBefore = golden.nodes.length
+
+        const result = previewAddNode(golden, { x: 1000, y: 400 }, 'real')
+
+        expect(golden.nodes.length).toBe(nodesBefore)
+        expect(result.previewGraph).not.toBe(golden)
+    })
+
+    test('kind 透传：virtual 节点且 form 为空', () => {
+        const result = previewAddNode(golden, { x: 1000, y: 400 }, 'virtual')
+
+        expect(result.valid).toBe(true)
+
+        const added = result.previewGraph.nodes.find(node => node.id === result.nodeId) as KnowledgeNodeData | undefined
+        expect(added?.kind).toBe('virtual')
+        expect(added?.form).toBeUndefined()
+    })
+
+    test('reactive 包裹的图可正常预览（回归：structuredClone 抛 DataCloneError）', () => {
+        const reactiveGraph = reactive(golden)
+
+        const result = previewAddNode(
+            reactiveGraph as unknown as GraphData,
+            { x: 1000, y: 400 },
+            'real',
+        )
+
+        expect(result.valid).toBe(true)
+        expect(result.collides).toBe(false)
+        expect(result.previewGraph.nodes.length).toBe(golden.nodes.length + 1)
     })
 })
 

@@ -24,6 +24,21 @@ import type { ToolMediatorAPI } from './mediator'
 import type { ToolHandler } from './types'
 
 
+// ── Mock useRenderer ──
+// useAddNodeTool 构造时调用 useRenderer（实时预览接线）；jsdom 无 Cytoscape 容器，
+// 需拦截为 no-op 以保持纯 handler 状态机测试。
+
+vi.mock('@/cytoscape/useRenderer', () => ({
+    useRenderer: () => ({
+        syncFromGraphData: vi.fn(),
+        addNodeClass: vi.fn(),
+        removeNodeClass: vi.fn(),
+        clearAllPreviews: vi.fn(),
+        trackCursor: () => ({ stop: vi.fn() }),
+    }),
+}))
+
+
 beforeEach(() => {
     setActivePinia(createPinia())
     localStorage.clear()
