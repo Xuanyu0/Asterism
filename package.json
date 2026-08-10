@@ -1,5 +1,14 @@
 {
-  "name": "antinomy",
-  "private": true,
-  "packageManager": "pnpm@11.4.0"
+    "name": "antinomy",
+    "private": true,
+    "packageManager": "pnpm@11.4.0",
+    "scripts": {
+        "dev": "pnpm --filter frontend dev",
+        "format": "prettier --write \"frontend/src/**/*.{ts,vue,tsx}\" \"packages/graph-engine/src/**/*.ts\" \"packages/graph-engine/tests/**/*.ts\" \"docs/**/*.md\" \"*.md\"",
+        "format:check": "prettier --check \"frontend/src/**/*.{ts,vue,tsx}\" \"packages/graph-engine/src/**/*.ts\" \"packages/graph-engine/tests/**/*.ts\" \"docs/**/*.md\" \"*.md\""
+    },
+    "devDependencies": {
+        "prettier": "^3.8.3",
+        "prettier-plugin-tailwindcss": "^0.8.1"
+    }
 }
