@@ -13,7 +13,7 @@
 
 import cytoscape from 'cytoscape'
 import cytoscapePopper from 'cytoscape-popper'
-import { computePosition, flip, limitShift, shift } from '@floating-ui/dom'
+import { computePosition } from '@floating-ui/dom'
 
 import type { Middleware, Placement, Strategy } from '@floating-ui/dom'
 import type { Core } from 'cytoscape'
@@ -30,9 +30,11 @@ export interface PopperAnchorHandle {
  * attachElementPopper 的扩展选项，透传给 floating-ui computePosition。
  *
  * @remarks
- * 各字段缺省值：placement 'right'（目标右侧，验收契约）、strategy 'fixed'（相对视口定位，
- * 不撑大文档——absolute 会使超出视口的浮窗触发滚动条）、middleware flip + shift(limitShift)
- * （视口边缘自动翻转/平移，不截断）。显式传入的选项优先——工厂内 ...options 在默认值之后展开。
+ * 各字段缺省值：placement 'right'（目标右侧，验收契约——设计文档 08-拼接式UI.md
+ * "永远显示在被操作对象右侧"）、strategy 'fixed'（相对视口定位，不撑大文档——
+ * absolute 会使超出视口的浮窗触发滚动条）。**不注入默认 middleware**——flip/shift
+ * 会在视口空间不足时把浮窗翻转到目标左侧，违背"永远在右侧"契约，故不加；
+ * 视口边缘溢出的取舍见设计文档。显式传入的选项优先——工厂内 ...options 在默认值之后展开。
  */
 export interface PopperAnchorOptions {
     placement?: Placement
@@ -64,8 +66,8 @@ export function registerPopperExtension(): void {
  *
  * @param ref - 锚点引用对象（cytoscape-popper 注入，getBoundingClientRect 返回当前渲染包围盒）
  * @param content - 被锚定的内容元素
- * @param options - 透传给 computePosition 的选项；placement 缺省 'right'（目标右侧），
- *                  middleware 缺省 flip + shift(limitShift)，显式传入时覆盖默认
+ * @param options - 透传给 computePosition 的选项；placement 缺省 'right'（目标右侧，
+ *                  不注入默认 middleware——flip/shift 会把浮窗翻到左侧，违背"永远在右侧"）
  * @returns 可重算的定位句柄 { update }
  */
 export function popperFactory(
@@ -73,23 +75,15 @@ export function popperFactory(
     content: HTMLElement,
     options?: PopperAnchorOptions,
 ): { update(): void } {
-    // 默认 middleware 在工厂创建时定型一次——update 随 pan/zoom/position 高频触发，
-    // 每次重建 flip/shift 实例是纯浪费（options.middleware 显式传入时覆盖此默认）
-    const defaultMiddleware: Middleware[] = [
-        flip(),
-        shift({ limiter: limitShift() }),
-    ]
-
     const update = (): void => {
         // computePosition 为异步：坐标就绪后写 left/top（position 由调用方 CSS 提供）。
         // floating-ui 默认 placement 是 'bottom'——必须显式缺省 'right' 满足"目标右侧"验收契约；
-        // 调用方 options 在默认值之后展开，可覆盖 placement / middleware。
+        // 不注入 flip/shift middleware（会把浮窗翻到左侧，违背设计文档"永远在右侧"）。
         void computePosition(ref, content, {
             placement: 'right',
             // 相对视口定位：absolute 会让超出视口的浮窗撑大文档（出现滚动条），
             // fixed 不撑大文档、浮窗钉在视口位置；调用方 options 可覆盖为 'absolute'。
             strategy: 'fixed',
-            middleware: defaultMiddleware,
             ...options,
         }).then(({ x, y }) => {
             content.style.left = `${x}px`

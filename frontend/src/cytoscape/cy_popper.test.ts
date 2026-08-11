@@ -2,11 +2,12 @@
  * cy_popper 锚定模块单元测试。
  *
  * @remarks
- * 覆盖：扩展注册幂等、popperFactory 的 middleware 组成（flip + shift(limitShift)）、
+ * 覆盖：扩展注册幂等、popperFactory 的缺省定位（placement 'right' + strategy 'fixed'、
+ * **不注入默认 middleware**——flip/shift 会把浮窗翻到左侧，违背设计文档"永远在右侧"）、
  * attachElementPopper 的 update/destroy 契约与事件绑定、边锚定默认中点行为、
  * 目标不存在时 no-op 兜底。测试边界：
  * - computePosition 被 mock（捕获调用参数）；flip / shift / limitShift 保持真实实现，
- *   以便验证 middleware 组成
+ *   供调用方显式传入时透传
  * - attachElementPopper 使用 mock cy（getElementById / on / off / popper）
  */
 
@@ -40,7 +41,7 @@ describe('registerPopperExtension', () => {
 })
 
 describe('popperFactory', () => {
-    test('middleware 含 flip + shift(limiter: limitShift)，初始定位写入 left/top', async () => {
+    test('缺省 placement right + strategy fixed、不注入默认 middleware，初始定位写入 left/top', async () => {
         const content = document.createElement('div')
         const ref = {
             getBoundingClientRect: () => ({
@@ -64,10 +65,6 @@ describe('popperFactory', () => {
         expect(mockComputePosition).toHaveBeenCalledTimes(2)
 
         const options = mockComputePosition.mock.calls.at(-1)![2]
-        const middleware = options.middleware as Array<{
-            name: string
-            options?: { limiter?: unknown }
-        }>
 
         // 缺省 placement 必须为 'right'（"目标右侧"验收契约；floating-ui 默认是 'bottom'）
         expect(options.placement).toBe('right')
@@ -76,12 +73,9 @@ describe('popperFactory', () => {
         // 浮窗撑大文档触发滚动条，fixed 不撑大文档、浮窗钉在视口位置）
         expect(options.strategy).toBe('fixed')
 
-        expect(middleware.some((m) => m.name === 'flip')).toBe(true)
-
-        const shiftMiddleware = middleware.find((m) => m.name === 'shift')
-        expect(shiftMiddleware).toBeDefined()
-        // limitShift() 返回 middleware 对象（{ fn, options }）——shift 的 limiter 必须是它（视口边缘不截断）
-        expect(shiftMiddleware?.options?.limiter).toBeDefined()
+        // 不注入默认 middleware——flip/shift 会在视口空间不足时把浮窗翻转到目标左侧，
+        // 违背设计文档"浮空窗永远显示在被操作对象右侧"（L1 优先，见 011 步骤文档）
+        expect(options.middleware).toBeUndefined()
 
         // computePosition 异步：等待微任务后断言 left/top 已写入
         await Promise.resolve()
