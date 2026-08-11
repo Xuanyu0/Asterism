@@ -9,7 +9,7 @@
  *     1. useDefaultTool() → ToolHandler（生命周期 / 画布事件 / 浮空窗确认）
  */
 
-import { ref } from 'vue'
+import { ref, toRaw } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
@@ -146,9 +146,13 @@ export function useDefaultTool(): ToolHandler {
             return
         }
 
-        if (isEdgeData(original)) {
+        // floatingData 单例经 ref 深度响应式包装，value 是 Vue Proxy；
+        // 引擎 reversal 逆操作生成用 structuredClone，无法克隆 Proxy——必须先 toRaw 剥离
+        const raw = toRaw(original)
+
+        if (isEdgeData(raw)) {
             // 边编辑
-            const edge: EdgeData = { ...original, label }
+            const edge: EdgeData = { ...raw, label }
 
             const validation = operations.commitToCurrentGraph(
                 [{ type: 'update_edge', edge }],
@@ -160,9 +164,9 @@ export function useDefaultTool(): ToolHandler {
             }
         } else {
             // 节点编辑
-            const node: NodeData = { ...original, label }
+            const node: NodeData = { ...raw, label }
 
-            if (original.role === 'knowledge') {
+            if (raw.role === 'knowledge') {
                 ;(node as KnowledgeNodeData).summary = summary
             }
 
