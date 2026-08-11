@@ -1,52 +1,71 @@
 <template>
     <!-- 物理挂 body，逻辑仍组件树；popper 注入 left/top 实现锚定到目标 -->
     <Teleport to="body">
-        <!-- 浮空窗（新建草稿 / 节点边编辑共用）：数据源与差异全部折叠进 formModel -->
+        <!-- 浮空窗（新建草稿 / 节点边编辑共用）：数据源与差异全部折叠进 formModel。
+            拼接式布局：标题卡 + 功能面板 + 双圆钮在同一容器内组合，边界清晰，无阴影。 -->
         <div
             v-if="formModel"
             v-bind:ref="registerWindowRoot"
-            class="fixed z-999 w-75 rounded-xl border-2 border-slate-200 bg-stone-50/80 p-3 backdrop-blur-sm"
+            class="fixed z-999 flex items-center gap-2"
         >
-            <div class="mb-2 flex items-center justify-between">
-                <h3 class="text-base text-slate-600">
+            <!-- 标题卡：凸出吸附面板左缘，左边缘小三角指向被操作对象，文字竖向排列 -->
+            <div
+                class="title-card relative flex items-center rounded-l-xl border border-slate-200 bg-stone-50 px-1 py-3"
+            >
+                <h3
+                    class="text-base tracking-widest text-slate-700 [writing-mode:vertical-rl]"
+                >
                     {{ formModel.title }}
                 </h3>
+            </div>
+
+            <!-- 功能面板：标签 + 摘要表单 -->
+            <div
+                class="w-64 rounded-r-xl border-t border-r-2 border-b-2 border-l border-stone-200 bg-stone-50 px-3 py-2 shadow-xs"
+            >
+                <div class="mb-2 flex items-center gap-2">
+                    <label class="text-sm font-medium text-slate-600"
+                        >标签：</label
+                    >
+                    <input
+                        class="flex-1 border-b border-slate-500 bg-transparent text-center text-sm text-slate-600 outline-none"
+                        v-bind:value="formModel.label"
+                        v-on:input="formModel.onLabelInput"
+                    />
+                </div>
+
+                <template v-if="formModel.showSummary">
+                    <label class="block text-sm font-medium text-slate-600"
+                        >摘要：</label
+                    >
+                    <textarea
+                        maxlength="80"
+                        class="summary-input h-22 w-full resize-none px-2.5 py-2 text-sm text-slate-600 outline-none placeholder:text-slate-400"
+                        v-bind:value="formModel.summary"
+                        v-on:input="formModel.onSummaryInput"
+                    />
+                </template>
+            </div>
+
+            <!-- 操作双钮：吸附面板右缘，毛玻璃垂直胶囊（对齐工具栏风格），仅图标着色 -->
+            <div
+                class="flex flex-col items-center gap-1 rounded-full border border-stone-200 bg-stone-100/50 px-1 py-1.5 shadow-sm backdrop-blur-sm"
+            >
                 <button
                     type="button"
-                    class="flex cursor-pointer items-center justify-center rounded-full border-2 border-slate-300 p-0.5 text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-800"
-                    v-bind:aria-label="'关闭窗口'"
+                    class="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-stone-300 bg-stone-50 text-red-400 transition-colors duration-150 hover:bg-stone-100"
+                    v-bind:aria-label="'取消'"
                     v-on:click="formModel.onClose"
                 >
-                    <XMarkIcon class="pointer-events-none size-4 stroke-2" />
+                    <XMarkIcon class="pointer-events-none size-5 stroke-2" />
                 </button>
-            </div>
-
-            <div class="mb-2 flex items-center gap-2">
-                <label class="text-sm font-medium text-slate-600">标签</label>
-                <input
-                    class="flex-1 border-b-2 border-slate-200 bg-transparent text-center text-sm text-slate-600 outline-none"
-                    v-bind:value="formModel.label"
-                    placeholder="请输入标签..."
-                    v-on:input="formModel.onLabelInput"
-                />
-            </div>
-
-            <template v-if="formModel.showSummary">
-                <label class="mb-1 block text-sm font-medium text-slate-600"
-                    >摘要</label
+                <button
+                    type="button"
+                    class="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-stone-300 bg-stone-50 text-green-400 transition-colors duration-150 hover:bg-stone-100"
+                    v-bind:aria-label="'确认'"
+                    v-on:click="formModel.onConfirm"
                 >
-                <textarea
-                    maxlength="80"
-                    class="summary-input mb-2.5 h-[88px] w-full resize-none px-2.5 py-2 text-sm text-slate-600 outline-none placeholder:text-slate-400"
-                    v-bind:value="formModel.summary"
-                    placeholder="请输入摘要..."
-                    v-on:input="formModel.onSummaryInput"
-                />
-            </template>
-
-            <div class="mt-1 flex gap-2">
-                <button class="btn-primary" v-on:click="formModel.onConfirm">
-                    Confirm
+                    <CheckIcon class="pointer-events-none size-5 stroke-2" />
                 </button>
             </div>
         </div>
@@ -73,14 +92,14 @@
  *        注入 left/top（草稿窗锚定预览节点，编辑窗锚定目标节点/边中点）。
  *     2. 根元素注册沿用 useFloatingWindow.registerContainer（外部点击关闭判定），
  *        与锚定共用同一根元素。
- *     3. 关闭统一走右上角 ✕：草稿模式=onCancel（清草稿 + 清理预览），
- *        编辑模式=floatingWindow.close()。外部点击仅对编辑模式生效
+ *     3. 取消走 ✕、确认走 ✓：草稿模式 ✕=onCancel（清草稿 + 清理预览），
+ *        编辑模式 ✕=floatingWindow.close()；外部点击仅对编辑模式生效
  *        （useFloatingWindow 的监听规则只认 floatingData）。
  */
 
 import { computed, watch, ref, onBeforeUnmount } from 'vue'
 
-import { XMarkIcon } from '@heroicons/vue/24/outline'
+import { XMarkIcon, CheckIcon } from '@heroicons/vue/24/outline'
 
 import { useToolMediator } from '@/feature-tools/mediator'
 import { useFloatingWindow } from '@/composables/useFloatingWindow'
@@ -237,7 +256,11 @@ function handleFloatingSummaryInput(event: Event): void {
 }
 
 function handleFloatingConfirm(): void {
-    if (!editingData.value) return
+    if (!editingData.value) {
+        // 无任何编辑时点确认：视为完成，关闭浮空窗（不产生无变更的操作记录）
+        floatingWindow.close()
+        return
+    }
 
     const label = editingData.value.label ?? ''
     const summary = isKnowledgeNode.value
@@ -328,10 +351,10 @@ function registerWindowRoot(
 </script>
 
 <style scoped>
-/* 摘要输入横线纸：无边框，浅灰横线表达输入位置。
-   高度/禁用拉伸/字数上限由模板 tailwind 类控制（h-[88px] + resize-none + maxlength）。
-   起点用 background-position 显式钉在 padding 之后（8px = 模板 py-2），
-   不依赖 background-origin: content-box——textarea 上该值在 Chrome 行为不可靠。 */
+/*  摘要输入横线纸：无边框，浅灰横线表达输入位置。
+    高度/禁用拉伸/字数上限由模板 tailwind 类控制（h-[88px] + resize-none + maxlength）。
+    起点用 background-position 显式钉在 padding 之后（8px = 模板 py-2），
+    不依赖 background-origin: content-box——textarea 上该值在 Chrome 行为不可靠。 */
 .summary-input {
     /* 横线间距 = 行高（24px），文字逐行坐在横线上方 */
     line-height: 24px;
@@ -339,12 +362,43 @@ function registerWindowRoot(
     background-position: 0 8px;
     /* 内容滚动时横线跟随，避免只显示固定几行线 */
     background-attachment: local;
+    /* 石墨铅笔色（stone-500 暖灰）：1px 实线，机制稳定不破坏对齐 */
     background-image: repeating-linear-gradient(
         to bottom,
         transparent 0,
         transparent 23px,
-        #cbd5e1 23px,
-        #cbd5e1 24px
+        #78716c 23px,
+        #78716c 24px
     );
+}
+
+/* 标题卡左侧凸出三角：指向左侧被操作对象。
+   双层三角（外=边框色 / 内=卡片背景色）构成空心缺口，三角整体凸出卡片左边缘外。 */
+.title-card::before {
+    content: '';
+    position: absolute;
+    left: -9px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    border-right: 9px solid #e2e8f0;
+    pointer-events: none;
+}
+
+.title-card::after {
+    content: '';
+    position: absolute;
+    left: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-right: 7px solid #fafaf9;
+    pointer-events: none;
 }
 </style>
