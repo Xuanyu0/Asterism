@@ -141,13 +141,13 @@ bindHighlight(getter: () => string | null | undefined, className: string): void
 
 ```ts
 import {
-    setNodePosition,
-    getNodePosition,
-    resetNodePosition,
-    addNodeClass,
-    removeNodeClass,
-    clearAllPreviews,
-    trackCursor,
+  setNodePosition,
+  getNodePosition,
+  resetNodePosition,
+  addNodeClass,
+  removeNodeClass,
+  clearAllPreviews,
+  trackCursor,
 } from '@/cytoscape/useRenderer'
 ```
 
@@ -195,16 +195,16 @@ import {
 
 - 删除 `function watchPendingTarget(getter, className)` 定义及内部 `cy.getElementById().addClass/removeClass`
 - 在 `onMounted` / setup 内改为：
-    ```ts
-    renderer.bindHighlight(
-        () => mediator.activeHandler.value?.highlightNode,
-        'delete-target',
-    )
-    renderer.bindHighlight(
-        () => mediator.activeHandler.value?.highlightEdge,
-        'delete-target',
-    )
-    ```
+  ```ts
+  renderer.bindHighlight(
+    () => mediator.activeHandler.value?.highlightNode,
+    'delete-target',
+  )
+  renderer.bindHighlight(
+    () => mediator.activeHandler.value?.highlightEdge,
+    'delete-target',
+  )
+  ```
 - 同样用 `bindHighlight` 处理 add-edge 的 `edge-source-target` 高亮
 
 **c) 事件绑定移入 renderer**

@@ -18,26 +18,26 @@
 - **广义 GraphData**：一切需要持久化存储的数据（狭义 GraphData + OperationLog + 其他持久化数据）。
 - **GraphEngine**：框架无关、本项目特定义下无副作用（不通过引用修改外部数据）的广义 GraphData 状态迁移引擎，是系统中所有 GraphData 转换操作的唯一入口。
   （隐患：execute 内部 `new Date().toISOString()` 产生非确定性时间戳。当前快照式 undo 无影响，若未来升级 Event Sourcing 需提升为参数由 Runtime 传入）
-    - 负责：定义类型、validate / execute / compose / replay
-    - 不负责：I/O、持久化、持有状态
-    - 与框架无关
+  - 负责：定义类型、validate / execute / compose / replay
+  - 不负责：I/O、持久化、持有状态
+  - 与框架无关
 - **Runtime 层**：位于前端的 GraphData 状态所有者，负责持有运行时状态、编排引擎操作（调 Engine → 后处理）、实现持久化 I/O。Runtime 不负责 UI 渲染和纯函数转换，一定是框架绑定的（当前为 Pinia + Vue）。Runtime 层内部再分两层：
-    - **graph_store.ts（数据核心）**：内部的函数满足 **Graph.vue 调用 ∨ 唯一图数据修改入口 ∨ 唯一图数据回溯入口**。
-    - **adapters/（业务适配层）**：图数据业务逻辑的封装，经 store 公开状态访问共享运行时数据，不持有状态本身。依赖方向：业务 → 适配层 → store（单向）
+  - **graph_store.ts（数据核心）**：内部的函数满足 **Graph.vue 调用 ∨ 唯一图数据修改入口 ∨ 唯一图数据回溯入口**。
+  - **adapters/（业务适配层）**：图数据业务逻辑的封装，经 store 公开状态访问共享运行时数据，不持有状态本身。依赖方向：业务 → 适配层 → store（单向）
 - **Cytoscape 渲染/交互层**：GraphData 的只读映射/拷贝。接收 GraphData 渲染到画布，捕获交互事件后经交互逻辑层（feature-tools/）回流至 Runtime。禁止持有 GraphData 引用、禁止保存业务状态、禁止直接修改 GraphData
 - **工具**：前端页面中用户主动激活的状态。在此状态下，用户的画布交互（点击、拖拽）被解释为该工具特有的语义，并最终转化为对 GraphData 的修改。工具不直接操作 GraphData，通过 Runtime 层写入。目前按交互入口分为两类：
-    - 常驻操作栏工具：通过工具栏按钮激活，生命周期由 `feature-tools/mediator.ts` 管理
-    - 模式工具：先进入 Cogniton 或 Arrangement 模式，再选择具体操作
-    - 规则：同一时刻最多一个工具处于激活状态，多个入口共享此互斥约束
+  - 常驻操作栏工具：通过工具栏按钮激活，生命周期由 `feature-tools/mediator.ts` 管理
+  - 模式工具：先进入 Cogniton 或 Arrangement 模式，再选择具体操作
+  - 规则：同一时刻最多一个工具处于激活状态，多个入口共享此互斥约束
 - **交互逻辑层**：用户与工具的交互通道。采用"水平分层 + 垂直自包含"混合架构，以下是其包含的内容：
-    - 水平分层（所有工具共享）：
-        - 按钮 UI 定义：`feature-tools/toolbar/config.ts`（图标、标签、处理器工厂）+ `GraphPermanentToolbar.vue`（渲染）
-        - 生命周期管理：`feature-tools/mediator.ts`（注册、激活/取消、互斥保证）
-        - 事件捕获与转发：`cytoscape/cy_interaction.ts`（Cytoscape 事件 → 语义事件）→ `feature-tools/mediator.ts`（转发至活跃 handler）
-    - 垂直自包含（每个工具独立）：
-        - 工具逻辑 + 中间变量：每个工具拥有自己的激活状态、光标样式、画布点击处理、操作构造
-        - 数据修改：经工具层适配 `useGraphOperationAdapter.commitToCurrentGraph` 委托 Runtime（提交 + 校验同步）
-    - 不负责：GraphData 存储、持久化、UI 模式切换
+  - 水平分层（所有工具共享）：
+    - 按钮 UI 定义：`feature-tools/toolbar/config.ts`（图标、标签、处理器工厂）+ `GraphPermanentToolbar.vue`（渲染）
+    - 生命周期管理：`feature-tools/mediator.ts`（注册、激活/取消、互斥保证）
+    - 事件捕获与转发：`cytoscape/cy_interaction.ts`（Cytoscape 事件 → 语义事件）→ `feature-tools/mediator.ts`（转发至活跃 handler）
+  - 垂直自包含（每个工具独立）：
+    - 工具逻辑 + 中间变量：每个工具拥有自己的激活状态、光标样式、画布点击处理、操作构造
+    - 数据修改：经工具层适配 `useGraphOperationAdapter.commitToCurrentGraph` 委托 Runtime（提交 + 校验同步）
+  - 不负责：GraphData 存储、持久化、UI 模式切换
 
 ## 命令
 
@@ -101,9 +101,9 @@ npx prettier --write <文件路径>
 2. **Cytoscape 只是 Renderer**，永远不是事实源
 3. **Local First** — 当前用 localStorage 持久化
 4. **禁止 `watch` 使用 `deep: true`**：
-    - GraphData 变更永远走引用替换（引擎返回新对象），浅层 watch 足够
-    - 必要时的替代方案：去掉 `deep`，或窄化到具体叶子属性：`watch(() => store.x.y, cb)`
-    - 理由：有经过测试的未知非预期行为
+   - GraphData 变更永远走引用替换（引擎返回新对象），浅层 watch 足够
+   - 必要时的替代方案：去掉 `deep`，或窄化到具体叶子属性：`watch(() => store.x.y, cb)`
+   - 理由：有经过测试的未知非预期行为
 
 ## 项目架构（严格单向数据流）
 
@@ -209,11 +209,11 @@ Cytoscape Renderer
 其他两类：
 
 1. **Vue 组件文件**（`.vue`）：统一 **PascalCase**（Vue 生态约定）
-    - ✅ `KnowledgeGraph.vue`, `NodeWindow.vue`, `OperationToolbar.vue`
+   - ✅ `KnowledgeGraph.vue`, `NodeWindow.vue`, `OperationToolbar.vue`
 
 2. **Vue 组合式函数**（以 `use` 开头的 `.ts` 文件）：统一 **camelCase**（Vue 生态约定 + 区分于普通工具函数）
-    - ✅ `useRenderer.ts`, `useDragPosition.ts`, `useOverflowDetection.ts`
-    - ❌ `use_renderer.ts`, `useDrag_Position.ts`
+   - ✅ `useRenderer.ts`, `useDragPosition.ts`, `useOverflowDetection.ts`
+   - ❌ `use_renderer.ts`, `useDrag_Position.ts`
 
 ### 缩进规范
 

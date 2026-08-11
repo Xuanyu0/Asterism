@@ -26,11 +26,11 @@ handler 是其所有 transient class 的唯一 owner——通过 `useRenderer()`
 
 ```ts
 renderer.bindHighlight(() => {
-    const handler = mediator.activeHandler.value
-    if (!handler) return null
-    const id = handler.id as string
-    if (!id.includes('directed') && !id.includes('undirected')) return null
-    return handler.highlightNode ?? null
+  const handler = mediator.activeHandler.value
+  if (!handler) return null
+  const id = handler.id as string
+  if (!id.includes('directed') && !id.includes('undirected')) return null
+  return handler.highlightNode ?? null
 }, 'edge-source-target')
 ```
 
@@ -45,9 +45,9 @@ renderer.bindHighlight(() => {
 3. 若 `valid === false` → 跳过（校验失败，不渲染预览）
 4. `syncFromGraphData(previewGraph)` ← **整图切换到预览图**
 5. **sync 之后**依次施加：
-    - `addNodeClass(sourceId, 'edge-source-target', 'add-edge')` — 重施 source 高亮
-    - `sourceCollides` → `addNodeClass(sourceId, 'preview-collision', 'add-edge')`
-    - `targetCollides` → `addNodeClass(targetId, 'preview-collision', 'add-edge')`
+   - `addNodeClass(sourceId, 'edge-source-target', 'add-edge')` — 重施 source 高亮
+   - `sourceCollides` → `addNodeClass(sourceId, 'preview-collision', 'add-edge')`
+   - `targetCollides` → `addNodeClass(targetId, 'preview-collision', 'add-edge')`
 6. 更新 `hoverTargetId.value = nodeId`
 
 ### 3. 实现 onNodeHoverOut

@@ -10,12 +10,12 @@
 - `CLAUDE.md` §两个 Pinia Store：graphStore 持有 GraphData，不持有 Cy 状态
 - [050-步骤-渲染交互层重构.md](../../../P2开发文档/phase2b/步骤/050-渲染交互层重构.md) §Step 2 已完成——move_node 的视觉预览走 renderer 语义接口，不再直接依赖 Cy 实例
 - [050-步骤-渲染交互层重构.md](../../../P2开发文档/phase2b/步骤/050-渲染交互层重构.md) §Step 3 已确定决策：
-    - Mock renderer API，不 mock engine
-    - 测试文件位置：`src/feature-tools/toolbar/move-node.test.ts`
-    - Mock 策略：`vi.mock('@/cytoscape/useRenderer')` 拦截 `useRenderer()` 返回
-    - 测试数据：复用 `createGoldenTestGraphV2()` 金牌图
-    - 断言使用 `test()`，不用 `it()`
-    - vitest `globals: true` 已启用——`test` / `describe` / `expect` / `beforeEach` / `vi` 均为全局函数，测试文件中**无需** `import` vitest 相关函数
+  - Mock renderer API，不 mock engine
+  - 测试文件位置：`src/feature-tools/toolbar/move-node.test.ts`
+  - Mock 策略：`vi.mock('@/cytoscape/useRenderer')` 拦截 `useRenderer()` 返回
+  - 测试数据：复用 `createGoldenTestGraphV2()` 金牌图
+  - 断言使用 `test()`，不用 `it()`
+  - vitest `globals: true` 已启用——`test` / `describe` / `expect` / `beforeEach` / `vi` 均为全局函数，测试文件中**无需** `import` vitest 相关函数
 
 ---
 
@@ -40,12 +40,12 @@ move_node.ts
 
 ```ts
 beforeEach(() => {
-    setActivePinia(createPinia()) // 重置 Pinia
-    localStorage.clear() // 清空持久化
-    const golden = createGoldenTestGraphV2() // 构造金牌图
-    saveGraph(golden) // 持久化
-    const store = useGraphStore()
-    store.loadGraphToView(golden.id) // 加载到视图
+  setActivePinia(createPinia()) // 重置 Pinia
+  localStorage.clear() // 清空持久化
+  const golden = createGoldenTestGraphV2() // 构造金牌图
+  saveGraph(golden) // 持久化
+  const store = useGraphStore()
+  store.loadGraphToView(golden.id) // 加载到视图
 })
 ```
 
@@ -85,8 +85,8 @@ move_node 测试需要在此基础之上增加 `vi.mock('@/cytoscape/useRenderer
 let capturedCallback: ((pos: { x: number; y: number }) => void) | null = null
 
 const mockTrackCursor = vi.fn((cb: (pos: { x: number; y: number }) => void) => {
-    capturedCallback = cb
-    return { stop: vi.fn() }
+  capturedCallback = cb
+  return { stop: vi.fn() }
 })
 ```
 

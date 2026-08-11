@@ -193,7 +193,6 @@ export function useDragPosition(options: {
      */
     function onPointerdown(event: PointerEvent): void {
         if (event.button !== 0) return
-
         ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
         event.preventDefault()
 

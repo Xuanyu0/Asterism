@@ -9,11 +9,11 @@
 - `CLAUDE.md` §架构分层：Cytoscape 只是 Renderer，GraphData 是唯一事实源
 - `CLAUDE.md` §两个 Pinia Store：graphStore 持有 GraphData，不持有 Cy 状态
 - [05-步骤-共依赖.md](../../../P2开发文档/phase2b/05-步骤-共依赖.md) §3.0-5 已确认决策：
-    - Cy 角色："交互层 + 渲染层"
-    - 目录重命名：`render/` → `cytoscape/`
-    - 术语："投影" → "映射"/"拷贝"
-    - Cy `data` 最小字段：仅 `id` / `label`
-    - 严格去耦合：`cytoscape/` 外禁止 import cytoscape
+  - Cy 角色："交互层 + 渲染层"
+  - 目录重命名：`render/` → `cytoscape/`
+  - 术语："投影" → "映射"/"拷贝"
+  - Cy `data` 最小字段：仅 `id` / `label`
+  - 严格去耦合：`cytoscape/` 外禁止 import cytoscape
 
 ---
 
@@ -69,8 +69,8 @@
 
 ```ts
 export interface CyNodeData {
-    id: NodeId
-    label: string
+  id: NodeId
+  label: string
 }
 ```
 
@@ -83,10 +83,10 @@ export interface CyNodeData {
 
 ```ts
 export interface CyEdgeData {
-    id: EdgeId
-    source: NodeId
-    target: NodeId
-    label?: string
+  id: EdgeId
+  source: NodeId
+  target: NodeId
+  label?: string
 }
 ```
 
