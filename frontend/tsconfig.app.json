@@ -6,6 +6,9 @@
     // Extra safety for array and object lookups, but may have false positives.
     "noUncheckedIndexedAccess": true,
 
+    // 临时抑制 TS6 弃用选项报错（如第三方包 tsconfig 中的 baseUrl）
+    "ignoreDeprecations": "6.0",
+
     // Path mapping for cleaner imports.
     "paths": {
       "@/*": ["./src/*"],
