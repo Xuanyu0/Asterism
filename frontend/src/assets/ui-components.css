@@ -11,16 +11,15 @@
 
 /* 次级按钮：白底 + 灰边框 + 悬停上移 */
 .btn-secondary {
-    @apply bg-white border border-slate-300 text-slate-600 cursor-pointer
-            transition duration-150 ease-out;
+    @apply cursor-pointer border border-slate-300 bg-white text-slate-600 transition duration-150 ease-out;
 }
 
 .btn-secondary:hover {
-    @apply bg-slate-100 text-slate-800 -translate-y-px shadow-sm;
+    @apply -translate-y-px bg-slate-100 text-slate-800 shadow-sm;
 }
 
 .btn-secondary:focus-visible {
-    @apply outline-none ring-2 ring-blue-500/30 ring-offset-1;
+    @apply ring-2 ring-blue-500/30 ring-offset-1 outline-none;
 }
 
 .btn-secondary:active {
@@ -28,5 +27,10 @@
 }
 
 .btn-secondary:disabled {
-    @apply opacity-50 cursor-not-allowed translate-y-0 shadow-none bg-white text-slate-400;
+    @apply translate-y-0 cursor-not-allowed bg-white text-slate-400 opacity-50 shadow-none;
+}
+
+/* 主按钮：与 .btn-secondary 配套（蓝底白字 + 悬停上移加深） */
+.btn-primary {
+    @apply flex-1 cursor-pointer rounded-md border-none bg-blue-500 px-4 py-1.5 text-[13px] text-white transition duration-150 hover:-translate-y-px hover:bg-blue-600;
 }
