@@ -21,10 +21,11 @@
   - 建议：统一 cognitive 返回契约，或明确选择不统一是因为它们属不同类别（区分"纯位置预览"和"跨图数据返回"）
   - 状态：待评估
 
-- **`abstractionLevel` 字段无消费**
-  - 位置：`packages/graph-engine/src/types/graph_data.ts:101`
-  - 描述：`NodeBase.abstractionLevel` 始终 `= 0`，引擎无任何逻辑消费它
-  - 建议：标注 `@reserved` 或移除。裸露无行为的字段会腐蚀类型的可信度
+- **`form` / `abstractionLevel` 应为运行时推导派生值**
+  - 位置：`packages/graph-engine/src/types/graph_data.ts:74,101,114`
+  - 描述：real 节点存在不变量 `form === 'abstract' ⟺ childGraphId !== undefined`（deconstruct/induce 总是同时设置两者），故 `form` 可从 `childGraphId` 存在性推导；`abstractionLevel`（= 内部最大子图层数）可沿 childGraphId 链递归推导。当前 `abstractionLevel` 是死字段（deconstruct/induce 从不递增，始终 `= 0`，引擎零消费），实际判别职责由 `form` 承担（deconstruct/internalize/class_mapper 消费）
+  - 建议：两者都改为运行时推导派生值（与 `degree` / `radius` 惰性计算模式一致）：从 GraphData 类型移除 `form` / `abstractionLevel`，引擎提供 `deriveNodeForm(node)` / `deriveAbstractionLevel(graph, node)` 纯函数，消费方改接推导。权威源 = `childGraphId`（子图结构），天然消除存储不一致
+  - 边界：空子图（deconstruct 新建）`abstractionLevel = 1`（可展开一次）；推导成本 O(子图链深度)，层级浅可忽略
   - 状态：待评估
 
 - **`hasCollisionAt` 仅返回布尔值，不暴露距离/临近信息**
