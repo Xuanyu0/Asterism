@@ -65,11 +65,11 @@ export interface FoldedDependencyState {
  *       sourceGraphId / sourceNodeId 仅用于 operation_executor 内部穿透
  *       和用户主动"定位源节点"。
  */
-export type NodeRole = 'knowledge' | 'reference'
+export type NodeKind = 'knowledge' | 'reference'
 
 // --- 知识节点子类型 (role === 'knowledge') ---
 
-export type KnowledgeNodeKind = 'virtual' | 'real'
+export type KnowledgeState = 'virtual' | 'real'
 
 export type RealNodeForm = 'atomic' | 'abstract'
 
@@ -94,7 +94,7 @@ export type NodePosition = GraphPosition
 export interface NodeBase {
     readonly id: NodeId
     graphId: GraphId
-    role: NodeRole
+    role: NodeKind
     label: string
     degree: number
     radius?: number
@@ -110,7 +110,7 @@ export interface NodeBase {
 
 export interface KnowledgeNodeData extends NodeBase {
     role: 'knowledge'
-    kind: KnowledgeNodeKind
+    kind: KnowledgeState
     form?: RealNodeForm
     summary?: string
     noteLink?: string
