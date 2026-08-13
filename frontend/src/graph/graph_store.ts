@@ -513,51 +513,41 @@ export const useGraphStore = defineStore('graph_store', () => {
     }
 
     /**
-     * 说明：
+     * undo / redo 共用执行原语：对指定 entry 按方向执行。
      *
-     *     undo / redo 共用执行原语：对指定 entry 按方向执行——reverse（undo）
-     *     三段式（① deleted 恢复 → ② 图内逆元 → ③ added 注销）；forward（redo）
-     *     重走正向操作。执行委托 commitBatchToGraphs（recordLog: false）与
-     *     graph_signals，本函数只做顺序编排与游标移动。
+     * @remarks
+     * reverse（undo）走三段式（1. deleted 恢复 → 2. 图内逆元 → 3. added 注销）；
+     * forward（redo）重走正向操作。实际执行委托 {@link commitBatchToGraphs}
+     * （recordLog: false）与 graph_signals，本函数只做顺序编排与游标移动。
      *
-     * 模型：
+     * 统一对称的撤销模型：
+     * - undo = 逆序执行 entry 的全部逆元；
+     * - redo = 正序执行 entry 的全部操作。
      *
-     *     统一对称的撤销模型：
-     *     - undo = 逆序执行 entry 的全部逆元；
-     *     - redo = 正序执行 entry 的全部操作。
+     * 图内与图级以各自形态参与同一序列：
+     * - 图内逆元：操作对象（createReversal 精确反转）
+     * - 图级逆元：兑现逻辑
+     *   - add_graph 的逆元：整体注销（内容随图消失，不单独动数据）
+     *   - delete_graph 的逆元：从持久化完整恢复注册
      *
-     *     图内与图级以各自形态参与同一序列：
+     * 三段式（1 → 2 → 3）即该逆元序列的代码化，顺序由执行依赖决定：
+     * 1. deleted 恢复 —— 最先（图内逆元执行前目标图需在 registry）
+     * 2. 图内逆元   —— 居中
+     * 3. added 注销 —— 最后（正向批首新建的图，撤销放末尾）
      *
-     *         - 图内逆元：操作对象（createReversal 精确反转）
-     *         - 图级逆元：兑现逻辑
-     *           - add_graph 的逆元： 整体注销（内容随图消失，不单独动数据）
-     *           - delete_graph 的逆元： 从持久化完整恢复注册
+     * 第 2 步跳过 added 图逆元是"add_graph 逆元 = 整体注销"的自然结果——
+     * 撤销建图 = 原子整体消失，图内内容随图消失。
      *
-     *     三段式（①→②→③）即该逆元序列的代码化，顺序由执行依赖决定：
+     * 游标副作用：
+     * - reverse 成功 → cursor = parentIndex（树形分支下 ≠ cursor - 1）
+     * - forward 成功 → cursor = entryIndex
+     * - 失败不移动
      *
-     *         ① deleted 恢复 —— 最先（图内逆元执行前目标图需在 registry）
-     *         ② 图内逆元   —— 居中
-     *         ③ added 注销 —— 最后（正向批首新建的图，撤销放末尾）
-     *
-     *     ② 跳过 added 图逆元是"add_graph 逆元 = 整体注销"的自然结果——
-     *     撤销建图 = 原子整体消失，图内内容随图消失。
-     *
-     * 调用契约：
-     *
-     *     1. entries[entryIndex] 不存在 → false。
-     *     2. 游标移动：reverse 成功 → cursor = parentIndex（树形分支下 ≠ cursor - 1）；
-     *        forward 成功 → cursor = entryIndex。失败不移动。
-     *     3. 图内执行校验失败（防御，正常不可达）→ 开发者通道记录 + false。
-     *
-     * 参数：
-     *
-     *     entryIndex — 操作日志 entry 索引
-     *     direction  — 'forward'（redo）或 'reverse'（undo）
-     *
-     * 返回：
-     *
-     *     执行成功 true；entry 不存在或防御性失败 false。
+     * @param entryIndex - 操作日志 entry 索引
+     * @param direction - 'forward'（redo）或 'reverse'（undo）
+     * @returns 执行成功 true；entry 不存在或图内校验失败（防御，正常不可达）→ false。
      */
+
     function applyEntry(
         entryIndex: number,
         direction: 'forward' | 'reverse',
