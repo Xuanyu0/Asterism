@@ -20,13 +20,9 @@
 
 #### 领域语言检索
 
-需要查询或者交流设计问题时，首先阅读：[设计术语表](docs/设计/设计术语表.md)
-需要进行代码开发时，首先阅读：[开发术语表](docs/开发文档/开发术语表.md)
-讨论项目软件开发的一些其他术语：[项目术语表](项目术语表.md)
-
-#### 编码参考
-
-编写任何代码注释前，首先阅读：[注释资料](FOR-AGENTS/注释资料.md)
+需要查询或者交流设计文档名词前，**Read**：[设计术语表](docs/设计/设计术语表.md)
+需要找前端或者 Graph Engine 的代码标识符前，**Read**：[开发术语表](docs/开发文档/开发术语表.md)
+讨论项目软件开发的一些其他术语时：[项目术语表](项目术语表.md)
 
 ## 核心定义
 
@@ -204,7 +200,7 @@ Cytoscape Renderer
 
 ## 设计文档
 
-- 完整的功能设计文档见：`docs/设计/`
+完整的功能设计文档见：`docs/设计/`
 
 ---
 
@@ -235,96 +231,11 @@ Cytoscape Renderer
 
 **4 空格**。禁止 Tab，禁止 2 空格。
 
-### 注释规范
+### 注释参考资料
 
-- 项目里注释规范的落实文件可以参考并学习：`frontend/src/graph/graph_store.ts` 和 `frontend/src/cytoscape/useRenderer.ts`
+任何要编写或修改代码注释（含单行注释与 TSDoc）的任务，动手前必须先阅读：[注释资料](FOR-AGENTS/注释资料.md)
 
-#### 写注释的核心前提
-
-- 当代码本身没有办法或者很难通过一种显而易见的方法表现出它的**意图、功能、使用限制、内在结构**的时候，则才需要使用到注释。
-- 否则，应该尽可能尝试使用更优秀，且是唯一决定程序行为事实的**代码**来表达。因为注释越少，需要维护成本就越少
-
-#### 写单行注释的推荐情况
-
-> 注：以下情形仅供参考，不涵盖所有情况
-
-- 法律信息
-- 提供信息：包括编写时决策的上下文或者程序在此处容易遗漏的重要上下文，或者对单行代码中的细微值得说明之处，通过注释放大
-- 对不寻常的实现解释意图：可能包括作者本身的权衡
-- 阐释陌生代码：如小众外部 API 库的调用规则说明，以及项目内代码的不常见特殊用法和实现（注意：判断范围是项目内）
-- 警示后人：防止再度由于同一种原因导致 BUG
-- TODO 说明：代码中占位并给出初步编写方向
-
-#### 对于 TSDoc 注释的规范
-
-核心原则：根据实际需要，灵活选择 TSDoc 注释，因为这种注释很贵
-
-TSDoc 是微软提出的 TypeScript 文档注释标准（tsdoc.org），VS Code / vue-tsc 原生识别。tag 分三类：
-
-- **Block tags**（块级，独占一行）：`@param` `@returns` `@remarks` `@typeParam` `@deprecated`（Core 必备组）；`@example` `@defaultValue` `@throws` `@see` `@inheritDoc`（Extended 扩展组）
-- **Modifier tags**（修饰，标记 API 性质，放注释底部单行）：`@internal` `@public` `@alpha` `@beta` `@experimental` `@override` `@sealed` `@virtual` `@readonly` 等
-- **Inline tags**（行内，花括号形式）：`{@link}` 等
-
-关键概念：
-
-- **summary 不是 tag**——注释里第一个 block tag 之前的那段文本即 summary（简要说明），无需 tag。
-- **`@remarks`** 承载 summary 之外的全部细节，用 markdown 语法书写。
-- 官方无"调用契约 / 副作用"专属 tag——此类内容放 `@remarks`。
-
-书写规范：
-
-- tag 名固定英文 + camelCase（`@defaultValue` 非 `@defaultvalue`）。
-- `@param` 语法：`@param name - 描述`（名 + 连字符 + 描述）。
-- 顺序惯例：summary（首段）→ `@remarks` → `@param`/`@returns`/`@throws` → `@example` → 底部 modifier。
-- block tag 之间以空行分隔——空行 = markdown 段落分隔，不加则 LSP hover 会把标题与内容挤成一段。
-- tag 名固定英文，描述内容尽可能用自然语言书写。
-
-几点说明：
-
-1. TSDoc 本质是 markdown。tag 内容可含 markdown 元素与 inline tag（`{@link}`）。
-2. 文件头注释的编写可以直接参考这里的建议
-3. 公开函数一定要有 TSDoc，非公开函数、接口等按需决定
-4. 文件头不要写文件名
-5. 注释应该按照其所在的地方有针对性
-
-TSDoc 基础模板：
-
-```
-/**
- * <summary：一句话本质，无需 tag。会被单独展示在索引/列表页，须独立读懂；
- *  不重复签名已展示的类型/参数信息，只讲"是什么/做什么">
- *
- * @remarks
- * <详细说明：动机、调用契约、前置条件、边界情况、副作用。一个 tag 最多解释一个内容>
- *
- * @param paramName - <是什么 / 从哪来 / 特殊规则>
- * @returns <返回值说明>
- */
-```
-
-完整示例：
-
-````
-/**
- * 浮空窗定位引擎的实现：给定锚点与浮窗 DOM，决定浮窗的摆放方位与视口边缘行为。
- *
- * @remarks
- * 是 cytoscape-popper 注入的定位插槽。调用契约：
- * - 调用方须持有句柄，在关闭 / 切换目标 / 卸载时调 destroy
- * - update 随 pan/zoom/position 高频触发
- *
- * @param ref - 锚点引用对象（cytoscape-popper 注入）
- * @param content - 被锚定的内容元素
- * @returns 可重算的定位句柄 { update }
- *
- * @example
- * ```ts
- * const handle = attachElementPopper(cy, nodeId, el)
- * handle.update()   // 目标位移后重算
- * handle.destroy()  // 关闭时清理
- * ```
- */
-````
+委派编码子代理（fixer / designer 等）时，若其任务会编写或改动代码注释，须在委托指令中要求该子代理先阅读上述注释资料。
 
 ### Import 组织规范
 
