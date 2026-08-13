@@ -10,10 +10,10 @@
         >
             <!-- 标题卡：凸出吸附面板左缘，左边缘小三角指向被操作对象，文字竖向排列 -->
             <div
-                class="title-card relative flex items-center rounded-l-xl border border-slate-200 bg-stone-50 px-1 py-3"
+                class="title-card font-bold relative flex items-center rounded-l-xl rounded-r border-l border-t border-r-2 border-b-2 shadow-sm border-slate-200 bg-stone-50 px-1 py-3"
             >
                 <h3
-                    class="text-base tracking-widest text-slate-700 [writing-mode:vertical-rl]"
+                    class="text-base tracking-widest text-slate-800 [writing-mode:vertical-rl]"
                 >
                     {{ formModel.title }}
                 </h3>
@@ -21,26 +21,26 @@
 
             <!-- 功能面板：标签 + 摘要表单 -->
             <div
-                class="w-64 rounded-r-xl border-t border-r-2 border-b-2 border-l border-stone-200 bg-stone-50 px-3 py-2 shadow-xs"
+                class="w-60 rounded-r-xl rounded-l border-t border-r-2 border-b-2 border-l border-stone-200 bg-stone-50 px-4 py-3 shadow-sm"
             >
-                <div class="mb-2 flex items-center gap-2">
-                    <label class="text-sm font-medium text-slate-600"
+                <div class="flex items-center">
+                    <label class="font-semibold text-sm text-slate-800"
                         >标签：</label
                     >
                     <input
-                        class="flex-1 border-b border-slate-500 bg-transparent text-center text-sm text-slate-600 outline-none"
+                        class="flex-1 rounded-md border border-stone-200 bg-transparent text-center text-sm text-slate-800 outline-none"
                         v-bind:value="formModel.label"
                         v-on:input="formModel.onLabelInput"
                     />
                 </div>
 
                 <template v-if="formModel.showSummary">
-                    <label class="block text-sm font-medium text-slate-600"
+                    <label class="block text-sm font-semibold text-slate-800 py-1"
                         >摘要：</label
                     >
                     <textarea
-                        maxlength="80"
-                        class="summary-input h-22 w-full resize-none px-2.5 py-2 text-sm text-slate-600 outline-none placeholder:text-slate-400"
+                        rows="3"
+                        class="w-full resize-none rounded-md border border-stone-200 px-2 py-1 text-sm text-slate-900 outline-none"
                         v-bind:value="formModel.summary"
                         v-on:input="formModel.onSummaryInput"
                     />
@@ -351,26 +351,7 @@ function registerWindowRoot(
 </script>
 
 <style scoped>
-/*  摘要输入横线纸：无边框，浅灰横线表达输入位置。
-    高度/禁用拉伸/字数上限由模板 tailwind 类控制（h-[88px] + resize-none + maxlength）。
-    起点用 background-position 显式钉在 padding 之后（8px = 模板 py-2），
-    不依赖 background-origin: content-box——textarea 上该值在 Chrome 行为不可靠。 */
-.summary-input {
-    /* 横线间距 = 行高（24px），文字逐行坐在横线上方 */
-    line-height: 24px;
-    /* 图案从 padding-box 顶平铺，整体下移 padding-top(8px)，使首条线对齐首行文字底部 */
-    background-position: 0 8px;
-    /* 内容滚动时横线跟随，避免只显示固定几行线 */
-    background-attachment: local;
-    /* 石墨铅笔色（stone-500 暖灰）：1px 实线，机制稳定不破坏对齐 */
-    background-image: repeating-linear-gradient(
-        to bottom,
-        transparent 0,
-        transparent 23px,
-        #78716c 23px,
-        #78716c 24px
-    );
-}
+
 
 /* 标题卡左侧凸出三角：指向左侧被操作对象。
    双层三角（外=边框色 / 内=卡片背景色）构成空心缺口，三角整体凸出卡片左边缘外。 */

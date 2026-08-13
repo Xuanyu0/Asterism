@@ -22,7 +22,7 @@ import { useCanvasFocus } from '@/composables/useCanvasFocus'
 import { useToolMediator } from '@/feature-tools/mediator'
 import { useDeconstructTool } from '@/feature-tools/cognition/deconstruct'
 
-import GraphNodeWindow from '@/components/GraphNodeWindow.vue'
+import GraphNodeWindow from '@/components/GraphFloatingWindow.vue'
 import NotificationPanel from '@/components/NotificationPanel.vue'
 import GraphPermanentToolbar from '@/components/GraphPermanentToolbar.vue'
 import GraphModeSelector from '@/components/GraphModeSelector.vue'
