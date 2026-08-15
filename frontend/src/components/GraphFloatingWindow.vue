@@ -2,49 +2,64 @@
     <!-- 物理挂 body，逻辑仍组件树；popper 注入 left/top 实现锚定到目标 -->
     <Teleport to="body">
         <!-- 浮空窗（新建草稿 / 节点边编辑共用）：数据源与差异全部折叠进 formModel。
-            拼接式布局：标题卡 + 功能面板 + 双圆钮在同一容器内组合，边界清晰，无阴影。 -->
+            拼接式布局：标题卡 + 功能面板 + 双圆钮在同一容器内组合。
+            floating-window 类承载产品色 CSS 变量（--product-color）供各处复用 -->
         <div
             v-if="formModel"
             v-bind:ref="registerWindowRoot"
-            class="fixed z-999 flex items-center gap-2"
+            class="floating-window fixed z-999 flex items-center gap-2"
         >
-            <!-- 标题卡：凸出吸附面板左缘，左边缘小三角指向被操作对象，文字竖向排列 -->
+            <!-- 锚点指示：圆角正三角尖端朝左指向被操作对象，以明确 gap 拼接（解决直接粘合时的缝隙问题）。
+                SVG polygon + stroke-linejoin round 实现圆角（border 三角形无法加圆角） -->
+            <svg
+                viewBox="0 0 22 20"
+                class="h-4.5 w-5 fill-current stroke-current text-(--product-color)"
+                stroke-width="4"
+            >
+                <polygon points="4,10 18,2 18,18" stroke-linejoin="round" />
+            </svg>
+
+            <!-- 标题卡：橙底白字，对称圆角（rounded-2xl）与托盘一致 -->
             <div
-                class="title-card font-bold relative flex items-center rounded-l-xl rounded-r border-l border-t border-r-2 border-b-2 shadow-sm border-slate-200 bg-stone-50 px-1 py-3"
+                class="flex items-center rounded-2xl bg-(--product-color) px-1 py-3 font-bold text-white shadow-md"
             >
                 <h3
-                    class="text-base tracking-widest text-slate-800 [writing-mode:vertical-rl]"
+                    class="text-base font-semibold tracking-widest text-white [writing-mode:vertical-rl]"
                 >
                     {{ formModel.title }}
                 </h3>
             </div>
 
-            <!-- 功能面板：标签 + 摘要表单 -->
-            <div
-                class="w-60 rounded-r-xl rounded-l border-t border-r-2 border-b-2 border-l border-stone-200 bg-stone-50 px-4 py-3 shadow-sm"
-            >
-                <div class="flex items-center">
-                    <label class="font-semibold text-sm text-slate-800"
+            <!-- 功能面板：标签 + 摘要表单。橙色托盘作为容器（padding 撑出露边 + 顶部标签区），
+                白色内容卡内嵌其上。托盘为文档流元素，flex items-center 自动对齐其中心 -->
+            <div class="rounded-2xl bg-(--product-color) p-1 pt-1 shadow-md">
+                <!-- 标签输入条：托盘顶部橙色区（白字 + 透明输入框） -->
+                <div class="flex items-center gap-1 px-2 pb-1">
+                    <label class="text-sm font-semibold text-white"
                         >标签：</label
                     >
                     <input
-                        class="flex-1 rounded-md border border-stone-200 bg-transparent text-center text-sm text-slate-800 outline-none"
+                        class="min-w-0 flex-1 rounded-md px-2 py-0.5 text-center text-sm text-white outline-none"
                         v-bind:value="formModel.label"
                         v-on:input="formModel.onLabelInput"
                     />
                 </div>
 
-                <template v-if="formModel.showSummary">
-                    <label class="block text-sm font-semibold text-slate-800 py-1"
-                        >摘要：</label
-                    >
-                    <textarea
-                        rows="3"
-                        class="w-full resize-none rounded-md border border-stone-200 px-2 py-1 text-sm text-slate-900 outline-none"
-                        v-bind:value="formModel.summary"
-                        v-on:input="formModel.onSummaryInput"
-                    />
-                </template>
+                <!-- 白色内容卡：内嵌托盘内，投影落于托盘橙面；仅承载摘要（无摘要时保持空卡） -->
+                <div class="w-60 rounded-xl bg-white px-4 py-3 shadow-md">
+                    <template v-if="formModel.showSummary">
+                        <label
+                            class="block py-1 text-sm font-semibold text-slate-800"
+                            >摘要：</label
+                        >
+                        <textarea
+                            rows="3"
+                            class="w-full resize-none rounded-md border border-stone-200 px-2 py-1 text-sm text-slate-900 outline-none"
+                            v-bind:value="formModel.summary"
+                            v-on:input="formModel.onSummaryInput"
+                        />
+                    </template>
+                </div>
             </div>
 
             <!-- 操作双钮：吸附面板右缘，毛玻璃垂直胶囊（对齐工具栏风格），仅图标着色 -->
@@ -351,35 +366,8 @@ function registerWindowRoot(
 </script>
 
 <style scoped>
-
-
-/* 标题卡左侧凸出三角：指向左侧被操作对象。
-   双层三角（外=边框色 / 内=卡片背景色）构成空心缺口，三角整体凸出卡片左边缘外。 */
-.title-card::before {
-    content: '';
-    position: absolute;
-    left: -9px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 0;
-    height: 0;
-    border-top: 7px solid transparent;
-    border-bottom: 7px solid transparent;
-    border-right: 9px solid #e2e8f0;
-    pointer-events: none;
-}
-
-.title-card::after {
-    content: '';
-    position: absolute;
-    left: -7px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 0;
-    height: 0;
-    border-top: 5px solid transparent;
-    border-bottom: 5px solid transparent;
-    border-right: 7px solid #fafaf9;
-    pointer-events: none;
+/* 产品色占位（#FFB578）：托盘背景 / 标题卡背景 / 锚点圆点共用一处定义 */
+.floating-window {
+    --product-color: #ffb578;
 }
 </style>
