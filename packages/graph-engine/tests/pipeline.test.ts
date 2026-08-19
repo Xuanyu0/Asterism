@@ -28,7 +28,6 @@ function addNodeOp(id: string, label: string): GraphOperation {
             kind: 'real',
             label,
             degree: 0,
-            abstractionLevel: 0,
         },
     }
 }

@@ -7,8 +7,8 @@
 import type {
     GraphId,
     NodeId,
-    NodeRadiusMap,
 } from '../../../src/types/graph_data'
+import type { NodeRadiusMap } from '../../../src/types/infrastructure_types'
 import { pathLayout } from '../../../src/compose/arrangement/path'
 import { createNode, createEdge, assembleGraph } from '../../test_case_factory'
 

@@ -7,8 +7,8 @@
 import type {
     GraphId,
     NodeId,
-    NodeRadiusMap,
 } from '../../../src/types/graph_data'
+import type { NodeRadiusMap } from '../../../src/types/infrastructure_types'
 import {
     adjustDistance,
     adjustOrbit,

@@ -5,7 +5,7 @@
  *
  *     GraphEngine 公开 API 入口。所有外部消费者通过此文件导入。
  *
- * 导出分 6 类：
+ * 导出分 7 类：
  *
  *     - apply           — 前端 graph_store 单步提交
  *     - applyBatch      — 前端 operation_controller 批量事务
@@ -13,6 +13,7 @@
  *     - reversal        — 前端 graph_store undo
  *     - compose         — 前端 operation_controller 编排操作
  *     - infrastructure  — 前端 graph_store 初始化、Registry 管理、ID 生成、校验
+ *     - derive          — 派生值（form / abstractionLevel 读取时计算）
  *
  * 规则：
  *
@@ -49,6 +50,8 @@ export type {
     EdgeKind,
     EdgeDirection,
     EdgeData,
+    DeriveNodeForm,
+    DeriveAbstractionLevel,
 } from './types/graph_data'
 
 /** 消费者：前端 graph_store / operation_controller、引擎 compose 层。 */
@@ -332,3 +335,27 @@ export {
 } from './core/utils/id'
 
 export { DEFAULT_LAYOUT_RULES } from './core/layout_rules'
+
+// ═══════════════════════════════════════════════════════════════════
+// derive — 派生值（读取时计算，不持久化）
+//
+// 消费者：
+//     compose 层（deconstruct / internalize 的 form 检查）、前端渲染层。
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * 功能：
+ *
+ *     节点 form / abstractionLevel 的运行时派生函数。派生值不持久化，读取时计算，
+ *     权威源为 childGraphId（子图结构）。
+ *
+ * 消费者：
+ *
+ *     compose 层（form 检查）、前端渲染层。
+ *
+ * 使用：
+ *
+ *     const form = deriveNodeForm(node)
+ *     const level = deriveAbstractionLevel(lookupGraph, node)
+ */
+export { deriveNodeForm, deriveAbstractionLevel } from './core/derive'

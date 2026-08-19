@@ -8,7 +8,8 @@ import {
     hasCollisionAt,
     hasCollisionInDrafts,
 } from '../src/infrastructure/collision'
-import type { NodeData, NodeRadiusMap } from '../src/types/graph_data'
+import type { NodeData } from '../src/types/graph_data'
+import type { NodeRadiusMap } from '../src/types/infrastructure_types'
 
 function pos(x: number, y: number) {
     return { x, y }
@@ -23,7 +24,6 @@ function kn(id: string, p: { x: number; y: number }, degree = 0): NodeData {
         label: id,
         degree,
         position: p,
-        abstractionLevel: 0,
     }
 }
 

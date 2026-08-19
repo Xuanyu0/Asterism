@@ -108,7 +108,10 @@ describe('applyBatch', () => {
                     direction: 'directed',
                 }),
             },
-            createNode({ id: 'n2' as NodeId, graphId: G }), // not a valid op for add_edge, 会被后续 validate 拦截——但 stopOnFirst 会让它不被校验
+            {
+                type: 'add_node' as const,
+                node: createNode({ id: 'n2' as NodeId, graphId: G }),
+            }, // 第二个操作：stopOnFirst 让第一个失败后停，此操作不被校验
         ]
         const result = applyBatch(graph, ops, { stopOnFirst: true })
         expect(result.validation.valid).toBe(false)

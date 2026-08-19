@@ -21,7 +21,7 @@ describe('induce', () => {
         const result = induce({
             nodeIds: ['ind-A', 'ind-B', 'ind-C'] as NodeId[],
             parentGraph: graph,
-            registry: new Map(),
+            lookupGraph: () => undefined,
             nodeRadiusOverrides: R,
             allEdges: graph.edges,
         })
@@ -41,7 +41,7 @@ describe('induce', () => {
         const result = induce({
             nodeIds: ['ih-A', 'ih-H'] as NodeId[],
             parentGraph: graph,
-            registry: new Map(),
+            lookupGraph: () => undefined,
             nodeRadiusOverrides: R,
             allEdges: graph.edges,
         })
@@ -72,7 +72,7 @@ describe('induce', () => {
         const result = induce({
             nodeIds: ['k', 'c'] as NodeId[],
             parentGraph: graph,
-            registry: new Map(),
+            lookupGraph: () => undefined,
             nodeRadiusOverrides: R,
             allEdges: graph.edges,
         })
@@ -86,7 +86,7 @@ describe('induce', () => {
         const result = induce({
             nodeIds: ['ind-A'] as NodeId[],
             parentGraph: graph,
-            registry: new Map(),
+            lookupGraph: () => undefined,
             nodeRadiusOverrides: R,
             allEdges: graph.edges,
         })

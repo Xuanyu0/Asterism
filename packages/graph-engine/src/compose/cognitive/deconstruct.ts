@@ -29,6 +29,7 @@ import type { GraphData, NodeId, NodePosition } from '../../types/graph_data'
 import type { ComposeIssue } from '../../types/compose_types'
 import type { GraphOperation } from '../../types/atomic_operations'
 import { generateGraphId, generateNodeId } from '../../core/utils/id'
+import { deriveNodeForm } from '../../core/derive'
 import { DEFAULT_LAYOUT_RULES } from '../../core/layout_rules'
 import { positionOnCircle } from '../../infrastructure/placement'
 
@@ -57,7 +58,7 @@ export interface DeconstructParams {
  * 规则：
  *
  *     1. 语义预检：nodeId 必须存在于 parentGraph，且 role=knowledge、kind=real、form=atomic。
- *     2. 父图 ops：update_node（form → 'abstract'）+ add_graph（空子图含沟通节点）。
+ *     2. 父图 ops：update_node（写 childGraphId，form 由 deriveNodeForm 派生）+ add_graph（空子图含沟通节点）。
  *     3. 子图：直接构造完整 GraphData，每个邻居一个 communication 引用节点。
  *
  * 参数：
@@ -102,7 +103,7 @@ export function deconstruct(params: DeconstructParams): {
         return { operations: [], issues }
     }
 
-    if (targetNode.form === 'abstract') {
+    if (deriveNodeForm(targetNode) === 'abstract') {
         issues.push({
             severity: 'error',
             code: 'DECONSTRUCT_TARGET_ALREADY_ABSTRACT',
@@ -157,7 +158,6 @@ export function deconstruct(params: DeconstructParams): {
             sourceGraphId: parentGraph.id,
             sourceNodeId: neighbor.id,
             position: positionOnCircle(communicationCenter, orbitRadius, angle),
-            abstractionLevel: 0,
             degree: 0,
             createdAt: now,
             updatedAt: now,
@@ -180,7 +180,6 @@ export function deconstruct(params: DeconstructParams): {
 
     const updatedNode = {
         ...targetNode,
-        form: 'abstract' as const,
         childGraphId,
         updatedAt: now,
     }

@@ -36,6 +36,7 @@ import type {
 import type { ComposeIssue } from '../../types/compose_types'
 import type { GraphOperation } from '../../types/atomic_operations'
 import { generateNodeId } from '../../core/utils/id'
+import { deriveNodeForm } from '../../core/derive'
 import { scatterInCircle } from '../../infrastructure/placement'
 import {
     hasCollisionAt,
@@ -180,7 +181,7 @@ export function internalize(params: InternalizeParams): {
         if (
             rn.node.role === 'knowledge' &&
             rn.node.kind === 'real' &&
-            rn.node.form === 'abstract'
+            deriveNodeForm(rn.node) === 'abstract'
         ) {
             issues.push({
                 severity: 'warning',
@@ -222,7 +223,7 @@ export function internalize(params: InternalizeParams): {
         // 抽象节点：递归清理子图
         if (
             kn.node.role === 'knowledge' &&
-            kn.node.form === 'abstract' &&
+            deriveNodeForm(kn.node) === 'abstract' &&
             kn.node.childGraphId
         ) {
             const childGraphId = kn.node.childGraphId
@@ -264,7 +265,7 @@ export function internalize(params: InternalizeParams): {
         // 抽象节点：子图内知识节点也一并迁入
         if (
             kn.node.role === 'knowledge' &&
-            kn.node.form === 'abstract' &&
+            deriveNodeForm(kn.node) === 'abstract' &&
             kn.node.childGraphId
         ) {
             const childGraph = lookupGraph(kn.node.childGraphId)
@@ -306,7 +307,6 @@ export function internalize(params: InternalizeParams): {
                     label: '',
                     degree: 0,
                     position: d.position,
-                    abstractionLevel: 0,
                     kind: 'real' as const,
                 })),
                 nodeRadiusOverrides,
@@ -368,7 +368,7 @@ function findNodeInGraphOrChildGraphs(
     for (const maybeAbstract of graph.nodes) {
         if (
             maybeAbstract.role === 'knowledge' &&
-            maybeAbstract.form === 'abstract' &&
+            deriveNodeForm(maybeAbstract) === 'abstract' &&
             maybeAbstract.childGraphId
         ) {
             const childGraph = lookupGraph(maybeAbstract.childGraphId)

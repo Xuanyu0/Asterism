@@ -24,12 +24,11 @@ describe('deconstruct', () => {
         ).toHaveLength(0)
         expect(result.operations).toHaveLength(2) // update_node + add_graph
         expect(result.operations[0]!.type).toBe('update_node')
-        // update_node 的 node.form 应改为 abstract
+        // update_node 写入 childGraphId（form 由 deriveNodeForm 派生为 abstract）
         const updateOp = result.operations[0] as {
             type: 'update_node'
-            node: { form: string; childGraphId: string }
+            node: { childGraphId: string }
         }
-        expect(updateOp.node.form).toBe('abstract')
         expect(updateOp.node.childGraphId).toBeTruthy()
         // add_graph 的 subgraph 含 3 个沟通节点（B/C/D）
         const addGraphOp = result.operations[1] as {
@@ -68,7 +67,7 @@ describe('deconstruct', () => {
                 createNode({
                     id: 'a' as NodeId,
                     graphId: 'test-abs' as GraphId,
-                    form: 'abstract',
+                    childGraphId: 'sub-abs' as GraphId,
                 }),
             ],
             edges: [],

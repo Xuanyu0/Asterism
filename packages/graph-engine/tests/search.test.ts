@@ -34,7 +34,6 @@ function kn(id: string, label: string): NodeData {
         kind: 'real',
         label,
         degree: 0,
-        abstractionLevel: 0,
     }
 }
 
@@ -53,7 +52,6 @@ function refNode(
         sourceNodeId,
         label,
         degree: 0,
-        abstractionLevel: 0,
     }
 }
 

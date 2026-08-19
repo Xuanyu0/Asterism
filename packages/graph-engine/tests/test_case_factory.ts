@@ -34,8 +34,7 @@ import type {
     NodeData,
     NodeId,
     NodePosition,
-    NodeRole,
-    RealNodeForm,
+    NodeKind,
     ReferenceNodeKind,
 } from '../src/types/graph_data'
 
@@ -47,13 +46,11 @@ import { validateGraph } from '../src/core/validators/whole_graph_validator'
 type NodeOverrides = {
     id: NodeId
     graphId: GraphId
-    role?: NodeRole
+    role?: NodeKind
     kind?: 'real' | 'virtual'
     referenceKind?: ReferenceNodeKind
     label?: string
     summary?: string
-    form?: RealNodeForm
-    abstractionLevel?: number
     degree?: number
     position?: NodePosition
     childGraphId?: GraphId
@@ -83,7 +80,7 @@ type EdgeOverrides = {
  *
  *     1. role 默认 'knowledge'。kind 默认 'real'（仅 knowledge 节点有意义）。
  *     2. degree 默认 0（由 assembleGraph 根据边自动修正）。
- *     3. form 默认 'atomic'（kind=real 且 role=knowledge 时）。
+ *     3. form / abstractionLevel 为派生值（权威源 = childGraphId），不在产出中存储。
  */
 export function createNode(overrides: NodeOverrides): NodeData {
     const role = overrides.role ?? 'knowledge'
@@ -98,8 +95,6 @@ export function createNode(overrides: NodeOverrides): NodeData {
             kind,
             label: overrides.label ?? overrides.id,
             summary: overrides.summary,
-            form: overrides.form ?? (kind === 'real' ? 'atomic' : undefined),
-            abstractionLevel: overrides.abstractionLevel ?? 0,
             degree: overrides.degree ?? 0,
             position: overrides.position,
             childGraphId: overrides.childGraphId,
@@ -113,7 +108,6 @@ export function createNode(overrides: NodeOverrides): NodeData {
         graphId: overrides.graphId,
         referenceKind: overrides.referenceKind!,
         label: overrides.label ?? overrides.id,
-        abstractionLevel: overrides.abstractionLevel ?? 0,
         degree: overrides.degree ?? 0,
         position: overrides.position,
         childGraphId: overrides.childGraphId,
@@ -359,7 +353,6 @@ export function createAbstractNodeTestGraph(graphId: GraphId = G): GraphData {
     const abs = createNode({
         id: 'abs-0' as NodeId,
         graphId,
-        form: 'abstract',
         childGraphId: 'sub-abs-0' as GraphId,
     })
     const real = createNode({ id: 'abs-1' as NodeId, graphId })
@@ -511,7 +504,6 @@ export function createGoldenTestGraph(
             id: 'node-3' as NodeId,
             graphId,
             label: '抽象节点3',
-            form: 'abstract',
             childGraphId: 'graph-sub-3' as GraphId,
             position: { x: 650, y: 120 },
         }),
@@ -859,7 +851,6 @@ export function createInternalizeAbstractInputGraph(
         id: abstractNodeId,
         graphId,
         label: '抽象节点',
-        form: 'abstract',
         childGraphId: 'child-int-abs' as GraphId,
     })
     const ext = createNode({
