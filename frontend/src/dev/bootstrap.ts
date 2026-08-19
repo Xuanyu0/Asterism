@@ -6,7 +6,7 @@
  *     注册全部开发期测试设施（加载默认测试图 + 浏览器控制台 API + 验收测试机）。
  *
  * 规则：
- *     1. 调用前必须已挂载 Pinia（app.use(pinia)），因为内部 useGraphStore。
+ *     1. 无前置初始化——内部 useGraphStore 为模块级单例，懒创建。
  *     2. 路由挂载先后不影响——本函数只挂 window 对象 + 加载测试数据，不依赖路由。
  *     3. 金图与银图均通过 graphStore 操作路径（createRootGraph → commitToCurrentGraph × 3）
  *        构造，与用户实际操作路径一致。

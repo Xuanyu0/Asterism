@@ -7,13 +7,11 @@
  *
  * 规则：
  *     1. 使用金牌图作为测试数据。
- *     2. 每个测试独立环境（beforeEach 重置 Pinia 和 localStorage）。
+ *     2. 每个测试独立环境（beforeEach 重置 store 单例和 localStorage）。
  *     3. 中介者模块级单例在同一文件测试间共享，各测试通过重新注册 handler 隔离。
  */
 
-import { setActivePinia, createPinia } from 'pinia'
-
-import { useGraphStore } from '@/graph/graph_store'
+import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
 import { saveGraph } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 import { useToolMediator } from './mediator'
@@ -38,7 +36,7 @@ vi.mock('@/cytoscape/useRenderer', () => ({
 }))
 
 beforeEach(() => {
-    setActivePinia(createPinia())
+    resetGraphStoreForTests()
     localStorage.clear()
     const golden = createGoldenTestGraphV2()
     saveGraph(golden)

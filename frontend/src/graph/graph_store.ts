@@ -1,17 +1,17 @@
 /**
- * 说明：
+ * GraphData 唯一事实源与所有图修改的唯一合法入口（模块级单例）。
  *
- *     GraphData 唯一事实源与所有图修改的唯一合法入口。
- *     持有当前图 / 路径 / 操作日志，协调多图注册表与 localStorage 持久化。
+ * @remarks
+ * 持有当前视图图 / 路径 / 操作日志，协调多图注册表与 localStorage 持久化。
+ * 留在本 store 的判定标准：
+ * Graph.vue 调用 ∨ 唯一图数据修改入口（commitBatchToGraphs）∨ 唯一图数据回溯入口（undo / redo）。
  *
- * 职责边界：
- *
- *     留在本 store 的判定标准：
- *          Graph.vue 调用 ∨ 唯一图数据修改入口（commitBatchToGraphs）∨ 唯一图数据回溯入口（undo / redo）。
+ * 响应式策略：graphView / graphPath / lastValidationResult 为 shallowReactive 顶层属性
+ * （引用替换触发更新）；graphRegistry / operationLog / redoStack 为普通字段（raw 无代理），
+ * 引擎 structuredClone 可直接克隆，无需 toRaw / markRaw 解包。
  */
 
-import { defineStore } from 'pinia'
-import { ref, shallowRef, toRaw, markRaw } from 'vue'
+import { shallowReactive } from 'vue'
 
 import type { GraphData, GraphId } from '@my-project/graph-engine'
 import type { GraphOperation } from '@my-project/graph-engine'
@@ -62,48 +62,115 @@ import {
  * 一次批量提交中的单个图项：目标图与其待执行操作序列。
  * commitBatchToGraphs 入参元素与 applyEntry 组装 batch 时复用同一形态。
  */
-type OperationBatchItem = {
+export type OperationBatchItem = {
     graph: GraphData
     operations: GraphOperation[]
 }
 
 /**
- * 说明：
+ * GraphStore 公开 API：状态 + 方法入口。
  *
- *     创建 Graph Store 单例，暴露全部图操作入口（职责与边界见文件头说明）。
- *
- * 调用契约：
- *
- *     1. 图修改经 graph/adapters/useGraphOperationAdapter.commitToCurrentGraph。
- *     2. 所有修改委托引擎 applyBatch 执行 validate + execute，成功后自动持久化。
+ * @remarks
+ * 状态按职责分组：
+ * - 视图态（响应式）：graphView / graphPath / lastValidationResult
+ * - 多图缓存（普通字段）：graphRegistry
+ * - 撤销日志（普通字段）：operationLog / redoStack
  */
-export const useGraphStore = defineStore('graph_store', () => {
-    // shallowRef 保持 raw：引擎 reversal 与 preview 克隆用 structuredClone，无法克隆 Vue proxy
-    const graphView = shallowRef<GraphData | null>(null)
-    const graphRegistry = ref<GraphRegistry>(createRegistry())
-    const graphPath = ref<GraphId[]>([])
-    const operationLog = ref<OperationLog>({ entries: [], cursor: -1 })
-    const redoStack = ref<number[]>([])
+export interface GraphStoreAPI {
+    // 视图态（响应式，引用替换触发更新）
+    graphView: GraphData | null
+    graphPath: GraphId[]
+    lastValidationResult: ValidationResult | null
 
-    const lastSaveTime = ref<number | null>(null)
-    const lastValidationResult = ref<ValidationResult | null>(null)
+    // 多图缓存（普通字段，raw 无代理）
+    graphRegistry: GraphRegistry
+
+    // 撤销日志（普通字段，raw 无代理）
+    operationLog: OperationLog
+    redoStack: number[]
+
+    // 生命周期
+    loadGraphToView(graphId: GraphId): boolean
+    initRegistry(): void
+    createRootGraph(title: string, opts?: { id?: GraphId }): GraphId
+
+    // 内部行为
+    clearValidationResult(): void
+
+    // 功能行为
+    commitBatchToGraphs(
+        operationBatch: OperationBatchItem[],
+        options?: {
+            recordLog?: boolean
+            skipValidate?: boolean
+            source?: string
+        },
+    ): { validation: ValidationResult }
+    undo(): boolean
+    redo(): boolean
+}
+
+let singleton: GraphStoreAPI | null = null
+
+/**
+ * 获取 GraphStore 模块级单例（懒创建）。
+ *
+ * @remarks
+ * 后续调用返回同一实例；测试经 {@link resetGraphStoreForTests} 重建。
+ */
+export function useGraphStore(): GraphStoreAPI {
+    if (!singleton) {
+        singleton = createGraphStore()
+    }
+    return singleton
+}
+
+/**
+ * 重建 GraphStore 单例，供测试隔离使用（替代原 setActivePinia(createPinia())）。
+ */
+export function resetGraphStoreForTests(): void {
+    singleton = null
+}
+
+function createGraphStore(): GraphStoreAPI {
+    // 嵌套对象（GraphData / 数组 / Map）保持 raw——引擎 structuredClone 可安全克隆
+    let store: GraphStoreAPI = shallowReactive({
+        // ── 响应式状态：顶层属性替换触发更新（Graph.vue watch / 导航 computed 消费）──
+        graphView: null as GraphData | null,
+        graphPath: [] as GraphId[],
+        lastValidationResult: null as ValidationResult | null,
+
+        // —— 语义上非响应式状态 ——
+        // 搭浅响应便车（shallowReactive 不深代理，保持 raw）。
+        // 仅整体替换才触发响应式，实际只原地修改（Map.set / entries.push），故行为等价普通变量
+        graphRegistry: createRegistry(),
+        operationLog: { entries: [], cursor: -1 } as OperationLog,
+        redoStack: [] as number[],
+
+        // ── 方法（函数不被代理，原样保留）──
+        loadGraphToView,
+        initRegistry,
+        createRootGraph,
+        clearValidationResult,
+        commitBatchToGraphs,
+        undo,
+        redo,
+    })
 
     /**
-     * 说明：
+     * 用户切换图谱的唯一入口：从持久化加载图谱并设为当前视图。
      *
-     *     用户切换图谱的唯一入口：从持久化加载图谱并设为当前视图。
-     *
-     * 调用契约：
-     *
-     *     1. 本函数不负责完整图校验。
-     *     2. 操作日志生命周期跟随工作根图谱：仅当切换到不同根图树时重置
-     *        operationLog 与 redoStack；同根图树内导航（子图↔根图）不清空。
+     * @remarks
+     * 本函数不负责完整图校验。操作日志生命周期跟随工作根图谱：仅当切换到不同根图树时
+     * 重置 operationLog 与 redoStack；同根图树内导航（子图↔根图）不清空。
      *
      * 错误出口：
+     * 1. missing（图不存在）→ 静默返回 false，不写任何状态（正常状态，UI 兜底逻辑不变）
+     * 2. corrupted（图损坏）→ 走开发者通道（console.warn）后返回 false，不写 lastValidationResult
+     * 3. 祖先链断裂 / 环 → 由 buildGraphPath 回溯时走开发者通道（console.warn），图本身加载成功返回 true
      *
-     *     1. missing（图不存在）→ 静默返回 false，不写任何状态（正常状态，UI 兜底逻辑不变）。
-     *     2. corrupted（图损坏）→ 走开发者通道（console.warn）后返回 false，不写 lastValidationResult。
-     *     3. 祖先链断裂 / 环 → 由 buildGraphPath 回溯时走开发者通道（console.warn），图本身加载成功返回 true。
+     * @param graphId - 目标图谱 ID
+     * @returns 加载成功 true；图不存在或损坏 false。
      */
     function loadGraphToView(graphId: GraphId): boolean {
         const result = loadGraph(graphId)
@@ -118,25 +185,27 @@ export const useGraphStore = defineStore('graph_store', () => {
         const graph = result.graph
 
         // 切换图谱：旧图的校验结果（错误提示）不再适用于新视图，一并清空
-        graphView.value = ensureDefaultCognitiveState(graph)
+        store.graphView = ensureDefaultCognitiveState(graph)
         clearValidationResult()
 
-        registerGraph(graphRegistry.value, graph)
+        registerGraph(store.graphRegistry, graph)
+
+        // 生命周期：根图谱 = 日志——仅当切换到不同根图树时重置操作日志与 redo 栈。
+        // 同根图树内导航（子图↔根图）不清空。
+        // previousRootId 必须在覆盖 graphPath 之前读取，才能与 path[0]（新根图 id）比较
+        const previousRootId = store.graphPath[0]
 
         // 构建当前图在根图树中的路径（根→叶），供导航卡片渲染面包屑与"是否在根"判断
         const { path, terminal } = buildGraphPath(graph)
+        store.graphPath = path
 
-        graphPath.value = path
-
-        const previousRootId = graphPath.value[0]
-        // 生命周期：根图谱 = 日志
         if (
             path.length > 0 &&
             previousRootId !== undefined &&
             previousRootId !== path[0]
         ) {
-            operationLog.value = { entries: [], cursor: -1 }
-            redoStack.value = []
+            store.operationLog = { entries: [], cursor: -1 }
+            store.redoStack = []
         }
 
         // 祖先链断裂 / 环的检测与开发者通道记录在 buildGraphPath 回溯过程中完成，
@@ -150,22 +219,15 @@ export const useGraphStore = defineStore('graph_store', () => {
     }
 
     /**
-     * 说明：
+     * 从 lastActiveRootId 恢复工作根图及其全部子孙子图到注册表。
      *
-     *     从 lastActiveRootId 恢复工作根图及其全部子孙子图到注册表。
-     *     启动时注入整棵根图树，保证认知操作的跨图查询（makeLookup）能命中子图
+     * @remarks
+     * 启动时注入整棵根图树，保证认知操作的跨图查询（makeLookup）能命中子图。
+     * 调用后 registry 可能仍为空（无历史根图 / 历史根图已删或加载失败）——
+     * 调用方不得假定调用后必有图，需自行兜底。
      *
-     * 调用契约：
-     *
-     *     1. 应用启动时调用一次。
-     *     2. 调用后 registry 可能仍为空（无历史根图 / 历史根图已删或加载失败）——
-     *        调用方不得假定调用后必有图，需自行兜底。
-     *
-     * TODO：
-     *
-     *     历史根图 corrupted 已入开发者通道（console.warn）可区分"首次使用"与"数据损坏"；
-     *     kind 非 root 时仍静默返回，与"无历史根图"无法区分。需为异常路径增加可见性，
-     *     待行为设计确定后处理。
+     * kind 非 root 时仍静默返回，与"无历史根图"无法区分。需为异常路径增加可见性，
+     * 待行为设计确定后处理。
      */
     function initRegistry(): void {
         const lastRootId = loadLastActiveRootId()
@@ -181,14 +243,14 @@ export const useGraphStore = defineStore('graph_store', () => {
             return
         }
         if (rootResult.graph.kind !== 'root') return
-        registerGraph(graphRegistry.value, rootResult.graph)
+        registerGraph(store.graphRegistry, rootResult.graph)
 
         // 预加载当前根图树的所有子图
         const allIds = listSavedGraphIds()
         for (const graphId of allIds) {
             if (
                 graphId === lastRootId ||
-                hasGraph(graphRegistry.value, graphId)
+                hasGraph(store.graphRegistry, graphId)
             )
                 continue
             const result = loadGraph(graphId)
@@ -199,26 +261,22 @@ export const useGraphStore = defineStore('graph_store', () => {
                 continue
             }
             if (!isInRootTree(result.graph, lastRootId)) continue
-            registerGraph(graphRegistry.value, result.graph)
+            registerGraph(store.graphRegistry, result.graph)
         }
     }
 
     /**
-     * 说明：
+     * 创建一个新的空根图并立即持久化；若 opts.id 对应图已存在，跳过创建直接返回该 id。
      *
-     *     创建一个新的空根图并立即持久化；若 opts.id 对应图已存在，跳过创建直接返回该 id。
+     * @remarks
+     * 本函数不自动切换视图——调用方如需显示新图，需额外调用 loadGraphToView。
+     * 创建后立即保存到 localStorage 并注册到 registry。
      *
-     * 调用契约：
-     *
-     *     1. 本函数不自动切换视图——调用方如需显示新图，需额外调用 loadGraphToView。
-     *     2. 创建后立即保存到 localStorage 并注册到 registry。
-     *
-     * 参数：
-     *
-     *     title — 根图名称
-     *     opts  — 可选。opts.id 指定固定 GraphId（幂等——已存在则跳过创建）。
-     *             dev 种子数据（bootstrap）用它保证跨图引用（sourceGraphId）指向稳定 ID；
-     *             生产路径（Graph.vue / NavigationPanel）不传，走随机 ID。
+     * @param title - 根图名称
+     * @param opts - 可选。opts.id 指定固定 GraphId（幂等——已存在则跳过创建）。
+     *               dev 种子数据（bootstrap）用它保证跨图引用（sourceGraphId）指向稳定 ID；
+     *               生产路径（Graph.vue / NavigationPanel）不传，走随机 ID。
+     * @returns 根图 ID（新建或已存在的原 ID）。
      */
     function createRootGraph(title: string, opts?: { id?: GraphId }): GraphId {
         const id = opts?.id ?? generateGraphId()
@@ -238,55 +296,51 @@ export const useGraphStore = defineStore('graph_store', () => {
         }
 
         saveGraph(graph)
-        registerGraph(graphRegistry.value, graph)
+        registerGraph(store.graphRegistry, graph)
 
         return id
     }
 
     /**
-     * 说明：
+     * 清除上一次操作的校验结果。
      *
-     *     清除上一次操作的校验结果。供 UI 层在切换模式/工具/操作、
-     *     关闭浮空窗时调用，确保用户不会看到已过期的校验错误消息。
+     * @remarks
+     * 供 UI 层在切换模式/工具/操作、关闭浮空窗时调用，确保用户不会看到已过期的校验错误消息。
      */
-    function clearValidationResult() {
-        lastValidationResult.value = null
+    function clearValidationResult(): void {
+        store.lastValidationResult = null
     }
 
     /**
-     * 说明：
+     * 对多个目标图批量执行操作，是全部图写入的统一入口。
      *
-     *     对多个目标图批量执行操作，是全部图写入的统一入口。
-     *     双存接线：执行同一生命周期内经 onBeforeEachOperation 回调逐操作构造逆元，
-     *     整批成功后组装 OperationLogEntry 写入 operationLog（recordLog !== false 时）；
-     *     undo / redo 复用本函数（recordLog: false）驱动同一执行引擎。
+     * @remarks
+     * 双存接线：执行同一生命周期内经 onBeforeEachOperation 回调逐操作构造逆元，
+     * 整批成功后组装 OperationLogEntry 写入 operationLog（recordLog !== false 时）；
+     * undo / redo 复用本函数（recordLog: false）驱动同一执行引擎。
      *
-     *     执行按照四阶段：逐项 applyBatch 执行（含逆元收集）→ 成功后统一提交状态 →
-     *     兑现 add_graph / delete_graph 信号（graph_signals）→ 统一持久化 → 日志写入。
+     * 执行分四阶段：逐项 applyBatch 执行（含逆元收集）→ 成功后统一提交状态 →
+     * 兑现 add_graph / delete_graph 信号（graph_signals）→ 统一持久化 → 日志写入。
      *
      * 调用契约：
-     *
-     *     1. 任一项执行失败即整批返回，不产生部分提交（latestGraphs 为局部变量，无部分状态泄漏）。
-     *     2. 同一图可在 operationBatch 中出现多次，后续项以前一项的结果图为输入。
-     *     3. 全部成功后统一持久化所有结果图。
-     *     4. options.recordLog 默认 true；false（undo/redo 执行）不追加 entry、
-     *        不动 cursor、不清 redoStack。
+     * 1. 任一项执行失败即整批返回，不产生部分提交（latestGraphs 为局部变量，无部分状态泄漏）
+     * 2. 同一图可在 operationBatch 中出现多次，后续项以前一项的结果图为输入
+     * 3. 全部成功后统一持久化所有结果图
+     * 4. options.recordLog 默认 true；false（undo/redo 执行）不追加 entry、不动 cursor、不清 redoStack
      *
      * 代码修改契约：
+     * 1. add_graph / delete_graph 为引擎静默信号，由本函数兑现为 registry 副作用
+     *    （软删，不触碰持久化）——经 graph_signals 收口
+     * 2. 回调内 createReversal 抛异常（正常流程不可达，validate 已保证目标存在）
+     *    不捕获、自然传播阻断整批——registry / 持久化 / 日志均无变化
      *
-     *     1. add_graph / delete_graph 为引擎静默信号，由本函数兑现为 registry 副作用
-     *        （软删，不触碰持久化）——经 graph_signals 收口。
-     *     2. 回调内 createReversal 抛异常（正常流程不可达，validate 已保证目标存在）
-     *        不捕获、自然传播阻断整批——registry / 持久化 / 日志均无变化。
-     *
-     * 参数：
-     *
-     *     operationBatch — 图与其对应的操作序列的配对数组
-     *     options        — [可选] recordLog：是否写入操作日志（默认 true）；
-     *                       skipValidate：透传引擎 applyBatch，跳过 Phase 1 前提校验
-     *                       （undo/redo 恢复型逆元批传 true，正向用户操作默认 false）；
-     *                       source：操作来源的工具标识，透传写入 entry.source
-     *                       （缺省 undefined = 未知来源，供操作日志树 UI 按来源分类）
+     * @param operationBatch - 图与其对应的操作序列的配对数组
+     * @param options - [可选] recordLog：是否写入操作日志（默认 true）；
+     *                  skipValidate：透传引擎 applyBatch，跳过 Phase 1 前提校验
+     *                  （undo/redo 恢复型逆元批传 true，正向用户操作默认 false）；
+     *                  source：操作来源的工具标识，透传写入 entry.source
+     *                  （缺省 undefined = 未知来源，供操作日志树 UI 按来源分类）
+     * @returns 校验结果（valid + issues 汇总）。
      */
     function commitBatchToGraphs(
         operationBatch: OperationBatchItem[],
@@ -304,13 +358,7 @@ export const useGraphStore = defineStore('graph_store', () => {
 
         for (const item of operationBatch) {
             // inputGraph：同一图被多个 item 修改时，后续基于前一个操作后图数据的结果。
-
-            // toRaw: 解包 Pinia reactive proxy
-            // 因为引擎 createReversal 内部使用 structuredClone 无法克隆 proxy
-            // 所以在此处统一解包。
-            const inputGraph = toRaw(
-                latestGraphs.get(item.graph.id) ?? item.graph,
-            )
+            const inputGraph = latestGraphs.get(item.graph.id) ?? item.graph
             const perOpReversals: GraphOperation[][] = []
 
             const { graph: resultGraph, validation } = applyBatch(
@@ -326,7 +374,7 @@ export const useGraphStore = defineStore('graph_store', () => {
                                       op.type === 'add_graph' ||
                                       op.type === 'delete_graph'
                                   )
-                                      return //  图级操作由 graph_signals 在第三阶段正/逆向执行
+                                      return // 图级操作由 graph_signals 在第三阶段正/逆向执行
                                   perOpReversals.push(
                                       createReversal(graphBeforeOp, op),
                                   )
@@ -335,7 +383,7 @@ export const useGraphStore = defineStore('graph_store', () => {
             )
 
             if (!validation.valid) {
-                lastValidationResult.value = validation
+                store.lastValidationResult = validation
 
                 return { validation }
             }
@@ -347,7 +395,7 @@ export const useGraphStore = defineStore('graph_store', () => {
             if (perOpReversals.length > 0) {
                 reversalItems.push({
                     graphId: item.graph.id,
-                    operations: perOpReversals.reverse().flat(), // Item “内”逆序收集并打平，保证 undo 时正向执行顺序
+                    operations: perOpReversals.reverse().flat(), // Item "内"逆序收集并打平，保证 undo 时正向执行顺序
                 })
             }
         }
@@ -357,10 +405,10 @@ export const useGraphStore = defineStore('graph_store', () => {
             // 同步更新 registry，保证 graphView 与 registry 中同图引用一致。
             // graphView 的图可能同时存在于 registry 中（例如通过 loadGraphToView 加载），
             // 只更新 graphView 会导致 registry 持有过期引用。
-            registerGraph(graphRegistry.value, resultGraph)
+            registerGraph(store.graphRegistry, resultGraph)
 
-            if (graphId === graphView.value?.id) {
-                graphView.value = resultGraph
+            if (graphId === store.graphView?.id) {
+                store.graphView = resultGraph
             }
         }
 
@@ -375,7 +423,7 @@ export const useGraphStore = defineStore('graph_store', () => {
                     const builtGraph = latestGraphs.get(operation.graph.id)
                     const targetGraph = builtGraph ?? operation.graph // 有由批操作构造完的图就用它，否则用 add_graph 自带的图
 
-                    applyAddGraph(graphRegistry.value, targetGraph)
+                    applyAddGraph(store.graphRegistry, targetGraph)
 
                     // 补持久化：未进入 latestGraphs 的图（比方说 Deconstruct 后得到的图），
                     if (!builtGraph) {
@@ -384,7 +432,7 @@ export const useGraphStore = defineStore('graph_store', () => {
                 }
 
                 if (operation.type === 'delete_graph') {
-                    applyDeleteGraph(graphRegistry.value, operation.graphId)
+                    applyDeleteGraph(store.graphRegistry, operation.graphId)
                 }
             }
         }
@@ -392,14 +440,6 @@ export const useGraphStore = defineStore('graph_store', () => {
         // 第四阶段：统一持久化结果图
         for (const resultGraph of latestGraphs.values()) {
             saveGraph(resultGraph)
-        }
-
-        // 若当前视图图被持久化，记录最近一次保存时间。
-        const hasGraphViewTarget = operationBatch.some(
-            (item) => item.graph.id === graphView.value?.id,
-        )
-        if (hasGraphViewTarget) {
-            lastSaveTime.value = Date.now()
         }
 
         // 操作日志写入（双存模型）
@@ -425,20 +465,16 @@ export const useGraphStore = defineStore('graph_store', () => {
                     graphId: item.graph.id,
                     operations: item.operations,
                 })),
-                reversalOperations: reversalItems.reverse(), // item “间”逆序
+                reversalOperations: reversalItems.reverse(), // item "间"逆序
                 graphSignals,
-                parentIndex: operationLog.value.cursor,
+                parentIndex: store.operationLog.cursor,
                 timestamp: new Date().toISOString(),
                 source: options?.source, // 来源工具标识，缺省 undefined = 未知来源
             }
 
-            // entry 整体 markRaw 再入栈——operationLog 为 reactive ref，
-            // 直接 push 会让操作对象被深层 proxy 包装；
-            // 后续逆元 structuredClone 命中 proxy 即 DataCloneError。
-            // 所以 markRaw 使 Vue 尊重原始对象，读出时禁止被响应式化。
-            operationLog.value.entries.push(markRaw(entry))
-            operationLog.value.cursor = operationLog.value.entries.length - 1
-            redoStack.value = []
+            store.operationLog.entries.push(entry)
+            store.operationLog.cursor = store.operationLog.entries.length - 1
+            store.redoStack = []
         }
 
         const validation: ValidationResult = {
@@ -446,30 +482,29 @@ export const useGraphStore = defineStore('graph_store', () => {
             issues: allIssues,
         }
 
-        lastValidationResult.value = validation
+        store.lastValidationResult = validation
 
         return { validation }
     }
 
     /**
-     * 说明：
+     * 撤销最近一次操作。
      *
-     *     撤销最近一次操作
+     * @remarks
+     * 对当前 cursor 指向的 entry 执行逆元，成功后游标回退到 parentIndex
+     * 并把 entry 索引推入 redoStack。
      *
-     * 调用契约：
-     *
-     *     对当前 cursor 指向的 entry 执行逆元，
-     *     成功后游标回退到 parentIndex 并把 entry 索引推入 redoStack。。
+     * @returns 存在可撤销历史且撤销成功 true；无历史或逆元执行失败（防御，正常不可达）false。
      */
     function undo(): boolean {
-        if (operationLog.value.cursor < 0) {
+        if (store.operationLog.cursor < 0) {
             return false
         }
 
-        const entryIndex = operationLog.value.cursor
+        const entryIndex = store.operationLog.cursor
 
         if (applyEntry(entryIndex, 'reverse')) {
-            redoStack.value.push(entryIndex)
+            store.redoStack.push(entryIndex)
             ensureViewConsistency()
             return true
         }
@@ -478,17 +513,15 @@ export const useGraphStore = defineStore('graph_store', () => {
     }
 
     /**
-     * 说明：
+     * 重做最近一次撤销（日志驱动）。
      *
-     *     重做最近一次撤销（日志驱动）：
+     * @remarks
+     * 从 redoStack 弹出 entry 索引并正向执行，游标移动在 applyEntry 内完成。
      *
-     * 调用契约：
-     *
-     *     从 redoStack 弹出 entry 索引并正向执行，
-     *     游标移动在 applyEntry 内完成。
+     * @returns 存在可重做历史且重做成功 true；无历史或执行失败（防御，正常不可达）false。
      */
     function redo(): boolean {
-        const entryIndex = redoStack.value.pop()
+        const entryIndex = store.redoStack.pop()
 
         if (entryIndex === undefined) {
             return false
@@ -500,7 +533,7 @@ export const useGraphStore = defineStore('graph_store', () => {
         }
 
         // 防御：applyEntry 失败（正常不可达）时回滚已弹出的索引，避免 redo 指针丢失
-        redoStack.value.push(entryIndex)
+        store.redoStack.push(entryIndex)
         return false
     }
 
@@ -539,12 +572,11 @@ export const useGraphStore = defineStore('graph_store', () => {
      * @param direction - 'forward'（redo）或 'reverse'（undo）
      * @returns 执行成功 true；entry 不存在或图内校验失败（防御，正常不可达）→ false。
      */
-
     function applyEntry(
         entryIndex: number,
         direction: 'forward' | 'reverse',
     ): boolean {
-        const entry = operationLog.value.entries[entryIndex]
+        const entry = store.operationLog.entries[entryIndex]
 
         if (!entry) {
             return false
@@ -554,7 +586,7 @@ export const useGraphStore = defineStore('graph_store', () => {
             // 阶段一：图级恢复（deleted 逆序）：撤销 delete_graph，从持久化恢复注册
             // 因为操作日志不记录 delete_graph 的位置
             for (const graphId of [...entry.graphSignals.deleted].reverse()) {
-                revertDeleteGraph(graphRegistry.value, graphId)
+                revertDeleteGraph(store.graphRegistry, graphId)
             }
 
             // 阶段二：图内逆元执行（reversalOperations 顺序遍历，组装时已逆序）。
@@ -567,7 +599,7 @@ export const useGraphStore = defineStore('graph_store', () => {
                 if (addedGraphIds.has(reversalItem.graphId)) continue // 跳过 added 图的 item：模型本质要求（见JSDoc）
 
                 const graph = lookupGraph(
-                    graphRegistry.value,
+                    store.graphRegistry,
                     reversalItem.graphId,
                 )
                 if (!graph) {
@@ -596,17 +628,17 @@ export const useGraphStore = defineStore('graph_store', () => {
 
             // 阶段三：图级消失（added 逆序）：撤销 add_graph
             for (const graphId of [...entry.graphSignals.added].reverse()) {
-                revertAddGraph(graphRegistry.value, graphId)
+                revertAddGraph(store.graphRegistry, graphId)
             }
 
-            operationLog.value.cursor = entry.parentIndex
+            store.operationLog.cursor = entry.parentIndex
             return true
         } else if (direction === 'forward') {
             // forward（redo）：operation 顺序遍历组装 commitBatchToGraphs 可执行的 batch
             const batch: OperationBatchItem[] = []
             for (const forwardItem of entry.operation) {
                 let graph = lookupGraph(
-                    graphRegistry.value,
+                    store.graphRegistry,
                     forwardItem.graphId,
                 )
 
@@ -642,7 +674,7 @@ export const useGraphStore = defineStore('graph_store', () => {
                 }
             }
 
-            operationLog.value.cursor = entryIndex
+            store.operationLog.cursor = entryIndex
             return true
         }
 
@@ -651,25 +683,23 @@ export const useGraphStore = defineStore('graph_store', () => {
     }
 
     /**
-     * 说明：
+     * undo / redo 后的视图一致性检查。
      *
-     *     undo / redo 后的视图一致性检查：graphView 指向的图被注销（撤销含
-     *     add_graph 的批且正在查看该子图）时，则将视图切到最近可达图。
-     *
-     * 规则：
-     *
-     *     - graphView 为空或仍在 registry → 直接返回（视图有效，无需处理）
-     *     - 否则按优先级寻找 fallback：
-     *       1. 沿 parentGraphId 上溯找最近可达祖先（registry 优先，缺失则
-     *          从持久化惰性加载注册；环 / 链断裂 → 停止上溯）
-     *       2. 任一 root 图（registry 中 kind === 'root'）
-     *       3. 均无 → 清空视图（graphView = null，graphPath = []）
-     *     - 切换后：buildGraphPath 重算 graphPath；末端为 root 时更新 lastActiveRootId
+     * @remarks
+     * graphView 指向的图被注销（撤销含 add_graph 的批且正在查看该子图）时，
+     * 将视图切到最近可达图。规则：
+     * - graphView 为空或仍在 registry → 直接返回（视图有效，无需处理）
+     * - 否则按优先级寻找 fallback：
+     *   1. 沿 parentGraphId 上溯找最近可达祖先（registry 优先，缺失则从持久化惰性加载注册；
+     *      环 / 链断裂 → 停止上溯）
+     *   2. 任一 root 图（registry 中 kind === 'root'）
+     *   3. 均无 → 清空视图（graphView = null，graphPath = []）
+     * - 切换后：buildGraphPath 重算 graphPath；末端为 root 时更新 lastActiveRootId
      */
     function ensureViewConsistency(): void {
-        const currentView = graphView.value
+        const currentView = store.graphView
         if (!currentView) return
-        if (lookupGraph(graphRegistry.value, currentView.id)) return
+        if (lookupGraph(store.graphRegistry, currentView.id)) return
 
         let fallback: GraphData | null = null
         let cursorGraph = currentView
@@ -681,7 +711,7 @@ export const useGraphStore = defineStore('graph_store', () => {
             if (visited.has(parentId)) break // 环防御
             visited.add(parentId)
 
-            const parent = findParentGraph(graphRegistry.value, parentId)
+            const parent = findParentGraph(store.graphRegistry, parentId)
             if (!parent) {
                 // 数据损坏：被注销图的父图在 registry 与持久化均不可达（正常流程软删保留数据），
                 // 开发者通道报告后走 root 兜底
@@ -698,7 +728,7 @@ export const useGraphStore = defineStore('graph_store', () => {
         }
 
         if (!fallback) {
-            for (const graph of graphRegistry.value.values()) {
+            for (const graph of store.graphRegistry.values()) {
                 if (graph.kind === 'root') {
                     fallback = graph
                     break
@@ -708,14 +738,14 @@ export const useGraphStore = defineStore('graph_store', () => {
 
         if (!fallback) {
             // 注册表全空：视图清空（graphView 为 null，graphPath 为空）
-            graphView.value = null
-            graphPath.value = []
+            store.graphView = null
+            store.graphPath = []
             return
         }
 
-        graphView.value = fallback
+        store.graphView = fallback
         const { path, terminal } = buildGraphPath(fallback)
-        graphPath.value = path
+        store.graphPath = path
 
         // 必要时更新最后活跃根图（undo/redo 不改变根图树，防御性更新）
         if (terminal.kind === 'root') {
@@ -724,19 +754,21 @@ export const useGraphStore = defineStore('graph_store', () => {
     }
 
     /**
-     * 说明：
+     * 沿 parentGraphId 链回溯，为任意图构建从根图到该图的完整路径（根→叶）。
      *
-     *     沿 parentGraphId 链回溯，为任意图构建从根图到该图的完整路径（根→叶）。
-     *     回溯途中：祖先图不在 registry 时由 findParentGraph 惰性加载并注册
-     *     （保证后续引用一致）；链完整性异常（环 / 父图缺失）就地写入开发者
-     *     通道记录，并在断裂处停止回溯。
+     * @remarks
+     * 回溯途中：祖先图不在 registry 时由 findParentGraph 惰性加载并注册
+     * （保证后续引用一致）；链完整性异常（环 / 父图缺失）就地写入开发者通道记录，
+     * 并在断裂处停止回溯。
      *
      * 调用契约：
+     * 1. 输入图需在 registry 或持久化中可达（祖先链可回溯）
+     * 2. 假定图链为树结构（单亲、无环）——环检测防御该假设被破坏
+     * 3. 返回 terminal：链末端图（根图或断裂处），调用方据此判断是否到达根
+     * 4. 环 / 父缺失的 console.warn 记录在回溯处就地完成，调用方无需重复报告
      *
-     *     1. 输入图需在 registry 或持久化中可达（祖先链可回溯）。
-     *     2. 假定图链为树结构（单亲、无环）——环检测防御该假设被破坏。
-     *     3. 返回 terminal：链末端图（根图或断裂处），调用方据此判断是否到达根。
-     *     4. 环 / 父缺失的 console.warn 记录在回溯处就地完成，调用方无需重复报告。
+     * @param graph - 起始图
+     * @returns path（根→叶的 ID 序列）与 terminal（链末端图）。
      */
     function buildGraphPath(graph: GraphData): {
         path: GraphId[]
@@ -756,7 +788,7 @@ export const useGraphStore = defineStore('graph_store', () => {
             visited.add(parentId)
 
             // 父图缺失（registry 与持久化均不可达）：链在此中断，terminal 停在断裂处
-            const parent = findParentGraph(graphRegistry.value, parentId)
+            const parent = findParentGraph(store.graphRegistry, parentId)
             if (!parent) {
                 reportBrokenAncestorChain(graph.id, currentGraph.id, parentId)
                 break
@@ -769,47 +801,18 @@ export const useGraphStore = defineStore('graph_store', () => {
         return { path, terminal: currentGraph }
     }
 
-    return {
-        graphView,
-        graphPath,
-
-        graphRegistry,
-        operationLog,
-        redoStack,
-        lastSaveTime,
-        lastValidationResult,
-
-        // 生命周期
-        loadGraphToView,
-        initRegistry,
-        createRootGraph,
-
-        // 内部行为
-        clearValidationResult,
-
-        // 功能行为
-        commitBatchToGraphs,
-        undo,
-        redo,
-    }
-})
+    return store
+}
 
 // ── 私有辅助（图查找） ──
 
 /**
- * 说明：
+ * 查找父图：优先取 registry 中的运行时引用（避免反序列化新对象、保持引用一致），
+ * 未命中则从持久化惰性加载并注册（保证后续回溯与导航引用同一对象）。
  *
- *     查找父图：优先取 registry 中的运行时引用（避免反序列化新对象、保持引用一致），
- *     未命中则从持久化惰性加载并注册（保证后续回溯与导航引用同一对象）。
- *
- * 参数：
- *
- *     registry — 图注册表
- *     parentId — 父图 ID
- *
- * 返回：
- *
- *     父图 GraphData；registry 与持久化均不可达时返回 undefined，调用方据此判定链断裂。
+ * @param registry - 图注册表
+ * @param parentId - 父图 ID
+ * @returns 父图 GraphData；registry 与持久化均不可达时返回 undefined，调用方据此判定链断裂。
  */
 function findParentGraph(
     registry: GraphRegistry,
@@ -830,15 +833,11 @@ function findParentGraph(
 // ── 私有辅助（开发者通道报告） ──
 
 /**
- * 说明：
+ * 祖先链断裂报告（开发者通道）。沿 parentGraphId 回溯时父图不可达（缺失或损坏）时调用。
  *
- *     祖先链断裂报告（开发者通道）。沿 parentGraphId 回溯时父图不可达（缺失或损坏）时调用。
- *
- * 参数：
- *
- *     graphId          — 发起回溯的图 ID
- *     terminalId       — 链断裂处（最后成功回溯到的图 ID）
- *     missingParentId  — 缺失的父图 ID
+ * @param graphId - 发起回溯的图 ID
+ * @param terminalId - 链断裂处（最后成功回溯到的图 ID）
+ * @param missingParentId - 缺失的父图 ID
  */
 function reportBrokenAncestorChain(
     graphId: GraphId,
@@ -851,13 +850,9 @@ function reportBrokenAncestorChain(
 }
 
 /**
- * 说明：
+ * 环检测报告（开发者通道）。parentGraphId 链检测到环、回溯被迫中断时调用。
  *
- *     环检测报告（开发者通道）。parentGraphId 链检测到环、回溯被迫中断时调用。
- *
- * 参数：
- *
- *     parentId — 导致回退的重复父图 ID（环的入口）
+ * @param parentId - 导致回退的重复父图 ID（环的入口）
  */
 function reportCycleDetected(parentId: GraphId): void {
     console.warn(
@@ -866,15 +861,11 @@ function reportCycleDetected(parentId: GraphId): void {
 }
 
 /**
- * 说明：
+ * applyEntry 组装 batch 时 registry 解析失败报告（开发者通道）。
+ * 正常流程不可达（undo 的图在 registry 中、redo 的图有 add_graph 兜底），防御性处理。
  *
- *     applyEntry 组装 batch 时 registry 解析失败报告（开发者通道）。
- *     正常流程不可达（undo 的图在 registry 中、redo 的图有 add_graph 兜底），防御性处理。
- *
- * 参数：
- *
- *     graphId — 解析失败的图 ID
- *     context — 发生场景（'undo 逆元执行' / 'redo 正向执行'）
+ * @param graphId - 解析失败的图 ID
+ * @param context - 发生场景（'undo 逆元执行' / 'redo 正向执行'）
  */
 function reportRegistryResolveFailure(graphId: GraphId, context: string): void {
     console.warn(
@@ -883,15 +874,11 @@ function reportRegistryResolveFailure(graphId: GraphId, context: string): void {
 }
 
 /**
- * 说明：
+ * applyEntry 逆元执行校验失败报告（开发者通道）。
+ * 正常流程不可达（逆元目标存在由 validate 保证），防御性处理。
  *
- *     applyEntry 逆元执行校验失败报告（开发者通道）。
- *     正常流程不可达（逆元目标存在由 validate 保证），防御性处理。
- *
- * 参数：
- *
- *     entryIndex — 失败的日志 entry 索引
- *     direction  — 'undo' 或 'redo'
+ * @param entryIndex - 失败的日志 entry 索引
+ * @param direction - 'undo' 或 'redo'
  */
 function reportReversalApplyFailure(
     entryIndex: number,

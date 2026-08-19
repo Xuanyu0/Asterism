@@ -8,17 +8,14 @@
  *
  * 规则：
  *     1. 使用金牌图（graph-golden 根图 + sub-golden 子图）作为测试数据。
- *     2. 适配层为模块级单例，computed 求值 / 方法调用时解析当前激活的 Pinia——
- *        每用例独立 Pinia。单例的 computed 会缓存首次求值时的 store 依赖，
+ *     2. 适配层为模块级单例，computed 求值 / 方法调用时解析当前 store 单例——
+ *        每用例独立 store。单例的 computed 会缓存首次求值时的 store 依赖，
  *        因此 beforeEach 经 vi.resetModules() 重建单例，实现真正的按用例隔离。
  *     3. 需要当前图的用例显式加载金牌图（无图态用例不加载）。
  */
 
-import { setActivePinia, createPinia } from 'pinia'
-
 import type { GraphId, NodeId } from '@my-project/graph-engine'
 
-import { useGraphStore } from '@/graph/graph_store'
 import { saveGraph, loadGraph } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 
@@ -26,14 +23,18 @@ import type { NavigationAdapterAPI } from './useNavigationAdapter'
 
 describe('useNavigationAdapter', () => {
     let navigation: NavigationAdapterAPI
+    let storeModule: typeof import('@/graph/graph_store')
 
     beforeEach(async () => {
         // 模块级单例的 computed 缓存首次求值时的 store 依赖；重置模块使每个用例
-        // 获得全新单例与全新 computed，配合每用例独立 Pinia 实现真正隔离。
-        // （vue / pinia 为 vitest 外部化依赖，重置后仍为同一实例，不会产生双实例。）
+        // 获得全新单例与全新 computed，配合每用例独立 store 单例实现真正隔离。
+        // store 也经动态 import 解析——resetModules 后静态引用指向旧模块实例，
+        // 会与适配器内部的新模块实例分叉成两个单例。
+        // （vue 为 vitest 外部化依赖，重置后仍为同一实例，不会产生双实例。）
         vi.resetModules()
-        setActivePinia(createPinia())
         localStorage.clear()
+        storeModule = await import('@/graph/graph_store')
+        storeModule.resetGraphStoreForTests()
         const mod = await import('./useNavigationAdapter')
         navigation = mod.useNavigationAdapter()
     })
@@ -42,7 +43,7 @@ describe('useNavigationAdapter', () => {
     function loadGoldenGraph() {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
-        const store = useGraphStore()
+        const store = storeModule.useGraphStore()
         store.loadGraphToView(golden.id)
         return store
     }

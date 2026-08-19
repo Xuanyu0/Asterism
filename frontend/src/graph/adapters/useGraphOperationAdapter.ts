@@ -7,7 +7,7 @@
  *
  * 调用契约：
  *
- *     1. 方法调用时解析当前激活的 Pinia（内部 useGraphStore），必须在 Pinia 安装后调用。
+ *     1. 方法调用时解析 GraphStore 模块级单例（内部 useGraphStore），懒创建，无前置初始化。
  *     2. 后续调用返回同一实例。
  *     3. 空图守卫由调用方保留；本适配层不再提供假 validation 兜底——图缺失属编程错误，直接 throw。
  */
@@ -117,7 +117,7 @@ let singleton: GraphOperationAdapterAPI | null = null
  *
  * 调用契约：
  *
- *     1. 方法调用时解析当前激活的 Pinia（内部 useGraphStore），必须在 Pinia 安装后调用。
+ *     1. 方法调用时解析 GraphStore 模块级单例（内部 useGraphStore），懒创建，无前置初始化。
  *     2. 后续调用返回同一实例。
  */
 export function useGraphOperationAdapter(): GraphOperationAdapterAPI {

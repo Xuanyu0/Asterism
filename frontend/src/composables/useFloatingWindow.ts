@@ -6,7 +6,7 @@
  *
  * 调用契约：
  *
- *     1. 必须在 Pinia 安装后首次调用（close 内部使用 graphStore）。
+ *     1. 无前置初始化（close 内部使用 graphStore 模块级单例）。
  *     2. 后续调用返回同一实例。
  */
 
@@ -74,7 +74,7 @@ let singleton: FloatingWindowAPI | null = null
  *
  *     1. 单例创建时即绑定 window pointerdown 监听（常驻），此后所有点击按
  *        外部点击规则处理——状态全部存于单例，监听回调不持有组件状态。
- *     2. 必须在 Pinia 安装后调用（close 内部使用 graphStore）。
+ *     2. 无前置初始化（close 内部使用 graphStore 模块级单例）。
  */
 export function useFloatingWindow(): FloatingWindowAPI {
     if (!singleton) {
@@ -84,7 +84,7 @@ export function useFloatingWindow(): FloatingWindowAPI {
 }
 
 function createFloatingWindow(): FloatingWindowAPI {
-    // shallowRef 保持 raw：浮空窗数据源自 graphView（shallowRef 下已 raw），
+    // shallowRef 保持 raw：浮空窗数据源自 graphView（shallowReactive 下已 raw），
     // 避免 ref 深代理重新包装——default_tool 提交时无需 toRaw 解包
     const floatingData = shallowRef<NodeData | EdgeData | null>(null)
     let containerEl: HTMLElement | null = null

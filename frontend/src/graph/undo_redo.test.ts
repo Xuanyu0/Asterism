@@ -9,16 +9,19 @@
  *
  * 规则：
  *     1. 图数据经 test_case_factory.assembleGraph 构造（含 schema 校验 + 认知状态补全），
- *        以普通对象直传 commitBatchToGraphs（实现内部 toRaw 解包 reactive，测试侧无需构造）。
+ *        以普通对象直传 commitBatchToGraphs（store 状态为 raw 普通字段、无 reactive proxy，测试侧无需解包）。
  *     2. 多操作批遵守引擎 pipeline 语义：Phase 1 逐操作校验基于输入图（validate-all-first），
  *        后置操作不得依赖前置操作新创建的对象（如 add_edge 端点必须是输入图中已存在的节点）。
- * 3. 每用例独立环境：setActivePinia(createPinia()) + localStorage.clear() + vi.restoreAllMocks()。
+ * 3. 每用例独立环境：resetGraphStoreForTests() + localStorage.clear() + vi.restoreAllMocks()。
  * 4. 010.1 缺陷 #1（删除带关联边节点的撤销失败）与缺陷 #2（多级 undo 链 DataCloneError）
- *    已由 010.1 回流修复（D1 操作级逆序 + skipValidate、D2 markRaw），原「已知缺陷暴露」
+ *    已由 010.1 回流修复（D1 操作级逆序 + skipValidate、D2 状态去 proxy 化），原「已知缺陷暴露」
  *    describe 的两条测试现为回归保护，不再预期失败。
  */
 
-import { setActivePinia, createPinia } from 'pinia'
+import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
+import { lookupGraph } from '@/graph/graph_registry'
+import { loadGraph, saveGraph } from '@/graph/graph_persistence'
+import { assembleGraph, createNode, createEdge } from '@/dev/test_case_factory'
 
 import type {
     EdgeData,
@@ -30,11 +33,6 @@ import type {
     NodeData,
     NodeId,
 } from '@my-project/graph-engine'
-
-import { useGraphStore } from '@/graph/graph_store'
-import { lookupGraph } from '@/graph/graph_registry'
-import { loadGraph, saveGraph } from '@/graph/graph_persistence'
-import { assembleGraph, createNode, createEdge } from '@/dev/test_case_factory'
 
 const ROOT = 'graph-root' as GraphId
 
@@ -68,7 +66,7 @@ function knowledgeNode(
 
 describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
     beforeEach(() => {
-        setActivePinia(createPinia())
+        resetGraphStoreForTests()
         localStorage.clear()
         vi.restoreAllMocks()
     })
@@ -266,7 +264,7 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
 
 describe('undo 链', () => {
     beforeEach(() => {
-        setActivePinia(createPinia())
+        resetGraphStoreForTests()
         localStorage.clear()
         vi.restoreAllMocks()
     })
@@ -277,7 +275,7 @@ describe('undo 链', () => {
     })
 
     /**
-     * 010.1 缺陷 #2（多级 undo 链 DataCloneError）已修复（entry markRaw 消除 proxy 泄漏），
+     * 010.1 缺陷 #2（多级 undo 链 DataCloneError）已修复（operationLog 降级为 raw 普通字段，消除 proxy 泄漏），
      * 本测试为回归保护：add → update(+summary) → delete 链逐级 undo 精确恢复。
      * 修复前：第三级 undo 抛 DataCloneError（逆元 structuredClone 命中 reactive proxy
      * 烘焙的 position），链无法走完——"新增消失"无法验证。
@@ -294,7 +292,7 @@ describe('undo 链', () => {
         ])
 
         // 每条一次提交（单操作批）。update_node 的 node 用普通对象构造——
-        // 不可 spread Pinia 注册表中的 reactive 节点（嵌套 position 会以 proxy 进入操作）
+        // 不复用注册表中的图节点引用（避免后续断言被同一对象引用污染）
         store.commitBatchToGraphs([
             {
                 graph,
@@ -531,7 +529,7 @@ describe('undo 链', () => {
 
 describe('redo 链', () => {
     beforeEach(() => {
-        setActivePinia(createPinia())
+        resetGraphStoreForTests()
         localStorage.clear()
         vi.restoreAllMocks()
     })
@@ -662,7 +660,7 @@ describe('redo 链', () => {
 
 describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
     beforeEach(() => {
-        setActivePinia(createPinia())
+        resetGraphStoreForTests()
         localStorage.clear()
         vi.restoreAllMocks()
     })
@@ -852,7 +850,7 @@ describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
 
 describe('边界', () => {
     beforeEach(() => {
-        setActivePinia(createPinia())
+        resetGraphStoreForTests()
         localStorage.clear()
         vi.restoreAllMocks()
     })
@@ -911,7 +909,7 @@ describe('边界', () => {
  *     根因：applyEntry 从 reactive operationLog 读出的操作是 proxy；引擎 execute 对 op.node
  *     展开（{...op.node}）把嵌套 position proxy 烘焙进图数据；后续逆元 structuredClone 命中
  *     proxy 即崩溃。
- *     修复：entry 组装后整体 markRaw 再入日志（Vue 尊重 markRaw，读出不包装）。
+ *     修复：operationLog 降级为 raw 普通字段（不再被 reactive 包装），读出即原始对象。
  *
  * 修复后行为：
  *     #1 delete_node 级联边撤销恢复节点（含 summary）与关联边；
@@ -919,7 +917,7 @@ describe('边界', () => {
  */
 describe('缺陷修复回归（D1 级联撤销 / D2 多级 undo）', () => {
     beforeEach(() => {
-        setActivePinia(createPinia())
+        resetGraphStoreForTests()
         localStorage.clear()
         vi.restoreAllMocks()
     })

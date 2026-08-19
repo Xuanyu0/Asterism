@@ -8,16 +8,14 @@
  *
  * 规则：
  *     1. 使用金牌图作为测试数据。
- *     2. 每个测试独立环境（beforeEach 重置 Pinia 和 localStorage）。
+ *     2. 每个测试独立环境（beforeEach 重置 store 单例和 localStorage）。
  *     3. useRenderer 被 vi.mock 拦截（Cytoscape 在 jsdom 下不可用），
  *        trackCursor 的 mock 暴露回调句柄供测试手动触发以模拟光标位置。
  *     4. previewAddNode 被 vi.mock 拦截——handler 只关心其返回值的分支行为，
  *        碰撞判定本身的正确性由 preview_engine.test.ts 覆盖。
  */
 
-import { setActivePinia, createPinia } from 'pinia'
-
-import { useGraphStore } from '@/graph/graph_store'
+import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
 import { saveGraph } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 import { useAddNodeTool } from './add_node'
@@ -73,7 +71,7 @@ vi.mock('@/feature-tools/preview/preview_engine', () => ({
 }))
 
 beforeEach(() => {
-    setActivePinia(createPinia())
+    resetGraphStoreForTests()
     localStorage.clear()
     const golden = createGoldenTestGraphV2()
     saveGraph(golden)

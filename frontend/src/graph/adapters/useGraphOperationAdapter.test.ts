@@ -7,19 +7,16 @@
  *
  * 规则：
  *     1. 使用金牌图（graph-golden）作为测试数据。
- *     2. 适配层为模块级单例，方法调用时解析当前激活的 Pinia——每用例独立 Pinia，
+ *     2. 适配层为模块级单例，方法调用时解析当前 store 单例——每用例独立 store，
  *        各测试通过重新写入并加载金牌图复位状态。
  */
 
-import { setActivePinia, createPinia } from 'pinia'
-
-import type { GraphId, NodeId } from '@my-project/graph-engine'
-
-import { useGraphStore } from '@/graph/graph_store'
+import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
 import { saveGraph } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 import { useGraphOperationAdapter } from './useGraphOperationAdapter'
 
+import type { GraphId, NodeId } from '@my-project/graph-engine'
 import type { GraphOperationAdapterAPI } from './useGraphOperationAdapter'
 
 describe('useGraphOperationAdapter', () => {
@@ -27,7 +24,7 @@ describe('useGraphOperationAdapter', () => {
     let store: ReturnType<typeof useGraphStore>
 
     beforeEach(() => {
-        setActivePinia(createPinia())
+        resetGraphStoreForTests()
         localStorage.clear()
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)

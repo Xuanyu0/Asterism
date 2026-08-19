@@ -7,8 +7,8 @@
  *
  * 调用契约：
  *
- *     1. computed 求值 / 方法调用时解析当前激活的 Pinia（内部 useGraphStore），
- *        必须在 Pinia 安装后调用。
+ *     1. computed 求值 / 方法调用时解析 GraphStore 模块级单例（内部 useGraphStore），
+ *        懒创建，无前置初始化。
  *     2. 后续调用返回同一实例。
  *     3. 本适配层不依赖 components/ 任何类型或模块（graph 域不反向依赖组件域）。
  */
@@ -152,8 +152,8 @@ let singleton: NavigationAdapterAPI | null = null
  *
  * 调用契约：
  *
- *     1. computed 求值 / 方法调用时解析当前激活的 Pinia（内部 useGraphStore），
- *        必须在 Pinia 安装后调用。
+ *     1. computed 求值 / 方法调用时解析 GraphStore 模块级单例（内部 useGraphStore），
+ *        懒创建，无前置初始化。
  *     2. 后续调用返回同一实例。
  */
 export function useNavigationAdapter(): NavigationAdapterAPI {

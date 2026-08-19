@@ -106,8 +106,8 @@ let singleton: ToolMediatorAPI | null = null
  *
  * 调用契约：
  *
- *     1. 必须在 Pinia 安装后调用（setup 内或之后，createMediator 会创建
- *        default handler 与浮空窗单例，二者内部使用 graphStore）。
+ *     1. 无前置初始化（createMediator 会创建 default handler 与浮空窗单例，
+ *        二者内部使用 graphStore 模块级单例）。
  *     2. 后续调用返回同一实例。
  */
 export function useToolMediator(): ToolMediatorAPI {

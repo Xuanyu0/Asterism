@@ -16,16 +16,14 @@
  *        useGraphOperationAdapter 测试覆盖，不在此重复。
  */
 
-import { setActivePinia, createPinia } from 'pinia'
+import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
+import { saveGraph, loadGraph } from '@/graph/graph_persistence'
 
 import type { GraphId, NodeId } from '@my-project/graph-engine'
 
-import { useGraphStore } from '@/graph/graph_store'
-import { saveGraph, loadGraph } from '@/graph/graph_persistence'
-
 describe('graph_store loadGraphToView 错误出口（08.2）', () => {
     beforeEach(() => {
-        setActivePinia(createPinia())
+        resetGraphStoreForTests()
         localStorage.clear()
         vi.restoreAllMocks()
     })
@@ -155,7 +153,7 @@ describe('graph_store loadGraphToView 错误出口（08.2）', () => {
 
 describe('graph_store createRootGraph 幂等（08.1 防回归）', () => {
     beforeEach(() => {
-        setActivePinia(createPinia())
+        resetGraphStoreForTests()
         localStorage.clear()
         vi.restoreAllMocks()
     })

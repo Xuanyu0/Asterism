@@ -7,12 +7,10 @@
  *
  * 规则：
  *     1. 单例在文件级共享（模块级单例），各测试通过 close + registerContainer(null) 复位。
- *     2. graphStore 使用真实 Pinia store，clearValidationResult 用 spy 断言。
+ *     2. graphStore 使用真实单例，clearValidationResult 用 spy 断言。
  */
 
-import { setActivePinia, createPinia } from 'pinia'
-
-import { useGraphStore } from '@/graph/graph_store'
+import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
 import { useFloatingWindow } from './useFloatingWindow'
 
 import type { NodeData } from '@my-project/graph-engine'
@@ -30,7 +28,7 @@ describe('useFloatingWindow', () => {
     let floatingWindow: ReturnType<typeof useFloatingWindow>
 
     beforeEach(() => {
-        setActivePinia(createPinia())
+        resetGraphStoreForTests()
         floatingWindow = useFloatingWindow()
         floatingWindow.close()
         floatingWindow.registerContainer(null)

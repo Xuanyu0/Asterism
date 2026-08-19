@@ -12,8 +12,7 @@
  *     3. 每个 describe 独立环境，beforeEach 清零。
  */
 
-import { setActivePinia, createPinia } from 'pinia'
-import { useGraphStore } from '@/graph/graph_store'
+import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
 import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
 import { saveGraph, loadGraph, deleteGraph, listRootGraphIds } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2, createSilverTestGraph } from '@/dev/test_case_factory'
@@ -23,7 +22,7 @@ import type { NodeId } from '@my-project/graph-engine'
 
 describe('数据合法性校验', () => {
     beforeEach(() => {
-        setActivePinia(createPinia())
+        resetGraphStoreForTests()
         localStorage.clear()
     })
 
@@ -47,7 +46,7 @@ describe('数据合法性校验', () => {
 
 describe('Store 加载', () => {
     beforeEach(() => {
-        setActivePinia(createPinia())
+        resetGraphStoreForTests()
         localStorage.clear()
     })
 
@@ -92,7 +91,7 @@ describe('Store 加载', () => {
 
 describe('原子操作链路', () => {
     beforeEach(() => {
-        setActivePinia(createPinia())
+        resetGraphStoreForTests()
         localStorage.clear()
     })
 
@@ -130,7 +129,7 @@ describe('原子操作链路', () => {
 
 describe('fold/expand + undo', () => {
     beforeEach(() => {
-        setActivePinia(createPinia())
+        resetGraphStoreForTests()
         localStorage.clear()
     })
 
@@ -191,7 +190,7 @@ describe('fold/expand + undo', () => {
 
 describe('持久化', () => {
     beforeEach(() => {
-        setActivePinia(createPinia())
+        resetGraphStoreForTests()
         localStorage.clear()
     })
 

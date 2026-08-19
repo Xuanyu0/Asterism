@@ -23,7 +23,6 @@
     "cytoscape": "^3.33.4",
     "cytoscape-canvas": "^3.0.1",
     "cytoscape-popper": "^4.0.1",
-    "pinia": "^3.0.4",
     "tailwindcss": "^4.3.0",
     "vue": "^3.5.32",
     "vue-router": "^5.0.4"
