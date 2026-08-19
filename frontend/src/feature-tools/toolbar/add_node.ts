@@ -153,10 +153,8 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
             id: generateNodeId(),
             graphId: graphStore.graphView.id,
             kind,
-            form: kind === 'real' ? ('atomic' as const) : undefined,
             label: trimmedLabel,
             summary: summary.trim(),
-            abstractionLevel: 0,
             degree: 0,
             position: {
                 x: draftNode.value.x,

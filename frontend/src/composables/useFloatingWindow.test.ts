@@ -24,7 +24,6 @@ const fixtureNode: NodeData = {
     kind: 'real',
     label: '测试节点',
     degree: 0,
-    abstractionLevel: 0,
 }
 
 describe('useFloatingWindow', () => {
