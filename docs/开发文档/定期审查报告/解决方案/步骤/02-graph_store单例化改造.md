@@ -28,18 +28,20 @@ graphView 改 shallowRef 持有，当前视图图数据永不进深代理。消�
 
 ---
 
-## 2. 去除多余 ref 与状态 ⏳
+## 2. graph_store 单例化改造（去死 ref + 移除 Pinia + 单例化） ⏳
 
 ### 目标
 
-消灭无 UI 响应式消费的"死 ref"，消除误导与混乱。只保留被真实消费的响应式状态。
+移除 Pinia 依赖，改造成项目已有的单例模式风格（模块级单例 + 组合式函数 + 公开 interface）。同时消灭无 UI 响应式消费的"死 ref"，消除误导与混乱。
 
-### 2.1. 死 ref 审计
+**子步骤 2（去死 ref）与子步骤 3（移除 Pinia）合并的原因**：Pinia 的 setup store 强制用 ref/reactive 定义状态，普通字段在 Pinia 下不被管理（store.xxx 读不到）。去死 ref 的"降级为普通字段"与移除 Pinia 是同一件事的两面——移除 Pinia 后普通字段是自然形态。分开做会在 Pinia 下产生"普通字段不被管理"的中间态。
+
+### 2.1. 死 ref 审计与降级
 
 **子目标**：
   * 审计 graph_store 各 ref 的 UI 响应式消费（watch/computed/模板依赖）
-  * 保留：`graphView`（Graph.vue watch）、`graphPath`（导航面包屑）、`lastValidationResult`（canvasErrorIssues）
-  * 降级：`graphRegistry` / `operationLog` / `redoStack`（无 UI 消费，改普通字段）
+  * 保留响应式：`graphView`（Graph.vue watch）、`graphPath`（导航面包屑）、`lastValidationResult`（canvasErrorIssues）
+  * 降级为普通字段：`graphRegistry` / `operationLog` / `redoStack`（无 UI 消费）
   * 删除：`lastSaveTime`（只写不读，无任何消费）
 
 难度：
@@ -47,43 +49,12 @@ graphView 改 shallowRef 持有，当前视图图数据永不进深代理。消�
 * 算法复杂度：无
 * 工作量：小
 
-### 2.2. 降级实现
-
-**子目标**：
-  * `graphRegistry` / `operationLog` / `redoStack` 改普通字段（非 ref），消除响应式开销与 markRaw/toRaw 摩擦
-  * `lastSaveTime` 删除（含写入点 graph_store.ts:402）
-
-难度：
-* 不确定度：中（降级后 store 内部逻辑读取方式变化，需确认无响应式依赖）
-* 算法复杂度：无
-* 工作量：中
-
-### 影响范围
-
-```
-frontend/src/graph/graph_store.ts — 修改（死 ref 降级/删除）
-```
-
-### 决策项
-
-**已确定决策**：
-* 死 ref 判定依据：无组件 watch/computed/模板依赖其更新（oracle 审计）。
-* `operationLog` 的响应式是 markRaw hack 的根源，`graphRegistry` 深代理是 toRaw 负担的来源——降级后两者消失。
-
----
-
-## 3. 移除 Pinia，单例化（interface + closure） ⏳
-
-### 目标
-
-移除 Pinia 依赖，改造成项目已有的单例模式风格（模块级单例 + 组合式函数 + 公开 interface）。保持 `useGraphStore()` 调用形态，90 处调用点零改动。
-
-### 3.1. 单例化改造
+### 2.2. 移除 Pinia，单例化
 
 **子目标**：
   * 移除 Pinia 依赖（package.json、main.ts 的 createPinia）
   * 模块级单例 + 组合式函数 `useGraphStore()` 返回公开 interface
-  * 用 `shallowReactive` 单例保持 `store.graphView` 无 `.value` 访问形态
+  * 用 `shallowReactive` 单例保持 `store.graphView` 无 `.value` 访问形态（90 处调用点零改动）
   * 公开 interface：只读 state + 方法入口（语义化命名）
   * 测试隔离：`resetGraphStoreForTests()` 替代 `setActivePinia(createPinia())`
 
@@ -92,7 +63,7 @@ frontend/src/graph/graph_store.ts — 修改（死 ref 降级/删除）
 * 算法复杂度：无
 * 工作量：大
 
-### 3.2. OOP 化（语义命名 + 职责分组）
+### 2.3. OOP 化（语义命名 + 职责分组）
 
 **子目标**：
   * 函数语义化命名：`loadGraphToView` → `openGraph`、`initRegistry` + 哨兵 + 兜底 → `restoreSession` 等
@@ -108,7 +79,7 @@ frontend/src/graph/graph_store.ts — 修改（死 ref 降级/删除）
 
 ```
 frontend/src/
-├── graph/graph_store.ts          — 修改（单例化 + interface + 语义命名）
+├── graph/graph_store.ts          — 修改（单例化 + interface + 语义命名 + 去死 ref）
 ├── main.ts                       — 修改（移除 createPinia）
 ├── package.json                  — 修改（移除 pinia 依赖）
 ├── 测试文件（29 处 setActivePinia）— 修改（resetGraphStoreForTests）
@@ -127,20 +98,25 @@ frontend/src/
 > **建议**：resetGraphStoreForTests（单例置空）。
 > **理由**：oracle 倾向；影响 29 处测试文件的机械替换方式。
 
+> **Q3**：语义化命名（openGraph / restoreSession 等）是否采用？
+> **建议**：采用，但需用户确认命名，避免破坏调用方。
+> **理由**：oracle 指出函数名语义不足（loadGraphToView 实际干 5 件事）。
+
 **已确定决策**：
 * 移除 Pinia（决策点 1 已确认 A）。
+* 子步骤 2 + 3 合并（去死 ref 与移除 Pinia 是同一件事的两面）。
 * 保持 `useGraphStore()` 调用签名与解包访问形态（shallowReactive 单例，90 处调用点零改动）。
 * 接受 devtools 状态面板与 store HMR 的损失（MVP 单 store，价值低）。
 
 ---
 
-## 4. 评估图级信号兑现迁移方案 ⏳
+## 3. 评估图级信号兑现迁移方案 ⏳
 
 ### 目标
 
 评估 add/delete_graph 正操作与逆操作从 GE 端割裂拆分的问题，确定统一迁移方案（GE 契约变更）。
 
-### 4.1. 割裂问题分析
+### 3.1. 割裂问题分析
 
 **子目标**：
   * 确认割裂现状：GE 对 add/delete_graph 静默，前端 commitBatchToGraphs 第三阶段重新扫描信号兑现；逆元模型分裂（图内走 createReversal，图级手写三段式）
@@ -162,7 +138,7 @@ frontend/src/graph/graph_store.ts（applyEntry 三段式退化）
 
 **待确定决策**：
 
-> **Q3**：图级信号进 GE 返回值的具体形态？
+> **Q4**：图级信号进 GE 返回值的具体形态？
 > **建议**：applyBatch 返回值携带 `graphSignals: { added: GraphData[]; deleted: GraphId[] }`（副作用描述，不执行——保持纯函数）；逆元统一为 add↔delete 互逆。
 > **理由**：决策点 2 已确认 A（统一）；GE 成为图级操作的决策点，Runtime 仍是执行点。
 
