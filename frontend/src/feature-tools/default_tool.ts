@@ -9,7 +9,7 @@
  *     1. useDefaultTool() → ToolHandler（生命周期 / 画布事件 / 浮空窗确认）
  */
 
-import { ref, toRaw } from 'vue'
+import { ref } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
@@ -141,18 +141,15 @@ export function useDefaultTool(): ToolHandler {
      *     2. 校验失败时浮空窗保留。
      */
     function onConfirm(label: string, summary: string): void {
-        const original = floatingWindow.floatingData.value
-        if (!original || !graphStore.graphView) {
+        const data = floatingWindow.floatingData.value
+        if (!data || !graphStore.graphView) {
             return
         }
 
-        // floatingData 单例经 ref 深度响应式包装，value 是 Vue Proxy；
-        // 引擎 reversal 逆操作生成用 structuredClone，无法克隆 Proxy——必须先 toRaw 剥离
-        const raw = toRaw(original)
-
-        if (isEdgeData(raw)) {
+        // floatingData 经 shallowRef 持有，value 保持 raw——引擎 reversal 的 structuredClone 可直接处理
+        if (isEdgeData(data)) {
             // 边编辑
-            const edge: EdgeData = { ...raw, label }
+            const edge: EdgeData = { ...data, label }
 
             const validation = operations.commitToCurrentGraph(
                 [{ type: 'update_edge', edge }],
@@ -164,9 +161,9 @@ export function useDefaultTool(): ToolHandler {
             }
         } else {
             // 节点编辑
-            const node: NodeData = { ...raw, label }
+            const node: NodeData = { ...data, label }
 
-            if (raw.role === 'knowledge') {
+            if (data.role === 'knowledge') {
                 ;(node as KnowledgeNodeData).summary = summary
             }
 

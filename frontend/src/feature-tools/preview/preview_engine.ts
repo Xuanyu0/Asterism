@@ -45,7 +45,7 @@ import type {
  *
  * 参数：
  *
- *     graph    — 操作前的 GraphData 快照。入参不被修改（JSON 序列化克隆隔离）
+ *     graph    — 操作前的 GraphData 快照。入参不被修改（structuredClone 克隆隔离）
  *     position — 待添加节点的模型坐标
  *     kind     — 'real' 实节点 / 'virtual' 虚节点
  *
@@ -77,7 +77,7 @@ export function previewAddNode(
     collides: boolean
     nodeId: NodeId
 } {
-    const clone = cloneGraph(graph)
+    const clone = structuredClone(graph)
 
     const nodeId = generateNodeId()
 
@@ -88,10 +88,8 @@ export function previewAddNode(
             id: nodeId,
             graphId: clone.id,
             kind,
-            form: kind === 'real' ? ('atomic' as const) : undefined,
             label: '',
             summary: '',
-            abstractionLevel: 0,
             degree: 0,
             position,
         },
@@ -125,7 +123,7 @@ export function previewAddNode(
  *
  * 参数：
  *
- *     graph — 操作前的 GraphData 快照。入参不被修改（JSON 序列化克隆隔离）
+ *     graph — 操作前的 GraphData 快照。入参不被修改（structuredClone 克隆隔离）
  *     edge  — 待添加边的描述。sourceId / targetId 为两端节点 ID，
  *             kind 为 'real' 实边 / 'virtual' 虚边，
  *             direction 为 'directed' 有向 / 'undirected' 无向
@@ -155,7 +153,7 @@ export function previewAddEdge(
     sourceCollides: boolean
     targetCollides: boolean
 } {
-    const clone = cloneGraph(graph)
+    const clone = structuredClone(graph)
 
     const addEdgeOp: AddEdgeOperation = {
         type: 'add_edge',
@@ -225,7 +223,7 @@ export function previewMoveNode(
     nodeId: NodeId,
     desiredPosition: NodePosition,
 ): { previewGraph: GraphData; collides: boolean } {
-    const clone = cloneGraph(graph)
+    const clone = structuredClone(graph)
 
     const result = moveNode({
         nodeId,
@@ -237,19 +235,4 @@ export function previewMoveNode(
     const preview = applyBatch(clone, result.operations)
 
     return { previewGraph: preview.graph, collides: hasErrors(result.issues) }
-}
-
-/**
- * 说明：
- *
- *     深拷贝 GraphData 快照，供预览模拟操作隔离使用。入参不被修改。
- *
- * 规则：
- *
- *     用 JSON 序列化克隆而非 structuredClone：graphStore.graphView 是 Vue 响应式
- *     Proxy，structuredClone 无法克隆 Proxy（抛 DataCloneError）。
- *     与 graph_store.ts undo snapshot 的克隆方式保持一致。
- */
-function cloneGraph(graph: GraphData): GraphData {
-    return JSON.parse(JSON.stringify(graph)) as GraphData
 }

@@ -8,19 +8,10 @@
  *
  *     留在本 store 的判定标准：
  *          Graph.vue 调用 ∨ 唯一图数据修改入口（commitBatchToGraphs）∨ 唯一图数据回溯入口（undo / redo）。
- *
- * TODO：
- *
- *     本文件保留函数的部分错误路径静默返回（跳过 / 拒绝 / 中断），依赖调用方前置条件正确：
- *     如 initRegistry 对 missing 静默返回、buildGraphPath 防御中断仅走开发者通道记录
- *     （console.warn，用户默认不可见）。迁移至 graph/adapters 的 listRootGraphInfos /
- *     deleteRootGraphTree 同样沿用静默风格（静默跳过加载失败的图 / 静默拒绝删除活跃根图）。
- *     调用方又以兜底逻辑掩盖空状态，导致持久化数据损坏在用户层面不可见。需统一错误处理
- *     策略，待行为设计确定后处理。
  */
 
 import { defineStore } from 'pinia'
-import { ref, toRaw, markRaw } from 'vue'
+import { ref, shallowRef, toRaw, markRaw } from 'vue'
 
 import type { GraphData, GraphId } from '@my-project/graph-engine'
 import type { GraphOperation } from '@my-project/graph-engine'
@@ -87,7 +78,8 @@ type OperationBatchItem = {
  *     2. 所有修改委托引擎 applyBatch 执行 validate + execute，成功后自动持久化。
  */
 export const useGraphStore = defineStore('graph_store', () => {
-    const graphView = ref<GraphData | null>(null)
+    // shallowRef 保持 raw：引擎 reversal 与 preview 克隆用 structuredClone，无法克隆 Vue proxy
+    const graphView = shallowRef<GraphData | null>(null)
     const graphRegistry = ref<GraphRegistry>(createRegistry())
     const graphPath = ref<GraphId[]>([])
     const operationLog = ref<OperationLog>({ entries: [], cursor: -1 })

@@ -10,7 +10,7 @@
  *     2. 后续调用返回同一实例。
  */
 
-import { ref, type Ref } from 'vue'
+import { shallowRef, type Ref } from 'vue'
 
 import type { NodeData, EdgeData } from '@my-project/graph-engine'
 
@@ -84,7 +84,9 @@ export function useFloatingWindow(): FloatingWindowAPI {
 }
 
 function createFloatingWindow(): FloatingWindowAPI {
-    const floatingData = ref<NodeData | EdgeData | null>(null)
+    // shallowRef 保持 raw：浮空窗数据源自 graphView（shallowRef 下已 raw），
+    // 避免 ref 深代理重新包装——default_tool 提交时无需 toRaw 解包
+    const floatingData = shallowRef<NodeData | EdgeData | null>(null)
     let containerEl: HTMLElement | null = null
 
     function open(data: NodeData | EdgeData): void {

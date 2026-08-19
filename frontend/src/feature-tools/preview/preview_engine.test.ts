@@ -3,13 +3,12 @@
  *
  *     previewAddEdge / previewMoveNode / previewAddNode 的单元测试。
  *     覆盖：稀疏图不碰撞对、密集图两端碰撞、单端碰撞、degree +1、
- *     入参隔离（JSON 序列化克隆，兼容响应式 Proxy）、校验失败路径、
+ *     入参隔离（structuredClone 克隆）、校验失败路径、
  *     kind / direction 透传、移动位置与碰撞判定、
- *     添加节点占位预览（位置 / kind 透传 / 碰撞 / 入参隔离 / reactive 兼容）。
+ *     添加节点占位预览（位置 / kind 透传 / 碰撞 / 入参隔离）。
  */
 
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
-import { reactive } from 'vue'
 import {
     previewAddEdge,
     previewAddNode,
@@ -205,31 +204,6 @@ describe('previewAddEdge', () => {
             expect(result.targetCollides).toBe(true)
         })
     })
-
-    describe('响应式 Proxy 图（模拟 Pinia graphView）', () => {
-        test('reactive 包裹的图可正常预览（回归：structuredClone 抛 DataCloneError）', () => {
-            // graphStore.graphView 是 Vue 响应式 Proxy，structuredClone 无法克隆
-            // Proxy。preview_engine 必须兼容响应式图数据。
-            const reactiveGraph = reactive(golden)
-
-            const result = previewAddEdge(
-                reactiveGraph as unknown as GraphData,
-                {
-                    sourceId: 'node-g1' as NodeId,
-                    targetId: 'node-g6' as NodeId,
-                    kind: 'real',
-                    direction: 'directed',
-                },
-            )
-
-            expect(result.valid).toBe(true)
-            expect(result.sourceCollides).toBe(false)
-            expect(result.targetCollides).toBe(false)
-            expect(result.previewGraph.edges.length).toBe(
-                golden.edges.length + 1,
-            )
-        })
-    })
 })
 
 describe('previewMoveNode', () => {
@@ -286,22 +260,6 @@ describe('previewMoveNode', () => {
         ).toEqual({ x: 50, y: 200 })
         expect(result.previewGraph).not.toBe(golden)
     })
-
-    test('reactive 包裹的图可正常预览（回归：structuredClone 抛 DataCloneError）', () => {
-        const reactiveGraph = reactive(golden)
-
-        const result = previewMoveNode(
-            reactiveGraph as unknown as GraphData,
-            'node-g1' as NodeId,
-            { x: 1000, y: 400 },
-        )
-
-        expect(result.collides).toBe(false)
-        expect(
-            result.previewGraph.nodes.find((node) => node.id === 'node-g1')
-                ?.position,
-        ).toEqual({ x: 1000, y: 400 })
-    })
 })
 
 describe('previewAddNode', () => {
@@ -354,21 +312,6 @@ describe('previewAddNode', () => {
             (node) => node.id === result.nodeId,
         ) as KnowledgeNodeData | undefined
         expect(added?.kind).toBe('virtual')
-        expect(added?.form).toBeUndefined()
-    })
-
-    test('reactive 包裹的图可正常预览（回归：structuredClone 抛 DataCloneError）', () => {
-        const reactiveGraph = reactive(golden)
-
-        const result = previewAddNode(
-            reactiveGraph as unknown as GraphData,
-            { x: 1000, y: 400 },
-            'real',
-        )
-
-        expect(result.valid).toBe(true)
-        expect(result.collides).toBe(false)
-        expect(result.previewGraph.nodes.length).toBe(golden.nodes.length + 1)
     })
 })
 
@@ -392,10 +335,8 @@ function node(id: string, x: number, y: number): NodeData {
         graphId: 'graph-test' as GraphId,
         role: 'knowledge',
         kind: 'real',
-        form: 'atomic',
         label: id,
         degree: 0,
-        abstractionLevel: 0,
         position: { x, y },
     }
 }
