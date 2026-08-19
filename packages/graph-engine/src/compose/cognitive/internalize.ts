@@ -223,11 +223,11 @@ export function internalize(params: InternalizeParams): {
         // 抽象节点：递归清理子图
         if (
             kn.node.role === 'knowledge' &&
-            deriveNodeForm(kn.node) === 'abstract' &&
-            kn.node.childGraphId
+            deriveNodeForm(kn.node) === 'abstract'
         ) {
-            const childGraphId = kn.node.childGraphId
-            const childGraph = lookupGraph(childGraphId)
+            const childGraph = kn.node.childGraphId
+                ? lookupGraph(kn.node.childGraphId)
+                : undefined
 
             if (childGraph) {
                 // 删除子图内所有普通边
@@ -265,10 +265,11 @@ export function internalize(params: InternalizeParams): {
         // 抽象节点：子图内知识节点也一并迁入
         if (
             kn.node.role === 'knowledge' &&
-            deriveNodeForm(kn.node) === 'abstract' &&
-            kn.node.childGraphId
+            deriveNodeForm(kn.node) === 'abstract'
         ) {
-            const childGraph = lookupGraph(kn.node.childGraphId)
+            const childGraph = kn.node.childGraphId
+                ? lookupGraph(kn.node.childGraphId)
+                : undefined
             if (childGraph) {
                 for (const childNode of childGraph.nodes) {
                     if (childNode.role === 'knowledge') {
