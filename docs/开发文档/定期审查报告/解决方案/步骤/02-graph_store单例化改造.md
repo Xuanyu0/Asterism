@@ -28,7 +28,7 @@ graphView 改 shallowRef 持有，当前视图图数据永不进深代理。消�
 
 ---
 
-## 2. graph_store 单例化改造（去死 ref + 移除 Pinia + 单例化） ⏳
+## 2. graph_store 单例化改造（去死 ref + 移除 Pinia + 单例化） ⏳（2.1/2.2 完成，2.3 并入 05）
 
 ### 目标
 
@@ -37,6 +37,8 @@ graphView 改 shallowRef 持有，当前视图图数据永不进深代理。消�
 **子步骤 2（去死 ref）与子步骤 3（移除 Pinia）合并的原因**：Pinia 的 setup store 强制用 ref/reactive 定义状态，普通字段在 Pinia 下不被管理（store.xxx 读不到）。去死 ref 的"降级为普通字段"与移除 Pinia 是同一件事的两面——移除 Pinia 后普通字段是自然形态。分开做会在 Pinia 下产生"普通字段不被管理"的中间态。
 
 ### 2.1. 死 ref 审计与降级
+
+**已完成**：`graphRegistry` / `operationLog` / `redoStack` 已降级为普通字段（shallowReactive 内搭浅响应便车，保持 raw，注释分组明确）；`lastSaveTime` 已删除（全库无匹配）。
 
 **子目标**：
   * 审计 graph_store 各 ref 的 UI 响应式消费（watch/computed/模板依赖）
@@ -51,6 +53,8 @@ graphView 改 shallowRef 持有，当前视图图数据永不进深代理。消�
 
 ### 2.2. 移除 Pinia，单例化
 
+**已完成**：Pinia 依赖已移除（package.json / main.ts）；模块级单例 + `useGraphStore()` 返回公开 interface `GraphStoreAPI`；shallowReactive 单例保持 `store.graphView` 无 `.value` 访问形态（90 处调用点零改动）；`resetGraphStoreForTests` 替换 12 个测试文件的 `setActivePinia(createPinia())`；前端测试全绿（183）。
+
 **子目标**：
   * 移除 Pinia 依赖（package.json、main.ts 的 createPinia）
   * 模块级单例 + 组合式函数 `useGraphStore()` 返回公开 interface
@@ -63,17 +67,20 @@ graphView 改 shallowRef 持有，当前视图图数据永不进深代理。消�
 * 算法复杂度：无
 * 工作量：大
 
-### 2.3. OOP 化（语义命名 + 职责分组）
+### 2.3. OOP 化（语义命名 + 职责分组）→ 由步骤 05 接管
 
 **子目标**：
-  * 函数语义化命名：`loadGraphToView` → `openGraph`、`initRegistry` + 哨兵 + 兜底 → `restoreSession` 等
-  * 启动引导舞收口（Graph.vue onMounted 四步序列 → 单方法）
-  * 状态分类分组（视图态 / 多图缓存 / 撤销日志 / 校验瞬态）
+  * 不再按本子步骤原案（`loadGraphToView` → `openGraph` 等简单改名）实施
+  * 改由 [05-graph_store核心化与生命周期适配层下沉](05-graph_store核心化与生命周期适配层下沉.md) 接管：
+    * store 收窄为四入口（切图 loadGraphToView / 操作 commitBatchToGraphs / 回溯 undo·redo）
+    * 生命周期管理下沉新适配层 useLifecycleAdapter（restoreLastRootTree / ensureWorkspaceRoot）
+    * 创建根图下沉导航适配层（走 commitBatchToGraphs 统一管道）；校验清理下沉操作适配层
+    * 启动引导收口（Graph.vue onMounted 四步哨兵序列 → 单方法）
 
 难度：
-* 不确定度：中（语义命名需用户确认，避免破坏调用方）
+* 不确定度：已由步骤 05 方案接管
 * 算法复杂度：无
-* 工作量：中
+* 工作量：并入步骤 05
 
 ### 影响范围
 
@@ -99,8 +106,8 @@ frontend/src/
 > **理由**：oracle 倾向；影响 29 处测试文件的机械替换方式。
 
 > **Q3**：语义化命名（openGraph / restoreSession 等）是否采用？
-> **建议**：采用，但需用户确认命名，避免破坏调用方。
-> **理由**：oracle 指出函数名语义不足（loadGraphToView 实际干 5 件事）。
+> **建议**：~~采用，但需用户确认命名，避免破坏调用方。~~ 已由步骤 05 接管（四入口收窄 + 适配层下沉），本子步骤不再单独实施。
+> **理由**：步骤 05（graph_store核心化与生命周期适配层下沉）以"职责重组 + 适配层拆分"替代简单改名，语义命名需求全部覆盖。
 
 **已确定决策**：
 * 移除 Pinia（决策点 1 已确认 A）。
