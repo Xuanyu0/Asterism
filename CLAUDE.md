@@ -33,9 +33,9 @@
   - 负责：定义类型、validate / execute / compose / replay
   - 不负责：I/O、持久化、持有状态
   - 与框架无关
-- **Runtime 层**：位于前端的 GraphData 状态所有者，负责持有运行时状态、编排引擎操作（调 Engine → 后处理）、实现持久化 I/O。Runtime 不负责 UI 渲染和纯函数转换，一定是框架绑定的（当前为 Pinia + Vue）。Runtime 层内部再分两层：
-  - **graph_store.ts（数据核心）**：内部的函数满足 **Graph.vue 调用 ∨ 唯一图数据修改入口 ∨ 唯一图数据回溯入口**。
-  - **adapters/（业务适配层）**：图数据业务逻辑的封装，经 store 公开状态访问共享运行时数据，不持有状态本身。依赖方向：业务 → 适配层 → store（单向）
+- **Runtime 层**：位于前端的 GraphData 状态所有者，负责持有运行时状态、编排引擎操作（调 Engine → 后处理）、实现持久化 I/O。Runtime 不负责 UI 渲染和纯函数转换，一定是框架绑定的（当前为模块级单例 + Vue）。Runtime 层内部再分两层：
+  - **graph_store.ts（数据核心）**：公开能力为四入口——唯一切换图谱（`loadGraphToView`）、唯一图操作（`commitBatchToGraphs`）、唯一回溯（`undo` / `redo`）。
+  - **use-case/（业务用例层）**：图数据业务逻辑的封装，经 store 公开状态访问共享运行时数据，不持有状态本身。依赖方向：业务 → 用例层 → store（单向）
 - **Cytoscape 渲染/交互层**：GraphData 的只读映射/拷贝。接收 GraphData 渲染到画布，捕获交互事件后经交互逻辑层（feature-tools/）回流至 Runtime。禁止持有 GraphData 引用、禁止保存业务状态、禁止直接修改 GraphData
 - **工具**：前端页面中用户主动激活的状态。在此状态下，用户的画布交互（点击、拖拽）被解释为该工具特有的语义，并最终转化为对 GraphData 的修改。工具不直接操作 GraphData，通过 Runtime 层写入。目前按交互入口分为两类：
   - 常驻操作栏工具：通过工具栏按钮激活，生命周期由 `feature-tools/mediator.ts` 管理
@@ -48,7 +48,7 @@
     - 事件捕获与转发：`cytoscape/cy_interaction.ts`（Cytoscape 事件 → 语义事件）→ `feature-tools/mediator.ts`（转发至活跃 handler）
   - 垂直自包含（每个工具独立）：
     - 工具逻辑 + 中间变量：每个工具拥有自己的激活状态、光标样式、画布点击处理、操作构造
-    - 数据修改：经工具层适配 `useGraphOperationAdapter.commitToCurrentGraph` 委托 Runtime（提交 + 校验同步）
+    - 数据修改：经工具层用例 `useGraphOperation.commitToCurrentGraph` 委托 Runtime（提交 + 校验同步）
   - 不负责：GraphData 存储、持久化、UI 模式切换
 
 ## 命令
@@ -80,7 +80,7 @@ npx prettier --write <文件路径>
 
 - Vue 3 (Composition API + `<script setup>`)
 - TypeScript 6.0
-- Pinia (1 个 Store)
+- 模块级单例 store（`useGraphStore`，非 Pinia）
 - Tailwind CSS v4
 - Cytoscape.js 3.33
 - pnpm（禁止 npm / yarn）
@@ -143,12 +143,13 @@ Cytoscape Renderer
     ↓  用户确认后，执行数据写入操作
 Runtime / UI 状态层 (graph/ + ui/)
     ├── graph_store.ts     — 【GraphData 唯一事实源 + 所有修改的唯一合法入口】
-    │                        状态：graphView / graphPath / graphRegistry / undoStack / lastValidationResult / lastSaveTime
-    │                        底层能力（Graph.vue 调用）：loadGraphToView / initRegistry / createRootGraph / clearValidationResult
-    │                        在前端的唯一入口：commitBatchToGraphs（数据修改）/ undo（回溯）
-    ├── adapters/          — 图数据适配层（graph 域业务逻辑，经 store 公开状态访问共享运行时数据）
-    │    ├── useNavigationAdapter.ts    — 导航卡片业务适配：breadcrumb 派生 / goToGraph / listRootGraphInfos / deleteRootGraphTree / getGraphById
-    │    └── useGraphOperationAdapter.ts — 工具层业务适配：commitToCurrentGraph（提交+校验同步）/ reportComposeValidation / makeLookup（跨图查询）
+    │                        状态：graphView / graphPath / lastValidationResult（响应式，引用替换触发更新）
+    │                        + graphRegistry / operationLog / redoStack（普通字段，raw 无代理）
+    │                        四入口：loadGraphToView（唯一切换）/ commitBatchToGraphs（唯一图操作）/ undo / redo（唯一回溯）
+    ├── use-case/          — 业务用例层（graph 域业务逻辑，经 store 公开状态访问共享运行时数据）
+    │    ├── useNavigation.ts     — 导航用例：breadcrumb 派生 / goToGraph / createRootGraph / listRootGraphInfos / deleteRootGraphTree / getGraphById
+    │    ├── useGraphOperation.ts — 图操作用例：commitToCurrentGraph（提交+校验同步）/ reportComposeValidation / makeLookup（跨图查询）/ clearValidationResult
+    │    └── useLifecycle.ts      — 生命周期用例：restoreLastRootTree（会话恢复）/ ensureWorkspaceRoot（引导兜底创建）
     ├── utils/             — 公共工具函数（无状态纯函数）
     ├── graph_registry.ts  — 多图注册表（Map：GraphId → GraphData）
     ├── graph_persistence.ts — localStorage 持久化实现
@@ -165,7 +166,7 @@ GraphEngine (@my-project/graph-engine) — 框架无关；广义 GraphData 唯�
     └── spi/               — 持久化适配器接口（Phase 3 扩展点）
     ↓  返回新 GraphData 与图规则校验结果
     ↓  GraphView 引用替换
-    ↓  图校验结果：lastValidationResult 写入仅经 commitBatchToGraphs 的 applyBatch 返回 / 适配层 reportComposeValidation 转发
+    ↓  图校验结果：lastValidationResult 写入仅经 commitBatchToGraphs 的 applyBatch 返回 / 用例层 reportComposeValidation 转发
     views/Graph.vue        — 【装配层】
     │                        渲染用户看到的当前图谱：watch(GraphView) → renderer.syncFromGraphData(newGraph)；
     │                        渲染校验信息：canvasErrorIssues（lastValidationResult 的 error 级 issues）→ NotificationPanel
@@ -180,13 +181,13 @@ Cytoscape Renderer
 - 对于 UX，代码中的状态设计应当遵循用户在交互时可感知的最小**交互单元**
 - 对于 UI 的架构设计，应当满足用户在页面上可见的最小可分类的**视觉单元**
 
-## Pinia Store
+## Store（模块级单例）
 
 | Store       | 职责                                                        | 禁止                     |
 | ----------- | ----------------------------------------------------------- | ------------------------ |
-| graph_store | GraphData 唯一事实源 + 共享运行时状态 + 底层能力 + 唯一入口 | Draft/Cytoscape 禁止进入 |
+| graph_store | GraphData 唯一事实源 + 共享运行时状态 + 四入口（切换/操作/回溯） | Draft/Cytoscape 禁止进入 |
 
-> 图数据业务逻辑（导航 / 工具提交 / 查询包装）在 `graph/adapters/` 两个适配层，不进入 store。
+> 图数据业务逻辑（导航 / 工具提交 / 查询包装 / 生命周期）在 `graph/use-case/` 三个用例层，不进入 store。
 
 ## 开发策略
 
