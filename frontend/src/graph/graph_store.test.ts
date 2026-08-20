@@ -4,7 +4,7 @@
  * 功能：
  *     graph_store 错误出口行为的单元测试（08.2 行为变更断言 + 08.3 补全 + oracle 防回归）。
  *     覆盖 loadGraphToView 的 missing / corrupted 出口、祖先链断裂与环检测的开发者通道迁移。
- *     （createRootGraph 幂等保护已随创建逻辑下沉至 useNavigationAdapter，测试见其对应文件。）
+ *     （createRootGraph 幂等保护已随创建逻辑下沉至 useNavigation，测试见其对应文件。）
  *
  * 规则：
  *     1. validation 通道（lastValidationResult）= 图规则校验专用；missing 静默；
@@ -13,7 +13,7 @@
  *     3. 祖先链断裂 / 环的开发者通道报告在 buildGraphPath 回溯过程中产出且恰好一次
  *        （loadGraphToView 不重复报告），断言 message 含关键 id。
  *     4. 规则校验路径（commitBatchToGraphs / 工具层）的 lastValidationResult 行为由
- *        useGraphOperationAdapter 测试覆盖，不在此重复。
+ *        useGraphOperation 测试覆盖，不在此重复。
  */
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'

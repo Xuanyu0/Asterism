@@ -13,7 +13,7 @@
  */
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
-import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
+import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
 import { saveGraph, loadGraph, deleteGraph, listRootGraphIds } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2, createSilverTestGraph } from '@/dev/test_case_factory'
 import { validateGraph } from '@my-project/graph-engine'
@@ -105,7 +105,7 @@ describe('原子操作链路', () => {
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
-        const result = useGraphOperationAdapter().commitToCurrentGraph([{
+        const result = useGraphOperation().commitToCurrentGraph([{
             type: 'add_node',
             node: {
                 role: 'knowledge',
@@ -143,7 +143,7 @@ describe('fold/expand + undo', () => {
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
-        useGraphOperationAdapter().commitToCurrentGraph([{
+        useGraphOperation().commitToCurrentGraph([{
             type: 'collapse_dependency',
             targetNodeId: 'node-g2' as NodeId,
         }])
@@ -157,7 +157,7 @@ describe('fold/expand + undo', () => {
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
-        useGraphOperationAdapter().commitToCurrentGraph([{
+        useGraphOperation().commitToCurrentGraph([{
             type: 'collapse_dependency',
             targetNodeId: 'node-g2' as NodeId,
         }])
@@ -177,7 +177,7 @@ describe('fold/expand + undo', () => {
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
-        const result = useGraphOperationAdapter().commitToCurrentGraph([{
+        const result = useGraphOperation().commitToCurrentGraph([{
             type: 'delete_node',
             nodeId: 'non-existent-node' as NodeId,
         }])

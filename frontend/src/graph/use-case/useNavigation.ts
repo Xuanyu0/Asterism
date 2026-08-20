@@ -1,16 +1,16 @@
 /**
  * 说明：
  *
- *     导航卡片适配层模块级单例。
+ *     导航卡片用例层模块级单例。
  *     包含面包屑路径派生、根图定位、切图与图谱树管理、根图列表与级联删除。
- *     导航卡片只消费本适配层，不再直调 graph_store。
+ *     导航卡片只消费本用例层，不再直调 graph_store。
  *
  * 调用契约：
  *
  *     1. computed 求值 / 方法调用时解析 GraphStore 模块级单例（内部 useGraphStore），
  *        懒创建，无前置初始化。
  *     2. 后续调用返回同一实例。
- *     3. 本适配层不依赖 components/ 任何类型或模块（graph 域不反向依赖组件域）。
+ *     3. 本用例层不依赖 components/ 任何类型或模块（graph 域不反向依赖组件域）。
  */
 
 import { computed, type ComputedRef } from 'vue'
@@ -54,7 +54,7 @@ export interface RootGraphInfo {
 /**
  * 说明：
  *
- *     面包屑路径段视图模型（适配层自持，与组件域 PathSegment 结构一致）。
+ *     面包屑路径段视图模型（用例层自持，与组件域 PathSegment 结构一致）。
  */
 export interface NavigationSegment {
     /** 图谱 ID。 */
@@ -70,9 +70,9 @@ export interface NavigationSegment {
 /**
  * 说明：
  *
- *     useNavigationAdapter 返回的导航适配层单例 API。
+ *     useNavigation 返回的导航用例层单例 API。
  */
-export interface NavigationAdapterAPI {
+export interface NavigationAPI {
     /** 面包屑路径段（根→叶）。 */
     breadcrumb: ComputedRef<NavigationSegment[]>
 
@@ -149,12 +149,12 @@ export interface NavigationAdapterAPI {
     deleteRootGraphTree(rootId: GraphId): void
 }
 
-let singleton: NavigationAdapterAPI | null = null
+let singleton: NavigationAPI | null = null
 
 /**
  * 说明：
  *
- *     获取导航适配层模块级单例（懒创建）。
+ *     获取导航用例层模块级单例（懒创建）。
  *
  * 调用契约：
  *
@@ -162,14 +162,14 @@ let singleton: NavigationAdapterAPI | null = null
  *        懒创建，无前置初始化。
  *     2. 后续调用返回同一实例。
  */
-export function useNavigationAdapter(): NavigationAdapterAPI {
+export function useNavigation(): NavigationAPI {
     if (!singleton) {
-        singleton = createNavigationAdapter()
+        singleton = createNavigation()
     }
     return singleton
 }
 
-function createNavigationAdapter(): NavigationAdapterAPI {
+function createNavigation(): NavigationAPI {
     const breadcrumb = computed<NavigationSegment[]>(() => {
         const graphStore = useGraphStore()
         return graphStore.graphPath.map((graphId, index) => ({

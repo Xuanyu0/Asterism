@@ -18,7 +18,7 @@
 import { ref, computed } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
+import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
 
 import type { NodeId } from '@my-project/graph-engine'
 
@@ -26,7 +26,7 @@ import type { ToolId, ToolHandler, ToolNotification } from '../types'
 
 export function useFoldTool(): ToolHandler {
     const graphStore = useGraphStore()
-    const operations = useGraphOperationAdapter()
+    const operations = useGraphOperation()
     const id: ToolId = 'fold'
 
     const isActive = ref(false)

@@ -1,27 +1,27 @@
 /**
- * useGraphOperationAdapter.test.ts
+ * useGraphOperation.test.ts
  *
  * 功能：
- *     工具层图操作适配（useGraphOperationAdapter）的集成测试。
+ *     工具层图操作用例（useGraphOperation）的集成测试。
  *     覆盖单例性、commitToCurrentGraph 提交 + 校验同步 + 原样透传、reportComposeValidation 上报收口、
  *     clearValidationResult 校验清理。
  *
  * 规则：
  *     1. 使用金牌图（graph-golden）作为测试数据。
- *     2. 适配层为模块级单例，方法调用时解析当前 store 单例——每用例独立 store，
+ *     2. 用例层为模块级单例，方法调用时解析当前 store 单例——每用例独立 store，
  *        各测试通过重新写入并加载金牌图复位状态。
  */
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
 import { saveGraph } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
-import { useGraphOperationAdapter } from './useGraphOperationAdapter'
+import { useGraphOperation } from './useGraphOperation'
 
 import type { GraphId, NodeId } from '@my-project/graph-engine'
-import type { GraphOperationAdapterAPI } from './useGraphOperationAdapter'
+import type { GraphOperationAPI } from './useGraphOperation'
 
-describe('useGraphOperationAdapter', () => {
-    let operations: GraphOperationAdapterAPI
+describe('useGraphOperation', () => {
+    let operations: GraphOperationAPI
     let store: ReturnType<typeof useGraphStore>
 
     beforeEach(() => {
@@ -31,11 +31,11 @@ describe('useGraphOperationAdapter', () => {
         saveGraph(golden)
         store = useGraphStore()
         store.loadGraphToView(golden.id)
-        operations = useGraphOperationAdapter()
+        operations = useGraphOperation()
     })
 
     test('模块级单例：多次调用返回同一实例', () => {
-        const another = useGraphOperationAdapter()
+        const another = useGraphOperation()
         expect(another).toBe(operations)
     })
 

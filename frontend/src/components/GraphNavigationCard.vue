@@ -17,7 +17,7 @@
  *
  * 规则：
  *
- *     1. 本组件经导航适配层（useNavigationAdapter）消费图数据，所有图谱切换经适配层 goToGraph。
+ *     1. 本组件经导航用例层（useNavigation）消费图数据，所有图谱切换经用例层 goToGraph。
  *     2. 切换图谱前取消激活工具（浮空窗由外部点击规则负责关闭）。
  *     3. Dock 溢出检测由 NavigationCardDock 内部自管理。
  */
@@ -26,7 +26,7 @@ import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 import type { GraphId } from '@my-project/graph-engine'
 
-import { useNavigationAdapter } from '@/graph/adapters/useNavigationAdapter'
+import { useNavigation } from '@/graph/use-case/useNavigation'
 import { useCanvasFocus } from '@/composables/useCanvasFocus'
 import { useToolMediator } from '@/feature-tools/mediator'
 import { useDragPosition } from '@/composables/useDragPosition'
@@ -97,7 +97,7 @@ const { isFaded, onPointerEnter, onPointerLeave } = useAutoFade({
     preventFade: computed(() => hasOpenPanel.value || isDragging.value),
 })
 
-// ── 路径与位置（经导航适配层派生） ──
+// ── 路径与位置（经导航用例层派生） ──
 const {
     breadcrumb: pathSegments,
     currentRootId,
@@ -105,7 +105,7 @@ const {
     parentGraphId,
     hasCurrentGraph,
     goToGraph,
-} = useNavigationAdapter()
+} = useNavigation()
 
 /**
  * 功能：
@@ -115,10 +115,10 @@ const {
  * 规则：
  *
  *     1. 本函数是跨域编排点：切图前先停用当前激活工具（工具域，
- *        mediator.deactivate），再委托导航适配层切图（graph 域，goToGraph）。
- *        依赖方向禁止 graph 适配层反向依赖工具域，故"停工具 + 切图"
+ *        mediator.deactivate），再委托导航用例层切图（graph 域，goToGraph）。
+ *        依赖方向禁止 graph 用例层反向依赖工具域，故"停工具 + 切图"
  *        的组合只能在此汇合点完成。
- *     2. 纯切图能力在适配层 goToGraph（loadGraphToView），本函数不重复。
+ *     2. 纯切图能力在用例层 goToGraph（loadGraphToView），本函数不重复。
  */
 function switchGraphTo(graphId: GraphId): void {
     mediator.deactivate()

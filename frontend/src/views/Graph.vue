@@ -18,8 +18,8 @@ import type { ComponentPublicInstance } from 'vue'
 import type { NodeId } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useLifecycleAdapter } from '@/graph/adapters/useLifecycleAdapter'
-import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
+import { useLifecycle } from '@/graph/use-case/useLifecycle'
+import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
 
 import { useRenderer } from '@/cytoscape/useRenderer.ts'
 import { useCanvasFocus } from '@/composables/useCanvasFocus'
@@ -124,7 +124,7 @@ function handleErrorPanelPointerdown(event: PointerEvent): void {
     ) {
         return
     }
-    useGraphOperationAdapter().clearValidationResult()
+    useGraphOperation().clearValidationResult()
 }
 
 onMounted(() => {
@@ -135,7 +135,7 @@ onMounted(() => {
     window.addEventListener('pointerdown', handleErrorPanelPointerdown)
 
     // 恢复上次工作根图树；无健康根图时创建兜底根图（'My Graph'）
-    const rootId = useLifecycleAdapter().ensureWorkspaceRoot()
+    const rootId = useLifecycle().ensureWorkspaceRoot()
     graphStore.loadGraphToView(rootId)
 
     // default 已由 mediator 初始激活（createMediator 创建即 default），无需手动激活

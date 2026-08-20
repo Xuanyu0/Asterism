@@ -33,9 +33,9 @@ import {
 } from '@heroicons/vue/24/outline'
 import AsterismLogo from '@/assets/icon-asterism.svg?component'
 
-import { useNavigationAdapter } from '@/graph/adapters/useNavigationAdapter'
+import { useNavigation } from '@/graph/use-case/useNavigation'
 
-import type { RootGraphInfo } from '@/graph/adapters/useNavigationAdapter'
+import type { RootGraphInfo } from '@/graph/use-case/useNavigation'
 
 const props = defineProps<{
     currentRootId: GraphId | null
@@ -48,7 +48,7 @@ const emits = defineEmits<{
     close: []
 }>()
 
-const navigation = useNavigationAdapter()
+const navigation = useNavigation()
 
 // ── 根图谱列表 ──
 const rootInfos = ref<RootGraphInfo[]>([])
@@ -101,7 +101,7 @@ const armedDeleteId = ref<GraphId | null>(null)
  * 规则：
  *
  *     1. 当前浏览中的根图不可删除。
- *     2. 确认后经导航适配层 deleteRootGraphTree 级联删除整棵图树。
+ *     2. 确认后经导航用例层 deleteRootGraphTree 级联删除整棵图树。
  */
 function requestDeleteRoot(info: RootGraphInfo): void {
     if (info.id === props.currentRootId) return

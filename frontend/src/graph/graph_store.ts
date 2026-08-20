@@ -5,7 +5,7 @@
  * 持有当前视图图 / 路径 / 操作日志，协调多图注册表与 localStorage 持久化。
  * 留在本 store 的判定标准（四入口）：
  * 唯一切换（loadGraphToView）∨ 唯一图操作（commitBatchToGraphs）∨ 唯一回溯（undo / redo）。
- * 生命周期管理（恢复 / 创建根图）与校验清理已下沉至适配层（useLifecycleAdapter / 操作适配层）。
+ * 生命周期管理（恢复 / 创建根图）与校验清理已下沉至用例层（useLifecycle / 操作用例层）。
  *
  * 响应式策略：graphView / graphPath / lastValidationResult 为 shallowReactive 顶层属性
  * （引用替换触发更新）；graphRegistry / operationLog / redoStack 为普通字段（raw 无代理），
@@ -198,7 +198,7 @@ function createGraphStore(): GraphStoreAPI {
 
         // 祖先链断裂 / 环的检测与开发者通道记录在 buildGraphPath 回溯过程中完成，
         // 此处不再重复报告（否则同一异常会产出两条相同 console.warn）
-        // 记录最后活跃的根图 ID：下次启动时 useLifecycleAdapter.restoreLastRootTree 据此恢复工作根图树
+        // 记录最后活跃的根图 ID：下次启动时 useLifecycle.restoreLastRootTree 据此恢复工作根图树
         if (terminal.kind === 'root') {
             saveLastActiveRootId(terminal.id)
         }

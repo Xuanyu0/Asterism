@@ -7,7 +7,7 @@
  * 调用契约：
  *
  *     1. 只读持久化与传入参数，不持有任何状态。
- *     2. 供 useLifecycleAdapter.restoreLastRootTree（预加载子图）与导航适配层
+ *     2. 供 useLifecycle.restoreLastRootTree（预加载子图）与导航用例层
  *        deleteRootGraphTree（级联删除树成员收集）共用。
  */
 

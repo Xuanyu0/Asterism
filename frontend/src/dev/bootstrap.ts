@@ -10,15 +10,15 @@
  *     2. 不随应用启动自动执行——main.ts 仅加载本模块（副作用：挂载 window.bootstrapDevTools），
  *        需要在浏览器控制台手动执行 bootstrapDevTools() 注入种子数据。
  *     3. 路由挂载先后不影响——本函数只加载测试数据，不依赖路由。
- *     4. 金图与银图均通过导航适配层 createRootGraph → commitToCurrentGraph × 3
+ *     4. 金图与银图均通过导航用例层 createRootGraph → commitToCurrentGraph × 3
  *        构造，与用户实际操作路径一致。
  */
 
 import type { GraphId, NodeId, EdgeId } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
-import { useNavigationAdapter } from '@/graph/adapters/useNavigationAdapter'
+import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
+import { useNavigation } from '@/graph/use-case/useNavigation'
 
 declare global {
     interface Window {
@@ -28,9 +28,9 @@ declare global {
 
 export function bootstrapDevTools(): void {
     const graphStore = useGraphStore()
-    const operations = useGraphOperationAdapter()
-    // 临时接线——bootstrap 为 dev 种子工具，导航适配层 createRootGraph 的正式消费方仅 NavigationPanel
-    const navigation = useNavigationAdapter()
+    const operations = useGraphOperation()
+    // 临时接线——bootstrap 为 dev 种子工具，导航用例层 createRootGraph 的正式消费方仅 NavigationPanel
+    const navigation = useNavigation()
 
     // ═══════ 金牌测试图构造（graphStore 操作路径） ═══════
 

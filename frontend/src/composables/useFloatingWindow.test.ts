@@ -7,11 +7,11 @@
  *
  * 规则：
  *     1. 单例在文件级共享（模块级单例），各测试通过 close + registerContainer(null) 复位。
- *     2. graphStore 使用真实单例，clearValidationResult 经操作适配层 spy 断言。
+ *     2. graphStore 使用真实单例，clearValidationResult 经操作用例层 spy 断言。
  */
 
 import { resetGraphStoreForTests } from '@/graph/graph_store'
-import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
+import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
 import { useFloatingWindow } from './useFloatingWindow'
 
 import type { NodeData } from '@my-project/graph-engine'
@@ -54,7 +54,7 @@ describe('useFloatingWindow', () => {
     })
 
     test('close 触发 clearValidationResult 联动', () => {
-        const operations = useGraphOperationAdapter()
+        const operations = useGraphOperation()
         const spy = vi.spyOn(operations, 'clearValidationResult')
 
         floatingWindow.open(fixtureNode)
@@ -99,7 +99,7 @@ describe('useFloatingWindow', () => {
     })
 
     test('浮空窗未打开时 pointerdown 不触发 clearValidationResult', () => {
-        const operations = useGraphOperationAdapter()
+        const operations = useGraphOperation()
         const spy = vi.spyOn(operations, 'clearValidationResult')
 
         // 未 open（floatingData 为 null），任意外部点击应被守卫拦截，不产生副作用

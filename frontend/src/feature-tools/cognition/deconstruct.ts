@@ -20,14 +20,14 @@ import { ref, computed } from 'vue'
 import { deconstruct as composeDeconstruct } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
+import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
 import { useToolMediator } from '@/feature-tools/mediator'
 
 import type { ToolHandler } from '@/feature-tools/types'
 
 export function useDeconstructTool(): ToolHandler {
     const graphStore = useGraphStore()
-    const operations = useGraphOperationAdapter()
+    const operations = useGraphOperation()
     const mediator = useToolMediator()
 
     const isActive = ref(false)
@@ -52,7 +52,7 @@ export function useDeconstructTool(): ToolHandler {
      * 规则：
      *
      *     1. 委托引擎 composeDeconstruct 产出 operations。
-     *     2. 经适配层 commitToCurrentGraph 统一提交到 graphView。
+     *     2. 经用例层 commitToCurrentGraph 统一提交到 graphView。
      *     3. 操作完成后自动调用 mediator.deactivate() 取消自身。
      */
     function onNodeClick(nodeId: string): void {
@@ -65,7 +65,7 @@ export function useDeconstructTool(): ToolHandler {
             parentGraph: graphStore.graphView,
         })
 
-        // compose 校验收口在适配层：失败则写 lastValidationResult 并阻断本次操作
+        // compose 校验收口在用例层：失败则写 lastValidationResult 并阻断本次操作
         if (operations.reportComposeValidation(result.issues, 'node', nodeId)) {
             return
         }

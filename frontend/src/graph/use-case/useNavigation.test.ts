@@ -1,14 +1,14 @@
 /**
- * useNavigationAdapter.test.ts
+ * useNavigation.test.ts
  *
  * 功能：
- *     导航适配层（useNavigationAdapter）的集成测试。
+ *     导航用例层（useNavigation）的集成测试。
  *     覆盖单例性、导航派生（面包屑 / currentRootId / isAtRoot / parentGraphId / hasCurrentGraph）、
  *     切图与图谱树管理、createRootGraph 统一管道创建（含 opts.id 幂等）。
  *
  * 规则：
  *     1. 使用金牌图（graph-golden 根图 + sub-golden 子图）作为测试数据。
- *     2. 适配层为模块级单例，computed 求值 / 方法调用时解析当前 store 单例——
+ *     2. 用例层为模块级单例，computed 求值 / 方法调用时解析当前 store 单例——
  *        每用例独立 store。单例的 computed 会缓存首次求值时的 store 依赖，
  *        因此 beforeEach 经 vi.resetModules() 重建单例，实现真正的按用例隔离。
  *     3. 需要当前图的用例显式加载金牌图（无图态用例不加载）。
@@ -19,24 +19,24 @@ import type { GraphId, NodeId } from '@my-project/graph-engine'
 import { saveGraph, loadGraph } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 
-import type { NavigationAdapterAPI } from './useNavigationAdapter'
+import type { NavigationAPI } from './useNavigation'
 
-describe('useNavigationAdapter', () => {
-    let navigation: NavigationAdapterAPI
+describe('useNavigation', () => {
+    let navigation: NavigationAPI
     let storeModule: typeof import('@/graph/graph_store')
 
     beforeEach(async () => {
         // 模块级单例的 computed 缓存首次求值时的 store 依赖；重置模块使每个用例
         // 获得全新单例与全新 computed，配合每用例独立 store 单例实现真正隔离。
         // store 也经动态 import 解析——resetModules 后静态引用指向旧模块实例，
-        // 会与适配器内部的新模块实例分叉成两个单例。
+        // 会与用例层内部的新模块实例分叉成两个单例。
         // （vue 为 vitest 外部化依赖，重置后仍为同一实例，不会产生双实例。）
         vi.resetModules()
         localStorage.clear()
         storeModule = await import('@/graph/graph_store')
         storeModule.resetGraphStoreForTests()
-        const mod = await import('./useNavigationAdapter')
-        navigation = mod.useNavigationAdapter()
+        const mod = await import('./useNavigation')
+        navigation = mod.useNavigation()
     })
 
     /** 写入金牌图并加载为当前视图，返回对应 store（无图态用例不调用）。 */
@@ -49,8 +49,8 @@ describe('useNavigationAdapter', () => {
     }
 
     test('模块级单例：多次调用返回同一实例', async () => {
-        const mod = await import('./useNavigationAdapter')
-        expect(mod.useNavigationAdapter()).toBe(navigation)
+        const mod = await import('./useNavigation')
+        expect(mod.useNavigation()).toBe(navigation)
     })
 
     test('根图视图下派生正确', () => {

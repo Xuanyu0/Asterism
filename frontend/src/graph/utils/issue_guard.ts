@@ -9,9 +9,9 @@
  *
  * 规则：
  *
- *     ComposeIssue → ValidationIssue 的映射（mapComposeIssues）已内联进适配层
- *     （useGraphOperationAdapter.reportComposeValidation）——前端业务层零构造零直写，
- *     映射仅在适配层统一完成。
+ *     ComposeIssue → ValidationIssue 的映射（mapComposeIssues）已内联进用例层
+ *     （useGraphOperation.reportComposeValidation）——前端业务层零构造零直写，
+ *     映射仅在用例层统一完成。
  */
 
 import type { ComposeIssue } from '@my-project/graph-engine'

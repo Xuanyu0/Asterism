@@ -11,7 +11,7 @@
 import { ref, computed } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
+import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
 import { useRenderer } from '@/cytoscape/useRenderer'
 import { previewAddEdge } from '@/feature-tools/preview/preview_engine'
 import { generateEdgeId } from '@my-project/graph-engine'
@@ -25,7 +25,7 @@ export function useAddEdgeTool(
     direction: 'directed' | 'undirected',
 ): ToolHandler {
     const graphStore = useGraphStore()
-    const operations = useGraphOperationAdapter()
+    const operations = useGraphOperation()
     const { syncFromGraphData, addNodeClass, clearAllPreviews } = useRenderer()
     const id: ToolId = `add-${kind}-${direction}`
 

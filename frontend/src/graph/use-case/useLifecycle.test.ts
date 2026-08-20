@@ -1,14 +1,14 @@
 /**
- * useLifecycleAdapter.test.ts
+ * useLifecycle.test.ts
  *
  * 功能：
- *     生命周期适配层（useLifecycleAdapter）的单元测试。
+ *     生命周期用例层（useLifecycle）的单元测试。
  *     覆盖 restoreLastRootTree 的恢复与异常路径（kind 非 root / corrupted / missing / 无历史）、
  *     ensureWorkspaceRoot 的恢复复用与兜底创建。
  *
  * 规则：
  *     1. 使用金牌图（graph-golden 根图 + sub-golden 子图）作为恢复测试数据。
- *     2. 适配层为模块级单例，方法内部每次解析当前 store 单例——每用例经
+ *     2. 用例层为模块级单例，方法内部每次解析当前 store 单例——每用例经
  *        resetGraphStoreForTests 重置 store 实现隔离。
  */
 
@@ -20,11 +20,11 @@ import {
     loadLastActiveRootId,
 } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
-import { useLifecycleAdapter } from './useLifecycleAdapter'
+import { useLifecycle } from './useLifecycle'
 
 import type { GraphId, NodeId } from '@my-project/graph-engine'
 
-describe('useLifecycleAdapter', () => {
+describe('useLifecycle', () => {
     beforeEach(() => {
         resetGraphStoreForTests()
         localStorage.clear()
@@ -41,7 +41,7 @@ describe('useLifecycleAdapter', () => {
         saveGraph(golden)
         saveLastActiveRootId('graph-golden' as GraphId)
         const store = useGraphStore()
-        const lifecycle = useLifecycleAdapter()
+        const lifecycle = useLifecycle()
 
         const rootId = lifecycle.restoreLastRootTree()
 
@@ -65,7 +65,7 @@ describe('useLifecycleAdapter', () => {
         })
         saveLastActiveRootId('graph-sub' as GraphId)
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-        const lifecycle = useLifecycleAdapter()
+        const lifecycle = useLifecycle()
 
         const rootId = lifecycle.restoreLastRootTree()
 
@@ -83,7 +83,7 @@ describe('useLifecycleAdapter', () => {
         localStorage.setItem('graph:graph-corrupt', 'not-valid-json{{{')
         saveLastActiveRootId('graph-corrupt' as GraphId)
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-        const lifecycle = useLifecycleAdapter()
+        const lifecycle = useLifecycle()
 
         const rootId = lifecycle.restoreLastRootTree()
 
@@ -97,7 +97,7 @@ describe('useLifecycleAdapter', () => {
     test('restoreLastRootTree：lastActiveRootId 指向已删图 → 静默清理 + 返回 null', () => {
         saveLastActiveRootId('graph-deleted' as GraphId)
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-        const lifecycle = useLifecycleAdapter()
+        const lifecycle = useLifecycle()
 
         const rootId = lifecycle.restoreLastRootTree()
 
@@ -107,7 +107,7 @@ describe('useLifecycleAdapter', () => {
     })
 
     test('restoreLastRootTree：无历史 → 返回 null 且不清理', () => {
-        const lifecycle = useLifecycleAdapter()
+        const lifecycle = useLifecycle()
 
         const rootId = lifecycle.restoreLastRootTree()
 
@@ -118,7 +118,7 @@ describe('useLifecycleAdapter', () => {
     test('ensureWorkspaceRoot：无健康根图时创建兜底根图（新图谱）并经 commitBatchToGraphs', () => {
         const store = useGraphStore()
         const commitSpy = vi.spyOn(store, 'commitBatchToGraphs')
-        const lifecycle = useLifecycleAdapter()
+        const lifecycle = useLifecycle()
 
         const rootId = lifecycle.ensureWorkspaceRoot()
 
@@ -141,7 +141,7 @@ describe('useLifecycleAdapter', () => {
         saveLastActiveRootId('graph-golden' as GraphId)
         const store = useGraphStore()
         const commitSpy = vi.spyOn(store, 'commitBatchToGraphs')
-        const lifecycle = useLifecycleAdapter()
+        const lifecycle = useLifecycle()
 
         const rootId = lifecycle.ensureWorkspaceRoot()
 

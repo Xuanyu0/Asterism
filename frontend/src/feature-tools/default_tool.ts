@@ -12,7 +12,7 @@
 import { ref } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
+import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
 import { useCanvasFocus } from '@/composables/useCanvasFocus'
 import { useFloatingWindow } from '@/composables/useFloatingWindow'
 
@@ -33,11 +33,11 @@ import type { ToolHandler, ToolId } from './types'
  *     1. 通过 mediator 的 `activate()` 激活（启动时 + `deactivate` 恢复机制）。
  *     2. onNodeClick 在 graphView 中查找节点 → open 浮空窗。
  *     3. onEdgeClick 在 graphView 中查找边 → open 浮空窗。
- *     4. onConfirm 读取浮空窗单例的展示数据获取原实体，用 label/summary 覆盖后构造 operation 并经适配层 commitToCurrentGraph 提交。
+ *     4. onConfirm 读取浮空窗单例的展示数据获取原实体，用 label/summary 覆盖后构造 operation 并经用例层 commitToCurrentGraph 提交。
  */
 export function useDefaultTool(): ToolHandler {
     const graphStore = useGraphStore()
-    const operations = useGraphOperationAdapter()
+    const operations = useGraphOperation()
     const canvasFocus = useCanvasFocus()
     const floatingWindow = useFloatingWindow()
     const id: ToolId = 'default'
@@ -133,7 +133,7 @@ export function useDefaultTool(): ToolHandler {
      * 功能：
      *
      *     将浮空窗编辑结果写入 GraphData。读取浮空窗单例的展示数据获取原实体，
-     *     用 label/summary 覆盖后构造 update_node / update_edge operation 并经适配层 commitToCurrentGraph 提交。
+     *     用 label/summary 覆盖后构造 update_node / update_edge operation 并经用例层 commitToCurrentGraph 提交。
      *
      * 规则：
      *

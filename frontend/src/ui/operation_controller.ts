@@ -3,7 +3,7 @@
  *
  * 功能：
  *
- *     纯 UI 适配层。负责认知/布局操作编排。
+ *     纯 UI 编排层。负责认知/布局操作编排。
  *     工具栏工具事件已由 feature-tools/mediator 接管。
  *     模式管理已由 feature-tools/mediator 统一接管。
  *     默认路由已由 feature-tools/default_tool.ts 接管。
@@ -25,8 +25,8 @@ import type { NodeId, EdgeId, GraphData } from '@my-project/graph-engine'
 import type { GraphRegistry } from '@/graph/graph_registry'
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
-import { useNavigationAdapter } from '@/graph/adapters/useNavigationAdapter'
+import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
+import { useNavigation } from '@/graph/use-case/useNavigation'
 
 import { computeNodeRadiusOverrides } from '@/graph/utils/node_radius'
 
@@ -70,9 +70,9 @@ function findCommonLayer(graphRegistry: GraphRegistry): GraphData | undefined {
  */
 export function useOperationController() {
     const graphStore = useGraphStore()
-    // 待 operation_controller 迁移后移除：适配层提供 store 查询能力
-    const graphOperations = useGraphOperationAdapter()
-    const navigation = useNavigationAdapter()
+    // 待 operation_controller 迁移后移除：用例层提供 store 查询能力
+    const graphOperations = useGraphOperation()
+    const navigation = useNavigation()
     // ── 认知操作 ──
 
     /**
@@ -120,7 +120,7 @@ export function useOperationController() {
         const result = composeInduce({
             nodeIds,
             parentGraph: graphStore.graphView,
-            // 待 operation_controller 迁移后移除：经适配层取 makeLookup
+            // 待 operation_controller 迁移后移除：经用例层取 makeLookup
             lookupGraph: graphOperations.makeLookup(),
             nodeRadiusOverrides: computeNodeRadiusOverrides(
                 graphStore.graphView,
@@ -128,7 +128,7 @@ export function useOperationController() {
             allEdges: graphStore.graphView.edges,
         })
 
-        // compose 校验收口在适配层：失败则写 lastValidationResult 并阻断本次操作
+        // compose 校验收口在用例层：失败则写 lastValidationResult 并阻断本次操作
         if (graphOperations.reportComposeValidation(result.issues, 'graph')) {
             return
         }
@@ -179,7 +179,7 @@ export function useOperationController() {
 
         if (!commonLayer) {
             // 编程错误通道：internalize 前置条件违约（常识层图缺失，当前不可达）。
-            // 前端不再构造规则展示给用户——由调用方保证常识层图存在（useLifecycleAdapter.restoreLastRootTree 建立）
+            // 前端不再构造规则展示给用户——由调用方保证常识层图存在（useLifecycle.restoreLastRootTree 建立）
             throw new Error(
                 'COMMON_LAYER_NOT_FOUND: 未找到常识层图谱，无法执行内化操作。',
             )
@@ -189,14 +189,14 @@ export function useOperationController() {
             nodeIds,
             parentGraph: graphStore.graphView,
             commonLayer,
-            // 待 operation_controller 迁移后移除：经适配层取 makeLookup
+            // 待 operation_controller 迁移后移除：经用例层取 makeLookup
             lookupGraph: graphOperations.makeLookup(),
             nodeRadiusOverrides: computeNodeRadiusOverrides(
                 graphStore.graphView,
             ),
         })
 
-        // compose 校验收口在适配层：失败则写 lastValidationResult 并阻断本次操作
+        // compose 校验收口在用例层：失败则写 lastValidationResult 并阻断本次操作
         if (graphOperations.reportComposeValidation(result.issues, 'graph')) {
             return
         }
@@ -247,12 +247,12 @@ export function useOperationController() {
             targetNodeId,
             currentGraph: graphStore.graphView,
             heuristicPosition,
-            // 待 operation_controller 迁移后移除：经适配层取 makeLookup
+            // 待 operation_controller 迁移后移除：经用例层取 makeLookup
             lookupGraph: graphOperations.makeLookup(),
             graphIds: Array.from(graphStore.graphRegistry.keys()),
         })
 
-        // compose 校验收口在适配层：失败则写 lastValidationResult 并阻断本次操作
+        // compose 校验收口在用例层：失败则写 lastValidationResult 并阻断本次操作
         if (graphOperations.reportComposeValidation(result.issues, 'graph')) {
             return
         }
@@ -273,7 +273,7 @@ export function useOperationController() {
                     'graphId' in draft &&
                     draft.graphId !== graphStore.graphView?.id
                 ) {
-                    // 待 operation_controller 迁移后移除：经适配层取 getGraphById
+                    // 待 operation_controller 迁移后移除：经用例层取 getGraphById
                     const peerGraph = navigation.getGraphById(draft.graphId)
 
                     if (peerGraph) {

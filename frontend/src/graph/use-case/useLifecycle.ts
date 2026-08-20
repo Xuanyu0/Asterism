@@ -1,8 +1,8 @@
 /**
- * 生命周期管理适配层：工作根图树的恢复与兜底创建（模块级单例）。
+ * 生命周期管理用例层：工作根图树的恢复与兜底创建（模块级单例）。
  *
  * @remarks
- * 与 useNavigationAdapter / useGraphOperationAdapter 形态一致（懒创建 + 公开 interface）。
+ * 与 useNavigation / useGraphOperation 形态一致（懒创建 + 公开 interface）。
  * 消费方：Graph.vue 启动引导（ensureWorkspaceRoot → loadGraphToView）。
  * 创建兜底根图走 store.commitBatchToGraphs 统一管道（add_graph 信号），
  * 不直接 saveGraph / registerGraph——保证创建路径与用户操作路径一致。
@@ -27,9 +27,9 @@ import {
 } from '@/graph/utils/data_integrity_reporter'
 
 /**
- * useLifecycleAdapter 返回的生命周期适配单例 API。
+ * useLifecycle 返回的生命周期用例单例 API。
  */
-export interface LifecycleAdapterAPI {
+export interface LifecycleAPI {
     /**
      * 从 lastActiveRootId 恢复工作根图及其全部子孙子图到注册表。
      *
@@ -60,22 +60,22 @@ export interface LifecycleAdapterAPI {
     ensureWorkspaceRoot(): GraphId
 }
 
-let singleton: LifecycleAdapterAPI | null = null
+let singleton: LifecycleAPI | null = null
 
 /**
- * 获取生命周期适配层模块级单例（懒创建）。
+ * 获取生命周期用例层模块级单例（懒创建）。
  *
  * @remarks
  * 方法调用时解析 GraphStore 模块级单例（内部 useGraphStore），懒创建，无前置初始化。
  */
-export function useLifecycleAdapter(): LifecycleAdapterAPI {
+export function useLifecycle(): LifecycleAPI {
     if (!singleton) {
-        singleton = createLifecycleAdapter()
+        singleton = createLifecycle()
     }
     return singleton
 }
 
-function createLifecycleAdapter(): LifecycleAdapterAPI {
+function createLifecycle(): LifecycleAPI {
     function restoreLastRootTree(): GraphId | null {
         const registry = useGraphStore().graphRegistry
         const lastRootId = loadLastActiveRootId()

@@ -16,14 +16,14 @@
  *        碰撞时叠加 preview-collision 红色高亮。
  *     2. onCanvasClick 将预览节点定格在点击位置并创建 DraftNode；confirm 前
  *        画布保留预览节点，提交后经 GraphData 更新无缝替换为真实节点。
- *     3. onConfirm 校验 label → 构造 NodeData → 经适配层 commitToCurrentGraph → 清 draft → deactivate。
+ *     3. onConfirm 校验 label → 构造 NodeData → 经用例层 commitToCurrentGraph → 清 draft → deactivate。
  *     4. deactivate / onCancel 时停止光标追踪、清除草稿与预览。
  */
 
 import { ref, computed } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
-import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
+import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
 import { generateNodeId } from '@my-project/graph-engine'
 import { useRenderer } from '@/cytoscape/useRenderer'
 import { previewAddNode } from '@/feature-tools/preview/preview_engine'
@@ -53,7 +53,7 @@ export interface DraftNode {
 
 export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
     const graphStore = useGraphStore()
-    const operations = useGraphOperationAdapter()
+    const operations = useGraphOperation()
     const { syncFromGraphData, addNodeClass, clearAllPreviews, trackCursor } =
         useRenderer()
 
