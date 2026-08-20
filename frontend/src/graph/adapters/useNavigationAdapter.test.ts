@@ -4,7 +4,7 @@
  * 功能：
  *     导航适配层（useNavigationAdapter）的集成测试。
  *     覆盖单例性、导航派生（面包屑 / currentRootId / isAtRoot / parentGraphId / hasCurrentGraph）、
- *     切图与图谱树管理透传。
+ *     切图与图谱树管理、createRootGraph 统一管道创建（含 opts.id 幂等）。
  *
  * 规则：
  *     1. 使用金牌图（graph-golden 根图 + sub-golden 子图）作为测试数据。
@@ -124,16 +124,48 @@ describe('useNavigationAdapter', () => {
         ).toBeUndefined()
     })
 
-    test('createRootGraph 创建根图并立即持久化，listRootGraphInfos 可见', () => {
+    test('createRootGraph 创建根图：registry 可查、持久化可见、listRootGraphInfos 可见', () => {
         loadGoldenGraph()
 
         const id = navigation.createRootGraph('新建根图')
         expect(id).toBeTruthy()
+        // registry 可查（add_graph 信号已注册）
+        expect(storeModule.useGraphStore().graphRegistry.has(id)).toBe(true)
+        // 持久化可见
+        const result = loadGraph(id)
+        expect(result.ok).toBe(true)
+        if (result.ok) {
+            expect(result.graph.title).toBe('新建根图')
+        }
         expect(
             navigation
                 .listRootGraphInfos()
                 .some((info) => info.id === id && info.title === '新建根图'),
         ).toBe(true)
+    })
+
+    test('createRootGraph 指定 ID 幂等：二次调用返回原 ID 且不覆盖已持久化图', () => {
+        loadGoldenGraph()
+
+        const firstId = navigation.createRootGraph('原始标题', {
+            id: 'graph-fixed' as GraphId,
+        })
+        expect(firstId).toBe('graph-fixed')
+        const firstLoad = loadGraph('graph-fixed' as GraphId)
+        expect(firstLoad.ok).toBe(true)
+        if (firstLoad.ok) {
+            expect(firstLoad.graph.title).toBe('原始标题')
+        }
+
+        const secondId = navigation.createRootGraph('新标题', {
+            id: 'graph-fixed' as GraphId,
+        })
+        expect(secondId).toBe('graph-fixed')
+        const secondLoad = loadGraph('graph-fixed' as GraphId)
+        expect(secondLoad.ok).toBe(true)
+        if (secondLoad.ok) {
+            expect(secondLoad.graph.title).toBe('原始标题')
+        }
     })
 
     test('deleteRootGraphTree 级联删除根图，listRootGraphInfos 不再可见', () => {

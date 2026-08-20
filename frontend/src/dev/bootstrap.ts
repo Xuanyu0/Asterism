@@ -2,13 +2,15 @@
  * bootstrap.ts
  *
  * 功能：
- *     开发期测试工具的总装入口。main.ts 调 bootstrapDevTools() 即可一次性
- *     注册全部开发期测试设施（加载默认测试图 + 浏览器控制台 API + 验收测试机）。
+ *     开发期测试工具的总装入口。浏览器控制台调用 bootstrapDevTools() 即可一次性
+ *     注入默认测试图（金牌 / 银牌）并展示。
  *
  * 规则：
  *     1. 无前置初始化——内部 useGraphStore 为模块级单例，懒创建。
- *     2. 路由挂载先后不影响——本函数只挂 window 对象 + 加载测试数据，不依赖路由。
- *     3. 金图与银图均通过 graphStore 操作路径（createRootGraph → commitToCurrentGraph × 3）
+ *     2. 不随应用启动自动执行——main.ts 仅加载本模块（副作用：挂载 window.bootstrapDevTools），
+ *        需要在浏览器控制台手动执行 bootstrapDevTools() 注入种子数据。
+ *     3. 路由挂载先后不影响——本函数只加载测试数据，不依赖路由。
+ *     4. 金图与银图均通过导航适配层 createRootGraph → commitToCurrentGraph × 3
  *        构造，与用户实际操作路径一致。
  */
 
@@ -16,15 +18,24 @@ import type { GraphId, NodeId, EdgeId } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
+import { useNavigationAdapter } from '@/graph/adapters/useNavigationAdapter'
+
+declare global {
+    interface Window {
+        bootstrapDevTools: () => void
+    }
+}
 
 export function bootstrapDevTools(): void {
     const graphStore = useGraphStore()
     const operations = useGraphOperationAdapter()
+    // 临时接线——bootstrap 为 dev 种子工具，导航适配层 createRootGraph 的正式消费方仅 NavigationPanel
+    const navigation = useNavigationAdapter()
 
     // ═══════ 金牌测试图构造（graphStore 操作路径） ═══════
 
     // createRootGraph 幂等——指定 ID，图已存在则跳过创建
-    const GOLDEN_ID = graphStore.createRootGraph('金牌测试图', {
+    const GOLDEN_ID = navigation.createRootGraph('金牌测试图', {
         id: 'graph-golden' as GraphId,
     })
     graphStore.loadGraphToView(GOLDEN_ID)
@@ -213,7 +224,7 @@ export function bootstrapDevTools(): void {
 
     // ═══════ 银牌测试图构造（graphStore 操作路径，与金图一致） ═══════
 
-    const SILVER_ID = graphStore.createRootGraph('银牌测试图', {
+    const SILVER_ID = navigation.createRootGraph('银牌测试图', {
         id: 'graph-silver' as GraphId,
     })
     graphStore.loadGraphToView(SILVER_ID)
@@ -378,3 +389,6 @@ export function bootstrapDevTools(): void {
     // 切回金图视图（bootstrap 完成后画布默认显示金图）
     graphStore.loadGraphToView(GOLDEN_ID)
 }
+
+// 供浏览器控制台手动触发（不随应用启动自动执行——见 main.ts 接线注释）
+window.bootstrapDevTools = bootstrapDevTools

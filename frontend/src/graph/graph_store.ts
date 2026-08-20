@@ -3,8 +3,9 @@
  *
  * @remarks
  * 持有当前视图图 / 路径 / 操作日志，协调多图注册表与 localStorage 持久化。
- * 留在本 store 的判定标准：
- * Graph.vue 调用 ∨ 唯一图数据修改入口（commitBatchToGraphs）∨ 唯一图数据回溯入口（undo / redo）。
+ * 留在本 store 的判定标准（四入口）：
+ * 唯一切换（loadGraphToView）∨ 唯一图操作（commitBatchToGraphs）∨ 唯一回溯（undo / redo）。
+ * 生命周期管理（恢复 / 创建根图）与校验清理已下沉至适配层（useLifecycleAdapter / 操作适配层）。
  *
  * 响应式策略：graphView / graphPath / lastValidationResult 为 shallowReactive 顶层属性
  * （引用替换触发更新）；graphRegistry / operationLog / redoStack 为普通字段（raw 无代理），
@@ -26,7 +27,6 @@ import {
     applyBatch,
     createReversal,
     ensureDefaultCognitiveState,
-    generateGraphId,
 } from '@my-project/graph-engine'
 
 import type { GraphRegistry } from '@/graph/graph_registry'
@@ -34,15 +34,12 @@ import {
     createRegistry,
     registerGraph,
     lookupGraph,
-    hasGraph,
 } from '@/graph/graph_registry'
 
 import {
     saveGraph,
     loadGraph,
-    listSavedGraphIds,
     saveLastActiveRootId,
-    loadLastActiveRootId,
 } from '@/graph/graph_persistence'
 
 import {
@@ -52,7 +49,6 @@ import {
     revertDeleteGraph,
 } from '@/graph/graph_signals'
 
-import { isInRootTree } from '@/graph/utils/graph_tree'
 import {
     DATA_INTEGRITY_PREFIX,
     reportCorruptedGraph,
@@ -89,13 +85,8 @@ export interface GraphStoreAPI {
     operationLog: OperationLog
     redoStack: number[]
 
-    // 生命周期
+    // 唯一切换
     loadGraphToView(graphId: GraphId): boolean
-    initRegistry(): void
-    createRootGraph(title: string, opts?: { id?: GraphId }): GraphId
-
-    // 内部行为
-    clearValidationResult(): void
 
     // 功能行为
     commitBatchToGraphs(
@@ -149,9 +140,6 @@ function createGraphStore(): GraphStoreAPI {
 
         // ── 方法（函数不被代理，原样保留）──
         loadGraphToView,
-        initRegistry,
-        createRootGraph,
-        clearValidationResult,
         commitBatchToGraphs,
         undo,
         redo,
@@ -186,7 +174,7 @@ function createGraphStore(): GraphStoreAPI {
 
         // 切换图谱：旧图的校验结果（错误提示）不再适用于新视图，一并清空
         store.graphView = ensureDefaultCognitiveState(graph)
-        clearValidationResult()
+        store.lastValidationResult = null
 
         registerGraph(store.graphRegistry, graph)
 
@@ -210,105 +198,12 @@ function createGraphStore(): GraphStoreAPI {
 
         // 祖先链断裂 / 环的检测与开发者通道记录在 buildGraphPath 回溯过程中完成，
         // 此处不再重复报告（否则同一异常会产出两条相同 console.warn）
-        // 记录最后活跃的根图 ID：下次启动时 initRegistry 据此恢复工作根图树
+        // 记录最后活跃的根图 ID：下次启动时 useLifecycleAdapter.restoreLastRootTree 据此恢复工作根图树
         if (terminal.kind === 'root') {
             saveLastActiveRootId(terminal.id)
         }
 
         return true
-    }
-
-    /**
-     * 从 lastActiveRootId 恢复工作根图及其全部子孙子图到注册表。
-     *
-     * @remarks
-     * 启动时注入整棵根图树，保证认知操作的跨图查询（makeLookup）能命中子图。
-     * 调用后 registry 可能仍为空（无历史根图 / 历史根图已删或加载失败）——
-     * 调用方不得假定调用后必有图，需自行兜底。
-     *
-     * kind 非 root 时仍静默返回，与"无历史根图"无法区分。需为异常路径增加可见性，
-     * 待行为设计确定后处理。
-     */
-    function initRegistry(): void {
-        const lastRootId = loadLastActiveRootId()
-        if (!lastRootId) return
-
-        const rootResult = loadGraph(lastRootId)
-        if (!rootResult.ok) {
-            // missing（历史根图已删）与"无历史根图"同属正常状态，静默；corrupted（数据损坏）入开发者通道，
-            // 使"首次使用"与"持久化数据损坏"可在开发者通道区分
-            if (rootResult.reason === 'corrupted') {
-                reportCorruptedGraph(lastRootId, '已跳过加载')
-            }
-            return
-        }
-        if (rootResult.graph.kind !== 'root') return
-        registerGraph(store.graphRegistry, rootResult.graph)
-
-        // 预加载当前根图树的所有子图
-        const allIds = listSavedGraphIds()
-        for (const graphId of allIds) {
-            if (
-                graphId === lastRootId ||
-                hasGraph(store.graphRegistry, graphId)
-            )
-                continue
-            const result = loadGraph(graphId)
-            if (!result.ok) {
-                if (result.reason === 'corrupted') {
-                    reportCorruptedGraph(graphId, '已跳过加载')
-                }
-                continue
-            }
-            if (!isInRootTree(result.graph, lastRootId)) continue
-            registerGraph(store.graphRegistry, result.graph)
-        }
-    }
-
-    /**
-     * 创建一个新的空根图并立即持久化；若 opts.id 对应图已存在，跳过创建直接返回该 id。
-     *
-     * @remarks
-     * 本函数不自动切换视图——调用方如需显示新图，需额外调用 loadGraphToView。
-     * 创建后立即保存到 localStorage 并注册到 registry。
-     *
-     * @param title - 根图名称
-     * @param opts - 可选。opts.id 指定固定 GraphId（幂等——已存在则跳过创建）。
-     *               dev 种子数据（bootstrap）用它保证跨图引用（sourceGraphId）指向稳定 ID；
-     *               生产路径（Graph.vue / NavigationPanel）不传，走随机 ID。
-     * @returns 根图 ID（新建或已存在的原 ID）。
-     */
-    function createRootGraph(title: string, opts?: { id?: GraphId }): GraphId {
-        const id = opts?.id ?? generateGraphId()
-
-        // 幂等：若指定了 ID 且图已存在，直接返回，不覆盖
-        if (opts?.id && loadGraph(opts.id).ok) {
-            return id
-        }
-
-        const graph: GraphData = {
-            id,
-            kind: 'root',
-            title,
-            nodes: [],
-            edges: [],
-            cognitiveState: { foldedDependencies: [] },
-        }
-
-        saveGraph(graph)
-        registerGraph(store.graphRegistry, graph)
-
-        return id
-    }
-
-    /**
-     * 清除上一次操作的校验结果。
-     *
-     * @remarks
-     * 供 UI 层在切换模式/工具/操作、关闭浮空窗时调用，确保用户不会看到已过期的校验错误消息。
-     */
-    function clearValidationResult(): void {
-        store.lastValidationResult = null
     }
 
     /**

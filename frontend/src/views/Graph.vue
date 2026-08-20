@@ -13,9 +13,13 @@
  */
 
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+
+import type { ComponentPublicInstance } from 'vue'
 import type { NodeId } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
+import { useLifecycleAdapter } from '@/graph/adapters/useLifecycleAdapter'
+import { useGraphOperationAdapter } from '@/graph/adapters/useGraphOperationAdapter'
 
 import { useRenderer } from '@/cytoscape/useRenderer.ts'
 import { useCanvasFocus } from '@/composables/useCanvasFocus'
@@ -99,27 +103,40 @@ const activeNotification = computed(
     () => mediator.activeHandler.value?.notification ?? null,
 )
 
+// 错误通知面板根元素（组件 ref → $el 取根 DOM）
+const errorPanelRef = ref<ComponentPublicInstance | null>(null)
+
+/**
+ * 功能：
+ *     错误通知面板的外部交互关闭：点击面板外任意处清空校验结果。
+ *
+ * 规则：
+ *     1. 点击目标在面板根元素内（含子孙）不清错——用户在面板内交互。
+ *     2. 面板不可见时 $el 非 HTMLElement，点击任意处清错（置 null 无害）。
+ */
+function handleErrorPanelPointerdown(event: PointerEvent): void {
+    const target = event.target
+    const panelEl = errorPanelRef.value?.$el
+    if (
+        panelEl instanceof HTMLElement &&
+        target instanceof Node &&
+        panelEl.contains(target)
+    ) {
+        return
+    }
+    useGraphOperationAdapter().clearValidationResult()
+}
+
 onMounted(() => {
     // 临时快捷键接线（010 §3.2）：注册后随组件卸载移除
     window.addEventListener('keydown', handleUndoRedoKeydown)
 
-    // 加载上次激活的根图谱
-    graphStore.initRegistry()
-    // 哨兵模式：确定要加载的根图 ID
-    let rootId =
-        graphStore.graphRegistry.size > 0
-            ? graphStore.graphRegistry.keys().next().value
-            : null
-    // 尝试加载已存在的根图
-    if (rootId && !graphStore.loadGraphToView(rootId)) {
-        // 持久化数据损坏或丢失：降级为创建新根图
-        rootId = null
-    }
-    // 无可用根图时创建默认根图
-    if (!rootId) {
-        rootId = graphStore.createRootGraph('My Graph')
-        graphStore.loadGraphToView(rootId)
-    }
+    // 错误通知外部交互关闭：点击面板外任意处清错，随组件卸载移除
+    window.addEventListener('pointerdown', handleErrorPanelPointerdown)
+
+    // 恢复上次工作根图树；无健康根图时创建兜底根图（'My Graph'）
+    const rootId = useLifecycleAdapter().ensureWorkspaceRoot()
+    graphStore.loadGraphToView(rootId)
 
     // default 已由 mediator 初始激活（createMediator 创建即 default），无需手动激活
 
@@ -213,6 +230,7 @@ watch(
 
 onBeforeUnmount(() => {
     window.removeEventListener('keydown', handleUndoRedoKeydown)
+    window.removeEventListener('pointerdown', handleErrorPanelPointerdown)
     renderer.destroy()
 })
 </script>
@@ -277,10 +295,9 @@ onBeforeUnmount(() => {
                 画布操作错误通知区。浮空窗关闭或打开时均显示错误，统一展示位置。
         -->
         <NotificationPanel
+            ref="errorPanelRef"
             v-bind:visible="canvasErrorIssues.length > 0"
             accent="red"
-            closable
-            v-on:close="graphStore.clearValidationResult()"
         >
             <p
                 v-for="(issue, index) in canvasErrorIssues"

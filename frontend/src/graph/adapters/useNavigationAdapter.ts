@@ -17,6 +17,8 @@ import { computed, type ComputedRef } from 'vue'
 
 import type { GraphData, GraphId } from '@my-project/graph-engine'
 
+import { generateGraphId } from '@my-project/graph-engine'
+
 import { useGraphStore } from '@/graph/graph_store'
 import {
     listRootGraphIds,
@@ -121,15 +123,19 @@ export interface NavigationAdapterAPI {
     getGraphById(graphId: GraphId): GraphData | undefined
 
     /**
-     * 说明：
+     * 创建新的空根图并立即持久化，返回新根图 ID。
      *
-     *     创建新的空根图并立即持久化，返回新根图 ID（转发 store.createRootGraph）。
+     * @remarks
+     * 创建经 store.commitBatchToGraphs 统一管道（add_graph 信号操作，recordLog: false），
+     * 不直接 saveGraph / registerGraph。opts.id 指定固定 GraphId（幂等——已存在则跳过创建）：
+     * dev 种子数据（bootstrap）用它保证跨图引用（sourceGraphId）指向稳定 ID；
+     * 生产路径（NavigationPanel）不传，走随机 ID。
      *
-     * 参数：
-     *
-     *     title — 根图名称。
+     * @param title - 根图名称
+     * @param opts - [可选] 指定固定 GraphId
+     * @returns 根图 ID（新建或已存在的原 ID）。
      */
-    createRootGraph(title: string): GraphId
+    createRootGraph(title: string, opts?: { id?: GraphId }): GraphId
 
     /**
      * 说明：
@@ -213,8 +219,30 @@ function createNavigationAdapter(): NavigationAdapterAPI {
         )
     }
 
-    function createRootGraph(title: string): GraphId {
-        return useGraphStore().createRootGraph(title)
+    function createRootGraph(title: string, opts?: { id?: GraphId }): GraphId {
+        const id = opts?.id ?? generateGraphId()
+
+        // 幂等：指定 ID 且图已存在时直接返回原 ID，不覆盖
+        if (opts?.id && loadGraph(opts.id).ok) {
+            return id
+        }
+
+        const graph: GraphData = {
+            id,
+            kind: 'root',
+            title,
+            nodes: [],
+            edges: [],
+            cognitiveState: { foldedDependencies: [] },
+        }
+
+        // 创建走 commitBatchToGraphs 统一管道（add_graph 信号 → 注册 + 持久化）
+        useGraphStore().commitBatchToGraphs(
+            [{ graph, operations: [{ type: 'add_graph', graph }] }],
+            { recordLog: false },
+        )
+
+        return id
     }
 
     function deleteRootGraphTree(rootId: GraphId): void {

@@ -179,7 +179,7 @@ export function useOperationController() {
 
         if (!commonLayer) {
             // 编程错误通道：internalize 前置条件违约（常识层图缺失，当前不可达）。
-            // 前端不再构造规则展示给用户——由调用方保证常识层图存在（initRegistry 建立）
+            // 前端不再构造规则展示给用户——由调用方保证常识层图存在（useLifecycleAdapter.restoreLastRootTree 建立）
             throw new Error(
                 'COMMON_LAYER_NOT_FOUND: 未找到常识层图谱，无法执行内化操作。',
             )

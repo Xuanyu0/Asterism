@@ -144,7 +144,7 @@ export function listSavedGraphIds(): GraphId[] {
  *
  *     扫描 localStorage 中所有已保存图谱，仅返回 kind === 'root' 的图 ID.
  *
- *     本函数是 initRegistry 的下层依赖。启动时注册表仅包含根图，
+ *     本函数是 useLifecycleAdapter.restoreLastRootTree 的下层依赖。启动时注册表仅包含根图，
  *     子图在需要时通过惰性加载（getGraphById / makeLookup）按需注册。
  *
  * 规则：
@@ -175,7 +175,7 @@ const LAST_ACTIVE_ROOT_KEY = 'last-active-root-id'
  *
  *     将用户最近一次使用的根图 ID 持久化到 localStorage。
  *
- *     启动时 initRegistry 通过此值确定注入哪个根图到注册表。
+ *     启动时 useLifecycleAdapter.restoreLastRootTree 通过此值确定注入哪个根图到注册表。
  *
  * 规则：
  *
@@ -196,7 +196,7 @@ export function saveLastActiveRootId(rootId: GraphId): void {
  *
  *     1. 如果从未保存过 lastActiveRootId，返回 null。
  *     2. 本函数只返回 ID 字符串，不校验对应的 GraphData 是否存在或合法。
- *     3. 调用方（initRegistry）需自行 loadGraph 并验证 kind === 'root'。
+ *     3. 调用方（useLifecycleAdapter.restoreLastRootTree）需自行 loadGraph 并验证 kind === 'root'。
  */
 export function loadLastActiveRootId(): GraphId | null {
     return localStorage.getItem(LAST_ACTIVE_ROOT_KEY) as GraphId | null
@@ -210,7 +210,7 @@ export function loadLastActiveRootId(): GraphId | null {
  * 规则：
  *
  *     1. 由 deleteRootGraphTree 在删除根图后调用——
- *        防止 initRegistry 启动时尝试加载已不存在的根图。
+ *        防止 useLifecycleAdapter.restoreLastRootTree 启动时尝试加载已不存在的根图。
  *     2. 本函数只清除标记，不删除任何 GraphData。
  */
 export function clearLastActiveRootId(): void {

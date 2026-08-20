@@ -3,8 +3,8 @@
  *
  * 功能：
  *     graph_store 错误出口行为的单元测试（08.2 行为变更断言 + 08.3 补全 + oracle 防回归）。
- *     覆盖 loadGraphToView 的 missing / corrupted 出口、祖先链断裂与环检测的开发者通道迁移、
- *     createRootGraph 幂等保护。
+ *     覆盖 loadGraphToView 的 missing / corrupted 出口、祖先链断裂与环检测的开发者通道迁移。
+ *     （createRootGraph 幂等保护已随创建逻辑下沉至 useNavigationAdapter，测试见其对应文件。）
  *
  * 规则：
  *     1. validation 通道（lastValidationResult）= 图规则校验专用；missing 静默；
@@ -17,7 +17,7 @@
  */
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
-import { saveGraph, loadGraph } from '@/graph/graph_persistence'
+import { saveGraph } from '@/graph/graph_persistence'
 
 import type { GraphId, NodeId } from '@my-project/graph-engine'
 
@@ -148,47 +148,5 @@ describe('graph_store loadGraphToView 错误出口（08.2）', () => {
         expect(warnSpy).toHaveBeenCalledWith(
             expect.stringContaining('graph-cyc-a'),
         )
-    })
-})
-
-describe('graph_store createRootGraph 幂等（08.1 防回归）', () => {
-    beforeEach(() => {
-        resetGraphStoreForTests()
-        localStorage.clear()
-        vi.restoreAllMocks()
-    })
-
-    afterAll(() => {
-        localStorage.clear()
-        vi.restoreAllMocks()
-    })
-
-    test('指定 ID 二次调用：返回原 ID 且不覆盖已持久化图', () => {
-        const store = useGraphStore()
-
-        const firstId = store.createRootGraph('原始标题', {
-            id: 'graph-golden' as GraphId,
-        })
-
-        expect(firstId).toBe('graph-golden')
-        // 首次创建的持久化内容基线
-        const firstLoad = loadGraph('graph-golden' as GraphId)
-        expect(firstLoad.ok).toBe(true)
-        if (firstLoad.ok) {
-            expect(firstLoad.graph.title).toBe('原始标题')
-        }
-
-        const secondId = store.createRootGraph('新标题', {
-            id: 'graph-golden' as GraphId,
-        })
-
-        // 幂等：返回原 ID，不创建新图
-        expect(secondId).toBe('graph-golden')
-        // 不覆盖：持久化内容保持首次创建值（title 未变为"新标题"）
-        const secondLoad = loadGraph('graph-golden' as GraphId)
-        expect(secondLoad.ok).toBe(true)
-        if (secondLoad.ok) {
-            expect(secondLoad.graph.title).toBe('原始标题')
-        }
     })
 })

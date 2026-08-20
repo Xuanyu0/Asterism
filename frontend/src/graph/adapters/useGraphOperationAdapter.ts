@@ -2,7 +2,7 @@
  * 说明：
  *
  *     工具层图操作适配模块级单例。
- *     并把 compose 校验结果写入收口为显式方法（reportComposeValidation）。
+ *     校验状态管理收口：compose 校验结果写入（reportComposeValidation）与清理（clearValidationResult）。
  *     为步骤 05 错误反馈链路预留唯一翻译落点（本适配层只收敛写入，不做错误翻译/结构化）。
  *
  * 调用契约：
@@ -84,6 +84,16 @@ export interface GraphOperationAdapterAPI {
      *     (graphId) → GraphData | undefined，供 induce / internalize / diverge 跨图查询使用。
      */
     makeLookup(): GraphLookup
+
+    /**
+     * 清除上一次操作的校验结果（置 lastValidationResult 为 null）。
+     *
+     * @remarks
+     * 与 reportComposeValidation 同为校验状态管理，写入方式一致。
+     * 供 UI 层在切换模式/工具/操作、关闭浮空窗、点击错误面板外时调用，
+     * 确保用户不会看到已过期的校验错误消息。
+     */
+    clearValidationResult(): void
 
     /**
      * 说明：
@@ -178,6 +188,10 @@ function createGraphOperationAdapter(): GraphOperationAdapterAPI {
             lookupGraph(useGraphStore().graphRegistry, graphId)
     }
 
+    function clearValidationResult(): void {
+        useGraphStore().lastValidationResult = null
+    }
+
     function undo(): boolean {
         return useGraphStore().undo()
     }
@@ -190,6 +204,7 @@ function createGraphOperationAdapter(): GraphOperationAdapterAPI {
         commitToCurrentGraph,
         reportComposeValidation,
         makeLookup,
+        clearValidationResult,
         undo,
         redo,
     }

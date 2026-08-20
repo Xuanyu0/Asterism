@@ -3,7 +3,8 @@
  *
  * 功能：
  *     工具层图操作适配（useGraphOperationAdapter）的集成测试。
- *     覆盖单例性、commitToCurrentGraph 提交 + 校验同步 + 原样透传、reportComposeValidation 上报收口。
+ *     覆盖单例性、commitToCurrentGraph 提交 + 校验同步 + 原样透传、reportComposeValidation 上报收口、
+ *     clearValidationResult 校验清理。
  *
  * 规则：
  *     1. 使用金牌图（graph-golden）作为测试数据。
@@ -151,5 +152,13 @@ describe('useGraphOperationAdapter', () => {
 
         expect(lookup('graph-golden' as GraphId)?.title).toBe('金牌测试图')
         expect(lookup('graph-nonexistent' as GraphId)).toBeUndefined()
+    })
+
+    test('clearValidationResult 置空 lastValidationResult', () => {
+        store.lastValidationResult = { valid: false, issues: [] }
+
+        operations.clearValidationResult()
+
+        expect(store.lastValidationResult).toBeNull()
     })
 })
