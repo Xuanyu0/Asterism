@@ -223,7 +223,8 @@ function createGraphStore(): GraphStoreAPI {
      * 3. 全部成功后统一持久化所有结果图
      * 4. options.recordLog 默认 true；false（undo/redo 执行）不追加 entry、不动 cursor、不清 redoStack
      *
-     * 代码修改契约：
+     * @privateRemarks
+     * 
      * 1. add_graph / delete_graph 为引擎静默信号，由本函数兑现为 registry 副作用
      *    （软删，不触碰持久化）——经 graph_signals 收口
      * 2. 回调内 createReversal 抛异常（正常流程不可达，validate 已保证目标存在）
@@ -265,21 +266,16 @@ function createGraphStore(): GraphStoreAPI {
                         options?.recordLog === false
                             ? undefined // undo/redo 执行时不收集逆元（日志已有）
                             : (op, graphBeforeOp) => {
-                                  if (
-                                      op.type === 'add_graph' ||
-                                      op.type === 'delete_graph'
-                                  )
-                                      return // 图级操作由 graph_signals 在第三阶段正/逆向执行
-                                  perOpReversals.push(
-                                      createReversal(graphBeforeOp, op),
-                                  )
-                              },
+                                    // 图级操作由 graph_signals 在第三阶段正/逆向执行
+                                    if (op.type === 'add_graph' || op.type === 'delete_graph') return
+
+                                    perOpReversals.push(createReversal(graphBeforeOp, op))
+                                },
                 },
             )
 
             if (!validation.valid) {
                 store.lastValidationResult = validation
-
                 return { validation }
             }
 
@@ -324,9 +320,7 @@ function createGraphStore(): GraphStoreAPI {
                     if (!builtGraph) {
                         saveGraph(targetGraph)
                     }
-                }
-
-                if (operation.type === 'delete_graph') {
+                } else if (operation.type === 'delete_graph') {
                     applyDeleteGraph(store.graphRegistry, operation.graphId)
                 }
             }
@@ -337,9 +331,8 @@ function createGraphStore(): GraphStoreAPI {
             saveGraph(resultGraph)
         }
 
-        // 操作日志写入（双存模型）
+        // 操作日志写入（正逆操作双存模型）
         // 整批成功后组装 entry 追加、cursor 前进、清空 redoStack
-        // 用户新操作使 redo 失效
         if (options?.recordLog !== false && operationBatch.length > 0) {
             const graphSignals: OperationLogEntry['graphSignals'] = {
                 added: [],
@@ -369,7 +362,7 @@ function createGraphStore(): GraphStoreAPI {
 
             store.operationLog.entries.push(entry)
             store.operationLog.cursor = store.operationLog.entries.length - 1
-            store.redoStack = []
+            store.redoStack = []  // 用户新操作使 redo 失效
         }
 
         const validation: ValidationResult = {
