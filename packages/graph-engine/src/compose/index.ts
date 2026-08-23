@@ -10,10 +10,8 @@ export type {
     DraftPosition,
     ComposeIssue,
     ComposeResult,
+    OperationBatch,
 } from '../types/compose_types'
-
-export { applyBatch } from './pipeline'
-export type { BatchOptions, PerOpResult, BatchResult } from './pipeline'
 
 // arrangement
 export { moveNode } from './arrangement/move'

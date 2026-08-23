@@ -7,7 +7,7 @@
  */
 
 import type { GraphData, GraphId, NodeId } from '../../src/types/graph_data'
-import { executeOperation } from '../../src/core/execute'
+import { executeOperation } from '../../src/core/execute_operation'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
 
 const G = 'test-exec' as GraphId
@@ -202,30 +202,5 @@ describe('execute collapse / expand', () => {
             targetNodeId: 'n2' as NodeId,
         })
         expect(expanded.cognitiveState?.foldedDependencies.length).toBe(0)
-    })
-})
-
-describe('execute add_graph / delete_graph', () => {
-    test('add_graph 落到 default 分支，返回原图不变', () => {
-        const graph = makeGraph(2)
-        const result = executeOperation(graph, {
-            type: 'add_graph',
-            graph: assembleGraph({
-                id: 'child-1' as GraphId,
-                nodes: [],
-                edges: [],
-                kind: 'subgraph',
-            }),
-        })
-        expect(result).toBe(graph)
-    })
-
-    test('delete_graph 落到 default 分支，返回原图不变', () => {
-        const graph = makeGraph(2)
-        const result = executeOperation(graph, {
-            type: 'delete_graph',
-            graphId: 'child-1' as GraphId,
-        })
-        expect(result).toBe(graph)
     })
 })

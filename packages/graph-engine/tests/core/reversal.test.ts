@@ -16,7 +16,7 @@ import type {
     AddNodeOperation,
 } from '../../src/types/atomic_operations'
 import { createReversal } from '../../src/core/reversal'
-import { executeOperation } from '../../src/core/execute'
+import { executeOperation } from '../../src/core/execute_operation'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
 
 const G = 'test-rev' as GraphId
@@ -310,27 +310,6 @@ describe('executeCollapseDependency 显式折叠成员', () => {
         }
         const after = executeOperation(graph, op)
         expect(after.cognitiveState?.foldedDependencies ?? []).toEqual([])
-    })
-})
-
-describe('createReversal 图级操作', () => {
-    test('add_graph / delete_graph 不构造逆元，返回空数组', () => {
-        const graph = makeGraph(2)
-        const child = assembleGraph({
-            id: 'child-rev' as GraphId,
-            nodes: [],
-            edges: [],
-            kind: 'subgraph',
-        })
-        expect(
-            createReversal(graph, { type: 'add_graph', graph: child }),
-        ).toEqual([])
-        expect(
-            createReversal(graph, {
-                type: 'delete_graph',
-                graphId: 'child-rev' as GraphId,
-            }),
-        ).toEqual([])
     })
 })
 

@@ -77,9 +77,13 @@ export type {
     ExpandDependencyOperation,
     AddGraphOperation,
     DeleteGraphOperation,
-    AtomicOperation,
+    AtomicOperationInGraph,
+    AtomicGraphOperation,
     GraphOperation,
 } from './types/atomic_operations'
+
+/** 消费者：graph_store（多图注册表，applyBatches 参数）。 */
+export type { GraphRegistry } from './types/graph_data'
 
 /** 消费者：operation_controller（Cognition 模式类型标签）。 */
 export type {
@@ -135,8 +139,35 @@ export type { PersistenceAdapter } from './spi/persistence'
  *     const result = applyBatch(parentGraph, operations, registry)
  *     if (!result.validation.valid) { ... }  // 按钮灰掉
  */
-export { applyBatch } from './compose/pipeline'
-export type { BatchOptions, PerOpResult, BatchResult } from './compose/pipeline'
+export { applyBatch } from './core/apply_batch'
+export type { BatchOptions, PerOpResult, BatchResult } from './core/apply_batch'
+
+// ═══════════════════════════════════════════════════════════════════
+// applyBatches — 多图批处理（多图管理层）
+//
+// 消费者：
+//     graph_store.commitBatchToGraphs — 委托 applyBatches 统一执行多批次操作。
+//     输入注册表 + 多批次操作，输出新注册表 + 校验 + 逆元 + graphSignals（中间态）。
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * 功能：
+ *
+ *     多图批处理。统一循环处理图内（委托 applyBatch）与图级（add_graph / delete_graph 兑现）
+ *     操作，返回新注册表 + 聚合校验 + 逆元序列 + graphSignals（中间态，07 移除）。
+ *
+ * 消费者：
+ *
+ *     graph_store.commitBatchToGraphs（前端对接在 06.3）
+ *
+ * 使用：
+ *
+ *     const result = applyBatches(registry, batches)
+ *     if (!result.validation.valid) { ... }  // 整批丢弃，注册表不变
+ */
+export { applyBatches } from './core/apply_batches'
+export type { GraphSignals, ApplyBatchesResult } from './core/apply_batches'
+export type { OperationBatch } from './types/compose_types'
 
 // ═══════════════════════════════════════════════════════════════════
 // replay — 历史回溯

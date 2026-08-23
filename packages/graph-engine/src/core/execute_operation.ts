@@ -1,40 +1,30 @@
 /**
- * execute.ts
+ * 将图内原子操作（AtomicOperationInGraph）转换为新的 GraphData。所有函数为纯函数，不修改入参。
  *
- * 功能：
- *
- *     将 GraphOperation 转换为新的 GraphData。所有函数为纯函数，不修改入参。
- *
- * 总体结构：
- *
- *     1. executeOperation — Operation router，按 type 分派
- *     2. 各 executeXxx — 9 种图内变更操作的具体执行函数
- *
- * 规则：
- *
- *     1. 本模块不负责校验。
- *     2. 所有操作返回新的 GraphData，不修改传入 GraphData。
- *     3. 所有图内变更操作会写入 timestamp。
- *     4. 签名 (graph, op) → graph。
- *     5. 度数按本图边数增减，不做引用穿透（引用节点度数不跟随源节点）。图遍历委托给 traversal.ts。
- *     6. add_graph / delete_graph 不在 execute 层处理——它们是 compose→Runtime 信号，
- *        落到 default 分支静默返回原 graph。Runtime 在 applyBatch 返回后读 operations
- *        数组中的 add_graph/delete_graph 操作自行处理 registry 副作用。
- *
- * 外部如何使用：
- *     import { executeOperation } from '@my-project/graph-engine'
+ * @remarks
+ * 本模块不负责校验。所有操作返回新的 GraphData（签名 (graph, op) → graph），
+ * 图内变更操作会写入 timestamp。度数按本图边数增减，不做引用穿透（引用节点
+ * 度数不跟随源节点），图遍历委托给 traversal.ts。图级操作（add_graph / delete_graph）
+ * 不在 execute 层处理——它们是多图注册表层面的操作，由 applyBatches 统一兑现。
  */
 
 import type { GraphData, NodeId } from '../types/graph_data'
-import type { GraphOperation } from '../types/atomic_operations'
+import type { AtomicOperationInGraph } from '../types/atomic_operations'
 import {
     collectDependencyNodeIds,
     findReferenceNodesPointingTo,
 } from './utils/traversal'
 
+/**
+ * 图内原子操作路由：按 type 分派到对应 executeXxx。
+ *
+ * @param graph - 操作前的图（不修改）
+ * @param operation - 待执行的图内原子操作
+ * @returns 操作后的新图。
+ */
 export function executeOperation(
     graph: GraphData,
-    operation: GraphOperation,
+    operation: AtomicOperationInGraph,
 ): GraphData {
     switch (operation.type) {
         // ── 图内变更：修改当前图中的节点/边，返回新的 GraphData ──
@@ -65,9 +55,6 @@ export function executeOperation(
 
         case 'expand_dependency':
             return executeExpandDependency(graph, operation)
-
-        default:
-            return graph
     }
 }
 
@@ -254,12 +241,11 @@ function executeDeleteEdge(
 }
 
 /**
- * 功能：
- *     更新一个节点的数据。含引用节点穿透。
+ * 更新一个节点的数据（含引用节点穿透）。
  *
- * 规则：
- *     1. 完全替换匹配节点（不是增量合并）。
- *     2. 引用节点 label 同步回源节点 label。contextSummary 不穿透（启发节点独立修改）。
+ * @remarks
+ * 完全替换匹配节点（不是增量合并）。引用节点 label 同步回源节点 label；
+ * contextSummary 不穿透（启发节点独立修改）。
  */
 function executeUpdateNode(
     graph: GraphData,

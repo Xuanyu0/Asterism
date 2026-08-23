@@ -4,9 +4,9 @@
  * 测试 applyBatch 事务流水线。
  */
 
-import { applyBatch } from '../src/compose/pipeline'
+import { applyBatch } from '../src/core/apply_batch'
 import type { GraphData } from '../src/types/graph_data'
-import type { GraphOperation } from '../src/types/atomic_operations'
+import type { AtomicOperationInGraph } from '../src/types/atomic_operations'
 
 function emptyGraph(): GraphData {
     return {
@@ -18,7 +18,7 @@ function emptyGraph(): GraphData {
     }
 }
 
-function addNodeOp(id: string, label: string): GraphOperation {
+function addNodeOp(id: string, label: string): AtomicOperationInGraph {
     return {
         type: 'add_node',
         node: {

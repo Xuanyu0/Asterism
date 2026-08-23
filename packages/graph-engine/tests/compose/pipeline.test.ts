@@ -6,7 +6,7 @@
 
 import type { GraphData, GraphId, NodeId } from '../../src/types/graph_data'
 import type { GraphOperation } from '../../src/types/atomic_operations'
-import { applyBatch } from '../../src/compose/pipeline'
+import { applyBatch } from '../../src/core/apply_batch'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
 
 const G = 'test-pl' as GraphId
@@ -116,21 +116,6 @@ describe('applyBatch', () => {
         const result = applyBatch(graph, ops, { stopOnFirst: true })
         expect(result.validation.valid).toBe(false)
         expect(result.results.length).toBe(1) // 第一个失败后停
-    })
-
-    test('add_graph 校验通过并返回原图不变', () => {
-        const graph = makeBase()
-        const child = assembleGraph({
-            id: 'child-pl' as GraphId,
-            nodes: [],
-            edges: [],
-            kind: 'subgraph',
-        })
-        const ops = [{ type: 'add_graph' as const, graph: child }]
-        const result = applyBatch(graph, ops)
-        expect(result.validation.valid).toBe(true)
-        // 当前图不变——add_graph 只声明子图的存在，registry 写操作由 Runtime 处理
-        expect(result.graph).toBe(graph)
     })
 
     test('全局规则在 Phase 3 生效：自环被拦截', () => {

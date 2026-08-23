@@ -1,49 +1,18 @@
 /**
- * pipeline.ts
+ * 单图操作序列事务流水线。所有 GraphData 修改的唯一入口。
  *
- * 功能：
- *
- *     操作序列事务流水线。所有 GraphData 修改的唯一入口。
- *
- * 总体结构：
- *
- *     1. applyBatch         — 事务流水线（全通过→执行，任一失败→丢弃）
- *     2. BatchOptions       — 可选配置
- *     3. PerOpResult        — 单个操作的结果
- *
- * 事务语义：
- *
- *     1. Phase 1 — 逐条校验操作前提条件（validateOperation）。
- *     2. Phase 2 — dry-run execute 全部操作，得到 resultGraph。
- *     3. Phase 3 — 对 resultGraph 运行全局不变量规则。
- *     4. 任一阶段失败 → 整批丢弃，graph 原封不动，返回所有 issue。
- *     5. 全部通过 → 正式返回 resultGraph。
- *
- *     不存在"执行一半需要回滚"的场景——全通过后才开始 execute。
- *
- * 与 reversal 的关系：
- *
- *     applyBatch 不内部调用 createReversal。reversal 的调用时机由上层
- *     （graph_store）在调用 applyBatch 之前决定。
- *     applyBatch 是纯函数，不产生副效应。
- *
- * 外部如何使用：
- *
- *     import { applyBatch } from '@my-project/graph-engine'
- *
- *     const { graph, validation, results } = applyBatch(graph, operations)
- *     if (!validation.valid) {
- *         // 按钮灰掉，展示 validation.issues
- *         return
- *     }
- *     // graph 已更新
+ * @remarks
+ * 三阶段事务：Phase 1 逐条校验操作前提 → Phase 2 dry-run execute 全部操作 →
+ * Phase 3 对结果图运行全局不变量规则。任一阶段失败整批丢弃（graph 原封不动，
+ * 返回全部 issue）——不存在"执行一半回滚"的场景，全通过后才开始 execute。
+ * applyBatch 是纯函数，不内部调用 createReversal（逆元构造时机由上层决定）。
  */
 
 import type { GraphData } from '../types/graph_data'
-import type { GraphOperation } from '../types/atomic_operations'
+import type { AtomicOperationInGraph } from '../types/atomic_operations'
 import type { ValidationResult } from '../types/validation'
-import { validateOperation } from '../core/validate'
-import { executeOperation } from '../core/execute'
+import { validateOperationInGraph } from '../core/validate_operation_in_graph'
+import { executeOperation } from './execute_operation'
 import type { GlobalRulesTable } from '../core/validators/global_rules'
 import {
     DEFAULT_GLOBAL_RULES_TABLE,
@@ -51,20 +20,17 @@ import {
 } from '../core/validators/global_rules'
 
 /**
- * 功能：
+ * 批处理配置。
  *
- *     批处理配置。
- *
- * 规则：
- *
- *     - dryRun：只校验不执行。用于认知操作正式执行前预判。
- *     - stopOnFirst：遇第一个失败即停（默认 false，聚合全部 issue 后返回）。
- *     - globalRulesTable：全局规则开关表。未传入时使用默认全开配置。
- *     - onBeforeEachOperation：逐操作执行前回调，仅暴露中间态，不改变执行结果。
- *     - skipValidate：跳过 Phase 1 逐条前提校验（默认 false）。供 undo/redo 恢复型
- *       逆元批使用——validate-all-first 基于输入图校验，恢复型批（如 add_edge 端点
- *       依赖批内 add_node 恢复的节点）必然误报。跳过前提校验后 execute 仍逐操作
- *       顺序执行（依赖由操作内部顺序保证），Phase 3 全局规则仍运行。
+ * @remarks
+ * - dryRun：只校验不执行，用于认知操作正式执行前预判。
+ * - stopOnFirst：遇第一个失败即停（默认 false，聚合全部 issue 后返回）。
+ * - globalRulesTable：全局规则开关表，未传入时使用默认全开配置。
+ * - onBeforeEachOperation：逐操作执行前回调，仅暴露中间态，不改变执行结果。
+ * - skipValidate：跳过 Phase 1 逐条前提校验（默认 false）。供 undo/redo 恢复型
+ *   逆元批使用——validate-all-first 基于输入图校验，恢复型批（如 add_edge 端点
+ *   依赖批内 add_node 恢复的节点）必然误报。跳过前提校验后 execute 仍逐操作
+ *   顺序执行（依赖由操作内部顺序保证），Phase 3 全局规则仍运行。
  */
 export interface BatchOptions {
     /** 只校验不执行。默认 false。 */
@@ -81,7 +47,7 @@ export interface BatchOptions {
      * 之前调用，入参为该操作与其执行前的图状态（中间态）。未传时不调用（零行为变化）。
      */
     onBeforeEachOperation?: (
-        op: GraphOperation,
+        op: AtomicOperationInGraph,
         graphBeforeOp: GraphData,
     ) => void
 
@@ -92,24 +58,16 @@ export interface BatchOptions {
     skipValidate?: boolean
 }
 
-/**
- * 功能：
- *
- *     单个操作的批处理结果。
- */
+/** 单个操作的批处理结果。 */
 export interface PerOpResult {
     /** 原始操作。 */
-    operation: GraphOperation
+    operation: AtomicOperationInGraph
 
     /** 该操作的校验结果。 */
     validation: ValidationResult
 }
 
-/**
- * 功能：
- *
- *     applyBatch 的返回值。
- */
+/** applyBatch 的返回值。 */
 export interface BatchResult {
     /** 操作后的图。dryRun 或校验失败时与入参 graph 相同。 */
     graph: GraphData
@@ -122,36 +80,21 @@ export interface BatchResult {
 }
 
 /**
- * 功能：
+ * 批量事务执行：逐条 validate → 全通过后逐条 execute → 全局规则校验。
  *
- *     批量事务执行。修改 GraphData 的唯一入口。
+ * @remarks
+ * validate-all-first：全部校验通过后才开始 execute。任一阶段失败返回原图 + 聚合
+ * issues；不内部调用 createReversal（reversal 由上层管理）；全局规则在 Phase 3
+ * 对结果图统一运行，不依赖操作类型。
  *
- *     Phase 1 校验操作前提 → Phase 2 dry-run execute → Phase 3 全局规则校验 →
- *     全部通过后返回新图。
- *
- * 规则：
- *
- *     1. validate-all-first：全部校验通过后才开始 execute。
- *     2. 失败回退：任一阶段失败，graph 不变，返回聚合后的 issues。
- *     3. stopOnFirst：遇第一个错误即停。
- *     4. 不内部调用 createReversal——reversal 由上层管理。
- *     5. 全局规则在 Phase 3 对结果图统一运行，不依赖操作类型。
- *
- * 参数：
- *
- *     graph     — 操作前的 GraphData 快照
- *     ops       — 待执行的操作序列
- *     options   — [可选] dryRun / stopOnFirst / globalRulesTable / onBeforeEachOperation / skipValidate
- *
- * 使用：
- *
- *     applyBatch(graph, [moveOp1, moveOp2, moveOp3])           → 批量移动
- *     applyBatch(graph, ops, { dryRun: true })                 → 预判（不执行）
- *     applyBatch(graph, ops, { stopOnFirst: true })            → 遇错即停
+ * @param graph - 操作前的 GraphData 快照
+ * @param ops - 待执行的操作序列
+ * @param options - [可选] dryRun / stopOnFirst / globalRulesTable / onBeforeEachOperation / skipValidate
+ * @returns 新图 + 聚合校验 + 每操作独立结果。
  */
 export function applyBatch(
     graph: GraphData,
-    ops: GraphOperation[],
+    ops: AtomicOperationInGraph[],
     options?: BatchOptions,
 ): BatchResult {
     const dryRun = options?.dryRun ?? false
@@ -167,7 +110,7 @@ export function applyBatch(
 
     if (!skipValidate) {
         for (const op of ops) {
-            const validation = validateOperation(graph, op)
+            const validation = validateOperationInGraph(graph, op)
 
             results.push({ operation: op, validation })
 
@@ -192,6 +135,7 @@ export function applyBatch(
     for (const op of ops) {
         // 逐操作挂点：入参为 op 执行前的中间态，不改变执行结果
         options?.onBeforeEachOperation?.(op, resultGraph)
+
         resultGraph = executeOperation(resultGraph, op)
     }
 
