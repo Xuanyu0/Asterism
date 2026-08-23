@@ -130,7 +130,12 @@ function createLifecycle(): LifecycleAPI {
             cognitiveState: { foldedDependencies: [] },
         }
         useGraphStore().commitBatchToGraphs(
-            [{ graph, operations: [{ type: 'add_graph', graph }] }],
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'add_graph', graph }],
+                },
+            ],
             { recordLog: false },
         )
 

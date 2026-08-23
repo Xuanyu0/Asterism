@@ -1,18 +1,9 @@
 /**
- * 功能：
+ * 解构（Deconstruct）工具处理器，实现 ToolHandler 接口。
  *
- *     解构（Deconstruct）工具处理器。实现 ToolHandler 接口。
- *     用户激活后点击画布节点执行解构操作。
- *
- * 总体结构：
- *
- *     1. useDeconstructTool() → ToolHandler（激活即用，单次操作后自取消）
- *
- * 规则：
- *
- *     1. 单次操作完成后自动退出（自取消）。
- *     2. 不依赖 operation_controller。
- *     3. 仅支持单节点、单图操作，无草稿、无预览。
+ * @remarks
+ * 用户激活后点击画布节点执行解构操作。单次操作完成后自动退出（自取消），
+ * 不依赖 operation_controller，仅支持单节点、单图操作，无草稿、无预览。
  */
 
 import { ref, computed } from 'vue'
@@ -45,15 +36,12 @@ export function useDeconstructTool(): ToolHandler {
     }
 
     /**
-     * 功能：
+     * 处理节点点击——执行解构操作（compose → 校验 → commitBatchToGraphs → 自取消）。
      *
-     *     处理节点点击——执行解构操作（compose → 校验 → commitToCurrentGraph → 自取消）。
-     *
-     * 规则：
-     *
-     *     1. 委托引擎 composeDeconstruct 产出 operations。
-     *     2. 经用例层 commitToCurrentGraph 统一提交到 graphView。
-     *     3. 操作完成后自动调用 mediator.deactivate() 取消自身。
+     * @remarks
+     * 委托引擎 composeDeconstruct 产出 batches（判别联合），经 store.commitBatchToGraphs
+     * 直接提交（applyBatches 统一执行图内 / 图级批），完成后自动调用 mediator.deactivate()
+     * 取消自身。
      */
     function onNodeClick(nodeId: string): void {
         if (!graphStore.graphView || !nodeId) {
@@ -70,7 +58,8 @@ export function useDeconstructTool(): ToolHandler {
             return
         }
 
-        operations.commitToCurrentGraph(result.operations, {
+        // 批次判别联合 → commitBatchToGraphs 直接提交（父图 update_node + 子图 add_node 填充 + 图级 add_graph）
+        graphStore.commitBatchToGraphs(result.batches, {
             source: 'deconstruct',
         })
 

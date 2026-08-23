@@ -9,9 +9,12 @@
  *
  * 规则：
  *     1. 图数据经 test_case_factory.assembleGraph 构造（含 schema 校验 + 认知状态补全），
- *        以普通对象直传 commitBatchToGraphs（store 状态为 raw 普通字段、无 reactive proxy，测试侧无需解包）。
+ *        以 OperationBatch[]（判别联合）直传 commitBatchToGraphs；图内批目标图须先注册
+ *        （applyBatches 校验 BATCH_GRAPH_NOT_FOUND），测试经 registerGraph 预置。
  *     2. 多操作批遵守引擎 pipeline 语义：Phase 1 逐操作校验基于输入图（validate-all-first），
  *        后置操作不得依赖前置操作新创建的对象（如 add_edge 端点必须是输入图中已存在的节点）。
+ *     3. 图级操作（add_graph / delete_graph）独立成 graphLevel 批；add_graph 只建空图、
+ *        delete_graph 只删空图（引擎 06.1 语义），内容经图内批填充。
  * 3. 每用例独立环境：resetGraphStoreForTests() + localStorage.clear() + vi.restoreAllMocks()。
  * 4. 010.1 缺陷 #1（删除带关联边节点的撤销失败）与缺陷 #2（多级 undo 链 DataCloneError）
  *    已由 010.1 回流修复（D1 操作级逆序 + skipValidate、D2 状态去 proxy 化），原「已知缺陷暴露」
@@ -19,7 +22,7 @@
  */
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
-import { lookupGraph } from '@/graph/graph_registry'
+import { lookupGraph, registerGraph } from '@/graph/graph_registry'
 import { loadGraph, saveGraph } from '@/graph/graph_persistence'
 import { assembleGraph, createNode, createEdge } from '@/dev/test_case_factory'
 
@@ -64,6 +67,16 @@ function knowledgeNode(
     return createNode({ id, graphId: ROOT, label, position: { x, y } })
 }
 
+// 预置注册：applyBatches 要求图内批目标图已在注册表中（BATCH_GRAPH_NOT_FOUND 校验）
+function registerGraphs(
+    store: ReturnType<typeof useGraphStore>,
+    ...graphs: GraphData[]
+): void {
+    for (const graph of graphs) {
+        registerGraph(store.graphRegistry, graph)
+    }
+}
+
 describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
     beforeEach(() => {
         resetGraphStoreForTests()
@@ -82,6 +95,7 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
             knowledgeNode('node-a', '节点A', 0, 0),
             knowledgeNode('node-x', '节点X', 200, 0),
         ])
+        registerGraphs(store, graph)
         const nodeB = knowledgeNode('node-b', '节点B', 5000, 5000)
         const ops = [
             { type: 'add_node' as const, node: nodeB },
@@ -104,7 +118,7 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
         ]
 
         const { validation } = store.commitBatchToGraphs([
-            { graph, operations: ops },
+            { kind: 'inGraph', graph, operations: ops },
         ])
 
         expect(validation.valid).toBe(true)
@@ -158,9 +172,11 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
         const store = useGraphStore()
         const graphA = makeGraph('graph-a', [knowledgeNode('a-1', 'A1', 0, 0)])
         const graphB = makeGraph('graph-b', [knowledgeNode('b-1', 'B1', 0, 0)])
+        registerGraphs(store, graphA, graphB)
 
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph: graphA,
                 operations: [
                     {
@@ -170,6 +186,7 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
                 ],
             },
             {
+                kind: 'inGraph',
                 graph: graphB,
                 operations: [
                     {
@@ -201,7 +218,6 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
 
     test('graphSignals：add_graph / delete_graph 信号提取正确；parentIndex 首条 -1、第二条 0', () => {
         const store = useGraphStore()
-        const root = makeGraph(ROOT)
         const sub = makeGraph('graph-sub', [], [], {
             kind: 'subgraph',
             parentGraphId: ROOT,
@@ -209,14 +225,15 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
         })
 
         store.commitBatchToGraphs([
-            { graph: root, operations: [{ type: 'add_graph', graph: sub }] },
+            {
+                kind: 'graphLevel',
+                operations: [{ type: 'add_graph', graph: sub }],
+            },
         ])
         store.commitBatchToGraphs([
             {
-                graph: store.graphRegistry.get(ROOT)!,
-                operations: [
-                    { type: 'delete_graph', graphId: 'graph-sub' as GraphId },
-                ],
+                kind: 'graphLevel',
+                operations: [{ type: 'delete_graph', graph: sub }],
             },
         ])
 
@@ -238,15 +255,22 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
     test('recordLog: false 提交 → 不追加 entry、cursor 不变（图修改仍生效）', () => {
         const store = useGraphStore()
         const graph = makeGraph(ROOT, [knowledgeNode('node-a', '节点A', 0, 0)])
+        registerGraphs(store, graph)
 
         store.commitBatchToGraphs(
             [
                 {
+                    kind: 'inGraph',
                     graph,
                     operations: [
                         {
                             type: 'add_node',
-                            node: knowledgeNode('node-b', '节点B', 5000, 5000),
+                            node: knowledgeNode(
+                                'node-b',
+                                '节点B',
+                                5000,
+                                5000,
+                            ),
                         },
                     ],
                 },
@@ -290,11 +314,13 @@ describe('undo 链', () => {
                 position: { x: 0, y: 0 },
             }),
         ])
+        registerGraphs(store, graph)
 
         // 每条一次提交（单操作批）。update_node 的 node 用普通对象构造——
         // 不复用注册表中的图节点引用（避免后续断言被同一对象引用污染）
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph,
                 operations: [
                     {
@@ -306,6 +332,7 @@ describe('undo 链', () => {
         ])
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph: store.graphRegistry.get(ROOT)!,
                 operations: [
                     {
@@ -323,6 +350,7 @@ describe('undo 链', () => {
         ])
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph: store.graphRegistry.get(ROOT)!,
                 operations: [
                     { type: 'delete_node', nodeId: 'node-b' as NodeId },
@@ -373,9 +401,11 @@ describe('undo 链', () => {
             knowledgeNode('node-a', '节点A', 0, 0),
             knowledgeNode('node-b', '节点B', 5000, 5000),
         ])
+        registerGraphs(store, graph)
 
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph,
                 operations: [
                     {
@@ -419,9 +449,11 @@ describe('undo 链', () => {
                 }),
             ],
         )
+        registerGraphs(store, graph)
 
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph,
                 operations: [
                     {
@@ -433,6 +465,7 @@ describe('undo 链', () => {
         ])
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph: store.graphRegistry.get(ROOT)!,
                 operations: [
                     {
@@ -465,9 +498,11 @@ describe('undo 链', () => {
     test('undo 后执行新操作 → 旧 entry 保留（分支）+ redoStack 清空', () => {
         const store = useGraphStore()
         const graph = makeGraph(ROOT, [knowledgeNode('node-a', '节点A', 0, 0)])
+        registerGraphs(store, graph)
 
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph,
                 operations: [
                     {
@@ -479,6 +514,7 @@ describe('undo 链', () => {
         ])
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph: store.graphRegistry.get(ROOT)!,
                 operations: [
                     {
@@ -497,6 +533,7 @@ describe('undo 链', () => {
         // 新操作 → 分支：新 entry 挂在 cursor 0 下，旧分支保留，redoStack 清空
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph: store.graphRegistry.get(ROOT)!,
                 operations: [
                     {
@@ -542,9 +579,11 @@ describe('redo 链', () => {
     test('undo 后 redo 重走原路径（图数据恢复、cursor 前进到原 entry）', () => {
         const store = useGraphStore()
         const graph = makeGraph(ROOT, [knowledgeNode('node-a', '节点A', 0, 0)])
+        registerGraphs(store, graph)
 
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph,
                 operations: [
                     {
@@ -556,6 +595,7 @@ describe('redo 链', () => {
         ])
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph: store.graphRegistry.get(ROOT)!,
                 operations: [
                     {
@@ -585,6 +625,7 @@ describe('redo 链', () => {
     test('redoStack 空时 redo() → false 且不写任何状态', () => {
         const store = useGraphStore()
         const graph = makeGraph(ROOT, [knowledgeNode('node-a', '节点A', 0, 0)])
+        registerGraphs(store, graph)
 
         // 从未 undo：redoStack 为空
         expect(store.redo()).toBe(false)
@@ -594,6 +635,7 @@ describe('redo 链', () => {
 
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph,
                 operations: [
                     {
@@ -613,9 +655,11 @@ describe('redo 链', () => {
     test('undo → 新操作 → redo 失效（redoStack 已清）', () => {
         const store = useGraphStore()
         const graph = makeGraph(ROOT, [knowledgeNode('node-a', '节点A', 0, 0)])
+        registerGraphs(store, graph)
 
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph,
                 operations: [
                     {
@@ -627,6 +671,7 @@ describe('redo 链', () => {
         ])
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph: store.graphRegistry.get(ROOT)!,
                 operations: [
                     {
@@ -643,6 +688,7 @@ describe('redo 链', () => {
         // 新操作清空 redoStack → redo 失效
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph: store.graphRegistry.get(ROOT)!,
                 operations: [
                     {
@@ -678,12 +724,16 @@ describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
             ownerNodeId: 'node-owner' as NodeId,
         })
 
-        // 模拟 induce 子图批：add_graph 空壳 + 子图内 add_node 填充
+        // 模拟 induce 子图批：add_graph 空壳（graphLevel 批）+ 子图内 add_node 填充（inGraph 批）
         store.commitBatchToGraphs([
             {
+                kind: 'graphLevel',
+                operations: [{ type: 'add_graph', graph: sub }],
+            },
+            {
+                kind: 'inGraph',
                 graph: sub,
                 operations: [
-                    { type: 'add_graph', graph: sub },
                     {
                         type: 'add_node',
                         node: createNode({
@@ -729,38 +779,28 @@ describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
 
     test('含 delete_graph 的批：undo 从持久化恢复注册 / redo 再次注销', () => {
         const store = useGraphStore()
-        const root = makeGraph(ROOT)
-        const sub = makeGraph(
-            'graph-sub',
-            [
-                createNode({
-                    id: 'sub-1' as NodeId,
-                    graphId: 'graph-sub' as GraphId,
-                    label: '子节点1',
-                    position: { x: 0, y: 0 },
-                }),
-            ],
-            [],
-            {
-                kind: 'subgraph',
-                parentGraphId: ROOT,
-                ownerNodeId: 'node-owner' as NodeId,
-            },
-        )
+        // 引擎 06.1 语义：delete_graph 只能删空图（与 add_graph 只建空图对称），
+        // 内容经图内批填充——软删场景用空子图验证注册/注销与持久化保留
+        const sub = makeGraph('graph-sub', [], [], {
+            kind: 'subgraph',
+            parentGraphId: ROOT,
+            ownerNodeId: 'node-owner' as NodeId,
+        })
 
-        // 先注册 root + sub（add_graph 批注册 + 持久化 sub）
+        // 先注册 sub（add_graph 批注册 + 持久化）
         store.commitBatchToGraphs([
-            { graph: root, operations: [{ type: 'add_graph', graph: sub }] },
+            {
+                kind: 'graphLevel',
+                operations: [{ type: 'add_graph', graph: sub }],
+            },
         ])
         expect(lookupGraph(store.graphRegistry, 'graph-sub')).toBeDefined()
 
         // delete_graph：软删（registry 注销，持久化保留）
         store.commitBatchToGraphs([
             {
-                graph: store.graphRegistry.get(ROOT)!,
-                operations: [
-                    { type: 'delete_graph', graphId: 'graph-sub' as GraphId },
-                ],
+                kind: 'graphLevel',
+                operations: [{ type: 'delete_graph', graph: sub }],
             },
         ])
         expect(lookupGraph(store.graphRegistry, 'graph-sub')).toBeUndefined()
@@ -769,7 +809,6 @@ describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
         expect(store.undo()).toBe(true)
         const restored = lookupGraph(store.graphRegistry, 'graph-sub')
         expect(restored).toBeDefined()
-        expect(restored!.nodes.map((n) => n.id)).toEqual(['sub-1'])
 
         // redo：再次注销
         expect(store.redo()).toBe(true)
@@ -795,9 +834,13 @@ describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
         // 提交 add_graph + 子图内 add_node 的批
         store.commitBatchToGraphs([
             {
+                kind: 'graphLevel',
+                operations: [{ type: 'add_graph', graph: sub }],
+            },
+            {
+                kind: 'inGraph',
                 graph: sub,
                 operations: [
-                    { type: 'add_graph', graph: sub },
                     {
                         type: 'add_node',
                         node: createNode({
@@ -835,7 +878,10 @@ describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
         saveGraph(root)
         store.loadGraphToView(ROOT)
         store.commitBatchToGraphs([
-            { graph: sub, operations: [{ type: 'add_graph', graph: sub }] },
+            {
+                kind: 'graphLevel',
+                operations: [{ type: 'add_graph', graph: sub }],
+            },
         ])
 
         // 无公开卸载入口，直接置空 graphView 模拟视图清空
@@ -874,9 +920,11 @@ describe('边界', () => {
     test('全部撤销后 cursor 回到 -1，再次 undo → false', () => {
         const store = useGraphStore()
         const graph = makeGraph(ROOT, [knowledgeNode('node-a', '节点A', 0, 0)])
+        registerGraphs(store, graph)
 
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph,
                 operations: [
                     {
@@ -952,9 +1000,11 @@ describe('缺陷修复回归（D1 级联撤销 / D2 多级 undo）', () => {
                 }),
             ],
         )
+        registerGraphs(store, graph)
 
         store.commitBatchToGraphs([
             {
+                kind: 'inGraph',
                 graph,
                 operations: [
                     { type: 'delete_node', nodeId: 'node-a' as NodeId },

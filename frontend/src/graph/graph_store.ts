@@ -7,25 +7,23 @@
  * 唯一切换（loadGraphToView）∨ 唯一图操作（commitBatchToGraphs）∨ 唯一回溯（undo / redo）。
  * 生命周期管理（恢复 / 创建根图）与校验清理已下沉至用例层（useLifecycle / 操作用例层）。
  *
- * 响应式策略：graphView / graphPath / lastValidationResult 为 shallowReactive 顶层属性
- * （引用替换触发更新）；graphRegistry / operationLog / redoStack 为普通字段（raw 无代理），
+ * 响应式策略：graphView / graphPath / lastValidationResult / graphRegistry 为 shallowReactive
+ * 顶层属性（引用替换触发更新）；operationLog / redoStack 为普通字段（raw 无代理），
  * 引擎 structuredClone 可直接克隆，无需 toRaw / markRaw 解包。
  */
 
 import { shallowReactive } from 'vue'
 
 import type { GraphData, GraphId } from '@my-project/graph-engine'
-import type { GraphOperation } from '@my-project/graph-engine'
 import type { ValidationResult } from '@my-project/graph-engine'
 import type {
-    ItemOperations,
+    OperationBatch,
     OperationLog,
     OperationLogEntry,
 } from '@my-project/graph-engine'
 
 import {
-    applyBatch,
-    createReversal,
+    applyBatches,
     ensureDefaultCognitiveState,
 } from '@my-project/graph-engine'
 
@@ -42,26 +40,17 @@ import {
     saveLastActiveRootId,
 } from '@/graph/graph_persistence'
 
-import {
-    applyAddGraph,
-    applyDeleteGraph,
-    revertAddGraph,
-    revertDeleteGraph,
-} from '@/graph/graph_signals'
+import { revertAddGraph, revertDeleteGraph } from '@/graph/graph_signals'
 
 import {
     DATA_INTEGRITY_PREFIX,
     reportCorruptedGraph,
 } from '@/graph/utils/data_integrity_reporter'
 
-/**
- * 一次批量提交中的单个图项：目标图与其待执行操作序列。
- * commitBatchToGraphs 入参元素与 applyEntry 组装 batch 时复用同一形态。
- */
-export type OperationBatchItem = {
-    graph: GraphData
-    operations: GraphOperation[]
-}
+import {
+    isInGraphOperation,
+    isGraphLevelOperation,
+} from '@/graph/utils/operation_guards'
 
 /**
  * GraphStore 公开 API：状态 + 方法入口。
@@ -69,7 +58,7 @@ export type OperationBatchItem = {
  * @remarks
  * 状态按职责分组：
  * - 视图态（响应式）：graphView / graphPath / lastValidationResult
- * - 多图缓存（普通字段）：graphRegistry
+ * - 多图注册表（响应式，引用替换）：graphRegistry
  * - 撤销日志（普通字段）：operationLog / redoStack
  */
 export interface GraphStoreAPI {
@@ -78,7 +67,7 @@ export interface GraphStoreAPI {
     graphPath: GraphId[]
     lastValidationResult: ValidationResult | null
 
-    // 多图缓存（普通字段，raw 无代理）
+    // 多图注册表（响应式，引用替换触发更新；Map 本身保持 raw）
     graphRegistry: GraphRegistry
 
     // 撤销日志（普通字段，raw 无代理）
@@ -90,7 +79,7 @@ export interface GraphStoreAPI {
 
     // 功能行为
     commitBatchToGraphs(
-        operationBatch: OperationBatchItem[],
+        operationBatch: OperationBatch[],
         options?: {
             recordLog?: boolean
             skipValidate?: boolean
@@ -131,10 +120,11 @@ function createGraphStore(): GraphStoreAPI {
         graphPath: [] as GraphId[],
         lastValidationResult: null as ValidationResult | null,
 
-        // —— 语义上非响应式状态 ——
-        // 搭浅响应便车（shallowReactive 不深代理，保持 raw）。
-        // 仅整体替换才触发响应式，实际只原地修改（Map.set / entries.push），故行为等价普通变量
+        // 多图注册表：承接 applyBatches 返回的新注册表做引用替换
+        // （shallowReactive 不深代理，Map 与 GraphData 保持 raw，引擎克隆路径不受影响）
         graphRegistry: createRegistry(),
+
+        // —— 语义上非响应式状态（raw 无代理，引擎 structuredClone 可直接克隆）——
         operationLog: { entries: [], cursor: -1 } as OperationLog,
         redoStack: [] as number[],
 
@@ -210,151 +200,103 @@ function createGraphStore(): GraphStoreAPI {
      * 对多个目标图批量执行操作，是全部图写入的统一入口。
      *
      * @remarks
-     * 双存接线：执行同一生命周期内经 onBeforeEachOperation 回调逐操作构造逆元，
-     * 整批成功后组装 OperationLogEntry 写入 operationLog（recordLog !== false 时）；
-     * undo / redo 复用本函数（recordLog: false）驱动同一执行引擎。
+     * 直接委托引擎 {@link applyBatches}：统一循环执行图内（applyBatch）与图级
+     * （add_graph / delete_graph 兑现）操作，返回新注册表 + 聚合校验 + 逆元序列 + graphSignals。
      *
-     * 执行分四阶段：逐项 applyBatch 执行（含逆元收集）→ 成功后统一提交状态 →
-     * 兑现 add_graph / delete_graph 信号（graph_signals）→ 统一持久化 → 日志写入。
+     * 成功后处理链：
+     * 1. 引用替换注册表（store.graphRegistry = result.registry，触发响应式）
+     * 2. 更新 graphView（当前视图图在批内且未被删除时，指向新注册表中对应图）
+     * 3. 持久化批内涉及的图（inGraph 批目标图 + graphLevel 批 add_graph 的图，取新注册表最新数据）
+     * 4. 日志组装（operation + 图内逆元 + graphSignals，recordLog !== false 时）
      *
      * 调用契约：
-     * 1. 任一项执行失败即整批返回，不产生部分提交（latestGraphs 为局部变量，无部分状态泄漏）
-     * 2. 同一图可在 operationBatch 中出现多次，后续项以前一项的结果图为输入
-     * 3. 全部成功后统一持久化所有结果图
-     * 4. options.recordLog 默认 true；false（undo/redo 执行）不追加 entry、不动 cursor、不清 redoStack
+     * 1. 任一操作校验失败整批丢弃，注册表不变（applyBatches 事务性）
+     * 2. 图内批目标图必须在注册表中（applyBatches 校验 BATCH_GRAPH_NOT_FOUND）
+     * 3. options.recordLog 默认 true；false（undo/redo 执行）不追加 entry、不动 cursor、不清 redoStack
      *
-     * @privateRemarks
-     * 
-     * 1. add_graph / delete_graph 为引擎静默信号，由本函数兑现为 registry 副作用
-     *    （软删，不触碰持久化）——经 graph_signals 收口
-     * 2. 回调内 createReversal 抛异常（正常流程不可达，validate 已保证目标存在）
-     *    不捕获、自然传播阻断整批——registry / 持久化 / 日志均无变化
-     *
-     * @param operationBatch - 图与其对应的操作序列的配对数组
+     * @param operationBatch - 多批次操作（图内 / 图级判别联合）
      * @param options - [可选] recordLog：是否写入操作日志（默认 true）；
-     *                  skipValidate：透传引擎 applyBatch，跳过 Phase 1 前提校验
+     *                  skipValidate：透传引擎 applyBatches，跳过 Phase 1 前提校验
      *                  （undo/redo 恢复型逆元批传 true，正向用户操作默认 false）；
      *                  source：操作来源的工具标识，透传写入 entry.source
      *                  （缺省 undefined = 未知来源，供操作日志树 UI 按来源分类）
      * @returns 校验结果（valid + issues 汇总）。
      */
     function commitBatchToGraphs(
-        operationBatch: OperationBatchItem[],
+        operationBatch: OperationBatch[],
         options?: {
             recordLog?: boolean
             skipValidate?: boolean
             source?: string
         },
     ): { validation: ValidationResult } {
-        // 第一阶段：按顺序执行所有项，用 latestGraphs 跟踪同一图的中间状态；
-        // 逐操作经 onBeforeEachOperation 回调构造逆元（仅图内操作，图级操作跳过）
-        const latestGraphs = new Map<GraphId, GraphData>()
-        const allIssues = []
-        const reversalItems: ItemOperations[] = []
+        // 委托引擎 applyBatches：统一循环执行图内（applyBatch）与图级（add_graph / delete_graph 兑现）操作
+        const result = applyBatches(store.graphRegistry, operationBatch, {
+            skipValidate: options?.skipValidate, // 由 undo/redo传入，以跳过校验
+            recordLog: options?.recordLog !== false, // undo/redo 执行时不收集逆元（日志已有）
+        })
 
-        for (const item of operationBatch) {
-            // inputGraph：同一图被多个 item 修改时，后续基于前一个操作后图数据的结果。
-            const inputGraph = latestGraphs.get(item.graph.id) ?? item.graph
-            const perOpReversals: GraphOperation[][] = []
-
-            const { graph: resultGraph, validation } = applyBatch(
-                inputGraph,
-                item.operations,
-                {
-                    skipValidate: options?.skipValidate, // 由 undo/redo传入，以跳过校验
-                    onBeforeEachOperation:
-                        options?.recordLog === false
-                            ? undefined // undo/redo 执行时不收集逆元（日志已有）
-                            : (op, graphBeforeOp) => {
-                                    // 图级操作由 graph_signals 在第三阶段正/逆向执行
-                                    if (op.type === 'add_graph' || op.type === 'delete_graph') return
-
-                                    perOpReversals.push(createReversal(graphBeforeOp, op))
-                                },
-                },
-            )
-
-            if (!validation.valid) {
-                store.lastValidationResult = validation
-                return { validation }
-            }
-
-            latestGraphs.set(item.graph.id, resultGraph)
-            allIssues.push(...validation.issues)
-
-            // 收尾：单次 Item 逆元收集
-            if (perOpReversals.length > 0) {
-                reversalItems.push({
-                    graphId: item.graph.id,
-                    operations: perOpReversals.reverse().flat(), // Item "内"逆序收集并打平，保证 undo 时正向执行顺序
-                })
-            }
+        if (!result.validation.valid) {
+            store.lastValidationResult = result.validation
+            return { validation: result.validation }
         }
 
-        // 第二阶段：全部成功后统一更新 state
-        for (const [graphId, resultGraph] of latestGraphs) {
-            // 同步更新 registry，保证 graphView 与 registry 中同图引用一致。
-            // graphView 的图可能同时存在于 registry 中（例如通过 loadGraphToView 加载），
-            // 只更新 graphView 会导致 registry 持有过期引用。
-            registerGraph(store.graphRegistry, resultGraph)
+        // 引用替换注册表（applyBatches 返回新 Map，复用未变化图引用，不深拷贝）
+        store.graphRegistry = result.registry
 
-            if (graphId === store.graphView?.id) {
-                store.graphView = resultGraph
-            }
-        }
-
-        // 第三阶段：处理 add_graph / delete_graph 信号操作（图级兑现收口到 graph_signals）
-        //
-        // 引擎 execute 层对 add_graph / delete_graph 是静默的，
-        // 这些操作是 compose→Runtime 的信号。
-        // graphStore 作为统一执行入口负责把信号兑现为 registry 副作用。
-        for (const item of operationBatch) {
-            for (const operation of item.operations) {
-                if (operation.type === 'add_graph') {
-                    const builtGraph = latestGraphs.get(operation.graph.id)
-                    const targetGraph = builtGraph ?? operation.graph // 有由批操作构造完的图就用它，否则用 add_graph 自带的图
-
-                    applyAddGraph(store.graphRegistry, targetGraph)
-
-                    // 补持久化：未进入 latestGraphs 的图（比方说 Deconstruct 后得到的图），
-                    if (!builtGraph) {
-                        saveGraph(targetGraph)
-                    }
-                } else if (operation.type === 'delete_graph') {
-                    applyDeleteGraph(store.graphRegistry, operation.graphId)
+        // 批内涉及的图 id：graphView 更新与持久化范围推导共用。
+        const affectedGraphIds = new Set<GraphId>()
+        for (const batch of operationBatch) {
+            if (batch.kind === 'inGraph') {
+                affectedGraphIds.add(batch.graph.id)
+            } else {
+                for (const op of batch.operations) {
+                    // 从新注册表取图时，被 delete_graph 注销的图不存在（undefined）→ 自动跳过持久化，
+                    // 软删保留旧数据——无需按操作类型特判。
+                    affectedGraphIds.add(op.graph.id)
                 }
             }
         }
 
-        // 第四阶段：统一持久化结果图
-        for (const resultGraph of latestGraphs.values()) {
-            saveGraph(resultGraph)
+        // 更新 graphView：当前视图图在批内且未被删除时，指向新注册表中对应图
+        if (store.graphView && affectedGraphIds.has(store.graphView.id)) {
+            const updated = result.registry.get(store.graphView.id)
+            if (updated) store.graphView = updated
+        }
+
+        // 持久化批内涉及的图（从新注册表取最新数据；被注销的 delete_graph 目标图自然跳过）
+        for (const graphId of affectedGraphIds) {
+            const graph = result.registry.get(graphId)
+            if (graph) saveGraph(graph)
         }
 
         // 操作日志写入（正逆操作双存模型）
         // 整批成功后组装 entry 追加、cursor 前进、清空 redoStack
         if (options?.recordLog !== false && operationBatch.length > 0) {
-            const graphSignals: OperationLogEntry['graphSignals'] = {
-                added: [],
-                deleted: [],
-            }
-
-            for (const item of operationBatch) {
-                for (const operation of item.operations) {
-                    if (operation.type === 'add_graph')
-                        graphSignals.added.push(operation.graph.id)
-                    if (operation.type === 'delete_graph')
-                        graphSignals.deleted.push(operation.graphId)
-                }
-            }
-
             const entry: OperationLogEntry = {
-                operation: operationBatch.map((item) => ({
-                    graphId: item.graph.id,
-                    operations: item.operations,
-                })),
-                reversalOperations: reversalItems.reverse(), // item "间"逆序
-                graphSignals,
+                operation: operationBatch.map((batch) =>
+                    batch.kind === 'inGraph'
+                        ? {
+                              graphId: batch.graph.id,
+                              operations: batch.operations,
+                          }
+                        : {
+                              // graphLevel 批：graphId 取首个操作的图 id（add_graph / delete_graph 均携带图数据）
+                              graphId: batch.operations[0]?.graph.id ?? '',
+                              operations: batch.operations,
+                          },
+                ),
+                // 图级逆元（add_graph ↔ delete_graph）由 graphSignals + 三段式 undo 兑现，
+                // 不进入 reversalOperations（保持现状日志结构；07 统一日志模型时再启用）
+                reversalOperations: result.reversalOperations.filter(
+                    (item) =>
+                        !item.operations.some(
+                            (op) =>
+                                op.type === 'add_graph' ||
+                                op.type === 'delete_graph',
+                        ),
+                ),
+                graphSignals: result.graphSignals,
                 parentIndex: store.operationLog.cursor,
                 timestamp: new Date().toISOString(),
                 source: options?.source, // 来源工具标识，缺省 undefined = 未知来源
@@ -362,17 +304,12 @@ function createGraphStore(): GraphStoreAPI {
 
             store.operationLog.entries.push(entry)
             store.operationLog.cursor = store.operationLog.entries.length - 1
-            store.redoStack = []  // 用户新操作使 redo 失效
+            store.redoStack = [] // 用户新操作使 redo 失效
         }
 
-        const validation: ValidationResult = {
-            valid: true,
-            issues: allIssues,
-        }
+        store.lastValidationResult = result.validation
 
-        store.lastValidationResult = validation
-
-        return { validation }
+        return { validation: result.validation }
     }
 
     /**
@@ -481,7 +418,7 @@ function createGraphStore(): GraphStoreAPI {
             // 跳过 added 图的 item：③ 注销后其逆元无意义，且执行会把空壳中间态写回
             // 持久化，覆盖正向批的填充版（数据丢失）。
             const addedGraphIds = new Set(entry.graphSignals.added)
-            const batch: OperationBatchItem[] = []
+            const batch: OperationBatch[] = []
             for (const reversalItem of entry.reversalOperations) {
                 if (reversalItem.operations.length === 0) continue
                 if (addedGraphIds.has(reversalItem.graphId)) continue // 跳过 added 图的 item：模型本质要求（见JSDoc）
@@ -498,7 +435,13 @@ function createGraphStore(): GraphStoreAPI {
                     continue
                 }
 
-                batch.push({ graph, operations: reversalItem.operations })
+                batch.push({
+                    kind: 'inGraph',
+                    graph,
+                    // 组装时已过滤图级逆元，此处收窄类型（运行时恒为图内操作）
+                    operations:
+                        reversalItem.operations.filter(isInGraphOperation),
+                })
             }
 
             if (batch.length > 0) {
@@ -523,7 +466,7 @@ function createGraphStore(): GraphStoreAPI {
             return true
         } else if (direction === 'forward') {
             // forward（redo）：operation 顺序遍历组装 commitBatchToGraphs 可执行的 batch
-            const batch: OperationBatchItem[] = []
+            const batch: OperationBatch[] = []
             for (const forwardItem of entry.operation) {
                 let graph = lookupGraph(
                     store.graphRegistry,
@@ -531,10 +474,15 @@ function createGraphStore(): GraphStoreAPI {
                 )
 
                 if (!graph) {
-                    // registry 缺失（undo 注销的 added 图）→ 用 add_graph.graph 兜底
-                    const addGraphOp = forwardItem.operations.find(
-                        (op) => op.type === 'add_graph',
-                    )
+                    // registry 缺失（undo 注销的 added 图）→ 用批内 add_graph.graph 兜底
+                    // （跨 item 查找：add_graph 批与填充批在 entry.operation 中可能分离）
+                    const addGraphOp = entry.operation
+                        .flatMap((item) => item.operations)
+                        .find(
+                            (op) =>
+                                op.type === 'add_graph' &&
+                                op.graph.id === forwardItem.graphId,
+                        )
                     if (addGraphOp && addGraphOp.type === 'add_graph') {
                         graph = addGraphOp.graph
                     } else {
@@ -546,7 +494,25 @@ function createGraphStore(): GraphStoreAPI {
                     }
                 }
 
-                batch.push({ graph, operations: forwardItem.operations })
+                // 图级操作与图内操作分拆为独立批（applyBatches 判别联合要求）
+                const graphLevelOps = forwardItem.operations.filter(
+                    isGraphLevelOperation,
+                )
+                const inGraphOps =
+                    forwardItem.operations.filter(isInGraphOperation)
+                if (graphLevelOps.length > 0) {
+                    batch.push({
+                        kind: 'graphLevel',
+                        operations: graphLevelOps,
+                    })
+                }
+                if (inGraphOps.length > 0) {
+                    batch.push({
+                        kind: 'inGraph',
+                        graph,
+                        operations: inGraphOps,
+                    })
+                }
             }
 
             if (batch.length > 0) {

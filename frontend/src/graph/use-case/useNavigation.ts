@@ -1,16 +1,11 @@
 /**
- * 说明：
+ * 导航卡片用例层模块级单例。
  *
- *     导航卡片用例层模块级单例。
- *     包含面包屑路径派生、根图定位、切图与图谱树管理、根图列表与级联删除。
- *     导航卡片只消费本用例层，不再直调 graph_store。
- *
- * 调用契约：
- *
- *     1. computed 求值 / 方法调用时解析 GraphStore 模块级单例（内部 useGraphStore），
- *        懒创建，无前置初始化。
- *     2. 后续调用返回同一实例。
- *     3. 本用例层不依赖 components/ 任何类型或模块（graph 域不反向依赖组件域）。
+ * @remarks
+ * 包含面包屑路径派生、根图定位、切图与图谱树管理、根图列表与级联删除。
+ * 导航卡片只消费本用例层，不再直调 graph_store。computed 求值 / 方法调用时解析
+ * GraphStore 模块级单例（内部 useGraphStore），懒创建，无前置初始化，后续调用返回
+ * 同一实例。本用例层不依赖 components/ 任何类型或模块（graph 域不反向依赖组件域）。
  */
 
 import { computed, type ComputedRef } from 'vue'
@@ -32,13 +27,8 @@ import { lookupGraph, unregisterGraph } from '@/graph/graph_registry'
 import { isInRootTree } from '@/graph/utils/graph_tree'
 
 /**
- * 说明：
- *
- *     根图谱列表项的摘要信息，供导航卡片展示根图谱列表。
- *
- * 代码修改契约：
- *
- *     1. 只包含列表展示所需的最小字段，不携带 nodes / edges。
+ * 根图谱列表项的摘要信息，供导航卡片展示根图谱列表。
+ * 只包含列表展示所需的最小字段，不携带 nodes / edges。
  */
 export interface RootGraphInfo {
     /** 根图 ID。 */
@@ -52,9 +42,7 @@ export interface RootGraphInfo {
 }
 
 /**
- * 说明：
- *
- *     面包屑路径段视图模型（用例层自持，与组件域 PathSegment 结构一致）。
+ * 面包屑路径段视图模型（用例层自持，与组件域 PathSegment 结构一致）。
  */
 export interface NavigationSegment {
     /** 图谱 ID。 */
@@ -68,9 +56,7 @@ export interface NavigationSegment {
 }
 
 /**
- * 说明：
- *
- *     useNavigation 返回的导航用例层单例 API。
+ * useNavigation 返回的导航用例层单例 API。
  */
 export interface NavigationAPI {
     /** 面包屑路径段（根→叶）。 */
@@ -89,36 +75,25 @@ export interface NavigationAPI {
     hasCurrentGraph: ComputedRef<boolean>
 
     /**
-     * 说明：
+     * 切换当前视图到指定图谱，返回是否切换成功（透传 loadGraphToView）。
      *
-     *     切换当前视图到指定图谱，返回是否切换成功（透传 loadGraphToView）。
-     *
-     * 参数：
-     *
-     *     graphId — 目标图谱 ID。
+     * @param graphId - 目标图谱 ID。
      */
     goToGraph(graphId: GraphId): boolean
 
     /**
-     * 说明：
+     * 列出 localStorage 中全部根图谱的摘要，按标题排序（zh-Hans-CN）。
      *
-     *     列出 localStorage 中全部根图谱的摘要，按标题排序（zh-Hans-CN）。
-     *
-     * 代码修改契约：
-     *
-     *     1. 数据来自持久化全量扫描，不经过 graphRegistry——
-     *        registry 只持有当前根图树，无法覆盖全部根图。
+     * @remarks
+     * 数据来自持久化全量扫描，不经过 graphRegistry——
+     * registry 只持有当前根图树，无法覆盖全部根图。
      */
     listRootGraphInfos(): RootGraphInfo[]
 
     /**
-     * 说明：
+     * 按 ID 从当前注册表中查找图，供面包屑标题查询等使用。
      *
-     *     按 ID 从当前注册表中查找图，供面包屑标题查询等使用。
-     *
-     * 参数：
-     *
-     *     graphId — 目标图谱 ID。
+     * @param graphId - 目标图谱 ID。
      */
     getGraphById(graphId: GraphId): GraphData | undefined
 
@@ -138,13 +113,9 @@ export interface NavigationAPI {
     createRootGraph(title: string, opts?: { id?: GraphId }): GraphId
 
     /**
-     * 说明：
+     * 级联删除根图及其全部子孙子图；若 rootId 为当前视图所在根图则拒绝。
      *
-     *     级联删除根图及其全部子孙子图；若 rootId 为当前视图所在根图则拒绝。
-     *
-     * 参数：
-     *
-     *     rootId — 要删除的根图 ID，与其全部子孙子图一并删除。
+     * @param rootId - 要删除的根图 ID，与其全部子孙子图一并删除。
      */
     deleteRootGraphTree(rootId: GraphId): void
 }
@@ -152,15 +123,11 @@ export interface NavigationAPI {
 let singleton: NavigationAPI | null = null
 
 /**
- * 说明：
+ * 获取导航用例层模块级单例（懒创建）。
  *
- *     获取导航用例层模块级单例（懒创建）。
- *
- * 调用契约：
- *
- *     1. computed 求值 / 方法调用时解析 GraphStore 模块级单例（内部 useGraphStore），
- *        懒创建，无前置初始化。
- *     2. 后续调用返回同一实例。
+ * @remarks
+ * computed 求值 / 方法调用时解析 GraphStore 模块级单例（内部 useGraphStore），
+ * 懒创建，无前置初始化；后续调用返回同一实例。
  */
 export function useNavigation(): NavigationAPI {
     if (!singleton) {
@@ -238,7 +205,12 @@ function createNavigation(): NavigationAPI {
 
         // 创建走 commitBatchToGraphs 统一管道（add_graph 信号 → 注册 + 持久化）
         useGraphStore().commitBatchToGraphs(
-            [{ graph, operations: [{ type: 'add_graph', graph }] }],
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'add_graph', graph }],
+                },
+            ],
             { recordLog: false },
         )
 
