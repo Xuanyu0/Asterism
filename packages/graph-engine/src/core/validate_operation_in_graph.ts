@@ -1,50 +1,34 @@
 /**
- * validate.ts
+ * 校验单步图内原子操作的前提条件。
  *
- * 功能：
- *
- *     校验单步 GraphOperation 的前提条件是否满足。
- *
- * 总体结构：
- *
- *     1. validateOperation — 统一入口，按 type 分派
- *     2. 各 validateXxx    — 按操作类型编排局部校验
- *
- * 规则：
- *
- *     1. 只校验操作前提（ID 重复、节点存在、位置有效、折叠条件等）。
- *     2. GraphData 不变量（标签长度、自环、重边、成环等）由 applyBatch Phase 3 全局规则统一校验。
- *     3. 认知演化操作（explore / unearth）不在 MVP 阶段做数据校验，默认合法。
- *
- * 外部如何使用：
- *
- *     import { validateOperation } from '@my-project/graph-engine'
+ * @remarks
+ * 只校验操作前提（ID 重复、节点存在、位置有效、折叠条件等），GraphData 不变量
+ * （标签长度、自环、重边、成环等）由 applyBatch Phase 3 全局规则统一校验。
+ * 图级操作（add_graph / delete_graph）不在此校验——由 validate_graph_operation.ts
+ * 在多图上下文校验。
  */
 
 import type { GraphData, NodeData, EdgeData, NodeId } from '../types/graph_data'
-import type { GraphOperation } from '../types/atomic_operations'
+import type { AtomicOperationInGraph } from '../types/atomic_operations'
 import type { ValidationIssue, ValidationResult } from '../types/validation'
 import { collectDependencyNodeIds } from './utils/traversal'
 import { DEFAULT_GRAPH_RULES } from './validators/thresholds'
 import { hasCollisionAt } from '../infrastructure/collision'
 
 /**
- * 功能：
+ * 校验单步图内原子操作的前提条件。
  *
- *     校验单步 GraphOperation 的前提条件是否满足。
+ * @remarks
+ * 只校验局部前提条件；GraphData 不变量由 applyBatch Phase 3 统一校验。
+ * 由 applyBatch 内部 Phase 1 调用。
  *
- * 规则：
- *
- *     1. 只校验局部前提条件。
- *     2. GraphData 不变量由 applyBatch Phase 3 统一校验。
- *
- * 使用：
- *
- *     applyBatch 内部 Phase 1 调用。
+ * @param graph - 操作前的图
+ * @param operation - 待校验的图内原子操作
+ * @returns 校验结果（valid + issues）。
  */
-export function validateOperation(
+export function validateOperationInGraph(
     graph: GraphData,
-    operation: GraphOperation,
+    operation: AtomicOperationInGraph,
 ): ValidationResult {
     switch (operation.type) {
         case 'add_node':
@@ -73,13 +57,6 @@ export function validateOperation(
 
         case 'expand_dependency':
             return validateExpandDependency(graph, operation)
-
-        case 'add_graph':
-        case 'delete_graph':
-            return createResult([])
-
-        default:
-            return createResult([])
     }
 }
 

@@ -22,20 +22,39 @@ describe('deconstruct', () => {
         expect(
             result.issues.filter((i) => i.severity === 'error'),
         ).toHaveLength(0)
-        expect(result.operations).toHaveLength(2) // update_node + add_graph
-        expect(result.operations[0]!.type).toBe('update_node')
+        // 3 批：graphLevel add_graph（空图）+ inGraph 子图填充 + inGraph 父图 update_node
+        expect(result.batches).toHaveLength(3)
+        expect(result.batches[0]!.kind).toBe('graphLevel')
+        expect(result.batches[2]!.kind).toBe('inGraph')
+
         // update_node 写入 childGraphId（form 由 deriveNodeForm 派生为 abstract）
-        const updateOp = result.operations[0] as {
+        const parentBatch = result.batches[2]!
+        expect(parentBatch.kind).toBe('inGraph')
+        const updateOp = parentBatch.operations[0] as {
             type: 'update_node'
             node: { childGraphId: string }
         }
+        expect(updateOp.type).toBe('update_node')
         expect(updateOp.node.childGraphId).toBeTruthy()
-        // add_graph 的 subgraph 含 3 个沟通节点（B/C/D）
-        const addGraphOp = result.operations[1] as {
+
+        // add_graph 携带空图（nodes/edges 为空）
+        const graphLevelBatch = result.batches[0]!
+        expect(graphLevelBatch.kind).toBe('graphLevel')
+        const addGraphOp = graphLevelBatch.operations[0] as {
             type: 'add_graph'
-            graph: { nodes: unknown[] }
+            graph: { nodes: unknown[]; edges: unknown[] }
         }
-        expect(addGraphOp.graph.nodes).toHaveLength(3)
+        expect(addGraphOp.type).toBe('add_graph')
+        expect(addGraphOp.graph.nodes).toHaveLength(0)
+        expect(addGraphOp.graph.edges).toHaveLength(0)
+
+        // 沟通节点经 add_node 填充子图（B/C/D 三个邻居）
+        const childBatch = result.batches[1]!
+        expect(childBatch.kind).toBe('inGraph')
+        const addNodeOps = childBatch.operations.filter(
+            (op) => op.type === 'add_node',
+        )
+        expect(addNodeOps).toHaveLength(3)
     })
 
     test('虚节点拒绝', () => {
@@ -57,7 +76,7 @@ describe('deconstruct', () => {
         expect(result.issues.some((i) => i.message.includes('虚节点'))).toBe(
             true,
         )
-        expect(result.operations).toHaveLength(0)
+        expect(result.batches).toHaveLength(0)
     })
 
     test('抽象节点拒绝（重复解构）', () => {
@@ -121,11 +140,11 @@ describe('deconstruct', () => {
         expect(
             result.issues.filter((i) => i.severity === 'error'),
         ).toHaveLength(0)
-        // 子图无沟通节点
-        const addGraphOp = result.operations[1] as {
-            type: 'add_graph'
-            graph: { nodes: unknown[] }
-        }
-        expect(addGraphOp.graph.nodes).toHaveLength(0)
+        // 子图无沟通节点：add_graph 空图 + 子图填充批无 add_node
+        const childBatch = result.batches[1]!
+        expect(childBatch.kind).toBe('inGraph')
+        expect(
+            childBatch.operations.filter((op) => op.type === 'add_node'),
+        ).toHaveLength(0)
     })
 })

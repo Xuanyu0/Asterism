@@ -42,9 +42,11 @@ describe('diverge', () => {
         expect(
             result.issues.filter((i) => i.severity === 'error'),
         ).toHaveLength(0)
-        expect(result.operations.current).toHaveLength(1)
-        expect(result.operations.current[0]!.type).toBe('add_edge')
-        expect(result.operations.peer).toHaveLength(0)
+        // 单批：inGraph 当前图 add_edge
+        expect(result.batches).toHaveLength(1)
+        expect(result.batches[0]!.kind).toBe('inGraph')
+        expect(result.batches[0]!.operations).toHaveLength(1)
+        expect(result.batches[0]!.operations[0]!.type).toBe('add_edge')
     })
 
     test('Case A：ref→ref 拒绝（链式引用禁止）', () => {
@@ -60,6 +62,9 @@ describe('diverge', () => {
         })
         // k→k 合法。单独测 ref→ref 需要构造含两个 ref 的图
         // 此场景由 deconstruct 后子图中两个沟通节点无法 diverge 覆盖
+        expect(
+            result.issues.filter((i) => i.severity === 'error'),
+        ).toHaveLength(0)
     })
 
     test('Case B：跨图启发创建 + 镜像', () => {
@@ -78,14 +83,20 @@ describe('diverge', () => {
         expect(
             result.issues.filter((i) => i.severity === 'error'),
         ).toHaveLength(0)
-        expect(result.operations.current.length).toBeGreaterThan(0)
-        expect(result.operations.peer.length).toBeGreaterThan(0) // 镜像 ops
+        // 两批：inGraph 当前图 + inGraph 对端图（镜像 ops）
+        expect(result.batches).toHaveLength(2)
+        const currentBatch = result.batches[0]!
+        const peerBatch = result.batches[1]!
+        expect(currentBatch.kind).toBe('inGraph')
+        expect(peerBatch.kind).toBe('inGraph')
+        expect(currentBatch.operations.length).toBeGreaterThan(0)
+        expect(peerBatch.operations.length).toBeGreaterThan(0)
         // 当前图有 add_node (启发) + add_edge
         expect(
-            result.operations.current.some((op) => op.type === 'add_node'),
+            currentBatch.operations.some((op) => op.type === 'add_node'),
         ).toBe(true)
         expect(
-            result.operations.current.some((op) => op.type === 'add_edge'),
+            currentBatch.operations.some((op) => op.type === 'add_edge'),
         ).toBe(true)
     })
 })

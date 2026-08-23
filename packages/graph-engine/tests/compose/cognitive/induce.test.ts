@@ -28,12 +28,32 @@ describe('induce', () => {
         expect(
             result.issues.filter((i) => i.severity === 'error'),
         ).toHaveLength(0)
-        // 子图 ops 存在
-        expect(result.operations.child.length).toBeGreaterThan(0)
-        // 父图 ops 存在
-        expect(result.operations.parent.length).toBeGreaterThan(0)
-        // add_graph 在子图 ops 中
-        expect(result.operations.child[0]!.type).toBe('add_graph')
+        // 3 批：graphLevel add_graph（空图）+ inGraph 子图填充 + inGraph 父图
+        expect(result.batches).toHaveLength(3)
+        expect(result.batches[0]!.kind).toBe('graphLevel')
+        expect(result.batches[1]!.kind).toBe('inGraph')
+        expect(result.batches[2]!.kind).toBe('inGraph')
+
+        // add_graph 独立成 graphLevel 批且携带空图
+        const graphLevelBatch = result.batches[0]!
+        const addGraphOp = graphLevelBatch.operations[0] as {
+            type: 'add_graph'
+            graph: { nodes: unknown[]; edges: unknown[] }
+        }
+        expect(addGraphOp.type).toBe('add_graph')
+        expect(addGraphOp.graph.nodes).toHaveLength(0)
+        expect(addGraphOp.graph.edges).toHaveLength(0)
+
+        // 子图填充批含 add_node
+        const childBatch = result.batches[1]!
+        expect(childBatch.operations.some((op) => op.type === 'add_node')).toBe(
+            true,
+        )
+        // 父图批含 add_node（抽象节点）
+        const parentBatch = result.batches[2]!
+        expect(
+            parentBatch.operations.some((op) => op.type === 'add_node'),
+        ).toBe(true)
     })
 
     test('含启发节点参与', () => {

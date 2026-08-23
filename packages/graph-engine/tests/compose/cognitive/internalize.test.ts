@@ -5,6 +5,7 @@
  */
 
 import type { GraphId, NodeId } from '../../../src/types/graph_data'
+import type { OperationBatch } from '../../../src/types/compose_types'
 import { internalize } from '../../../src/compose/cognitive/internalize'
 import {
     createInternalizeInputGraph,
@@ -15,6 +16,14 @@ import {
 } from '../../test_case_factory'
 
 const R = new Map()
+
+/** 按图 ID 查找 inGraph 批。 */
+function findBatch(
+    batches: OperationBatch[],
+    graphId: GraphId,
+): OperationBatch | undefined {
+    return batches.find((b) => b.kind === 'inGraph' && b.graph.id === graphId)
+}
 
 describe('internalize', () => {
     test('混合输入（知识节点迁移 + 引用节点自动删除）', () => {
@@ -30,13 +39,18 @@ describe('internalize', () => {
         expect(
             result.issues.filter((i) => i.severity === 'error'),
         ).toHaveLength(0)
-        // 父图 ops 含 delete_node（知识节点和引用节点）
+        // 纯图内批（无 graphLevel 批）
+        expect(result.batches.every((b) => b.kind === 'inGraph')).toBe(true)
+
+        // 父图批含 delete_node（知识节点和引用节点）
+        const parentBatch = findBatch(result.batches, graph.id)!
         expect(
-            result.operations.parent.some((op) => op.type === 'delete_node'),
+            parentBatch.operations.some((op) => op.type === 'delete_node'),
         ).toBe(true)
-        // 常识层 ops 含 add_node（只含知识节点）
+        // 常识层批含 add_node（只含知识节点）
+        const commonBatch = findBatch(result.batches, common.id)!
         expect(
-            result.operations.commonLayer.filter((op) => op.type === 'add_node')
+            commonBatch.operations.filter((op) => op.type === 'add_node')
                 .length,
         ).toBe(2) // K1, K2
     })
@@ -72,13 +86,9 @@ describe('internalize', () => {
             lookupGraph: () => undefined,
             nodeRadiusOverrides: R,
         })
-        // 全为引用节点 → error
+        // 全为引用节点 → error，无任何批次产出
         expect(result.issues.some((i) => i.severity === 'error')).toBe(true)
-        expect(
-            result.operations.commonLayer.filter(
-                (op) => op.type === 'add_node',
-            ),
-        ).toHaveLength(0)
+        expect(result.batches).toHaveLength(0)
     })
 
     test('抽象节点内化（含子图 DFS）', () => {
@@ -128,13 +138,12 @@ describe('internalize', () => {
         expect(
             result.issues.filter((i) => i.severity === 'error'),
         ).toHaveLength(0)
+        const commonBatch = findBatch(result.batches, common.id)!
         expect(
-            result.operations.commonLayer.filter(
-                (op) => op.type === 'add_node',
-            ),
+            commonBatch.operations.filter((op) => op.type === 'add_node'),
         ).toHaveLength(3)
         // position 各不相同（不碰撞）
-        const positions = result.operations.commonLayer
+        const positions = commonBatch.operations
             .filter((op) => op.type === 'add_node')
             .map((op: any) => op.node.position as { x: number; y: number })
         for (let i = 0; i < positions.length; i++) {

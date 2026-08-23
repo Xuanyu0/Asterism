@@ -24,17 +24,22 @@
  *     import { internalize } from '@my-project/graph-engine'
  *
  *     const result = internalize({ nodeIds, parentGraph, commonLayer, lookupGraph, nodeRadiusOverrides })
- *     // applyBatch(parentGraph, result.operations.parent)
- *     // applyBatch(commonLayer, result.operations.commonLayer)
+ *     // applyBatches(registry, result.batches)
  */
 
-import type { GraphData, NodeId, NodePosition } from '../../types/graph_data'
+import type {
+    GraphData,
+    GraphId,
+    NodeId,
+    NodePosition,
+} from '../../types/graph_data'
 import type {
     GraphLookup,
     NodeRadiusMap,
 } from '../../types/infrastructure_types'
 import type { ComposeIssue } from '../../types/compose_types'
-import type { GraphOperation } from '../../types/atomic_operations'
+import type { OperationBatch } from '../../types/compose_types'
+import type { AtomicOperationInGraph } from '../../types/atomic_operations'
 import { generateNodeId } from '../../core/utils/id'
 import { deriveNodeForm } from '../../core/derive'
 import { scatterInCircle } from '../../infrastructure/placement'
@@ -91,11 +96,7 @@ export interface InternalizeParams {
  *     见 InternalizeParams。
  */
 export function internalize(params: InternalizeParams): {
-    operations: {
-        parent: GraphOperation[]
-        child: GraphOperation[]
-        commonLayer: GraphOperation[]
-    }
+    batches: OperationBatch[]
     issues: ComposeIssue[]
 } {
     const {
@@ -115,10 +116,7 @@ export function internalize(params: InternalizeParams): {
             code: 'INTERNALIZE_EMPTY_SELECTION',
             message: `内化操作至少需要一个节点。`,
         })
-        return {
-            operations: { parent: [], child: [], commonLayer: [] },
-            issues,
-        }
+        return { batches: [], issues }
     }
 
     // 收集节点（可能在父图或子图中）
@@ -151,10 +149,7 @@ export function internalize(params: InternalizeParams): {
                 message: `节点 ${missingId} 在当前图谱及其子图中均不存在。`,
             })
         }
-        return {
-            operations: { parent: [], child: [], commonLayer: [] },
-            issues,
-        }
+        return { batches: [], issues }
     }
 
     // 分类：引用节点 vs 知识节点
@@ -171,10 +166,7 @@ export function internalize(params: InternalizeParams): {
             code: 'INTERNALIZE_ONLY_REFERENCE_NODES',
             message: `所有目标节点均为引用节点，不存在可内化的知识节点。引用节点已在原图中自动删除。`,
         })
-        return {
-            operations: { parent: [], child: [], commonLayer: [] },
-            issues,
-        }
+        return { batches: [], issues }
     }
 
     for (const rn of knowledgeNodes) {
@@ -191,33 +183,40 @@ export function internalize(params: InternalizeParams): {
         }
     }
 
-    // ── 构造原图 ops（按图分组） ──
+    // ── 按图分组收集操作 ──
 
-    const parentOps: GraphOperation[] = []
-    const childOps: GraphOperation[] = []
     const now = new Date().toISOString()
+    const opsByGraph = new Map<GraphId, AtomicOperationInGraph[]>()
+    const graphByOps = new Map<GraphId, GraphData>()
+    opsByGraph.set(parentGraph.id, [])
+    graphByOps.set(parentGraph.id, parentGraph)
+    opsByGraph.set(commonLayer.id, [])
+    graphByOps.set(commonLayer.id, commonLayer)
+
+    function pushOp(graph: GraphData, op: AtomicOperationInGraph): void {
+        if (!opsByGraph.has(graph.id)) {
+            opsByGraph.set(graph.id, [])
+            graphByOps.set(graph.id, graph)
+        }
+        opsByGraph.get(graph.id)!.push(op)
+    }
 
     // 1. 引用节点：直接 delete_node（在对应图中删除）
     for (const rn of referenceNodes) {
-        if (rn.graph.id === parentGraph.id) {
-            parentOps.push({ type: 'delete_node', nodeId: rn.node.id })
-        } else {
-            childOps.push({ type: 'delete_node', nodeId: rn.node.id })
-        }
+        pushOp(rn.graph, { type: 'delete_node', nodeId: rn.node.id })
     }
 
     // 2. 原子/抽象知识节点：先删边，再删节点
     for (const kn of knowledgeNodes) {
         const nodeId = kn.node.id
         const graph = kn.graph
-        const ops = graph.id === parentGraph.id ? parentOps : childOps
 
         // 删除连接到该节点的所有边
         const connectedEdges = graph.edges.filter(
             (edge) => edge.source === nodeId || edge.target === nodeId,
         )
         for (const edge of connectedEdges) {
-            ops.push({ type: 'delete_edge', edgeId: edge.id })
+            pushOp(graph, { type: 'delete_edge', edgeId: edge.id })
         }
 
         // 抽象节点：递归清理子图
@@ -232,7 +231,7 @@ export function internalize(params: InternalizeParams): {
             if (childGraph) {
                 // 删除子图内所有普通边
                 for (const edge of childGraph.edges) {
-                    childOps.push({ type: 'delete_edge', edgeId: edge.id })
+                    pushOp(childGraph, { type: 'delete_edge', edgeId: edge.id })
                 }
 
                 // 删除子图内所有沟通节点
@@ -242,13 +241,16 @@ export function internalize(params: InternalizeParams): {
                         node.referenceKind === 'communication',
                 )
                 for (const commNode of commNodes) {
-                    childOps.push({ type: 'delete_node', nodeId: commNode.id })
+                    pushOp(childGraph, {
+                        type: 'delete_node',
+                        nodeId: commNode.id,
+                    })
                 }
             }
         }
 
         // 删除节点本身
-        ops.push({ type: 'delete_node', nodeId })
+        pushOp(graph, { type: 'delete_node', nodeId })
     }
 
     // ── 收集所有需要迁入常识层的知识节点 ──
@@ -282,7 +284,6 @@ export function internalize(params: InternalizeParams): {
 
     // ── 常识层 ops：逐个安置，迭代扩展半径 ──
 
-    const commonOps: GraphOperation[] = []
     const placedDrafts: { nodeId: NodeId; position: NodePosition }[] = []
 
     for (const item of toMove) {
@@ -323,7 +324,7 @@ export function internalize(params: InternalizeParams): {
 
         placedDrafts.push({ nodeId: item.node.id, position: nodePosition })
 
-        commonOps.push({
+        pushOp(commonLayer, {
             type: 'add_node',
             node: {
                 ...item.node,
@@ -340,14 +341,20 @@ export function internalize(params: InternalizeParams): {
         })
     }
 
-    return {
-        operations: {
-            parent: parentOps,
-            child: childOps,
-            commonLayer: commonOps,
-        },
-        issues,
+    // ── 组装批次（纯图内批，graphOps 为空） ──
+
+    const batches: OperationBatch[] = []
+    for (const [graphId, ops] of opsByGraph) {
+        if (ops.length > 0) {
+            batches.push({
+                kind: 'inGraph',
+                graph: graphByOps.get(graphId)!,
+                operations: ops,
+            })
+        }
     }
+
+    return { batches, issues }
 }
 
 // ═══════════ 内部 ═══════════

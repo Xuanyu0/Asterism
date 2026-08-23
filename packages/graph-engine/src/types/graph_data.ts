@@ -28,6 +28,15 @@ export type EdgeId = string
 
 export type GraphKind = 'root' | 'subgraph' | 'learningBlock' | 'commonLayer'
 
+/**
+ * 多图注册表：GraphId → GraphData 的映射。
+ *
+ * @remarks
+ * 供多图管理层（applyBatches）作为参数使用。引擎是纯函数，不持有注册表状态，
+ * 由调用方（前端 Runtime）持有并传入。前端 graph_registry.ts 的对接在 06.3。
+ */
+export type GraphRegistry = Map<GraphId, GraphData>
+
 export interface GraphData {
     readonly id: GraphId
     kind: GraphKind

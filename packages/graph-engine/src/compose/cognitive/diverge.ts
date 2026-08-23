@@ -26,8 +26,7 @@
  *         sourceNodeId, targetNodeId, currentGraph,
  *         heuristicPosition, registry,
  *     })
- *     // result.operations.current → applyBatch(currentGraph, result.operations.current)
- *     // result.operations.peer     → applyBatch(peerGraph, result.operations.peer)
+ *     // applyBatches(registry, result.batches)
  */
 
 import type {
@@ -42,6 +41,7 @@ import type {
     NodeRadiusMap,
 } from '../../types/infrastructure_types'
 import type { ComposeIssue, DraftPosition } from '../../types/compose_types'
+import type { OperationBatch } from '../../types/compose_types'
 import type { GraphOperation } from '../../types/atomic_operations'
 import { generateNodeId, generateEdgeId } from '../../core/utils/id'
 import { scatterInCircle } from '../../infrastructure/placement'
@@ -115,7 +115,7 @@ const MAX_ATTEMPTS = 20
  *     见 DivergeParams。
  */
 export function diverge(params: DivergeParams): {
-    operations: { current: GraphOperation[]; peer: GraphOperation[] }
+    batches: OperationBatch[]
     drafts: DraftHeuristicPosition[]
     issues: ComposeIssue[]
 } {
@@ -147,7 +147,7 @@ export function diverge(params: DivergeParams): {
                 code: 'DIVERGE_NODE_NOT_IN_CURRENT_GRAPH',
                 message: `节点不存在于当前图中，请先通过搜索创建启发节点。`,
             })
-            return { operations: { current: [], peer: [] }, drafts: [], issues }
+            return { batches: [], drafts: [], issues }
         }
 
         // 链式引用检查
@@ -167,7 +167,7 @@ export function diverge(params: DivergeParams): {
                 code: 'DIVERGE_CHAIN_REFERENCE_FORBIDDEN',
                 message: `边的两个端点不能同时为引用节点——禁止链式引用。`,
             })
-            return { operations: { current: [], peer: [] }, drafts: [], issues }
+            return { batches: [], drafts: [], issues }
         }
 
         const now = new Date().toISOString()
@@ -183,10 +183,13 @@ export function diverge(params: DivergeParams): {
         }
 
         return {
-            operations: {
-                current: [{ type: 'add_edge' as const, edge }],
-                peer: [],
-            },
+            batches: [
+                {
+                    kind: 'inGraph',
+                    graph: currentGraph,
+                    operations: [{ type: 'add_edge' as const, edge }],
+                },
+            ],
             drafts: [],
             issues: [],
         }
@@ -201,7 +204,7 @@ export function diverge(params: DivergeParams): {
             code: 'DIVERGE_BOTH_NODES_IN_CURRENT_GRAPH',
             message: `节点 ${sourceNodeId} 和 ${targetNodeId} 都已存在于当前图中，无需创建启发节点。请直接连边。`,
         })
-        return { operations: { current: [], peer: [] }, drafts: [], issues }
+        return { batches: [], drafts: [], issues }
     }
 
     // 链式引用检查：在图中那一端的节点必须是 knowledge
@@ -217,7 +220,7 @@ export function diverge(params: DivergeParams): {
             code: 'DIVERGE_IN_GRAPH_NODE_NOT_FOUND',
             message: `节点 ${inGraphNodeId} 在当前图谱中不存在。`,
         })
-        return { operations: { current: [], peer: [] }, drafts: [], issues }
+        return { batches: [], drafts: [], issues }
     }
 
     if (inGraphNode.role !== 'knowledge') {
@@ -226,7 +229,7 @@ export function diverge(params: DivergeParams): {
             code: 'DIVERGE_CHAIN_REFERENCE_FORBIDDEN',
             message: `边的两个端点不能同时为引用节点——禁止链式引用。`,
         })
-        return { operations: { current: [], peer: [] }, drafts: [], issues }
+        return { batches: [], drafts: [], issues }
     }
 
     // 查找哪个已注册图包含 source 或 target 节点
@@ -244,7 +247,7 @@ export function diverge(params: DivergeParams): {
             code: 'DIVERGE_PEER_NODE_NOT_FOUND',
             message: `节点 ${missingNodeId} 在所有已注册图谱中均不存在。`,
         })
-        return { operations: { current: [], peer: [] }, drafts: [], issues }
+        return { batches: [], drafts: [], issues }
     }
 
     const missingNode = peerGraph.graph.nodes.find(
@@ -257,7 +260,7 @@ export function diverge(params: DivergeParams): {
             code: 'DIVERGE_PEER_NODE_NOT_KNOWLEDGE',
             message: `目标节点 ${missingNodeId} 不是知识节点，不能创建发散连接。`,
         })
-        return { operations: { current: [], peer: [] }, drafts: [], issues }
+        return { batches: [], drafts: [], issues }
     }
 
     const now = new Date().toISOString()
@@ -315,7 +318,7 @@ export function diverge(params: DivergeParams): {
             code: 'DIVERGE_MIRROR_PLACEMENT_FAILED',
             message: `镜像启发节点在对端图 ${peerGraph.graph.id} 中无法找到空位。`,
         })
-        return { operations: { current: [], peer: [] }, drafts: [], issues }
+        return { batches: [], drafts: [], issues }
     }
 
     // 镜像启发节点指向当前图侧已有的知识节点（inGraphNode）
@@ -366,7 +369,18 @@ export function diverge(params: DivergeParams): {
     ]
 
     return {
-        operations: { current: currentOps, peer: peerOps },
+        batches: [
+            {
+                kind: 'inGraph',
+                graph: currentGraph,
+                operations: currentOps,
+            },
+            {
+                kind: 'inGraph',
+                graph: peerGraph.graph,
+                operations: peerOps,
+            },
+        ],
         drafts,
         issues,
     }

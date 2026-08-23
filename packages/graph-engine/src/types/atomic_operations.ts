@@ -6,15 +6,17 @@
  *
  * 总体结构：
  *     1. 11 种原子操作 interface
- *     2. AtomicOperation：联合类型
+ *     2. AtomicOperationInGraph：图内 9 种联合
+ *     3. AtomicGraphOperation：图级 2 种联合
  *
  * 规则：
- *     - 原子操作由 execute.ts / validate.ts / reversal.ts / replay.ts 处理
+ *     - 图内原子操作由 execute_operation.ts / validate_operation_in_graph.ts / reversal.ts / replay.ts 处理
+ *     - 图级原子操作（add_graph / delete_graph）由 apply_batches.ts 兑现
  *     - 认知操作（explore / unearth / deconstruct / induce / internalize）不属于此层
  *     - CognitiveView 合并进原子层（collapse_dependency / expand_dependency 直接修改 cognitiveState）
  *
  * 外部使用方式：
- *     import type { AtomicOperation, AddNodeOperation } from '@my-project/graph-engine'
+ *     import type { AtomicOperationInGraph, AddNodeOperation } from '@my-project/graph-engine'
  */
 
 import type {
@@ -81,15 +83,25 @@ export interface ExpandDependencyOperation {
 
 export interface AddGraphOperation {
     type: 'add_graph'
+    /**
+     * 只构造空图：graph 仅含元数据字段（id / kind / parentGraphId / ownerNodeId / 时间戳），
+     * nodes / edges 必须为空（validateGraphOperation 强制校验）。内容统一走图内操作（add_node 等）填充。
+     */
     graph: GraphData
 }
 
 export interface DeleteGraphOperation {
     type: 'delete_graph'
-    graphId: GraphId
+    /**
+     * 携带被删空图的骨架（仅元数据字段 id / kind / parentGraphId / ownerNodeId / 时间戳，nodes / edges 空）。
+     * 签名与 AddGraphOperation 统一为 { type, graph }——逆元 add ↔ delete 互逆都操作图数据。
+     * 只能删除空图：validateGraphOperation 校验注册表目标图空图（与 add_graph 只建空图对称）。
+     */
+    graph: GraphData
 }
 
-export type AtomicOperation =
+/** 图内原子操作：单图变换，由 executeOperation 执行。 */
+export type AtomicOperationInGraph =
     | AddNodeOperation
     | AddEdgeOperation
     | DeleteNodeOperation
@@ -99,8 +111,9 @@ export type AtomicOperation =
     | MoveNodeOperation
     | CollapseDependencyOperation
     | ExpandDependencyOperation
-    | AddGraphOperation
-    | DeleteGraphOperation
+
+/** 图级原子操作：多图注册表层面的建图 / 删图，由 applyBatches 兑现。 */
+export type AtomicGraphOperation = AddGraphOperation | DeleteGraphOperation
 
 /** 向后兼容别名。前端 / 操作日志沿用此名称。 */
-export type GraphOperation = AtomicOperation
+export type GraphOperation = AtomicOperationInGraph | AtomicGraphOperation

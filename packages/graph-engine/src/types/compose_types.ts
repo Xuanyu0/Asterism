@@ -21,8 +21,12 @@
  *     3. Draft 泛型——各编排模块可在 DraftPosition 基础上扩展（如 diverge 加 graphId）。
  */
 
-import type { NodeId, NodePosition } from './graph_data'
-import type { GraphOperation } from './atomic_operations'
+import type { NodeId, NodePosition, GraphData } from './graph_data'
+import type {
+    AtomicOperationInGraph,
+    AtomicGraphOperation,
+    GraphOperation,
+} from './atomic_operations'
 
 /**
  * 功能：
@@ -83,3 +87,22 @@ export interface ComposeResult<Draft extends DraftPosition = DraftPosition> {
     /** 确认后提交的操作序列。前端调 applyBatch(graph, operations) 执行。 */
     operations: GraphOperation[]
 }
+
+/**
+ * 单批操作：图内批或图级批的判别联合。
+ *
+ * @remarks
+ * 图内批（inGraph）委托 applyBatch 在单图内执行；图级批（graphLevel）由
+ * applyBatches 兑现 add_graph / delete_graph 注册表副作用。compose 认知函数
+ * 统一以 `{ batches, issues }` 返回，图级操作独立成 graphLevel 批。
+ */
+export type OperationBatch =
+    | {
+          kind: 'inGraph'
+          graph: GraphData
+          operations: AtomicOperationInGraph[]
+      }
+    | {
+          kind: 'graphLevel'
+          operations: AtomicGraphOperation[]
+      }

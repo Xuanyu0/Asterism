@@ -1,11 +1,9 @@
 /**
- * validate.test.ts
- *
- * 核心层校验路径测试。覆盖 11 种 Operation 的合法/非法路径。
+ * 核心层图内操作校验路径测试。覆盖 9 种图内操作的合法/非法路径。
  */
 
 import type { GraphData, NodeId, GraphId } from '../../src/types/graph_data'
-import { validateOperation } from '../../src/core/validate'
+import { validateOperationInGraph } from '../../src/core/validate_operation_in_graph'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
 
 const G = 'test-v' as GraphId
@@ -36,7 +34,7 @@ function makeGraph(nodes = 2, edges = 0): GraphData {
 describe('validate add_node', () => {
     test('合法 add_node', () => {
         const graph = makeGraph(2)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'add_node',
             node: createNode({ id: 'n-new' as NodeId, graphId: G }),
         })
@@ -45,7 +43,7 @@ describe('validate add_node', () => {
 
     test('ID 重复', () => {
         const graph = makeGraph(2)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'add_node',
             node: createNode({ id: 'n0' as NodeId, graphId: G }),
         })
@@ -57,7 +55,7 @@ describe('validate add_node', () => {
 
     test('label 为空字符串 → EMPTY_LABEL', () => {
         const graph = makeGraph(2)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'add_node',
             node: createNode({
                 id: 'n-empty' as NodeId,
@@ -75,7 +73,7 @@ describe('validate add_node', () => {
 
     test('label 为纯空白 → EMPTY_LABEL（trim 语义）', () => {
         const graph = makeGraph(2)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'add_node',
             node: createNode({
                 id: 'n-blank' as NodeId,
@@ -89,7 +87,7 @@ describe('validate add_node', () => {
 
     test('正常 label → 无 EMPTY_LABEL', () => {
         const graph = makeGraph(2)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'add_node',
             node: createNode({
                 id: 'n-ok' as NodeId,
@@ -107,7 +105,7 @@ describe('validate add_node', () => {
 describe('validate add_edge', () => {
     test('合法 add_edge（有向实边）', () => {
         const graph = makeGraph(3)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'add_edge',
             edge: createEdge({
                 id: 'e-new' as NodeId,
@@ -123,7 +121,7 @@ describe('validate add_edge', () => {
 
     test('端点不存在', () => {
         const graph = makeGraph(2)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'add_edge',
             edge: createEdge({
                 id: 'e-new' as NodeId,
@@ -139,7 +137,7 @@ describe('validate add_edge', () => {
 
     test('自环由 applyBatch 全局规则检出（validateOperation 只校验前提）', () => {
         const graph = makeGraph(2)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'add_edge',
             edge: createEdge({
                 id: 'e-self' as NodeId,
@@ -156,7 +154,7 @@ describe('validate add_edge', () => {
 
     test('重边由 applyBatch 全局规则检出（validateOperation 只校验前提）', () => {
         const graph = makeGraph(3, 1) // e0 已连接 n0→n1
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'add_edge',
             edge: createEdge({
                 id: 'e-dup' as NodeId,
@@ -177,7 +175,7 @@ describe('validate add_edge', () => {
 describe('validate delete_node', () => {
     test('合法 delete_node', () => {
         const graph = makeGraph(2)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'delete_node',
             nodeId: 'n0' as NodeId,
         })
@@ -186,7 +184,7 @@ describe('validate delete_node', () => {
 
     test('节点不存在', () => {
         const graph = makeGraph(2)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'delete_node',
             nodeId: 'n-x' as NodeId,
         })
@@ -202,7 +200,7 @@ describe('validate delete_node', () => {
 describe('validate delete_edge', () => {
     test('合法 delete_edge', () => {
         const graph = makeGraph(2, 1)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'delete_edge',
             edgeId: 'e0' as NodeId,
         })
@@ -211,7 +209,7 @@ describe('validate delete_edge', () => {
 
     test('边不存在', () => {
         const graph = makeGraph(2)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'delete_edge',
             edgeId: 'e-x' as NodeId,
         })
@@ -234,7 +232,7 @@ describe('validate update_node', () => {
         }
         const n0 = createNode({ id: 'n0' as NodeId, graphId: G, label: 'src' })
         const graph = { ...g, nodes: [n0] }
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'update_node',
             node: { ...n0, label: 'updated' },
         })
@@ -243,7 +241,7 @@ describe('validate update_node', () => {
 
     test('节点不存在', () => {
         const graph = makeGraph(2)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'update_node',
             node: createNode({ id: 'n-x' as NodeId, graphId: G }),
         })
@@ -256,7 +254,7 @@ describe('validate update_node', () => {
 describe('validate update_edge', () => {
     test('合法 update_edge', () => {
         const graph = makeGraph(2, 1)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'update_edge',
             edge: { ...graph.edges[0]!, label: 'new-label' },
         })
@@ -265,7 +263,7 @@ describe('validate update_edge', () => {
 
     test('边不存在', () => {
         const graph = makeGraph(2)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'update_edge',
             edge: createEdge({
                 id: 'e-x' as NodeId,
@@ -285,7 +283,7 @@ describe('validate update_edge', () => {
 describe('validate move_node', () => {
     test('合法 move_node', () => {
         const graph = makeGraph(2)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'move_node',
             nodeId: 'n0' as NodeId,
             position: { x: 100, y: 200 },
@@ -299,7 +297,7 @@ describe('validate move_node', () => {
 describe('validate collapse/expand', () => {
     test('合法 collapse_dependency', () => {
         const graph = makeGraph(3, 2) // e0: n0→n1, e1: n1→n2
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'collapse_dependency',
             targetNodeId: 'n2' as NodeId,
         })
@@ -308,7 +306,7 @@ describe('validate collapse/expand', () => {
 
     test('合法 expand_dependency', () => {
         const graph = makeGraph(3, 2)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'expand_dependency',
             targetNodeId: 'n0' as NodeId,
         })
@@ -318,7 +316,7 @@ describe('validate collapse/expand', () => {
     test('带 foldedNodeIds 时跳过依赖拓扑检查（依赖已破坏的图）', () => {
         // n2 无任何前置依赖（依赖边已被删）：原重算路径会报 NO_DEPENDENCY_TO_COLLAPSE
         const graph = makeGraph(3)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'collapse_dependency',
             targetNodeId: 'n2' as NodeId,
             foldedNodeIds: ['n0' as NodeId, 'n1' as NodeId],
@@ -328,7 +326,7 @@ describe('validate collapse/expand', () => {
 
     test('不带 foldedNodeIds 时依赖拓扑检查保持既有行为（依赖已破坏的图仍报错）', () => {
         const graph = makeGraph(3)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'collapse_dependency',
             targetNodeId: 'n2' as NodeId,
         })
@@ -340,7 +338,7 @@ describe('validate collapse/expand', () => {
 
     test('带 foldedNodeIds 时目标节点存在性检查仍生效', () => {
         const graph = makeGraph(3)
-        const result = validateOperation(graph, {
+        const result = validateOperationInGraph(graph, {
             type: 'collapse_dependency',
             targetNodeId: 'n-missing' as NodeId,
             foldedNodeIds: ['n0' as NodeId],

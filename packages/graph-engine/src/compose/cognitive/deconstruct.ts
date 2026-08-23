@@ -27,7 +27,8 @@
 
 import type { GraphData, NodeId, NodePosition } from '../../types/graph_data'
 import type { ComposeIssue } from '../../types/compose_types'
-import type { GraphOperation } from '../../types/atomic_operations'
+import type { OperationBatch } from '../../types/compose_types'
+import type { AtomicOperationInGraph } from '../../types/atomic_operations'
 import { generateGraphId, generateNodeId } from '../../core/utils/id'
 import { deriveNodeForm } from '../../core/derive'
 import { DEFAULT_LAYOUT_RULES } from '../../core/layout_rules'
@@ -66,7 +67,7 @@ export interface DeconstructParams {
  *     见 DeconstructParams。
  */
 export function deconstruct(params: DeconstructParams): {
-    operations: GraphOperation[]
+    batches: OperationBatch[]
     issues: ComposeIssue[]
 } {
     const { nodeId, parentGraph } = params
@@ -82,7 +83,7 @@ export function deconstruct(params: DeconstructParams): {
             code: 'DECONSTRUCT_TARGET_NOT_FOUND',
             message: `节点 ${nodeId} 在当前图谱中不存在。`,
         })
-        return { operations: [], issues }
+        return { batches: [], issues }
     }
 
     if (targetNode.role !== 'knowledge') {
@@ -91,7 +92,7 @@ export function deconstruct(params: DeconstructParams): {
             code: 'DECONSTRUCT_TARGET_NOT_KNOWLEDGE',
             message: `节点 ${nodeId} 不是知识节点，不能解构。`,
         })
-        return { operations: [], issues }
+        return { batches: [], issues }
     }
 
     if (targetNode.kind !== 'real') {
@@ -100,7 +101,7 @@ export function deconstruct(params: DeconstructParams): {
             code: 'DECONSTRUCT_TARGET_VIRTUAL',
             message: `节点 ${nodeId} 是虚节点，不能解构。`,
         })
-        return { operations: [], issues }
+        return { batches: [], issues }
     }
 
     if (deriveNodeForm(targetNode) === 'abstract') {
@@ -109,7 +110,7 @@ export function deconstruct(params: DeconstructParams): {
             code: 'DECONSTRUCT_TARGET_ALREADY_ABSTRACT',
             message: `节点 ${nodeId} 已是抽象节点，不能重复解构。`,
         })
-        return { operations: [], issues }
+        return { batches: [], issues }
     }
 
     // ── 查找邻居 ──
@@ -164,19 +165,20 @@ export function deconstruct(params: DeconstructParams): {
         }
     })
 
+    // 空子图：add_graph 只构造空图，沟通节点经 add_node 填充
     const childGraph: GraphData = {
         id: childGraphId,
         kind: 'subgraph',
         title: targetNode.label,
         parentGraphId: parentGraph.id,
         ownerNodeId: nodeId,
-        nodes: communicationNodes,
+        nodes: [],
         edges: [],
         createdAt: now,
         updatedAt: now,
     }
 
-    // ── 构造原子操作序列 ──
+    // ── 构造批次 ──
 
     const updatedNode = {
         ...targetNode,
@@ -184,10 +186,31 @@ export function deconstruct(params: DeconstructParams): {
         updatedAt: now,
     }
 
-    const operations: GraphOperation[] = [
-        { type: 'update_node', node: updatedNode },
-        { type: 'add_graph', graph: childGraph },
+    // 沟通节点经 add_node 填充子图
+    const addCommNodeOps: AtomicOperationInGraph[] = communicationNodes.map(
+        (node) => ({
+            type: 'add_node',
+            node,
+        }),
+    )
+
+    const batches: OperationBatch[] = [
+        // add_graph 批在子图填充批之前：先注册空子图，再填充
+        {
+            kind: 'graphLevel',
+            operations: [{ type: 'add_graph', graph: childGraph }],
+        },
+        {
+            kind: 'inGraph',
+            graph: childGraph,
+            operations: addCommNodeOps,
+        },
+        {
+            kind: 'inGraph',
+            graph: parentGraph,
+            operations: [{ type: 'update_node', node: updatedNode }],
+        },
     ]
 
-    return { operations, issues }
+    return { batches, issues }
 }

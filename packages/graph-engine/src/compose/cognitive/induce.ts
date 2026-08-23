@@ -22,8 +22,7 @@
  *     import { induce } from '@my-project/graph-engine'
  *
  *     const result = induce({ nodeIds, parentGraph, lookupGraph, nodeRadiusOverrides, allEdges })
- *     // applyBatch(result.childGraphData, result.operations.child)
- *     // applyBatch(parentGraph, result.operations.parent)
+ *     // applyBatches(registry, result.batches)
  */
 
 import type {
@@ -37,7 +36,8 @@ import type {
     NodeRadiusMap,
 } from '../../types/infrastructure_types'
 import type { ComposeIssue } from '../../types/compose_types'
-import type { GraphOperation } from '../../types/atomic_operations'
+import type { OperationBatch } from '../../types/compose_types'
+import type { AtomicOperationInGraph } from '../../types/atomic_operations'
 import {
     generateGraphId,
     generateNodeId,
@@ -104,8 +104,7 @@ export interface InduceParams {
  *     见 InduceParams。
  */
 export function induce(params: InduceParams): {
-    operations: { child: GraphOperation[]; parent: GraphOperation[] }
-    childGraphData: GraphData
+    batches: OperationBatch[]
     issues: ComposeIssue[]
 } {
     const { nodeIds, parentGraph, nodeRadiusOverrides, allEdges } = params
@@ -119,11 +118,7 @@ export function induce(params: InduceParams): {
             code: 'INDUCE_INSUFFICIENT_NODES',
             message: `归纳操作至少需要两个节点。`,
         })
-        return {
-            operations: { child: [], parent: [] },
-            childGraphData: null!,
-            issues,
-        }
+        return { batches: [], issues }
     }
 
     const selectedSet = new Set(nodeIds)
@@ -140,11 +135,7 @@ export function induce(params: InduceParams): {
                 message: `节点 ${missingId} 在当前图谱中不存在。`,
             })
         }
-        return {
-            operations: { child: [], parent: [] },
-            childGraphData: null!,
-            issues,
-        }
+        return { batches: [], issues }
     }
 
     for (const node of selectedNodes) {
@@ -157,11 +148,7 @@ export function induce(params: InduceParams): {
                 code: 'INDUCE_COMMUNICATION_NODE_FORBIDDEN',
                 message: `节点 ${node.id} 是沟通节点，不能参与归纳。沟通节点是父图邻居在子图中的透明投影，不应被二次归纳。`,
             })
-            return {
-                operations: { child: [], parent: [] },
-                childGraphData: null!,
-                issues,
-            }
+            return { batches: [], issues }
         }
     }
 
@@ -212,11 +199,7 @@ export function induce(params: InduceParams): {
                     code: 'INDUCE_DUPLICATE_EDGE_CONFLICT',
                     message: `归纳操作将对邻居 ${neighborId} 产生重边冲突（kind=${edge.kind}, direction=${edge.direction}），当前不支持此拓扑。`,
                 })
-                return {
-                    operations: { child: [], parent: [] },
-                    childGraphData: null!,
-                    issues,
-                }
+                return { batches: [], issues }
             }
             seen.add(key)
         }
@@ -231,11 +214,7 @@ export function induce(params: InduceParams): {
             code: 'INDUCE_NO_POSITION',
             message: `被选节点均无位置信息，无法计算形心。`,
         })
-        return {
-            operations: { child: [], parent: [] },
-            childGraphData: null!,
-            issues,
-        }
+        return { batches: [], issues }
     }
 
     const centroid: NodePosition = {
@@ -327,11 +306,7 @@ export function induce(params: InduceParams): {
                 code: 'INDUCE_COMM_NODE_PLACEMENT_FAILED',
                 message: `无法为沟通节点找到不碰撞的位置（已重试 ${MAX_RETRIES} 次）。`,
             })
-            return {
-                operations: { child: [], parent: [] },
-                childGraphData: null!,
-                issues,
-            }
+            return { batches: [], issues }
         }
     }
 
@@ -365,22 +340,23 @@ export function induce(params: InduceParams): {
 
     // ── 构造子图 ops ──
 
-    const childOps: GraphOperation[] = []
+    const childOps: AtomicOperationInGraph[] = []
 
-    // 空子图
+    // 抽象节点 ID 提前生成：空子图 ownerNodeId 需引用它
+    const abstractId = generateNodeId()
+
+    // 空子图：add_graph 只构造空图，内容经 add_node 填充
     const emptyChildGraph: GraphData = {
         id: childGraphId,
         kind: 'subgraph',
         title: selectedNodes.map((node) => node.label).join(' / '),
         parentGraphId: parentGraph.id,
-        ownerNodeId: '', // 由后续 abstract node 的 id 回填——此处暂空，add_graph 后 update
+        ownerNodeId: abstractId,
         nodes: [],
         edges: [],
         createdAt: now,
         updatedAt: now,
     }
-
-    childOps.push({ type: 'add_graph', graph: emptyChildGraph })
 
     // 被选节点移入子图
     for (const node of selectedNodes) {
@@ -443,7 +419,6 @@ export function induce(params: InduceParams): {
 
     // ── 抽象节点 ──
 
-    const abstractId = generateNodeId()
     const abstractDegree = neighbors.length
     let abstractPosition = centroid
 
@@ -467,11 +442,7 @@ export function induce(params: InduceParams): {
                 code: 'INDUCE_ABSTRACT_NODE_PLACEMENT_FAILED',
                 message: `无法为抽象节点找到不碰撞的位置（已重试 ${MAX_RETRIES} 次）。`,
             })
-            return {
-                operations: { child: [], parent: [] },
-                childGraphData: null!,
-                issues,
-            }
+            return { batches: [], issues }
         }
 
         abstractPosition = scatterInCircle(
@@ -480,17 +451,9 @@ export function induce(params: InduceParams): {
         )
     }
 
-    // 回填 childGraph 的 ownerNodeId
-    const childGraph: GraphData = {
-        ...emptyChildGraph,
-        ownerNodeId: abstractId,
-    }
-    // 替换 childOps 中的 add_graph
-    childOps[0] = { type: 'add_graph', graph: childGraph }
-
     // ── 构造父图 ops ──
 
-    const parentOps: GraphOperation[] = []
+    const parentOps: AtomicOperationInGraph[] = []
 
     const abstractNode = {
         id: abstractId,
@@ -534,8 +497,23 @@ export function induce(params: InduceParams): {
     }
 
     return {
-        operations: { child: childOps, parent: parentOps },
-        childGraphData: childGraph,
+        batches: [
+            // add_graph 批在子图填充批之前：先注册空子图，再填充
+            {
+                kind: 'graphLevel',
+                operations: [{ type: 'add_graph', graph: emptyChildGraph }],
+            },
+            {
+                kind: 'inGraph',
+                graph: emptyChildGraph,
+                operations: childOps,
+            },
+            {
+                kind: 'inGraph',
+                graph: parentGraph,
+                operations: parentOps,
+            },
+        ],
         issues,
     }
 }

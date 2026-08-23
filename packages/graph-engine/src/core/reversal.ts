@@ -1,28 +1,17 @@
 /**
- * reversal.ts
+ * 构造图内原子操作的逆操作序列。在执行操作前调用，捕获操作对象完整前状态。
  *
- * 功能：
- *     构造原子操作的逆操作序列。在执行操作前调用，捕获操作对象完整前状态。
- *
- * 总体结构：
- *     1. createReversal — 统一入口，按 type 分派
- *     2. 各 createReversalForXxx — 按操作类型构造逆操作
- *
- * 规则：
- *     1. 入参 graph 是操作前的图状态。
- *     2. 对信息丢失的操作（delete / update / move / expand），返回携带完整前状态快照的逆操作。
- *     3. 对无信息丢失的操作（add / collapse），不需要额外快照数据。
- *     4. 9 种图内原子操作全部具备逆元；图级操作（add_graph / delete_graph）不构造逆元
- *        （落到 default 返回 []，图级操作的正/逆向执行归前端，见 GE 端逆元问题报告 §2 模型基准）。
- *     5. 目标缺失（正常流程不触发，validate 已保证目标存在）时抛异常，不再静默返回 []。
- *
- * 使用：
- *     Pinia store 在 apply() 前调用 createReversal，将逆操作序列写入 OperationLogEntry。
+ * @remarks
+ * 入参 graph 是操作前的图状态。对信息丢失的操作（delete / update / move / expand）
+ * 返回携带完整前状态快照的逆操作；对无信息丢失的操作（add / collapse）不需要额外快照。
+ * 9 种图内原子操作全部具备逆元；图级操作（add_graph / delete_graph）不在此构造逆元，
+ * 由 applyBatches 统一构造（add ↔ delete 互逆）。目标缺失（正常流程不触发，validate
+ * 已保证目标存在）时抛异常，不再静默返回 []。
  */
 
 import type { GraphData } from '../types/graph_data'
 import type {
-    GraphOperation,
+    AtomicOperationInGraph,
     AddNodeOperation,
     AddEdgeOperation,
     DeleteNodeOperation,
@@ -36,18 +25,22 @@ import type {
 import { findReferenceNodesPointingTo } from './utils/traversal'
 
 /**
- * 功能：
- *     构造单步操作的逆操作序列。
+ * 构造单步图内操作的逆操作序列。
  *
- * 规则：
- *     入参 graph 必须在操作执行前传入（此时图仍包含将被修改/删除的对象）。
- *     返回值是一个数组——部分操作的逆需要多个原子操作才能完成。
- *     目标缺失时抛异常（显式错误信号），前端回调捕获后阻断整批提交。
+ * @remarks
+ * 入参 graph 必须在操作执行前传入（此时图仍包含将被修改/删除的对象）。
+ * 返回值是一个数组——部分操作的逆需要多个原子操作才能完成。目标缺失时抛异常
+ * （显式错误信号），上层回调捕获后阻断整批提交。图级操作不在此构造逆元——
+ * 由 applyBatches 统一构造（add ↔ delete 互逆）。
+ *
+ * @param graph - 操作前的图状态
+ * @param operation - 待反转的图内原子操作
+ * @returns 逆操作序列。
  */
 export function createReversal(
     graph: GraphData,
-    operation: GraphOperation,
-): GraphOperation[] {
+    operation: AtomicOperationInGraph,
+): AtomicOperationInGraph[] {
     switch (operation.type) {
         case 'add_node':
             return createReversalForAddNode(operation)
@@ -75,10 +68,6 @@ export function createReversal(
 
         case 'expand_dependency':
             return createReversalForExpandDependency(graph, operation)
-
-        default:
-            // 图级操作（add_graph / delete_graph）不构造逆元——图级正/逆向执行归前端回调。
-            return []
     }
 }
 
@@ -86,7 +75,7 @@ export function createReversal(
 
 function createReversalForAddNode(
     operation: AddNodeOperation,
-): GraphOperation[] {
+): AtomicOperationInGraph[] {
     const inverse: DeleteNodeOperation = {
         type: 'delete_node',
         nodeId: operation.node.id,
@@ -96,7 +85,7 @@ function createReversalForAddNode(
 
 function createReversalForAddEdge(
     operation: AddEdgeOperation,
-): GraphOperation[] {
+): AtomicOperationInGraph[] {
     const inverse: DeleteEdgeOperation = {
         type: 'delete_edge',
         edgeId: operation.edge.id,
@@ -109,7 +98,7 @@ function createReversalForAddEdge(
 function createReversalForDeleteNode(
     graph: GraphData,
     operation: DeleteNodeOperation,
-): GraphOperation[] {
+): AtomicOperationInGraph[] {
     const deletedNode = graph.nodes.find((node) => node.id === operation.nodeId)
 
     if (!deletedNode) {
@@ -137,7 +126,7 @@ function createReversalForDeleteNode(
             allDeletedNodeIds.has(edge.target),
     )
 
-    const reversals: GraphOperation[] = []
+    const reversals: AtomicOperationInGraph[] = []
 
     // 先恢复节点（边依赖端点存在）：被删节点 + 级联引用节点
     for (const node of [deletedNode, ...cascadedReferenceNodes]) {
@@ -163,7 +152,7 @@ function createReversalForDeleteNode(
 function createReversalForDeleteEdge(
     graph: GraphData,
     operation: DeleteEdgeOperation,
-): GraphOperation[] {
+): AtomicOperationInGraph[] {
     const deletedEdge = graph.edges.find((edge) => edge.id === operation.edgeId)
 
     if (!deletedEdge) {
@@ -185,7 +174,7 @@ function createReversalForDeleteEdge(
 function createReversalForUpdateNode(
     graph: GraphData,
     operation: UpdateNodeOperation,
-): GraphOperation[] {
+): AtomicOperationInGraph[] {
     const oldNode = graph.nodes.find((node) => node.id === operation.node.id)
 
     if (!oldNode) {
@@ -205,7 +194,7 @@ function createReversalForUpdateNode(
 function createReversalForUpdateEdge(
     graph: GraphData,
     operation: UpdateEdgeOperation,
-): GraphOperation[] {
+): AtomicOperationInGraph[] {
     const oldEdge = graph.edges.find((edge) => edge.id === operation.edge.id)
 
     if (!oldEdge) {
@@ -227,7 +216,7 @@ function createReversalForUpdateEdge(
 function createReversalForMoveNode(
     graph: GraphData,
     operation: MoveNodeOperation,
-): GraphOperation[] {
+): AtomicOperationInGraph[] {
     const current = graph.nodes.find((node) => node.id === operation.nodeId)
 
     // 双条件：节点缺失 或 节点无 position 字段，均视为目标缺失
@@ -251,7 +240,7 @@ function createReversalForMoveNode(
 function createReversalForCollapseDependency(
     graph: GraphData,
     operation: CollapseDependencyOperation,
-): GraphOperation[] {
+): AtomicOperationInGraph[] {
     const inverse: ExpandDependencyOperation = {
         type: 'expand_dependency',
         targetNodeId: operation.targetNodeId,
@@ -263,7 +252,7 @@ function createReversalForCollapseDependency(
 function createReversalForExpandDependency(
     graph: GraphData,
     operation: ExpandDependencyOperation,
-): GraphOperation[] {
+): AtomicOperationInGraph[] {
     // 捕获展开前的折叠条目，逆元照名单恢复（而非重算——undo 链中间时刻重算会数错）
     const currentCognitiveState = graph.cognitiveState ?? {
         foldedDependencies: [],
