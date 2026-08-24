@@ -14,11 +14,18 @@
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
 import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
-import { saveGraph, loadGraph, deleteGraph, listRootGraphIds } from '@/graph/graph_persistence'
-import { createGoldenTestGraphV2, createSilverTestGraph } from '@/dev/test_case_factory'
+import {
+    saveGraph,
+    loadGraph,
+    deleteGraph,
+    listRootGraphIds,
+} from '@/graph/graph_persistence'
+import {
+    createGoldenTestGraphV2,
+    createSilverTestGraph,
+} from '@/dev/test_case_factory'
 import { validateGraph } from '@my-project/graph-engine'
 import type { NodeId } from '@my-project/graph-engine'
-
 
 describe('数据合法性校验', () => {
     beforeEach(() => {
@@ -42,7 +49,6 @@ describe('数据合法性校验', () => {
         expect(result.valid).toBe(true)
     })
 })
-
 
 describe('Store 加载', () => {
     beforeEach(() => {
@@ -88,7 +94,6 @@ describe('Store 加载', () => {
     })
 })
 
-
 describe('原子操作链路', () => {
     beforeEach(() => {
         resetGraphStoreForTests()
@@ -105,27 +110,26 @@ describe('原子操作链路', () => {
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
-        const result = useGraphOperation().commitToCurrentGraph([{
-            type: 'add_node',
-            node: {
-                role: 'knowledge',
-                id: 'reg-node-new' as NodeId,
-                graphId: store.graphView!.id,
-                kind: 'real',
-                label: '回归测试节点',
-                summary: '',
-                degree: 0,
-                position: { x: 999, y: 999 },
+        const result = useGraphOperation().commitToCurrentGraph([
+            {
+                type: 'add_node',
+                node: {
+                    role: 'knowledge',
+                    id: 'reg-node-new' as NodeId,
+                    graphId: store.graphView!.id,
+                    kind: 'real',
+                    label: '回归测试节点',
+                    summary: '',
+                    degree: 0,
+                    position: { x: 999, y: 999 },
+                },
             },
-        }])
+        ])
 
         expect(result.valid).toBe(true)
         expect(store.graphView!.nodes.length).toBe(7)
     })
-
-
 })
-
 
 describe('fold/expand + undo', () => {
     beforeEach(() => {
@@ -143,12 +147,16 @@ describe('fold/expand + undo', () => {
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
-        useGraphOperation().commitToCurrentGraph([{
-            type: 'collapse_dependency',
-            targetNodeId: 'node-g2' as NodeId,
-        }])
+        useGraphOperation().commitToCurrentGraph([
+            {
+                type: 'collapse_dependency',
+                targetNodeId: 'node-g2' as NodeId,
+            },
+        ])
 
-        expect(store.graphView!.cognitiveState?.foldedDependencies.length).toBeGreaterThan(0)
+        expect(
+            store.graphView!.cognitiveState.foldedDependencies.length,
+        ).toBeGreaterThan(0)
     })
 
     test('undo：撤销折叠后 foldedDependencies 为空', () => {
@@ -157,18 +165,22 @@ describe('fold/expand + undo', () => {
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
-        useGraphOperation().commitToCurrentGraph([{
-            type: 'collapse_dependency',
-            targetNodeId: 'node-g2' as NodeId,
-        }])
+        useGraphOperation().commitToCurrentGraph([
+            {
+                type: 'collapse_dependency',
+                targetNodeId: 'node-g2' as NodeId,
+            },
+        ])
 
-        expect(store.graphView!.cognitiveState?.foldedDependencies.length).toBeGreaterThan(0)
+        expect(
+            store.graphView!.cognitiveState.foldedDependencies.length,
+        ).toBeGreaterThan(0)
 
         const undone = store.undo()
         expect(undone).toBe(true)
 
-        const folded = store.graphView!.cognitiveState?.foldedDependencies
-        expect(folded?.length).toBe(0)
+        const folded = store.graphView!.cognitiveState.foldedDependencies
+        expect(folded.length).toBe(0)
     })
 
     test('非法操作拒绝：delete 不存在的节点', () => {
@@ -177,16 +189,17 @@ describe('fold/expand + undo', () => {
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
-        const result = useGraphOperation().commitToCurrentGraph([{
-            type: 'delete_node',
-            nodeId: 'non-existent-node' as NodeId,
-        }])
+        const result = useGraphOperation().commitToCurrentGraph([
+            {
+                type: 'delete_node',
+                nodeId: 'non-existent-node' as NodeId,
+            },
+        ])
 
         expect(result.valid).toBe(false)
         expect(store.graphView!.nodes.length).toBe(6)
     })
 })
-
 
 describe('持久化', () => {
     beforeEach(() => {

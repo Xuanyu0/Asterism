@@ -22,7 +22,7 @@ interface FoldFilter {
  *     从 GraphData 提取折叠过滤信息。
  */
 export function extractFoldFilter(graph: GraphData): FoldFilter {
-    const foldedDeps = graph.cognitiveState?.foldedDependencies ?? []
+    const foldedDeps = graph.cognitiveState.foldedDependencies
     return {
         foldedNodeIds: new Set(
             foldedDeps.flatMap((state) => state.foldedNodeIds),

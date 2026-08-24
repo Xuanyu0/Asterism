@@ -235,8 +235,8 @@ describe('createReversal expand_dependency', () => {
         for (const rev of revs) {
             reverted = executeOperation(reverted, rev)
         }
-        expect(reverted.cognitiveState?.foldedDependencies).toEqual(
-            graph.cognitiveState?.foldedDependencies,
+        expect(reverted.cognitiveState.foldedDependencies).toEqual(
+            graph.cognitiveState.foldedDependencies,
         )
     })
 })
@@ -284,7 +284,7 @@ describe('executeCollapseDependency 显式折叠成员', () => {
             foldedNodeIds: ['nX' as NodeId],
         }
         const after = executeOperation(graph, op)
-        expect(after.cognitiveState?.foldedDependencies).toEqual([
+        expect(after.cognitiveState.foldedDependencies).toEqual([
             { targetNodeId: 'n0', foldedNodeIds: ['nX'] },
         ])
     })
@@ -296,7 +296,7 @@ describe('executeCollapseDependency 显式折叠成员', () => {
             targetNodeId: 'n0' as NodeId,
         }
         const after = executeOperation(graph, op)
-        expect(after.cognitiveState?.foldedDependencies).toEqual([
+        expect(after.cognitiveState.foldedDependencies).toEqual([
             { targetNodeId: 'n0', foldedNodeIds: ['n1'] },
         ])
     })
@@ -309,7 +309,7 @@ describe('executeCollapseDependency 显式折叠成员', () => {
             foldedNodeIds: [],
         }
         const after = executeOperation(graph, op)
-        expect(after.cognitiveState?.foldedDependencies ?? []).toEqual([])
+        expect(after.cognitiveState.foldedDependencies).toEqual([])
     })
 })
 

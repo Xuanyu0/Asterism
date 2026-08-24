@@ -172,6 +172,7 @@ describe('validateRealDirectedCycle', () => {
                 createNode({ id: 'n1' as NodeId, graphId: G }),
                 createNode({ id: 'n2' as NodeId, graphId: G }),
             ],
+            cognitiveState: { foldedDependencies: [] },
             edges: [
                 createEdge({
                     id: 'e0' as NodeId,
@@ -236,6 +237,7 @@ describe('validateNodeCountLimits', () => {
             title: G,
             nodes,
             edges: [],
+            cognitiveState: { foldedDependencies: [] },
         }
     }
 

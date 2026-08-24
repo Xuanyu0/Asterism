@@ -354,6 +354,7 @@ export function induce(params: InduceParams): {
         ownerNodeId: abstractId,
         nodes: [],
         edges: [],
+        cognitiveState: { foldedDependencies: [] },
         createdAt: now,
         updatedAt: now,
     }

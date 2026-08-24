@@ -98,11 +98,11 @@ export interface ComposeResult<Draft extends DraftPosition = DraftPosition> {
  */
 export type OperationBatch =
     | {
-          kind: 'inGraph'
-          graph: GraphData
-          operations: AtomicOperationInGraph[]
+        kind: 'inGraph'
+        graph: GraphData
+        operations: AtomicOperationInGraph[]
       }
     | {
-          kind: 'graphLevel'
-          operations: AtomicGraphOperation[]
+        kind: 'graphLevel'
+        operations: AtomicGraphOperation[]
       }

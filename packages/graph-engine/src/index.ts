@@ -316,21 +316,6 @@ export { hasCollisionAt } from './infrastructure'
 /**
  * 功能：
  *
- *     补全 GraphData 认知状态默认值。
- *
- * 消费者：
- *
- *     graph_store.setCurrentGraph
- *
- * 使用：
- *
- *     const normalized = ensureDefaultCognitiveState(loadedGraph)
- */
-export { ensureDefaultCognitiveState } from './core/utils/normalize'
-
-/**
- * 功能：
- *
  *     全图 schema 校验。加载图时检查完整性。
  *
  * 消费者：

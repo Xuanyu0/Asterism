@@ -265,12 +265,7 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
                     operations: [
                         {
                             type: 'add_node',
-                            node: knowledgeNode(
-                                'node-b',
-                                '节点B',
-                                5000,
-                                5000,
-                            ),
+                            node: knowledgeNode('node-b', '节点B', 5000, 5000),
                         },
                     ],
                 },
@@ -478,20 +473,19 @@ describe('undo 链', () => {
 
         // 展开后折叠状态为空
         expect(
-            store.graphRegistry.get(ROOT)!.cognitiveState?.foldedDependencies,
+            store.graphRegistry.get(ROOT)!.cognitiveState.foldedDependencies,
         ).toEqual([])
 
         // undo expand → 折叠条目恢复（expand 的逆元 collapse 携带原折叠成员名单）
         expect(store.undo()).toBe(true)
         expect(
-            store.graphRegistry.get(ROOT)!.cognitiveState?.foldedDependencies,
+            store.graphRegistry.get(ROOT)!.cognitiveState.foldedDependencies,
         ).toEqual([{ targetNodeId: 'node-t', foldedNodeIds: ['node-d'] }])
 
         // 继续 undo collapse → 完全展开
         expect(store.undo()).toBe(true)
         expect(
-            store.graphRegistry.get(ROOT)!.cognitiveState?.foldedDependencies ??
-                [],
+            store.graphRegistry.get(ROOT)!.cognitiveState.foldedDependencies,
         ).toEqual([])
     })
 
@@ -884,8 +878,8 @@ describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
             },
         ])
 
-        // 无公开卸载入口，直接置空 graphView 模拟视图清空
-        store.graphView = null
+        // 无公开卸载入口，直接置空 graphViewId 模拟视图清空
+        store.graphViewId = null
 
         // undo 不崩溃且成功回溯（子图注销）；若内部抛异常则测试直接失败
         const ok = store.undo()

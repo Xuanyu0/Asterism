@@ -189,9 +189,7 @@ function executeDeleteNode(
     // 清理折叠状态中对被删节点的引用。
     // 移除以被删节点为折叠目标的项，从剩余项的 foldedNodeIds 中移除被删节点，整项清空时移除。
     for (const deletedId of allDeletedNodeIds) {
-        const cognitiveState = result.cognitiveState ?? {
-            foldedDependencies: [],
-        }
+        const cognitiveState = result.cognitiveState
 
         result = {
             ...result,
@@ -347,9 +345,7 @@ function executeCollapseDependency(
     }
 
     const now = new Date().toISOString()
-    const currentCognitiveState = graph.cognitiveState ?? {
-        foldedDependencies: [],
-    }
+    const currentCognitiveState = graph.cognitiveState
     const otherFoldedDependencies =
         currentCognitiveState.foldedDependencies.filter(
             (item) => item.targetNodeId !== operation.targetNodeId,
@@ -375,9 +371,7 @@ function executeExpandDependency(
     graph: GraphData,
     operation: { type: 'expand_dependency'; targetNodeId: NodeId },
 ): GraphData {
-    const currentCognitiveState = graph.cognitiveState ?? {
-        foldedDependencies: [],
-    }
+    const currentCognitiveState = graph.cognitiveState
     const now = new Date().toISOString()
 
     return {

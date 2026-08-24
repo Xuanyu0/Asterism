@@ -324,6 +324,7 @@ function buildGraph(nodes: NodeData[], edges: EdgeData[] = []): GraphData {
         title: '测试图',
         nodes,
         edges,
+        cognitiveState: { foldedDependencies: [] },
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
     }

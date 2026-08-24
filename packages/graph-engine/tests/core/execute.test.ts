@@ -186,9 +186,7 @@ describe('execute collapse / expand', () => {
             type: 'collapse_dependency',
             targetNodeId: 'n2' as NodeId,
         })
-        expect(next.cognitiveState?.foldedDependencies.length).toBeGreaterThan(
-            0,
-        )
+        expect(next.cognitiveState.foldedDependencies.length).toBeGreaterThan(0)
     })
 
     test('expand_dependency 清除折叠', () => {
@@ -201,6 +199,6 @@ describe('execute collapse / expand', () => {
             type: 'expand_dependency',
             targetNodeId: 'n2' as NodeId,
         })
-        expect(expanded.cognitiveState?.foldedDependencies.length).toBe(0)
+        expect(expanded.cognitiveState.foldedDependencies.length).toBe(0)
     })
 })

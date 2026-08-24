@@ -229,6 +229,7 @@ describe('validate update_node', () => {
             title: 't',
             nodes: [],
             edges: [],
+            cognitiveState: { foldedDependencies: [] },
         }
         const n0 = createNode({ id: 'n0' as NodeId, graphId: G, label: 'src' })
         const graph = { ...g, nodes: [n0] }

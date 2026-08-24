@@ -21,7 +21,6 @@ import type {
 } from '@my-project/graph-engine'
 
 import { validateGraph } from '@my-project/graph-engine'
-import { ensureDefaultCognitiveState } from '@my-project/graph-engine'
 import { loadGraph, saveGraph } from '@/graph/graph_persistence'
 
 // ═══════════ 构造节点/边 ═══════════
@@ -125,13 +124,13 @@ export function assembleGraph(params: {
         edges: params.edges,
         parentGraphId: params.parentGraphId,
         ownerNodeId: params.ownerNodeId,
+        cognitiveState: { foldedDependencies: [] },
         createdAt: now,
         updatedAt: now,
     }
 
-    const normalized = ensureDefaultCognitiveState(graph)
-    validateOrThrow(normalized)
-    return normalized
+    validateOrThrow(graph)
+    return graph
 }
 
 // ═══════════ 金牌/银牌测试图对 ═══════════

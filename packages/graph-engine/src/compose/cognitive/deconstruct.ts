@@ -174,6 +174,7 @@ export function deconstruct(params: DeconstructParams): {
         ownerNodeId: nodeId,
         nodes: [],
         edges: [],
+        cognitiveState: { foldedDependencies: [] },
         createdAt: now,
         updatedAt: now,
     }

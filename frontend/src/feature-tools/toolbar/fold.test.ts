@@ -41,7 +41,7 @@ describe('useFoldTool', () => {
 
         const store = useGraphStore()
         expect(
-            store.graphView!.cognitiveState?.foldedDependencies.length,
+            store.graphView!.cognitiveState.foldedDependencies.length,
         ).toBeGreaterThan(0)
     })
 
@@ -50,23 +50,21 @@ describe('useFoldTool', () => {
 
         const store = useGraphStore()
         const foldCount =
-            store.graphView!.cognitiveState?.foldedDependencies.length ?? 0
+            store.graphView!.cognitiveState.foldedDependencies.length
         expect(foldCount).toBeGreaterThan(0)
 
         // 再次点击同一个节点展开
         handler.onNodeClick!('node-g2')
-        expect(store.graphView!.cognitiveState?.foldedDependencies.length).toBe(
+        expect(store.graphView!.cognitiveState.foldedDependencies.length).toBe(
             0,
         )
     })
 
     test('折叠非依赖节点不改变 foldedDependencies', () => {
         const store = useGraphStore()
-        const before =
-            store.graphView!.cognitiveState?.foldedDependencies.length ?? 0
+        const before = store.graphView!.cognitiveState.foldedDependencies.length
         handler.onNodeClick!('node-g6')
-        const after =
-            store.graphView!.cognitiveState?.foldedDependencies.length ?? 0
+        const after = store.graphView!.cognitiveState.foldedDependencies.length
         expect(after).toBe(before)
     })
 

@@ -42,7 +42,14 @@ function makeReferenceNode(childGraphId?: GraphId): ReferenceNodeData {
 }
 
 function makeGraph(id: GraphId, nodes: NodeData[]): GraphData {
-    return { id, kind: 'subgraph', title: id, nodes, edges: [] }
+    return {
+        id,
+        kind: 'subgraph',
+        title: id,
+        nodes,
+        edges: [],
+        cognitiveState: { foldedDependencies: [] },
+    }
 }
 
 function makeLookup(

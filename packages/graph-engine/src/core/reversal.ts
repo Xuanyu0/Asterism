@@ -254,9 +254,7 @@ function createReversalForExpandDependency(
     operation: ExpandDependencyOperation,
 ): AtomicOperationInGraph[] {
     // 捕获展开前的折叠条目，逆元照名单恢复（而非重算——undo 链中间时刻重算会数错）
-    const currentCognitiveState = graph.cognitiveState ?? {
-        foldedDependencies: [],
-    }
+    const currentCognitiveState = graph.cognitiveState
     const existingEntry = currentCognitiveState.foldedDependencies.find(
         (item) => item.targetNodeId === operation.targetNodeId,
     )

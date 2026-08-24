@@ -55,7 +55,7 @@ export function useFoldTool(): ToolHandler {
         }
 
         const foldedDeps =
-            graphStore.graphView.cognitiveState?.foldedDependencies ?? []
+            graphStore.graphView.cognitiveState.foldedDependencies
         const isFolded = foldedDeps.some((f) => f.targetNodeId === nodeId)
 
         const operationType = isFolded

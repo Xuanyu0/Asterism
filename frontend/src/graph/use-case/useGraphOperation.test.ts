@@ -118,8 +118,8 @@ describe('useGraphOperation', () => {
     })
 
     test('无当前图时 commitToCurrentGraph 抛错（编程错误通道）', () => {
-        // store 无公开卸载入口，直接置空 graphView 模拟无图状态
-        store.graphView = null
+        // store 无公开卸载入口，直接置空 graphViewId 模拟无图状态
+        store.graphViewId = null
 
         expect(() => operations.commitToCurrentGraph([])).toThrow()
     })

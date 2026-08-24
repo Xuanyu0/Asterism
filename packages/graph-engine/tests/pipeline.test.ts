@@ -15,6 +15,7 @@ function emptyGraph(): GraphData {
         title: 'Test',
         nodes: [],
         edges: [],
+        cognitiveState: { foldedDependencies: [] },
     }
 }
 

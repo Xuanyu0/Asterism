@@ -45,8 +45,8 @@ export interface GraphData {
     ownerNodeId?: NodeId
     nodes: NodeData[]
     edges: EdgeData[]
-    /** 与交互层的认知模式无关 */
-    cognitiveState?: GraphCognitiveState
+    /** 认知状态（数据层折叠信息），与交互层的认知模式无关 */
+    cognitiveState: GraphCognitiveState
     readonly createdAt?: string
     updatedAt?: string
 }

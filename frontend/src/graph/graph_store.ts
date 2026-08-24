@@ -7,9 +7,10 @@
  * 唯一切换（loadGraphToView）∨ 唯一图操作（commitBatchToGraphs）∨ 唯一回溯（undo / redo）。
  * 生命周期管理（恢复 / 创建根图）与校验清理已下沉至用例层（useLifecycle / 操作用例层）。
  *
- * 响应式策略：graphView / graphPath / lastValidationResult / graphRegistry 为 shallowReactive
- * 顶层属性（引用替换触发更新）；operationLog / redoStack 为普通字段（raw 无代理），
- * 引擎 structuredClone 可直接克隆，无需 toRaw / markRaw 解包。
+ * 响应式策略：graphViewId / graphPath / lastValidationResult / graphRegistry 为 shallowReactive
+ * 顶层属性（引用替换触发更新）；graphView 为派生 accessor（按 graphViewId 从 graphRegistry 查询）；
+ * operationLog / redoStack 为普通字段（raw 无代理），引擎 structuredClone 可直接克隆，
+ * 无需 toRaw / markRaw 解包。
  */
 
 import { shallowReactive } from 'vue'
@@ -22,10 +23,7 @@ import type {
     OperationLogEntry,
 } from '@my-project/graph-engine'
 
-import {
-    applyBatches,
-    ensureDefaultCognitiveState,
-} from '@my-project/graph-engine'
+import { applyBatches } from '@my-project/graph-engine'
 
 import type { GraphRegistry } from '@/graph/graph_registry'
 import {
@@ -45,6 +43,7 @@ import { revertAddGraph, revertDeleteGraph } from '@/graph/graph_signals'
 import {
     DATA_INTEGRITY_PREFIX,
     reportCorruptedGraph,
+    reportMissingGraph,
 } from '@/graph/utils/data_integrity_reporter'
 
 import {
@@ -57,13 +56,16 @@ import {
  *
  * @remarks
  * 状态按职责分组：
- * - 视图态（响应式）：graphView / graphPath / lastValidationResult
+ * - 视图态（响应式）：graphViewId / graphPath / lastValidationResult（graphView 为派生 accessor）
  * - 多图注册表（响应式，引用替换）：graphRegistry
  * - 撤销日志（普通字段）：operationLog / redoStack
  */
 export interface GraphStoreAPI {
     // 视图态（响应式，引用替换触发更新）
-    graphView: GraphData | null
+    graphViewId: GraphId | null
+
+    // 只读，不可赋值
+    readonly graphView: GraphData | null
     graphPath: GraphId[]
     lastValidationResult: ValidationResult | null
 
@@ -116,9 +118,18 @@ function createGraphStore(): GraphStoreAPI {
     // 嵌套对象（GraphData / 数组 / Map）保持 raw——引擎 structuredClone 可安全克隆
     let store: GraphStoreAPI = shallowReactive({
         // ── 响应式状态：顶层属性替换触发更新（Graph.vue watch / 导航 computed 消费）──
-        graphView: null as GraphData | null,
+        graphViewId: null as GraphId | null,
         graphPath: [] as GraphId[],
         lastValidationResult: null as ValidationResult | null,
+
+        // 派生 accessor：graphView 不单独持有，按 graphViewId 从 graphRegistry 查询。
+        // getter 读取两个顶层属性，watch 依赖自动建立——任一变化触发重新求值。
+        // graphRegistry 依赖仅在顶层引用替换时建立（Map 原地 set 不触发）
+        get graphView(): GraphData | null {
+            return this.graphViewId
+                ? (this.graphRegistry.get(this.graphViewId) ?? null)
+                : null
+        },
 
         // 多图注册表：承接 applyBatches 返回的新注册表做引用替换
         // （shallowReactive 不深代理，Map 与 GraphData 保持 raw，引擎克隆路径不受影响）
@@ -151,32 +162,25 @@ function createGraphStore(): GraphStoreAPI {
      * @returns 加载成功 true；图不存在或损坏 false。
      */
     function loadGraphToView(graphId: GraphId): boolean {
-        const result = loadGraph(graphId)
-
-        if (!result.ok) {
+        const loadedResult = loadGraph(graphId)
+        if (!loadedResult.ok) {
             // missing（图不存在）为正常状态，静默；corrupted（图损坏）为系统异常，入开发者通道
-            if (result.reason === 'corrupted') {
+            if (loadedResult.reason === 'corrupted') {
                 reportCorruptedGraph(graphId, '已跳过加载')
             }
             return false
         }
-        const graph = result.graph
 
-        // 切换图谱：旧图的校验结果（错误提示）不再适用于新视图，一并清空
-        store.graphView = ensureDefaultCognitiveState(graph)
-        store.lastValidationResult = null
+        // 先注册后设 id：派生图数据 getter 在任意时刻（含同步读）都能查到图
+        registerGraph(store.graphRegistry, loadedResult.graph)
+        store.graphViewId = loadedResult.graph.id
 
-        registerGraph(store.graphRegistry, graph)
-
-        // 生命周期：根图谱 = 日志——仅当切换到不同根图树时重置操作日志与 redo 栈。
+        // 操作日志的生命周期：根图谱 = 日志——仅当切换到不同根图树时重置操作日志与 redo 栈。
         // 同根图树内导航（子图↔根图）不清空。
-        // previousRootId 必须在覆盖 graphPath 之前读取，才能与 path[0]（新根图 id）比较
+        // previousRootId 必须在覆盖 graphPath 之前读取
         const previousRootId = store.graphPath[0]
-
-        // 构建当前图在根图树中的路径（根→叶），供导航卡片渲染面包屑与"是否在根"判断
-        const { path, terminal } = buildGraphPath(graph)
+        const { path, terminal } = buildGraphPath(loadedResult.graph)
         store.graphPath = path
-
         if (
             path.length > 0 &&
             previousRootId !== undefined &&
@@ -193,6 +197,9 @@ function createGraphStore(): GraphStoreAPI {
             saveLastActiveRootId(terminal.id)
         }
 
+        // 切换图谱：旧图的校验结果（错误提示）不再适用于新视图，一并清空
+        store.lastValidationResult = null
+
         return true
     }
 
@@ -205,9 +212,10 @@ function createGraphStore(): GraphStoreAPI {
      *
      * 成功后处理链：
      * 1. 引用替换注册表（store.graphRegistry = result.registry，触发响应式）
-     * 2. 更新 graphView（当前视图图在批内且未被删除时，指向新注册表中对应图）
-     * 3. 持久化批内涉及的图（inGraph 批目标图 + graphLevel 批 add_graph 的图，取新注册表最新数据）
-     * 4. 日志组装（operation + 图内逆元 + graphSignals，recordLog !== false 时）
+     * 2. 持久化批内涉及的图（inGraph 批目标图 + graphLevel 批 add_graph 的图，取新注册表最新数据）
+     * 3. 日志组装（operation + 图内逆元 + graphSignals，recordLog !== false 时）
+     *
+     * graphView 为派生 accessor：注册表引用替换后自动指向新图，无需手动同步。
      *
      * 调用契约：
      * 1. 任一操作校验失败整批丢弃，注册表不变（applyBatches 事务性）
@@ -244,7 +252,7 @@ function createGraphStore(): GraphStoreAPI {
         // 引用替换注册表（applyBatches 返回新 Map，复用未变化图引用，不深拷贝）
         store.graphRegistry = result.registry
 
-        // 批内涉及的图 id：graphView 更新与持久化范围推导共用。
+        // 批内涉及的图 id：持久化范围推导。
         const affectedGraphIds = new Set<GraphId>()
         for (const batch of operationBatch) {
             if (batch.kind === 'inGraph') {
@@ -256,12 +264,6 @@ function createGraphStore(): GraphStoreAPI {
                     affectedGraphIds.add(op.graph.id)
                 }
             }
-        }
-
-        // 更新 graphView：当前视图图在批内且未被删除时，指向新注册表中对应图
-        if (store.graphView && affectedGraphIds.has(store.graphView.id)) {
-            const updated = result.registry.get(store.graphView.id)
-            if (updated) store.graphView = updated
         }
 
         // 持久化批内涉及的图（从新注册表取最新数据；被注销的 delete_graph 目标图自然跳过）
@@ -538,28 +540,41 @@ function createGraphStore(): GraphStoreAPI {
 
     /**
      * undo / redo 后的视图一致性检查。
+     * 视图图被注销（撤销含 add_graph 的批且正在查看该子图）时，将视图切到最近可达图。
      *
      * @remarks
-     * graphView 指向的图被注销（撤销含 add_graph 的批且正在查看该子图）时，
-     * 将视图切到最近可达图。规则：
-     * - graphView 为空或仍在 registry → 直接返回（视图有效，无需处理）
+     * 规则：
+     * - graphViewId 为空或视图图仍在 registry → 直接返回（视图有效，无需处理）
      * - 否则按优先级寻找 fallback：
      *   1. 沿 parentGraphId 上溯找最近可达祖先（registry 优先，缺失则从持久化惰性加载注册；
      *      环 / 链断裂 → 停止上溯）
      *   2. 任一 root 图（registry 中 kind === 'root'）
-     *   3. 均无 → 清空视图（graphView = null，graphPath = []）
+     *   3. 均无 → 清空视图（graphViewId = null，graphPath = []）
      * - 切换后：buildGraphPath 重算 graphPath；末端为 root 时更新 lastActiveRootId
      */
     function ensureViewConsistency(): void {
-        const currentView = store.graphView
-        if (!currentView) return
-        if (lookupGraph(store.graphRegistry, currentView.id)) return
+        const currentViewId = store.graphViewId
+        if (!currentViewId) return
+        if (store.graphView) return
+
+        // 视图图已被注销（撤销含 add_graph 的批）：派生 graphView 立即为 null，
+        // 父链回溯需从持久化取图数据（软删保留数据，正常流程可达）
+        const result = loadGraph(currentViewId)
+        if (!result.ok) {
+            // 数据损坏 / 丢失（正常流程不可达）：入开发者通道，随后走 root 兜底
+            if (result.reason === 'corrupted') {
+                reportCorruptedGraph(currentViewId, '视图一致性检查')
+            } else {
+                reportMissingGraph(currentViewId, '视图一致性检查')
+            }
+        }
+        const staleGraph = result.ok ? result.graph : null
 
         let fallback: GraphData | null = null
-        let cursorGraph = currentView
-        const visited = new Set<GraphId>([cursorGraph.id])
+        let cursorGraph = staleGraph
+        const visited = new Set<GraphId>(staleGraph ? [staleGraph.id] : [])
 
-        while (cursorGraph.parentGraphId) {
+        while (cursorGraph && cursorGraph.parentGraphId) {
             const parentId = cursorGraph.parentGraphId
 
             if (visited.has(parentId)) break // 环防御
@@ -570,7 +585,7 @@ function createGraphStore(): GraphStoreAPI {
                 // 数据损坏：被注销图的父图在 registry 与持久化均不可达（正常流程软删保留数据），
                 // 开发者通道报告后走 root 兜底
                 reportBrokenAncestorChain(
-                    currentView.id,
+                    currentViewId,
                     cursorGraph.id,
                     parentId,
                 )
@@ -591,13 +606,13 @@ function createGraphStore(): GraphStoreAPI {
         }
 
         if (!fallback) {
-            // 注册表全空：视图清空（graphView 为 null，graphPath 为空）
-            store.graphView = null
+            // 注册表全空：视图清空（graphViewId 为 null，graphPath 为空）
+            store.graphViewId = null
             store.graphPath = []
             return
         }
 
-        store.graphView = fallback
+        store.graphViewId = fallback.id
         const { path, terminal } = buildGraphPath(fallback)
         store.graphPath = path
 

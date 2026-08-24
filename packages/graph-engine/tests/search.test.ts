@@ -23,6 +23,7 @@ function graph(
         nodes,
         edges: [],
         parentGraphId,
+        cognitiveState: { foldedDependencies: [] },
     }
 }
 
