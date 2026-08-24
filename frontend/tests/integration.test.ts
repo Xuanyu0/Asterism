@@ -14,6 +14,7 @@
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
 import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
+import { useLifecycle } from '@/graph/use-case/useLifecycle'
 import {
     saveGraph,
     loadGraph,
@@ -63,6 +64,8 @@ describe('Store 加载', () => {
     test('保存并加载金牌图后 graphView 不为 null', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
+        // loadGraphToView 不再负责注册——先全量注册所有持久化图
+        useLifecycle().registerAllGraphs()
         const store = useGraphStore()
         const loaded = store.loadGraphToView(golden.id)
         expect(loaded).toBe(true)
@@ -72,6 +75,8 @@ describe('Store 加载', () => {
     test('金牌图节点数 === 6', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
+        // loadGraphToView 不再负责注册——先全量注册所有持久化图
+        useLifecycle().registerAllGraphs()
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
         expect(store.graphView!.nodes.length).toBe(6)
@@ -80,6 +85,8 @@ describe('Store 加载', () => {
     test('金牌图边数 === 4', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
+        // loadGraphToView 不再负责注册——先全量注册所有持久化图
+        useLifecycle().registerAllGraphs()
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
         expect(store.graphView!.edges.length).toBe(4)
@@ -88,6 +95,8 @@ describe('Store 加载', () => {
     test('graphPath 长度 === 1', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
+        // loadGraphToView 不再负责注册——先全量注册所有持久化图
+        useLifecycle().registerAllGraphs()
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
         expect(store.graphPath.length).toBe(1)
@@ -107,6 +116,8 @@ describe('原子操作链路', () => {
     test('add_node：节点数从 6 变为 7', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
+        // loadGraphToView 不再负责注册——先全量注册所有持久化图
+        useLifecycle().registerAllGraphs()
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
@@ -144,6 +155,8 @@ describe('fold/expand + undo', () => {
     test('fold：折叠 node-g2 后 foldedDependencies 非空', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
+        // loadGraphToView 不再负责注册——先全量注册所有持久化图
+        useLifecycle().registerAllGraphs()
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
@@ -162,6 +175,8 @@ describe('fold/expand + undo', () => {
     test('undo：撤销折叠后 foldedDependencies 为空', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
+        // loadGraphToView 不再负责注册——先全量注册所有持久化图
+        useLifecycle().registerAllGraphs()
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 
@@ -186,6 +201,8 @@ describe('fold/expand + undo', () => {
     test('非法操作拒绝：delete 不存在的节点', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
+        // loadGraphToView 不再负责注册——先全量注册所有持久化图
+        useLifecycle().registerAllGraphs()
         const store = useGraphStore()
         store.loadGraphToView(golden.id)
 

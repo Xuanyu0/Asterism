@@ -13,6 +13,7 @@
  */
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
+import { useLifecycle } from '@/graph/use-case/useLifecycle'
 import { saveGraph } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 import { useGraphOperation } from './useGraphOperation'
@@ -29,6 +30,8 @@ describe('useGraphOperation', () => {
         localStorage.clear()
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
+        // loadGraphToView 不再负责注册——先全量注册所有持久化图
+        useLifecycle().registerAllGraphs()
         store = useGraphStore()
         store.loadGraphToView(golden.id)
         operations = useGraphOperation()

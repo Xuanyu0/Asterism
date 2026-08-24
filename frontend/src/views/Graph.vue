@@ -134,7 +134,8 @@ onMounted(() => {
     // 错误通知外部交互关闭：点击面板外任意处清错，随组件卸载移除
     window.addEventListener('pointerdown', handleErrorPanelPointerdown)
 
-    // 恢复上次工作根图树；无健康根图时创建兜底根图（'My Graph'）
+    // 时序编排：全量注册 → 恢复上次视图根图（无则兜底创建）→ 切换视图
+    useLifecycle().registerAllGraphs()
     const rootId = useLifecycle().ensureWorkspaceRoot()
     graphStore.loadGraphToView(rootId)
 

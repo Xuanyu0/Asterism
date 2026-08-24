@@ -3,13 +3,15 @@
  *
  * 功能：
  *     生命周期用例层（useLifecycle）的单元测试。
- *     覆盖 restoreLastRootTree 的恢复与异常路径（kind 非 root / corrupted / missing / 无历史）、
- *     ensureWorkspaceRoot 的恢复复用与兜底创建。
+ *     覆盖 registerAllGraphs 的全量注册（只注册）、restoreLastActiveRootId 的恢复与异常路径
+ *     （kind 非 root / corrupted / missing / 无历史）、ensureWorkspaceRoot 的恢复复用与兜底创建。
  *
  * 规则：
  *     1. 使用金牌图（graph-golden 根图 + sub-golden 子图）作为恢复测试数据。
  *     2. 用例层为模块级单例，方法内部每次解析当前 store 单例——每用例经
  *        resetGraphStoreForTests 重置 store 实现隔离。
+ *     3. restoreLastActiveRootId 依赖注册表（调用前提：registerAllGraphs 已执行），
+ *        相关用例先调 registerAllGraphs 预注册（与 Graph.vue 启动时序一致）。
  */
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
@@ -36,23 +38,52 @@ describe('useLifecycle', () => {
         vi.restoreAllMocks()
     })
 
-    test('restoreLastRootTree 恢复根图树并返回根图 ID', () => {
+    test('registerAllGraphs 全量注册所有持久化图（只注册，无返回值）', () => {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
-        saveLastActiveRootId('graph-golden' as GraphId)
         const store = useGraphStore()
         const lifecycle = useLifecycle()
 
-        const rootId = lifecycle.restoreLastRootTree()
+        const result = lifecycle.registerAllGraphs()
 
-        expect(rootId).toBe('graph-golden')
-        // 根图已注册
+        expect(result).toBeUndefined()
+        // 全量注册：根图、子图、其他根图树（银牌）均被注册，不再按根图树过滤
         expect(store.graphRegistry.has('graph-golden' as GraphId)).toBe(true)
-        // 子图已注册（sub-golden 属于金牌根图树）
         expect(store.graphRegistry.has('sub-golden' as GraphId)).toBe(true)
+        expect(store.graphRegistry.has('graph-silver' as GraphId)).toBe(true)
+        expect(store.graphRegistry.has('sub-silver' as GraphId)).toBe(true)
     })
 
-    test('restoreLastRootTree：lastActiveRootId 指向非根图 → 报告 + 清理 + 返回 null', () => {
+    test('registerAllGraphs：损坏图入开发者通道报告，健康图仍正常注册', () => {
+        const golden = createGoldenTestGraphV2()
+        saveGraph(golden)
+        localStorage.setItem('graph:graph-corrupt', 'not-valid-json{{{')
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+        const store = useGraphStore()
+        const lifecycle = useLifecycle()
+
+        lifecycle.registerAllGraphs()
+
+        expect(warnSpy).toHaveBeenCalledWith(
+            expect.stringContaining('CORRUPTED_GRAPH'),
+        )
+        expect(store.graphRegistry.has('graph-golden' as GraphId)).toBe(true)
+    })
+
+    test('restoreLastActiveRootId：健康根图 → 返回根图 ID 且不清理', () => {
+        const golden = createGoldenTestGraphV2()
+        saveGraph(golden)
+        saveLastActiveRootId('graph-golden' as GraphId)
+        const lifecycle = useLifecycle()
+
+        lifecycle.registerAllGraphs()
+        const rootId = lifecycle.restoreLastActiveRootId()
+
+        expect(rootId).toBe('graph-golden')
+        expect(loadLastActiveRootId()).toBe('graph-golden')
+    })
+
+    test('restoreLastActiveRootId：lastActiveRootId 指向非根图 → 报告 + 清理 + 返回 null', () => {
         saveGraph({
             id: 'graph-sub' as GraphId,
             kind: 'subgraph',
@@ -67,7 +98,8 @@ describe('useLifecycle', () => {
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
         const lifecycle = useLifecycle()
 
-        const rootId = lifecycle.restoreLastRootTree()
+        lifecycle.registerAllGraphs()
+        const rootId = lifecycle.restoreLastActiveRootId()
 
         expect(rootId).toBeNull()
         expect(loadLastActiveRootId()).toBeNull()
@@ -79,13 +111,14 @@ describe('useLifecycle', () => {
         )
     })
 
-    test('restoreLastRootTree：lastActiveRootId 指向损坏图 → 报告 + 清理 + 返回 null', () => {
+    test('restoreLastActiveRootId：lastActiveRootId 指向损坏图 → 报告 + 清理 + 返回 null', () => {
         localStorage.setItem('graph:graph-corrupt', 'not-valid-json{{{')
         saveLastActiveRootId('graph-corrupt' as GraphId)
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
         const lifecycle = useLifecycle()
 
-        const rootId = lifecycle.restoreLastRootTree()
+        lifecycle.registerAllGraphs()
+        const rootId = lifecycle.restoreLastActiveRootId()
 
         expect(rootId).toBeNull()
         expect(loadLastActiveRootId()).toBeNull()
@@ -94,22 +127,23 @@ describe('useLifecycle', () => {
         )
     })
 
-    test('restoreLastRootTree：lastActiveRootId 指向已删图 → 静默清理 + 返回 null', () => {
+    test('restoreLastActiveRootId：lastActiveRootId 指向已删图 → 静默清理 + 返回 null', () => {
         saveLastActiveRootId('graph-deleted' as GraphId)
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
         const lifecycle = useLifecycle()
 
-        const rootId = lifecycle.restoreLastRootTree()
+        lifecycle.registerAllGraphs()
+        const rootId = lifecycle.restoreLastActiveRootId()
 
         expect(rootId).toBeNull()
         expect(loadLastActiveRootId()).toBeNull()
         expect(warnSpy).not.toHaveBeenCalled()
     })
 
-    test('restoreLastRootTree：无历史 → 返回 null 且不清理', () => {
+    test('restoreLastActiveRootId：无历史 → 返回 null 且不清理', () => {
         const lifecycle = useLifecycle()
 
-        const rootId = lifecycle.restoreLastRootTree()
+        const rootId = lifecycle.restoreLastActiveRootId()
 
         expect(rootId).toBeNull()
         expect(loadLastActiveRootId()).toBeNull()
@@ -143,6 +177,8 @@ describe('useLifecycle', () => {
         const commitSpy = vi.spyOn(store, 'commitBatchToGraphs')
         const lifecycle = useLifecycle()
 
+        // 与 Graph.vue 启动时序一致：先全量注册，ensureWorkspaceRoot 只恢复不注册
+        lifecycle.registerAllGraphs()
         const rootId = lifecycle.ensureWorkspaceRoot()
 
         expect(rootId).toBe('graph-golden')
