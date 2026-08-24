@@ -58,6 +58,10 @@
 pnpm --filter frontend test
 # 跑所有 GE 测试
 pnpm --filter @my-project/graph-engine test
+# 前端类型校验
+pnpm --filter frontend type-check
+# GE 类型校验
+pnpm --filter @my-project/graph-engine type-check
 # 格式化全项目代码（frontend + graph-engine + docs + md）
 pnpm format
 # 格式化单个文件（自动读取根 .prettierrc.json 配置）
