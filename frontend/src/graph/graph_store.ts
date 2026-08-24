@@ -171,8 +171,7 @@ function createGraphStore(): GraphStoreAPI {
             return false
         }
 
-        // 先注册后设 id：派生图数据 getter 在任意时刻（含同步读）都能查到图
-        registerGraph(store.graphRegistry, loadedResult.graph)
+        // 图已在注册表全量注册，仅切换视图
         store.graphViewId = loadedResult.graph.id
 
         // 操作日志的生命周期：根图谱 = 日志——仅当切换到不同根图树时重置操作日志与 redo 栈。
@@ -192,7 +191,7 @@ function createGraphStore(): GraphStoreAPI {
 
         // 祖先链断裂 / 环的检测与开发者通道记录在 buildGraphPath 回溯过程中完成，
         // 此处不再重复报告（否则同一异常会产出两条相同 console.warn）
-        // 记录最后活跃的根图 ID：下次启动时 useLifecycle.restoreLastRootTree 据此恢复工作根图树
+        // 记录最后活跃的根图 ID：下次启动时 useLifecycle.restoreLastActiveRootId 据此恢复上次视图
         if (terminal.kind === 'root') {
             saveLastActiveRootId(terminal.id)
         }

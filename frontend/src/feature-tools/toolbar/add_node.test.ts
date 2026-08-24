@@ -16,6 +16,7 @@
  */
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
+import { useLifecycle } from '@/graph/use-case/useLifecycle'
 import { saveGraph } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 import { useAddNodeTool } from './add_node'
@@ -75,6 +76,8 @@ beforeEach(() => {
     localStorage.clear()
     const golden = createGoldenTestGraphV2()
     saveGraph(golden)
+    // loadGraphToView 不再负责注册——先全量注册所有持久化图
+    useLifecycle().registerAllGraphs()
     const store = useGraphStore()
     store.loadGraphToView(golden.id)
 

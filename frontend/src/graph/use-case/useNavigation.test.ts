@@ -24,6 +24,7 @@ import type { NavigationAPI } from './useNavigation'
 describe('useNavigation', () => {
     let navigation: NavigationAPI
     let storeModule: typeof import('@/graph/graph_store')
+    let lifecycleModule: typeof import('./useLifecycle')
 
     beforeEach(async () => {
         // 模块级单例的 computed 缓存首次求值时的 store 依赖；重置模块使每个用例
@@ -35,14 +36,17 @@ describe('useNavigation', () => {
         localStorage.clear()
         storeModule = await import('@/graph/graph_store')
         storeModule.resetGraphStoreForTests()
+        lifecycleModule = await import('./useLifecycle')
         const mod = await import('./useNavigation')
         navigation = mod.useNavigation()
     })
 
-    /** 写入金牌图并加载为当前视图，返回对应 store（无图态用例不调用）。 */
+    /** 写入金牌图、全量注册并加载为当前视图，返回对应 store（无图态用例不调用）。 */
     function loadGoldenGraph() {
         const golden = createGoldenTestGraphV2()
         saveGraph(golden)
+        // loadGraphToView 不再负责注册——先经 registerAllGraphs 全量注册所有持久化图
+        lifecycleModule.useLifecycle().registerAllGraphs()
         const store = storeModule.useGraphStore()
         store.loadGraphToView(golden.id)
         return store

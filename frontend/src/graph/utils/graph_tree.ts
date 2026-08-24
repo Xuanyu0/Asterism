@@ -7,8 +7,7 @@
  * 调用契约：
  *
  *     1. 只读持久化与传入参数，不持有任何状态。
- *     2. 供 useLifecycle.restoreLastRootTree（预加载子图）与导航用例层
- *        deleteRootGraphTree（级联删除树成员收集）共用。
+ *     2. 供导航用例层 deleteRootGraphTree（级联删除树成员收集）使用。
  */
 
 import type { GraphData, GraphId } from '@my-project/graph-engine'

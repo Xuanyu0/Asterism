@@ -12,6 +12,7 @@
  */
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
+import { useLifecycle } from '@/graph/use-case/useLifecycle'
 import { saveGraph } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 import { useToolMediator } from './mediator'
@@ -40,6 +41,8 @@ beforeEach(() => {
     localStorage.clear()
     const golden = createGoldenTestGraphV2()
     saveGraph(golden)
+    // loadGraphToView 不再负责注册——先全量注册所有持久化图
+    useLifecycle().registerAllGraphs()
     const store = useGraphStore()
     store.loadGraphToView(golden.id)
     // 用 mock 替换自动注册的 default 工具（测试需要可控的 isActive 状态）

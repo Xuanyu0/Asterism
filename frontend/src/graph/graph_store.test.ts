@@ -18,6 +18,7 @@
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
 import { saveGraph } from '@/graph/graph_persistence'
+import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 
 import type { GraphId, NodeId } from '@my-project/graph-engine'
 
@@ -31,6 +32,19 @@ describe('graph_store loadGraphToView 错误出口（08.2）', () => {
     afterAll(() => {
         localStorage.clear()
         vi.restoreAllMocks()
+    })
+
+    test('loadGraphToView 不再注册图：图未预注册时 graphView 为 null', () => {
+        const golden = createGoldenTestGraphV2()
+        saveGraph(golden)
+        const store = useGraphStore()
+
+        const loaded = store.loadGraphToView(golden.id)
+
+        expect(loaded).toBe(true)
+        // 注册由 registerAllGraphs 负责，loadGraphToView 仅切换视图
+        expect(store.graphRegistry.has(golden.id)).toBe(false)
+        expect(store.graphView).toBeNull()
     })
 
     test('missing：静默返回 false，无任何状态写入', () => {

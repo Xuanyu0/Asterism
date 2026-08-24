@@ -14,9 +14,9 @@
 
 #### 时间戳
 
-**设计术语表**：`Last updated: 2026-08-12`
-**开发术语表**：`Last updated: 2026-08-24`
-**项目术语表**：`Last updated: 2026-08-12`
+**设计术语表**：`Last updated: 2026-08-24`
+**开发术语表**：`Last updated: 2026-08-25`
+**项目术语表**：`Last updated: 2026-08-24`
 
 #### 领域语言检索
 
@@ -153,7 +153,7 @@ Runtime / UI 状态层 (graph/ + ui/)
     ├── use-case/          — 业务用例层（graph 域业务逻辑，经 store 公开状态访问共享运行时数据）
     │    ├── useNavigation.ts     — 导航用例：breadcrumb 派生 / goToGraph / createRootGraph / listRootGraphInfos / deleteRootGraphTree / getGraphById
     │    ├── useGraphOperation.ts — 图操作用例：commitToCurrentGraph（提交+校验同步）/ reportComposeValidation / makeLookup（跨图查询）/ clearValidationResult
-    │    └── useLifecycle.ts      — 生命周期用例：restoreLastRootTree（会话恢复）/ ensureWorkspaceRoot（引导兜底创建）
+    │    └── useLifecycle.ts      — 生命周期用例：registerAllGraphs（全量注册）/ restoreLastActiveRootId（恢复上次视图）/ ensureWorkspaceRoot（引导兜底创建）
     ├── utils/             — 公共工具函数（无状态纯函数）
     ├── graph_registry.ts  — 多图注册表（Map：GraphId → GraphData）
     ├── graph_persistence.ts — localStorage 持久化实现
