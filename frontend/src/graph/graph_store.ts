@@ -122,7 +122,7 @@ function createGraphStore(): GraphStoreAPI {
         graphPath: [] as GraphId[],
         lastValidationResult: null as ValidationResult | null,
 
-        // 派生 accessor：graphView 不单独持有，按 graphViewId 从 graphRegistry 查询。
+        // 派生 accessor：graphView 按 graphViewId 从 graphRegistry 查询。
         // getter 读取两个顶层属性，watch 依赖自动建立——任一变化触发重新求值。
         // graphRegistry 依赖仅在顶层引用替换时建立（Map 原地 set 不触发）
         get graphView(): GraphData | null {
@@ -150,8 +150,7 @@ function createGraphStore(): GraphStoreAPI {
      * 用户切换图谱的唯一入口：从持久化加载图谱并设为当前视图。
      *
      * @remarks
-     * 本函数不负责完整图校验。操作日志生命周期跟随工作根图谱：仅当切换到不同根图树时
-     * 重置 operationLog 与 redoStack；同根图树内导航（子图↔根图）不清空。
+     * 本函数不负责完整图校验。
      *
      * 错误出口：
      * 1. missing（图不存在）→ 静默返回 false，不写任何状态（正常状态，UI 兜底逻辑不变）
@@ -164,7 +163,7 @@ function createGraphStore(): GraphStoreAPI {
     function loadGraphToView(graphId: GraphId): boolean {
         const loadedResult = loadGraph(graphId)
         if (!loadedResult.ok) {
-            // missing（图不存在）为正常状态，静默；corrupted（图损坏）为系统异常，入开发者通道
+            // missing（图不存在）为正常状态，静默；corrupted（图损坏）为系统异常，走开发者通道
             if (loadedResult.reason === 'corrupted') {
                 reportCorruptedGraph(graphId, '已跳过加载')
             }
