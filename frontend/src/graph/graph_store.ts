@@ -18,6 +18,7 @@ import { shallowReactive } from 'vue'
 import type { GraphData, GraphId } from '@my-project/graph-engine'
 import type { ValidationResult } from '@my-project/graph-engine'
 import type {
+    ItemOperations,
     OperationBatch,
     OperationLog,
     OperationLogEntry,
@@ -126,9 +127,8 @@ function createGraphStore(): GraphStoreAPI {
         // getter 读取两个顶层属性，watch 依赖自动建立——任一变化触发重新求值。
         // graphRegistry 依赖仅在顶层引用替换时建立（Map 原地 set 不触发）
         get graphView(): GraphData | null {
-            return this.graphViewId
-                ? (this.graphRegistry.get(this.graphViewId) ?? null)
-                : null
+            if (!this.graphViewId) return null
+            return this.graphRegistry.get(this.graphViewId) ?? null
         },
 
         // 多图注册表：承接 applyBatches 返回的新注册表做引用替换
@@ -274,27 +274,11 @@ function createGraphStore(): GraphStoreAPI {
         // 整批成功后组装 entry 追加、cursor 前进、清空 redoStack
         if (options?.recordLog !== false && operationBatch.length > 0) {
             const entry: OperationLogEntry = {
-                operation: operationBatch.map((batch) =>
-                    batch.kind === 'inGraph'
-                        ? {
-                              graphId: batch.graph.id,
-                              operations: batch.operations,
-                          }
-                        : {
-                              // graphLevel 批：graphId 取首个操作的图 id（add_graph / delete_graph 均携带图数据）
-                              graphId: batch.operations[0]?.graph.id ?? '',
-                              operations: batch.operations,
-                          },
-                ),
+                operation: operationBatch.map(toItemOperations),
                 // 图级逆元（add_graph ↔ delete_graph）由 graphSignals + 三段式 undo 兑现，
                 // 不进入 reversalOperations（保持现状日志结构；07 统一日志模型时再启用）
                 reversalOperations: result.reversalOperations.filter(
-                    (item) =>
-                        !item.operations.some(
-                            (op) =>
-                                op.type === 'add_graph' ||
-                                op.type === 'delete_graph',
-                        ),
+                    (item) => !isGraphLevelReversal(item),
                 ),
                 graphSignals: result.graphSignals,
                 parentIndex: store.operationLog.cursor,
@@ -753,5 +737,38 @@ function reportReversalApplyFailure(
 ): void {
     console.warn(
         `${DATA_INTEGRITY_PREFIX} [REVERSAL_APPLY_FAILED] ${direction} 执行 entry #${entryIndex} 时校验失败（正常流程不可达），已中断`,
+    )
+}
+
+// ── 私有辅助（日志组装） ──
+
+/**
+ * 将批次映射为日志 item（graphId + operations）。
+ *
+ * @remarks
+ * inGraph 批取批目标图 id；graphLevel 批取首个操作的图 id（add_graph / delete_graph 均携带图数据）。
+ */
+function toItemOperations(batch: OperationBatch): ItemOperations {
+    if (batch.kind === 'inGraph') {
+        return {
+            graphId: batch.graph.id,
+            operations: batch.operations,
+        }
+    }
+    return {
+        graphId: batch.operations[0]?.graph.id ?? '',
+        operations: batch.operations,
+    }
+}
+
+/**
+ * 判断日志 item 是否含图级逆元（add_graph / delete_graph）。
+ *
+ * @remarks
+ * 图级逆元由 graphSignals + 三段式 undo 兑现，不进入 reversalOperations（07 统一日志模型时再启用）。
+ */
+function isGraphLevelReversal(item: ItemOperations): boolean {
+    return item.operations.some(
+        (op) => op.type === 'add_graph' || op.type === 'delete_graph',
     )
 }
