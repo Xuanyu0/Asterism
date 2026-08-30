@@ -8,7 +8,7 @@
 
 #### U-1：useFloatingWindow 配套改造（范围外）
 
-* 状态：⏳ 待确认
+* 状态：✅ 已确认（已实施）
 * 位置：`frontend/src/composables/useFloatingWindow.ts`
 * 问题：fixer 实证发现 `floatingData` 的 ref 深代理会让 `.value` 读出 proxy，`{ ...proxy, label }` 的嵌套 position 仍是 proxy，structuredClone 抛 DataCloneError。因此将 `floatingData` 改为 `shallowRef`（范围外修改）。
 * 影响：这是安全删除 default_tool 的 toRaw 的必要条件。
@@ -17,7 +17,7 @@
 
 #### U-2：preview_engine 的 cloneGraph 被内联删除
 
-* 状态：⏳ 待确认
+* 状态：✅ 已确认（已接受）
 * 位置：`frontend/src/feature-tools/preview/preview_engine.ts`
 * 问题：用户手动将 cloneGraph 函数内联删除（克隆点直接 `structuredClone(graph)`），fixer 保留内联状态避免冲突。
 * 影响：结构不同于提示词描述（函数保留），功能等价。
@@ -26,7 +26,7 @@
 
 #### U-3：前端 type-check 残留
 
-* 状态：⏳ 待确认
+* 状态：⏳ 待确认（归属步骤 03 范围）
 * 位置：`frontend/src/cytoscape/mapper-utils/class_mapper.ts:27`
 * 问题：`node.form` 读取（GE 类型已移除 form 字段）。属子步骤 4 范围（class_mapper 改接 deriveNodeForm），本次未修改。
 * 影响：前端 type-check 仍有 2 处错误（预期内，子步骤 4 处理）。
@@ -54,7 +54,7 @@
 
 #### B-1：previousRootId 死代码 bug（预存在，非本次引入）
 
-* 状态：⏳ 待确认
+* 状态：✅ 已确认（已修复；用户决策接受无回归测试，记录为已知缺口）
 * 位置：`frontend/src/graph/graph_store.ts:176`
 * 现象：`const previousRootId = store.graphPath[0]` 在 `store.graphPath = path` **之后**读取，恒等于 `path[0]`，导致 `previousRootId !== path[0]` 恒为 false，分支永不执行——**undo/redo 历史在跨根图树导航时永不重置**。
 * 性质：`git show HEAD` 确认原 Pinia 版本同样存在此问题（本次重构忠实保留）。无测试覆盖。
