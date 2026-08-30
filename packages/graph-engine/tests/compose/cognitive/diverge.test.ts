@@ -4,9 +4,15 @@
  * 发散操作测试。Case A（同图直连）、Case A ref→ref 拒绝、Case B（跨图启发+镜像）。
  */
 
-import type { GraphData, GraphId, NodeId } from '../../../src/types/graph_data'
+import type {
+    GraphData,
+    GraphId,
+    GraphRegistry,
+    NodeId,
+} from '../../../src/types/graph_data'
 import type { GraphLookup } from '../../../src/types/infrastructure_types'
 import { diverge } from '../../../src/compose/cognitive/diverge'
+import { applyBatches } from '../../../src/core/apply_batches'
 import {
     createDivergeInputGraph,
     createDivergeCrossGraphInput,
@@ -83,20 +89,64 @@ describe('diverge', () => {
         expect(
             result.issues.filter((i) => i.severity === 'error'),
         ).toHaveLength(0)
-        // 两批：inGraph 当前图 + inGraph 对端图（镜像 ops）
-        expect(result.batches).toHaveLength(2)
-        const currentBatch = result.batches[0]!
-        const peerBatch = result.batches[1]!
-        expect(currentBatch.kind).toBe('inGraph')
-        expect(peerBatch.kind).toBe('inGraph')
-        expect(currentBatch.operations.length).toBeGreaterThan(0)
-        expect(peerBatch.operations.length).toBeGreaterThan(0)
-        // 当前图有 add_node (启发) + add_edge
+        // 4 批：当前图节点批 / 边批 + 对端图节点批 / 边批
+        expect(result.batches).toHaveLength(4)
+        expect(result.batches[0]!.kind).toBe('inGraph')
+        expect(result.batches[1]!.kind).toBe('inGraph')
+        expect(result.batches[2]!.kind).toBe('inGraph')
+        expect(result.batches[3]!.kind).toBe('inGraph')
         expect(
-            currentBatch.operations.some((op) => op.type === 'add_node'),
+            result.batches[0]!.operations.every((op) => op.type === 'add_node'),
         ).toBe(true)
         expect(
-            currentBatch.operations.some((op) => op.type === 'add_edge'),
+            result.batches[1]!.operations.every((op) => op.type === 'add_edge'),
         ).toBe(true)
+        expect(
+            result.batches[2]!.operations.every((op) => op.type === 'add_node'),
+        ).toBe(true)
+        expect(
+            result.batches[3]!.operations.every((op) => op.type === 'add_edge'),
+        ).toBe(true)
+    })
+
+    test('集成：Case B compose → applyBatches 完整执行（A-1 回归防护）', () => {
+        const { current, peer } = createDivergeCrossGraphInput()
+        const { graphIds, lookupGraph } = makeLookup([current, peer])
+        const registry: GraphRegistry = new Map([
+            [current.id, current],
+            [peer.id, peer],
+        ])
+        const result = diverge({
+            sourceNodeId: 'div-peer-A' as NodeId,
+            targetNodeId: 'div-cur-B' as NodeId,
+            currentGraph: current,
+            heuristicPosition: { x: 300, y: 300 },
+            lookupGraph,
+            graphIds,
+        })
+        expect(
+            result.issues.filter((i) => i.severity === 'error'),
+        ).toHaveLength(0)
+
+        const applied = applyBatches(registry, result.batches)
+        expect(applied.validation.valid).toBe(true)
+
+        // 当前图：启发节点 + 一条边（启发 → 知识节点）
+        const appliedCurrent = applied.registry.get(current.id)!
+        const heuristic = appliedCurrent.nodes.find(
+            (n) => n.role === 'reference' && n.referenceKind === 'heuristic',
+        )
+        expect(heuristic).toBeDefined()
+        expect(appliedCurrent.nodes).toHaveLength(2)
+        expect(appliedCurrent.edges).toHaveLength(1)
+
+        // 对端图：镜像启发节点 + 一条边（知识节点 → 镜像启发）
+        const appliedPeer = applied.registry.get(peer.id)!
+        const mirror = appliedPeer.nodes.find(
+            (n) => n.role === 'reference' && n.referenceKind === 'heuristic',
+        )
+        expect(mirror).toBeDefined()
+        expect(appliedPeer.nodes).toHaveLength(2)
+        expect(appliedPeer.edges).toHaveLength(1)
     })
 })

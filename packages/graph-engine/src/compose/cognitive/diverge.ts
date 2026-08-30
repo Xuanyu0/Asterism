@@ -297,11 +297,6 @@ export function diverge(params: DivergeParams): {
         updatedAt: now,
     }
 
-    const currentOps = [
-        { type: 'add_node' as const, node: heuristicNode },
-        { type: 'add_edge' as const, edge: currentEdge },
-    ]
-
     // ── 镜像：在对端图创建对偶启发节点 + 边 ──
 
     const mirrorHeuristicId = generateNodeId()
@@ -353,11 +348,6 @@ export function diverge(params: DivergeParams): {
         updatedAt: now,
     }
 
-    const peerOps = [
-        { type: 'add_node' as const, node: mirrorHeuristicNode },
-        { type: 'add_edge' as const, edge: mirrorEdge },
-    ]
-
     // ── drafts：仅含当前图的启发节点（镜像不可预览） ──
 
     const drafts: DraftHeuristicPosition[] = [
@@ -370,15 +360,31 @@ export function diverge(params: DivergeParams): {
 
     return {
         batches: [
+            // 当前图：节点批 → 边批（add_edge 端点依赖批内 add_node）
             {
                 kind: 'inGraph',
                 graph: currentGraph,
-                operations: currentOps,
+                operations: [
+                    { type: 'add_node' as const, node: heuristicNode },
+                ],
+            },
+            {
+                kind: 'inGraph',
+                graph: currentGraph,
+                operations: [{ type: 'add_edge' as const, edge: currentEdge }],
+            },
+            // 对端图：镜像节点批 → 镜像边批
+            {
+                kind: 'inGraph',
+                graph: peerGraph.graph,
+                operations: [
+                    { type: 'add_node' as const, node: mirrorHeuristicNode },
+                ],
             },
             {
                 kind: 'inGraph',
                 graph: peerGraph.graph,
-                operations: peerOps,
+                operations: [{ type: 'add_edge' as const, edge: mirrorEdge }],
             },
         ],
         drafts,

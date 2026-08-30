@@ -96,8 +96,12 @@ export interface InduceParams {
  * 规则：
  *
  *     1. 语义预检：≥2 节点、全部存在、无沟通节点、无重边冲突。
- *     2. 子图 ops：add_graph + add_node（被选节点 + 沟通节点）+ add_edge（被选→沟通）。
- *     3. 父图 ops：add_node（抽象节点）+ delete_node（被选）+ add_edge（抽象→邻居）。
+ *     2. 子图批：add_graph（空图）→ add_node（被选 + 沟通）→ add_edge（被选→沟通）。
+ *     3. 父图批：delete_node（被选）→ add_node（抽象）→ add_edge（抽象→邻居）。
+ *
+ *     批按"节点 → 边"拆分：validate-all-first 下 add_edge 端点依赖批内 add_node，
+ *     同批会误报 EDGE_SOURCE/TARGET_NOT_FOUND。delete_node 独立成批先执行，
+ *     因为 NODE_COLLISION 校验不排除即将删除的被选节点。
  *
  * 参数：
  *
@@ -340,7 +344,8 @@ export function induce(params: InduceParams): {
 
     // ── 构造子图 ops ──
 
-    const childOps: AtomicOperationInGraph[] = []
+    const childNodeOps: AtomicOperationInGraph[] = []
+    const childEdgeOps: AtomicOperationInGraph[] = []
 
     // 抽象节点 ID 提前生成：空子图 ownerNodeId 需引用它
     const abstractId = generateNodeId()
@@ -361,7 +366,7 @@ export function induce(params: InduceParams): {
 
     // 被选节点移入子图
     for (const node of selectedNodes) {
-        childOps.push({
+        childNodeOps.push({
             type: 'add_node',
             node: {
                 ...node,
@@ -373,7 +378,7 @@ export function induce(params: InduceParams): {
 
     // 沟通节点
     for (const commNode of communicationNodes) {
-        childOps.push({ type: 'add_node', node: commNode })
+        childNodeOps.push({ type: 'add_node', node: commNode })
     }
 
     // 外部边投影（子图内：被选节点 → 沟通节点）
@@ -388,7 +393,7 @@ export function induce(params: InduceParams): {
                 ? edge.target
                 : commId
 
-            childOps.push({
+            childEdgeOps.push({
                 type: 'add_edge',
                 edge: {
                     id: generateEdgeId(),
@@ -407,7 +412,7 @@ export function induce(params: InduceParams): {
     // 内部边：被选节点之间的边移入子图
     for (const edge of allEdges) {
         if (selectedSet.has(edge.source) && selectedSet.has(edge.target)) {
-            childOps.push({
+            childEdgeOps.push({
                 type: 'add_edge',
                 edge: {
                     ...edge,
@@ -454,14 +459,19 @@ export function induce(params: InduceParams): {
 
     // ── 构造父图 ops ──
 
-    const parentOps: AtomicOperationInGraph[] = []
+    // TODO 临时 label 构造：需要交给用户后续自行命名
+    // 暂时截断到 ≤ 8 字符以通过 NODE_LABEL_TOO_LONG
+    const abstractLabel = selectedNodes
+        .map((node) => node.label)
+        .join(' / ')
+        .slice(0, 8)
 
     const abstractNode = {
         id: abstractId,
         graphId: parentGraph.id,
         role: 'knowledge' as const,
         kind: 'real' as const,
-        label: selectedNodes.map((node) => node.label).join(' / '),
+        label: abstractLabel,
         degree: abstractDegree,
         position: abstractPosition,
         childGraphId,
@@ -469,11 +479,15 @@ export function induce(params: InduceParams): {
         updatedAt: now,
     }
 
-    parentOps.push({ type: 'add_node', node: abstractNode })
+    const parentDeleteOps: AtomicOperationInGraph[] = []
+    const parentAddNodeOps: AtomicOperationInGraph[] = []
+    const parentAddEdgeOps: AtomicOperationInGraph[] = []
 
-    // 删除被选节点
+    parentAddNodeOps.push({ type: 'add_node', node: abstractNode })
+
+    // 删除被选节点：独立成批先执行，让形心位置空出
     for (const nodeId of nodeIds) {
-        parentOps.push({ type: 'delete_node', nodeId })
+        parentDeleteOps.push({ type: 'delete_node', nodeId })
     }
 
     // 抽象节点 连接 邻居
@@ -482,7 +496,7 @@ export function induce(params: InduceParams): {
         const originalEdges = neighborEdgeMap.get(neighbor.id) ?? []
         const firstEdge = originalEdges[0]
 
-        parentOps.push({
+        parentAddEdgeOps.push({
             type: 'add_edge',
             edge: {
                 id: generateEdgeId(),
@@ -504,15 +518,32 @@ export function induce(params: InduceParams): {
                 kind: 'graphLevel',
                 operations: [{ type: 'add_graph', graph: emptyChildGraph }],
             },
+            // 子图节点批先落位，边批依赖这些节点
             {
                 kind: 'inGraph',
                 graph: emptyChildGraph,
-                operations: childOps,
+                operations: childNodeOps,
+            },
+            {
+                kind: 'inGraph',
+                graph: emptyChildGraph,
+                operations: childEdgeOps,
+            },
+            // 父图批顺序不可变：delete → add_node → add_edge
+            {
+                kind: 'inGraph',
+                graph: parentGraph,
+                operations: parentDeleteOps,
             },
             {
                 kind: 'inGraph',
                 graph: parentGraph,
-                operations: parentOps,
+                operations: parentAddNodeOps,
+            },
+            {
+                kind: 'inGraph',
+                graph: parentGraph,
+                operations: parentAddEdgeOps,
             },
         ],
         issues,
