@@ -20,6 +20,7 @@ import { executeOperation } from '../../src/core/execute_operation'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
 
 const G = 'test-rev' as GraphId
+const TEST_NOW = '2026-01-01T00:00:00.000Z'
 
 function makeGraph(nodes = 2, edges = 0): GraphData {
     const n: GraphData['nodes'] = []
@@ -48,10 +49,10 @@ function assertReversalRoundTrip(
     op: Parameters<typeof executeOperation>[1],
 ): void {
     const reversals = createReversal(graph, op)
-    const after = executeOperation(graph, op)
+    const after = executeOperation(graph, op, TEST_NOW)
     let reverted = after
     for (const rev of reversals) {
-        reverted = executeOperation(reverted, rev)
+        reverted = executeOperation(reverted, rev, TEST_NOW)
     }
     // degree/edges 恢复
     expect(reverted.nodes.length).toBe(graph.nodes.length)
@@ -230,10 +231,10 @@ describe('createReversal expand_dependency', () => {
         ])
 
         // executeCollapseDependency 用字段值恢复，折叠条目与原一致
-        const after = executeOperation(graph, op)
+        const after = executeOperation(graph, op, TEST_NOW)
         let reverted = after
         for (const rev of revs) {
-            reverted = executeOperation(reverted, rev)
+            reverted = executeOperation(reverted, rev, TEST_NOW)
         }
         expect(reverted.cognitiveState.foldedDependencies).toEqual(
             graph.cognitiveState.foldedDependencies,
@@ -283,7 +284,7 @@ describe('executeCollapseDependency 显式折叠成员', () => {
             targetNodeId: 'n0' as NodeId,
             foldedNodeIds: ['nX' as NodeId],
         }
-        const after = executeOperation(graph, op)
+        const after = executeOperation(graph, op, TEST_NOW)
         expect(after.cognitiveState.foldedDependencies).toEqual([
             { targetNodeId: 'n0', foldedNodeIds: ['nX'] },
         ])
@@ -295,7 +296,7 @@ describe('executeCollapseDependency 显式折叠成员', () => {
             type: 'collapse_dependency' as const,
             targetNodeId: 'n0' as NodeId,
         }
-        const after = executeOperation(graph, op)
+        const after = executeOperation(graph, op, TEST_NOW)
         expect(after.cognitiveState.foldedDependencies).toEqual([
             { targetNodeId: 'n0', foldedNodeIds: ['n1'] },
         ])
@@ -308,7 +309,7 @@ describe('executeCollapseDependency 显式折叠成员', () => {
             targetNodeId: 'n0' as NodeId,
             foldedNodeIds: [],
         }
-        const after = executeOperation(graph, op)
+        const after = executeOperation(graph, op, TEST_NOW)
         expect(after.cognitiveState.foldedDependencies).toEqual([])
     })
 })

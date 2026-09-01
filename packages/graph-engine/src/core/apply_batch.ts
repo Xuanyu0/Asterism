@@ -6,6 +6,7 @@
  * Phase 3 对结果图运行全局不变量规则。任一阶段失败整批丢弃（graph 原封不动，
  * 返回全部 issue）——不存在"执行一半回滚"的场景，全通过后才开始 execute。
  * applyBatch 是纯函数，不内部调用 createReversal（逆元构造时机由上层决定）。
+ * 时间戳来源由 options.executedAt 从前端统一传入。
  */
 
 import type { GraphData } from '../types/graph_data'
@@ -23,6 +24,8 @@ import {
  * 批处理配置。
  *
  * @remarks
+ * - executedAt：时间戳来源（必传），语义 = 本批次执行的时刻，对象级时间戳兜底值与
+ *   图级 updatedAt 均取此值。
  * - dryRun：只校验不执行，用于认知操作正式执行前预判。
  * - stopOnFirst：遇第一个失败即停（默认 false，聚合全部 issue 后返回）。
  * - globalRulesTable：全局规则开关表，未传入时使用默认全开配置。
@@ -33,6 +36,9 @@ import {
  *   顺序执行（依赖由操作内部顺序保证），Phase 3 全局规则仍运行。
  */
 export interface BatchOptions {
+    /** 时间戳来源（必传）。语义 = 本批次执行的时刻。 */
+    executedAt: string
+
     /** 只校验不执行。默认 false。 */
     dryRun?: boolean
 
@@ -89,19 +95,20 @@ export interface BatchResult {
  *
  * @param graph - 操作前的 GraphData 快照
  * @param ops - 待执行的操作序列
- * @param options - [可选] dryRun / stopOnFirst / globalRulesTable / onBeforeEachOperation / skipValidate
+ * @param options - 批处理配置（executedAt 必传；其余 dryRun / stopOnFirst / globalRulesTable / onBeforeEachOperation / skipValidate 可选）
  * @returns 新图 + 聚合校验 + 每操作独立结果。
  */
 export function applyBatch(
     graph: GraphData,
     ops: AtomicOperationInGraph[],
-    options?: BatchOptions,
+    options: BatchOptions,
 ): BatchResult {
-    const dryRun = options?.dryRun ?? false
-    const stopOnFirst = options?.stopOnFirst ?? false
-    const skipValidate = options?.skipValidate ?? false
+    const executedAt = options.executedAt
+    const dryRun = options.dryRun ?? false
+    const stopOnFirst = options.stopOnFirst ?? false
+    const skipValidate = options.skipValidate ?? false
     const globalRulesTable =
-        options?.globalRulesTable ?? DEFAULT_GLOBAL_RULES_TABLE
+        options.globalRulesTable ?? DEFAULT_GLOBAL_RULES_TABLE
 
     // Phase 1 — 逐条校验操作前提条件
     // skipValidate（undo/redo 恢复型逆元批）：跳过全部前提校验，直接 Phase 2——
@@ -134,9 +141,8 @@ export function applyBatch(
 
     for (const op of ops) {
         // 逐操作挂点：入参为 op 执行前的中间态，不改变执行结果
-        options?.onBeforeEachOperation?.(op, resultGraph)
-
-        resultGraph = executeOperation(resultGraph, op)
+        options.onBeforeEachOperation?.(op, resultGraph)
+        resultGraph = executeOperation(resultGraph, op, executedAt)
     }
 
     // Phase 3 — 对 resultGraph 运行全局不变量规则

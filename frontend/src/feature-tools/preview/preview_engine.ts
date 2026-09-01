@@ -74,7 +74,10 @@ export function previewAddNode(
 
     // 跳过 Phase 1 前提校验（占位预览空 label 会被 EMPTY_LABEL 拒绝），
     // 碰撞判定由下方 hasCollisionAt 独立承担——复用引擎为 undo/redo 提供的 skipValidate 机制。
-    const result = applyBatch(clone, [addNodeOp], { skipValidate: true })
+    const result = applyBatch(clone, [addNodeOp], {
+        executedAt: new Date().toISOString(),
+        skipValidate: true,
+    })
 
     if (result.validation.valid === false) {
         return { previewGraph: clone, valid: false, collides: false, nodeId }
@@ -132,7 +135,9 @@ export function previewAddEdge(
         },
     }
 
-    const result = applyBatch(clone, [addEdgeOp])
+    const result = applyBatch(clone, [addEdgeOp], {
+        executedAt: new Date().toISOString(),
+    })
 
     if (result.validation.valid === false) {
         return {
@@ -200,6 +205,7 @@ export function previewMoveNode(
     const preview = applyBatch(
         clone,
         result.operations as AtomicOperationInGraph[],
+        { executedAt: new Date().toISOString() },
     )
 
     return { previewGraph: preview.graph, collides: hasErrors(result.issues) }

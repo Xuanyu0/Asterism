@@ -20,6 +20,7 @@ import { createNode, assembleGraph } from '../test_case_factory'
 
 const G = 'parent' as GraphId
 const CHILD = 'child' as GraphId
+const TEST_NOW = '2026-01-01T00:00:00.000Z'
 
 function makeParentGraph(): GraphData {
     return assembleGraph({
@@ -59,13 +60,17 @@ describe('applyBatches 图内批（inGraph 委托）', () => {
         const parent = makeParentGraph()
         const registry = makeRegistry(parent)
 
-        const result = applyBatches(registry, [
-            {
-                kind: 'inGraph',
-                graph: parent,
-                operations: [addNodeOp('n2', G)],
-            },
-        ])
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'inGraph',
+                    graph: parent,
+                    operations: [addNodeOp('n2', G)],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
 
         expect(result.validation.valid).toBe(true)
         const newParent = result.registry.get(G)!
@@ -77,13 +82,17 @@ describe('applyBatches 图内批（inGraph 委托）', () => {
         const parent = makeParentGraph()
         const registry = makeRegistry() // 空注册表，无任何图
 
-        const result = applyBatches(registry, [
-            {
-                kind: 'inGraph',
-                graph: parent, // parent 不在注册表
-                operations: [addNodeOp('n2', G)],
-            },
-        ])
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'inGraph',
+                    graph: parent, // parent 不在注册表
+                    operations: [addNodeOp('n2', G)],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
 
         expect(result.validation.valid).toBe(false)
         expect(result.registry).toBe(registry) // 原样返回，不隐式创建
@@ -95,20 +104,24 @@ describe('applyBatches 图内批（inGraph 委托）', () => {
         const child = makeEmptyChildGraph()
         const registry = makeRegistry(parent)
 
-        const result = applyBatches(registry, [
-            {
-                kind: 'inGraph',
-                graph: parent,
-                // 混入 add_graph（图级操作）——类型层面 as 断言绕过，运行时须捕获
-                operations: [
-                    addNodeOp('n2', G),
-                    {
-                        type: 'add_graph',
-                        graph: child,
-                    } as unknown as AtomicOperationInGraph,
-                ],
-            },
-        ])
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'inGraph',
+                    graph: parent,
+                    // 混入 add_graph（图级操作）——类型层面 as 断言绕过，运行时须捕获
+                    operations: [
+                        addNodeOp('n2', G),
+                        {
+                            type: 'add_graph',
+                            graph: child,
+                        } as unknown as AtomicOperationInGraph,
+                    ],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
 
         expect(result.validation.valid).toBe(false)
         expect(result.registry).toBe(registry) // 原样返回
@@ -119,13 +132,17 @@ describe('applyBatches 图内批（inGraph 委托）', () => {
         const parent = makeParentGraph()
         const registry = makeRegistry(parent)
 
-        const result = applyBatches(registry, [
-            {
-                kind: 'inGraph',
-                graph: parent,
-                operations: [addNodeOp('n2', G)],
-            },
-        ])
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'inGraph',
+                    graph: parent,
+                    operations: [addNodeOp('n2', G)],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
 
         const reversal = result.reversalOperations.flatMap((r) => r.operations)
         expect(reversal).toEqual([{ type: 'delete_node', nodeId: 'n2' }])
@@ -135,18 +152,22 @@ describe('applyBatches 图内批（inGraph 委托）', () => {
         const parent = makeParentGraph()
         const registry = makeRegistry(parent)
 
-        const result = applyBatches(registry, [
-            {
-                kind: 'inGraph',
-                graph: parent,
-                operations: [addNodeOp('n2', G)],
-            },
-            {
-                kind: 'inGraph',
-                graph: parent,
-                operations: [addNodeOp('n3', G)],
-            },
-        ])
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'inGraph',
+                    graph: parent,
+                    operations: [addNodeOp('n2', G)],
+                },
+                {
+                    kind: 'inGraph',
+                    graph: parent,
+                    operations: [addNodeOp('n3', G)],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
 
         expect(result.validation.valid).toBe(true)
         expect(result.registry.get(G)!.nodes).toHaveLength(4)
@@ -174,7 +195,7 @@ describe('applyBatches 图级批（graphLevel 路由兑现）', () => {
             },
         ]
 
-        const result = applyBatches(registry, batches)
+        const result = applyBatches(registry, batches, { executedAt: TEST_NOW })
 
         expect(result.validation.valid).toBe(true)
         const child = result.registry.get(CHILD)!
@@ -193,12 +214,16 @@ describe('applyBatches 图级批（graphLevel 路由兑现）', () => {
             edges: [],
         })
 
-        const result = applyBatches(registry, [
-            {
-                kind: 'graphLevel',
-                operations: [{ type: 'add_graph', graph: child }],
-            },
-        ])
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'add_graph', graph: child }],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
 
         expect(result.validation.valid).toBe(true)
         expect(result.registry.get(CHILD)).toBe(child) // 直接用操作自带图引用
@@ -209,12 +234,16 @@ describe('applyBatches 图级批（graphLevel 路由兑现）', () => {
         const child = makeEmptyChildGraph()
         const registry = makeRegistry(parent, child)
 
-        const result = applyBatches(registry, [
-            {
-                kind: 'graphLevel',
-                operations: [{ type: 'delete_graph', graph: child }],
-            },
-        ])
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'delete_graph', graph: child }],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
 
         expect(result.validation.valid).toBe(true)
         expect(result.registry.has(CHILD)).toBe(false)
@@ -225,12 +254,16 @@ describe('applyBatches 图级批（graphLevel 路由兑现）', () => {
         const parent = makeParentGraph() // parent 有节点（非空）
         const registry = makeRegistry(parent)
 
-        const result = applyBatches(registry, [
-            {
-                kind: 'graphLevel',
-                operations: [{ type: 'delete_graph', graph: parent }],
-            },
-        ])
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'delete_graph', graph: parent }],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
 
         expect(result.validation.valid).toBe(false)
         expect(result.registry).toBe(registry) // 原样返回，注册表不变
@@ -242,16 +275,20 @@ describe('applyBatches 图级批（graphLevel 路由兑现）', () => {
         const child = makeEmptyChildGraph()
         const registry = makeRegistry(parent)
 
-        const result = applyBatches(registry, [
-            {
-                kind: 'graphLevel',
-                // 混入 add_node（图内操作）——类型层面 as 断言绕过，运行时须捕获
-                operations: [
-                    { type: 'add_graph', graph: child },
-                    addNodeOp('n2', G) as unknown as AtomicGraphOperation,
-                ],
-            },
-        ])
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    // 混入 add_node（图内操作）——类型层面 as 断言绕过，运行时须捕获
+                    operations: [
+                        { type: 'add_graph', graph: child },
+                        addNodeOp('n2', G) as unknown as AtomicGraphOperation,
+                    ],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
 
         expect(result.validation.valid).toBe(false)
         expect(result.registry).toBe(registry) // 原样返回
@@ -267,12 +304,16 @@ describe('applyBatches 图级逆元（路由逆元构造函数）', () => {
         const registry = makeRegistry(parent)
         const child = makeEmptyChildGraph()
 
-        const result = applyBatches(registry, [
-            {
-                kind: 'graphLevel',
-                operations: [{ type: 'add_graph', graph: child }],
-            },
-        ])
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'add_graph', graph: child }],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
 
         const reversal = result.reversalOperations.flatMap((r) => r.operations)
         expect(reversal).toEqual([{ type: 'delete_graph', graph: child }])
@@ -283,12 +324,16 @@ describe('applyBatches 图级逆元（路由逆元构造函数）', () => {
         const child = makeEmptyChildGraph()
         const registry = makeRegistry(parent, child)
 
-        const result = applyBatches(registry, [
-            {
-                kind: 'graphLevel',
-                operations: [{ type: 'delete_graph', graph: child }],
-            },
-        ])
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'delete_graph', graph: child }],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
 
         const reversal = result.reversalOperations.flatMap((r) => r.operations)
         expect(reversal).toHaveLength(1)
@@ -311,13 +356,17 @@ describe('applyBatches 事务性与纯函数', () => {
         const registry = makeRegistry(parent)
 
         // n0 已存在 → add_node 校验失败
-        const result = applyBatches(registry, [
-            {
-                kind: 'inGraph',
-                graph: parent,
-                operations: [addNodeOp('n0', G)],
-            },
-        ])
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'inGraph',
+                    graph: parent,
+                    operations: [addNodeOp('n0', G)],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
 
         expect(result.validation.valid).toBe(false)
         expect(result.registry).toBe(registry) // 原样返回
@@ -329,13 +378,17 @@ describe('applyBatches 事务性与纯函数', () => {
         const child = makeEmptyChildGraph()
         const registry = makeRegistry(parent, child)
 
-        const result = applyBatches(registry, [
-            {
-                kind: 'inGraph',
-                graph: parent,
-                operations: [addNodeOp('n2', G)],
-            },
-        ])
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'inGraph',
+                    graph: parent,
+                    operations: [addNodeOp('n2', G)],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
 
         // 入参注册表不变
         expect(registry.get(G)).toBe(parent)

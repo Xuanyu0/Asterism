@@ -185,7 +185,6 @@ export function internalize(params: InternalizeParams): {
 
     // ── 按图分组收集操作 ──
 
-    const now = new Date().toISOString()
     const opsByGraph = new Map<GraphId, AtomicOperationInGraph[]>()
     const graphByOps = new Map<GraphId, GraphData>()
     opsByGraph.set(parentGraph.id, [])
@@ -335,8 +334,6 @@ export function internalize(params: InternalizeParams): {
                 graphId: commonLayer.id,
                 degree: 0,
                 position: nodePosition,
-                createdAt: now,
-                updatedAt: now,
             },
         })
     }

@@ -148,8 +148,9 @@ export function useDefaultTool(): ToolHandler {
 
         // floatingData 经 shallowRef 持有，value 保持 raw——引擎 reversal 的 structuredClone 可直接处理
         if (isEdgeData(data)) {
-            // 边编辑
-            const edge: EdgeData = { ...data, label }
+            // 更新时剔除原有的 updatedAt，时间由 commitBatchToGraphs 注入
+            const { updatedAt: _updatedAt, ...edgeData } = data
+            const edge: EdgeData = { ...edgeData, label }
 
             const validation = operations.commitToCurrentGraph(
                 [{ type: 'update_edge', edge }],
@@ -160,8 +161,9 @@ export function useDefaultTool(): ToolHandler {
                 floatingWindow.close()
             }
         } else {
-            // 节点编辑
-            const node: NodeData = { ...data, label }
+            // 同上
+            const { updatedAt: _updatedAt, ...nodeData } = data
+            const node: NodeData = { ...nodeData, label }
 
             if (data.role === 'knowledge') {
                 ;(node as KnowledgeNodeData).summary = summary

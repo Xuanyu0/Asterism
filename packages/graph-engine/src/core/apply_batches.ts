@@ -52,9 +52,12 @@ export interface ApplyBatchesResult {
 }
 
 /**
- * applyBatches 的可选配置。
+ * applyBatches 的配置。
  */
 export interface ApplyBatchesOptions {
+    /** 时间戳来源（必传），透传 applyBatch / executeOperation。语义 = 本批次执行的时刻。 */
+    executedAt: string
+
     /** 透传 applyBatch，跳过 Phase 1 前提校验（undo/redo 恢复型逆元批传 true）。 */
     skipValidate?: boolean
 
@@ -75,16 +78,17 @@ export interface ApplyBatchesOptions {
  *
  * @param registry - 操作前的多图注册表（不修改）
  * @param batches - 多批次操作（图内 / 图级判别联合）
- * @param options - [可选] skipValidate / recordLog
+ * @param options - 配置（executedAt 必传；skipValidate / recordLog 可选）
  * @returns 新注册表 + 聚合校验 + 逆元序列 + graphSignals。
  */
 export function applyBatches(
     registry: GraphRegistry,
     batches: OperationBatch[],
-    options?: ApplyBatchesOptions,
+    options: ApplyBatchesOptions,
 ): ApplyBatchesResult {
-    const skipValidate = options?.skipValidate ?? false
-    const recordLog = options?.recordLog ?? true
+    const executedAt = options.executedAt
+    const skipValidate = options.skipValidate ?? false
+    const recordLog = options.recordLog ?? true
 
     // 纯函数：构建新 Map（复用未变化图引用，不深拷贝），失败时丢弃返回入参
     let newRegistry = new Map(registry)
@@ -126,7 +130,7 @@ export function applyBatches(
                         targetId:
                             batch.kind === 'inGraph'
                                 ? batch.graph.id
-                                : batch.operations[0]?.graph.id ?? '',
+                                : (batch.operations[0]?.graph.id ?? ''),
                     },
                 ],
             })
@@ -157,6 +161,7 @@ export function applyBatches(
                 inputGraph,
                 batch.operations,
                 {
+                    executedAt,
                     skipValidate,
                     onBeforeEachOperation:
                         recordLog === false

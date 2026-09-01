@@ -10,6 +10,7 @@ import { applyBatch } from '../../src/core/apply_batch'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
 
 const G = 'test-pl' as GraphId
+const TEST_NOW = '2026-01-01T00:00:00.000Z'
 
 function makeBase(): GraphData {
     return assembleGraph({
@@ -38,7 +39,7 @@ describe('applyBatch', () => {
                 }),
             },
         ]
-        const result = applyBatch(graph, ops)
+        const result = applyBatch(graph, ops, { executedAt: TEST_NOW })
         expect(result.validation.valid).toBe(true)
         expect(result.graph.edges.length).toBe(1)
     })
@@ -69,7 +70,7 @@ describe('applyBatch', () => {
                 }),
             }, // 失败
         ]
-        const result = applyBatch(graph, ops)
+        const result = applyBatch(graph, ops, { executedAt: TEST_NOW })
         expect(result.validation.valid).toBe(false)
         expect(result.graph.edges.length).toBe(0) // 全丢
     })
@@ -89,7 +90,10 @@ describe('applyBatch', () => {
                 }),
             },
         ]
-        const result = applyBatch(graph, ops, { dryRun: true })
+        const result = applyBatch(graph, ops, {
+            executedAt: TEST_NOW,
+            dryRun: true,
+        })
         expect(result.validation.valid).toBe(true)
         expect(result.graph.edges.length).toBe(0) // 没执行
     })
@@ -113,7 +117,10 @@ describe('applyBatch', () => {
                 node: createNode({ id: 'n2' as NodeId, graphId: G }),
             }, // 第二个操作：stopOnFirst 让第一个失败后停，此操作不被校验
         ]
-        const result = applyBatch(graph, ops, { stopOnFirst: true })
+        const result = applyBatch(graph, ops, {
+            executedAt: TEST_NOW,
+            stopOnFirst: true,
+        })
         expect(result.validation.valid).toBe(false)
         expect(result.results.length).toBe(1) // 第一个失败后停
     })
@@ -133,7 +140,7 @@ describe('applyBatch', () => {
                 }),
             },
         ]
-        const result = applyBatch(graph, ops)
+        const result = applyBatch(graph, ops, { executedAt: TEST_NOW })
         expect(result.validation.valid).toBe(false)
         expect(
             result.validation.issues.some(
@@ -169,7 +176,7 @@ describe('applyBatch', () => {
                 }),
             },
         ]
-        const result = applyBatch(graph, ops)
+        const result = applyBatch(graph, ops, { executedAt: TEST_NOW })
         expect(result.validation.valid).toBe(false)
         expect(
             result.validation.issues.some(
@@ -195,6 +202,7 @@ describe('applyBatch', () => {
             },
         ]
         const result = applyBatch(graph, ops, {
+            executedAt: TEST_NOW,
             globalRulesTable: {
                 SELF_LOOP_FORBIDDEN: false,
                 REAL_DIRECTED_CYCLE_FORBIDDEN: false,
@@ -221,6 +229,7 @@ describe('applyBatch', () => {
         const callback = vi.fn()
 
         const result = applyBatch(graph, ops, {
+            executedAt: TEST_NOW,
             onBeforeEachOperation: callback,
         })
 
@@ -244,6 +253,7 @@ describe('applyBatch', () => {
         const snapshots: string[][] = []
 
         applyBatch(graph, ops, {
+            executedAt: TEST_NOW,
             onBeforeEachOperation: (op, graphBeforeOp) => {
                 seenOps.push(op)
                 snapshots.push(graphBeforeOp.nodes.map((n) => n.id))
@@ -274,8 +284,9 @@ describe('applyBatch', () => {
 
         // 未传回调无可观测的"调用"；可观测契约 = 零行为变化。
         // 显式传入 undefined 走 options?.onBeforeEachOperation?.() 短路分支。
-        const baseline = applyBatch(graph, ops)
+        const baseline = applyBatch(graph, ops, { executedAt: TEST_NOW })
         const explicitUndefined = applyBatch(graph, ops, {
+            executedAt: TEST_NOW,
             onBeforeEachOperation: undefined,
         })
 
@@ -299,6 +310,7 @@ describe('applyBatch', () => {
         const callback = vi.fn()
 
         const result = applyBatch(graph, ops, {
+            executedAt: TEST_NOW,
             dryRun: true,
             onBeforeEachOperation: callback,
         })

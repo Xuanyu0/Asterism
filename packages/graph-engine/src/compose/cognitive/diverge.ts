@@ -170,7 +170,6 @@ export function diverge(params: DivergeParams): {
             return { batches: [], drafts: [], issues }
         }
 
-        const now = new Date().toISOString()
         const edge: EdgeData = {
             id: generateEdgeId(),
             graphId: currentGraph.id,
@@ -178,8 +177,6 @@ export function diverge(params: DivergeParams): {
             target: targetNodeId,
             kind: 'virtual',
             direction: 'directed',
-            createdAt: now,
-            updatedAt: now,
         }
 
         return {
@@ -263,8 +260,6 @@ export function diverge(params: DivergeParams): {
         return { batches: [], drafts: [], issues }
     }
 
-    const now = new Date().toISOString()
-
     // ── 当前图：创建启发节点 + 边 ──
 
     const heuristicId = generateNodeId()
@@ -278,8 +273,6 @@ export function diverge(params: DivergeParams): {
         sourceNodeId: missingNodeId,
         position: heuristicPosition,
         degree: 0,
-        createdAt: now,
-        updatedAt: now,
     }
 
     // 边方向：保持 source → target
@@ -293,8 +286,6 @@ export function diverge(params: DivergeParams): {
         target: currentEdgeTarget,
         kind: 'virtual',
         direction: 'directed',
-        createdAt: now,
-        updatedAt: now,
     }
 
     // ── 镜像：在对端图创建对偶启发节点 + 边 ──
@@ -327,8 +318,6 @@ export function diverge(params: DivergeParams): {
         sourceNodeId: inGraphNodeId,
         position: mirrorPosition,
         degree: 0,
-        createdAt: now,
-        updatedAt: now,
     }
 
     // 镜像边：保持 source → target 方向
@@ -344,8 +333,6 @@ export function diverge(params: DivergeParams): {
         target: mirrorEdgeTarget,
         kind: 'virtual',
         direction: 'directed',
-        createdAt: now,
-        updatedAt: now,
     }
 
     // ── drafts：仅含当前图的启发节点（镜像不可预览） ──

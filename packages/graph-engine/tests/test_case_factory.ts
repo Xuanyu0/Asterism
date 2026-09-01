@@ -40,6 +40,9 @@ import type {
 
 import { validateGraph } from '../src/core/validators/whole_graph_validator'
 
+/** 测试固定的图时间戳，保证测试数据无 Date.now() 依赖（与文件头注释一致）。 */
+const TEST_NOW = '2026-01-01T00:00:00.000Z'
+
 // ═══════════ 类型工具 ═══════════
 
 type NodeOverrides = {
@@ -168,8 +171,6 @@ export function assembleGraph(params: {
         degree: degreeMap.get(node.id) ?? 0,
     }))
 
-    const now = new Date().toISOString()
-
     const graph: GraphData = {
         id: params.id,
         kind: params.kind ?? 'root',
@@ -179,8 +180,8 @@ export function assembleGraph(params: {
         parentGraphId: params.parentGraphId,
         ownerNodeId: params.ownerNodeId,
         cognitiveState: { foldedDependencies: [] },
-        createdAt: now,
-        updatedAt: now,
+        createdAt: TEST_NOW,
+        updatedAt: TEST_NOW,
     }
 
     validateOrThrow(graph)
