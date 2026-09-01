@@ -48,7 +48,7 @@ export interface ItemOperations {
  *
  *     - operation：一批正向操作，按图分组
  *     - reversalOperations：一批逆元，undo 执行顺序——item 间逆序 + item 内逆序
- *     - graphSignals：图级元数据（新增 / 删除的图）
+ *     - graphSignals：图级元数据（新增 / 删除的图）·
  *     - source：操作来源的工具标识（如前端 ToolId），可选，缺省表示未知来源
  */
 export interface OperationLogEntry {
