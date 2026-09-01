@@ -110,7 +110,7 @@ export function useDefaultTool(): ToolHandler {
             focusNodeId = node.sourceNodeId
         }
         // 优先级 2：抽象节点 → 跳转子图
-        else if (node.childGraphId) {
+        else if (node.role === 'knowledge' && node.childGraphId) {
             targetGraphId = node.childGraphId
         }
         // 优先级 3：其余节点 → 无操作
