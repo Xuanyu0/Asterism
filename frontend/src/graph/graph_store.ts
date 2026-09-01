@@ -224,7 +224,7 @@ function createGraphStore(): GraphStoreAPI {
      * @param options - [可选] recordLog：是否写入操作日志（默认 true）；
      *                  skipValidate：透传引擎 applyBatches，跳过 Phase 1 前提校验
      *                  （undo/redo 恢复型逆元批传 true，正向用户操作默认 false）；
-     *                  source：操作来源的工具标识，透传写入 entry.source
+     *                  source：操作来源的工具标识
      *                  （缺省 undefined = 未知来源，供操作日志树 UI 按来源分类）
      * @returns 校验结果（valid + issues 汇总）。
      */
@@ -314,7 +314,7 @@ function createGraphStore(): GraphStoreAPI {
 
         if (applyEntry(entryIndex, 'reverse')) {
             store.redoStack.push(entryIndex)
-            ensureViewConsistency()
+            goToNearestAvailableGraph()
             return true
         }
 
@@ -337,7 +337,7 @@ function createGraphStore(): GraphStoreAPI {
         }
 
         if (applyEntry(entryIndex, 'forward')) {
-            ensureViewConsistency()
+            goToNearestAvailableGraph()
             return true
         }
 
@@ -534,7 +534,7 @@ function createGraphStore(): GraphStoreAPI {
      *   3. 均无 → 清空视图（graphViewId = null，graphPath = []）
      * - 切换后：buildGraphPath 重算 graphPath；末端为 root 时更新 lastActiveRootId
      */
-    function ensureViewConsistency(): void {
+    function goToNearestAvailableGraph(): void {
         const currentViewId = store.graphViewId
         if (!currentViewId) return
         if (store.graphView) return
