@@ -46,15 +46,20 @@
                 </div>
 
                 <!-- 白色内容卡：内嵌托盘内，投影落于托盘橙面；仅承载摘要（无摘要时保持空卡） -->
-                <div class="w-60 rounded-xl bg-white px-4 py-3 shadow-md">
+                <div class="w-60 rounded-xl bg-white px-4 py-1 shadow-md">
                     <template v-if="formModel.showSummary">
-                        <label
-                            class="block py-1 text-sm font-semibold text-slate-800"
-                            >摘要：</label
-                        >
+                        <label class="flex items-center justify-between text-sm font-semibold text-stone-800 mb-1">
+                            <!-- 左边：标题文字 -->
+                            <span>摘要</span>
+                            <!-- 右边：字数统计（去掉 absolute，加 font-normal 防止继承加粗） -->
+                            <span class="text-xs font-normal font-mono text-stone-400">
+                                {{ formModel.summary.length }}/80
+                            </span>
+                        </label>
                         <textarea
                             rows="3"
-                            class="w-full resize-none rounded-md border border-stone-200 px-2 py-1 text-sm text-slate-900 outline-none"
+                            maxlength="80"
+                            class="w-full rounded-md border border-stone-200 px-2 py-1 text-sm text-slate-900 outline-none resize-none [field-sizing:content] min-h-15 max-h-40"
                             v-bind:value="formModel.summary"
                             v-on:input="formModel.onSummaryInput"
                         />
