@@ -1,14 +1,18 @@
 /**
- * 将图内原子操作（AtomicOperationInGraph）转换为新的 GraphData。所有函数为纯函数，不修改入参。
+ * 执行图内原子操作：把单个操作应用到图，返回新的 GraphData。
  *
  * @remarks
- * 本模块不负责校验。所有操作返回新的 GraphData（签名 (graph, op, executedAt) → graph）。
- * 时间戳由调用方（Runtime）经裸参数 executedAt 传入——execute 层自身不再生成时间戳，
- * executedAt 语义 = 本批次执行的时刻（正向=真实当前时刻，undo=撤销时刻，redo=历史执行时刻）；
- * 对象级 createdAt/updatedAt = 操作携带值 ?? executedAt（逆元快照携带历史值 → 恢复，正向不携带 → executedAt）。
- * 度数按本图边数增减，不做引用穿透（引用节点度数不跟随源节点），图遍历委托给 traversal.ts。
- * 图级操作（add_graph / delete_graph）不在 execute 层处理——它们是多图注册表层面的操作，
- * 由 applyBatches 统一兑现。
+ * 本模块不负责校验，所有函数为纯函数，返回新对象、不修改入参。
+ *
+ * 时间戳由调用方（Runtime）经裸参数 executedAt 传入，execute 层自身不再生成：
+ * - executedAt = 本批次执行的时刻，由调用方决定取值（正向传真实当前时刻；undo 传撤销时刻）
+ * - 对象级 createdAt/updatedAt = 操作携带值 ?? executedAt
+ *   - 逆元快照携带历史值 → undo 恢复
+ *   - 正向构造不携带 → 一律 executedAt
+ *
+ * 其他边界：
+ * - 度数按本图边数增减，不做引用穿透（引用节点度数不跟随源节点），图遍历委托给 traversal.ts
+ * - 图级操作（add_graph / delete_graph）不在此处理——它们是注册表层面的操作，由 applyBatches 统一兑现
  */
 
 import type { GraphData, NodeId } from '../types/graph_data'
@@ -70,13 +74,19 @@ function executeAddNode(
     operation: { type: 'add_node'; node: GraphData['nodes'][number] },
     executedAt: string,
 ): GraphData {
-    const createdAt = resolveObjectTimestamp(executedAt, operation.node.createdAt)
-    const updatedAt = resolveObjectTimestamp(executedAt, operation.node.updatedAt)
+    const createdAt = resolveObjectTimestamp(
+        executedAt,
+        operation.node.createdAt,
+    )
+    const updatedAt = resolveObjectTimestamp(
+        executedAt,
+        operation.node.updatedAt,
+    )
 
     return {
         ...graph,
         nodes: [...graph.nodes, { ...operation.node, createdAt, updatedAt }],
-        updatedAt: executedAt
+        updatedAt: executedAt,
     }
 }
 
@@ -85,8 +95,14 @@ function executeAddEdge(
     operation: { type: 'add_edge'; edge: GraphData['edges'][number] },
     executedAt: string,
 ): GraphData {
-    const createdAt = resolveObjectTimestamp(executedAt, operation.edge.createdAt)
-    const updatedAt = resolveObjectTimestamp(executedAt, operation.edge.updatedAt)
+    const createdAt = resolveObjectTimestamp(
+        executedAt,
+        operation.edge.createdAt,
+    )
+    const updatedAt = resolveObjectTimestamp(
+        executedAt,
+        operation.edge.updatedAt,
+    )
 
     // 度数只按本图边数计算：仅两端节点 degree +1，引用节点不跟随源节点度数
     const nodes = graph.nodes.map((node) => {
@@ -252,7 +268,10 @@ function executeUpdateNode(
     operation: { type: 'update_node'; node: GraphData['nodes'][number] },
     executedAt: string,
 ): GraphData {
-    const updatedAt = resolveObjectTimestamp(executedAt, operation.node.updatedAt)
+    const updatedAt = resolveObjectTimestamp(
+        executedAt,
+        operation.node.updatedAt,
+    )
 
     let nodes = graph.nodes.map((node) => {
         if (node.id !== operation.node.id) return node
@@ -293,7 +312,10 @@ function executeUpdateEdge(
     operation: { type: 'update_edge'; edge: GraphData['edges'][number] },
     executedAt: string,
 ): GraphData {
-    const updatedAt = resolveObjectTimestamp(executedAt, operation.edge.updatedAt)
+    const updatedAt = resolveObjectTimestamp(
+        executedAt,
+        operation.edge.updatedAt,
+    )
 
     return {
         ...graph,
@@ -392,10 +414,10 @@ function executeExpandDependency(
 }
 
 /**
- * 解析对象级时间戳应写入的值：操作携带值优先，缺失时兜底 executedAt。
+ * 解析对象级时间戳：操作携带值优先，缺失时兜底 executedAt。
  *
- * @param executedAt - 执行时间戳
- * @param carried - 操作对象携带的时间戳值（可能缺失）
+ * @param executedAt - 本批次执行的时刻（兜底值）
+ * @param carried - 操作对象携带的时间戳（正向构造通常缺失，逆元快照携带历史值）
  * @returns 应写入的最终时间戳。
  */
 function resolveObjectTimestamp(

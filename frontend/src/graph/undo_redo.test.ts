@@ -77,7 +77,7 @@ function registerGraphs(
     }
 }
 
-describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
+describe('双存接线（commitBatchToGraphs → CommitLog）', () => {
     beforeEach(() => {
         resetGraphStoreForTests()
         localStorage.clear()
@@ -89,7 +89,7 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
         vi.restoreAllMocks()
     })
 
-    test('单图多操作提交 → 组装一条 entry（operation 正向 / reversalOperations item 内逆序 / parentIndex -1）', () => {
+    test('单图多操作提交 → 组装一条 entry（batch 正向 / reversalBatch item 内逆序 / parentIndex -1）', () => {
         const store = useGraphStore()
         const graph = makeGraph(ROOT, [
             knowledgeNode('node-a', '节点A', 0, 0),
@@ -129,7 +129,7 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
         expect(entry.parentIndex).toBe(-1)
 
         // operation：按图分组、正向顺序
-        expect(entry.operation).toEqual([
+        expect(entry.batch).toEqual([
             {
                 graphId: ROOT,
                 operations: [
@@ -151,8 +151,8 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
             },
         ])
 
-        // reversalOperations：item 内逆序（后执行先撤销）
-        expect(entry.reversalOperations).toEqual([
+        // reversalBatch：item 内逆序（后执行先撤销）
+        expect(entry.reversalBatch).toEqual([
             {
                 graphId: ROOT,
                 operations: [
@@ -168,7 +168,7 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
         ])
     })
 
-    test('混合多图批 → reversalOperations item 间逆序（后提交的图先撤销）', () => {
+    test('混合多图批 → reversalBatch item 间逆序（后提交的图先撤销）', () => {
         const store = useGraphStore()
         const graphA = makeGraph('graph-a', [knowledgeNode('a-1', 'A1', 0, 0)])
         const graphB = makeGraph('graph-b', [knowledgeNode('b-1', 'B1', 0, 0)])
@@ -199,19 +199,19 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
 
         const entry = store.operationLog.entries[0]!
         // operation：正向 item 顺序
-        expect(entry.operation.map((item) => item.graphId)).toEqual([
+        expect(entry.batch.map((item) => item.graphId)).toEqual([
             'graph-a',
             'graph-b',
         ])
-        // reversalOperations：item 间逆序
-        expect(entry.reversalOperations.map((item) => item.graphId)).toEqual([
+        // reversalBatch：item 间逆序
+        expect(entry.reversalBatch.map((item) => item.graphId)).toEqual([
             'graph-b',
             'graph-a',
         ])
-        expect(entry.reversalOperations[0]!.operations).toEqual([
+        expect(entry.reversalBatch[0]!.operations).toEqual([
             { type: 'delete_node', nodeId: 'b-2' },
         ])
-        expect(entry.reversalOperations[1]!.operations).toEqual([
+        expect(entry.reversalBatch[1]!.operations).toEqual([
             { type: 'delete_node', nodeId: 'a-2' },
         ])
     })
@@ -247,9 +247,9 @@ describe('双存接线（commitBatchToGraphs → OperationLogEntry）', () => {
         })
         expect(store.operationLog.entries[0]!.parentIndex).toBe(-1)
         expect(store.operationLog.entries[1]!.parentIndex).toBe(0)
-        // 图级操作不构造逆元：两条 entry 的 reversalOperations 均为空
-        expect(store.operationLog.entries[0]!.reversalOperations).toEqual([])
-        expect(store.operationLog.entries[1]!.reversalOperations).toEqual([])
+        // 图级操作不构造逆元：两条 entry 的 reversalBatch 均为空
+        expect(store.operationLog.entries[0]!.reversalBatch).toEqual([])
+        expect(store.operationLog.entries[1]!.reversalBatch).toEqual([])
     })
 
     test('recordLog: false 提交 → 不追加 entry、cursor 不变（图修改仍生效）', () => {
@@ -544,7 +544,7 @@ describe('undo 链', () => {
         expect(store.redoStack).toEqual([])
         // 旧分支 entry（add node-c）仍保留在日志中
         expect(
-            store.operationLog.entries[1]!.operation[0]!.operations[0],
+            store.operationLog.entries[1]!.batch[0]!.operations[0],
         ).toEqual({
             type: 'add_node',
             node: expect.objectContaining({ id: 'node-c' }),

@@ -1,13 +1,18 @@
 /**
- * 多图批处理（多图管理层）：统一循环执行图内（委托 applyBatch）与图级
- * （add_graph / delete_graph 兑现）操作，返回新注册表 + 聚合校验 + 逆元序列 + graphSignals。
+ * 多图批处理：统一循环执行图内与图级操作。
  *
  * @remarks
- * 统一循环（融合而非拼接）：逐批遍历，按 kind if-else 直接分派——图内委托 applyBatch、
- * 图级先 validateGraphOperation 校验再路由兑现，禁止"图内先执行、图级后兑现"的两段式拼接。
+ * 统一循环（融合而非拼接）：逐批遍历，按 kind if-else 直接分派，禁止
+ * "图内先执行、图级后兑现"的两段式拼接：
+ * - 图内批：委托 applyBatch 执行
+ * - 图级批：先 validateGraphOperation 校验再路由兑现
+ *
  * 纯函数：不修改入参注册表，返回新 GraphRegistry（复用未变化图引用，不深拷贝）。
- * 逆元：图内经 createReversal 构造（执行前捕获操作前状态）；图级经路由逆元构造函数
- * 构造（add ↔ delete 互逆，签名统一为操作图数据 { type, graph }）。
+ *
+ * 逆元构造：
+ * - 图内：经 createReversal（执行前捕获操作前状态）
+ * - 图级：经路由逆元构造函数（add ↔ delete 互逆，签名统一为操作图数据 { type, graph }）
+ *
  * 事务性：任一操作校验失败整批丢弃，注册表不变。
  */
 
@@ -17,7 +22,7 @@ import type {
     GraphOperation,
 } from '../types/atomic_operations'
 import type { ValidationIssue, ValidationResult } from '../types/validation'
-import type { ItemOperations } from '../types/operation_log'
+import type { BatchLog } from '../types/operation_log'
 import type { OperationBatch } from '../types/compose_types'
 import { applyBatch } from './apply_batch'
 import { createReversal } from './reversal'
@@ -27,7 +32,8 @@ import { validateGraphOperation } from './validate_graph_operation'
  * 图级摘要：本批新增 / 删除的图 ID。
  *
  * @remarks
- * 中间态，供 07 操作日志改造前的现状日志组装使用，07 移除。
+ * 中间态——undo 按此摘要反向执行图级逆元（add_graph ↔ delete_graph），07 与前端
+ * 对称化操作日志模型时移除。
  */
 export interface GraphSignals {
     added: GraphId[]
@@ -45,9 +51,9 @@ export interface ApplyBatchesResult {
     validation: ValidationResult
 
     /** 逆元序列，按批分组（item 间逆序，item 内逆序打平）。 */
-    reversalOperations: ItemOperations[]
+    reversalOperations: BatchLog[]
 
-    /** 图级摘要（中间态，07 移除）。 */
+    /** 图级摘要（新增 / 删除的图 ID）。中间态——07 与前端对称化操作日志模型时移除。 */
     graphSignals: GraphSignals
 }
 
@@ -97,7 +103,7 @@ export function applyBatches(
     const latestGraphs = new Map<GraphId, GraphData>()
 
     const allIssues: ValidationIssue[] = []
-    const reversalItems: ItemOperations[] = []
+    const reversalItems: BatchLog[] = []
     const graphSignals: GraphSignals = { added: [], deleted: [] }
 
     for (const batch of batches) {
@@ -201,11 +207,14 @@ export function applyBatches(
                 }
 
                 // 纯函数：输入注册表 + 操作 → 输出新注册表（引用替换）
-                newRegistry = executeGraphOperation(newRegistry, op)
+                newRegistry = executeGraphOperation(newRegistry, op, executedAt)
 
                 // 图级摘要累积（由调用方从操作类型推导）
                 if (op.type === 'add_graph') {
                     graphSignals.added.push(op.graph.id)
+                    // 记录补写时间戳后的注册图：后续图内填充批基于它执行，
+                    // 否则会用原始无时间戳骨架作输入，覆盖掉刚补写的 createdAt
+                    latestGraphs.set(op.graph.id, newRegistry.get(op.graph.id)!)
                 } else {
                     graphSignals.deleted.push(op.graph.id)
                 }
@@ -240,21 +249,35 @@ export function applyBatches(
  * 输入注册表 + 图级操作 → 输出新注册表（引用替换，不修改入参）。
  * add_graph 直接注册操作自带的空图——顺序由操作构造方（compose）保证：
  * add_graph 批在对应子图填充批之前，注册空图后由后续图内批填充覆盖。
+ * add_graph 注册时补写图级时间戳（图骨架未携带时用 executedAt 兜底，与 execute 层
+ * resolveObjectTimestamp 的"携带值 ?? executedAt"一致）。
  * 图级摘要（graphSignals）由调用方从操作类型推导累积。
  *
  * @param registry - 操作前的注册表（不修改）
  * @param op - 待兑现的图级操作
+ * @param executedAt - 本批次执行的时刻（add_graph 补写图级时间戳的来源）
  * @returns 新注册表（引用替换，未变化图复用引用）
  */
 function executeGraphOperation(
     registry: GraphRegistry,
     op: AtomicGraphOperation,
+    executedAt: string,
 ): GraphRegistry {
     switch (op.type) {
         case 'add_graph': {
             // add_graph 只注册空图：顺序由操作构造方保证（add_graph 批在填充批之前）
             const next = new Map(registry)
-            next.set(op.graph.id, op.graph)
+            // 图骨架未携带时间戳时补写 executedAt（已携带则尊重并复用原引用）
+            const graph =
+                op.graph.createdAt === undefined ||
+                op.graph.updatedAt === undefined
+                    ? {
+                          ...op.graph,
+                          createdAt: op.graph.createdAt ?? executedAt,
+                          updatedAt: op.graph.updatedAt ?? executedAt,
+                      }
+                    : op.graph
+            next.set(op.graph.id, graph)
             return next
         }
         case 'delete_graph': {

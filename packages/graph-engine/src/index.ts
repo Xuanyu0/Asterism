@@ -106,9 +106,9 @@ export type {
 
 /** 消费者：graph_store（操作日志 & undo/redo）。 */
 export type {
-    ItemOperations,
-    OperationLogEntry,
-    OperationLog,
+    BatchLog,
+    CommitLog,
+    OperationLogTree,
     State,
 } from './types/operation_log'
 
@@ -211,7 +211,7 @@ export { replayGraph, replayToStep } from './core/replay'
  * 使用：
  *
  *     const reversals = createReversal(graph, operation)
- *     // 执行后追加到 OperationLog
+ *     // 执行后追加到 OperationLogTree
  */
 export { createReversal } from './core/reversal'
 

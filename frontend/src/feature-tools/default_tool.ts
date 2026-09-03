@@ -161,7 +161,7 @@ export function useDefaultTool(): ToolHandler {
                 floatingWindow.close()
             }
         } else {
-            // 同上
+            // 同边分支：剔除原有 updatedAt，时间由 commitBatchToGraphs 注入
             const { updatedAt: _updatedAt, ...nodeData } = data
             const node: NodeData = { ...nodeData, label }
 

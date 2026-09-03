@@ -1,8 +1,9 @@
 /**
- * timestamp.test.ts
+ * 时间戳参数化测试。
  *
- * 时间戳参数化测试：验证 executeOperation 使用调用方传入的 executedAt（对象级 =
- * 操作携带值 ?? executedAt，无模式分支），以及 executedAt 可传历史时刻。
+ * @remarks
+ * 验证 executeOperation 使用调用方传入的 executedAt（对象级 = 操作携带值 ?? executedAt，
+ * 无模式分支），以及 executedAt 可传历史时刻。
  */
 
 import type { GraphData, GraphId, NodeId } from '../../src/types/graph_data'

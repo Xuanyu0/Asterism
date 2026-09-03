@@ -18,10 +18,10 @@ import { shallowReactive } from 'vue'
 import type { GraphData, GraphId } from '@my-project/graph-engine'
 import type { ValidationResult } from '@my-project/graph-engine'
 import type {
-    ItemOperations,
+    BatchLog,
     OperationBatch,
-    OperationLog,
-    OperationLogEntry,
+    OperationLogTree,
+    CommitLog,
 } from '@my-project/graph-engine'
 
 import { applyBatches } from '@my-project/graph-engine'
@@ -74,7 +74,7 @@ export interface GraphStoreAPI {
     graphRegistry: GraphRegistry
 
     // 撤销日志（普通字段，raw 无代理）
-    operationLog: OperationLog
+    operationLog: OperationLogTree
     redoStack: number[]
 
     // 唯一切换
@@ -137,7 +137,7 @@ function createGraphStore(): GraphStoreAPI {
         graphRegistry: createRegistry(),
 
         // —— 语义上非响应式状态（raw 无代理，引擎 structuredClone 可直接克隆）——
-        operationLog: { entries: [], cursor: -1 } as OperationLog,
+        operationLog: { entries: [], cursor: -1 } as OperationLogTree,
         redoStack: [] as number[],
 
         // ── 方法（函数不被代理，原样保留）──
@@ -227,7 +227,7 @@ function createGraphStore(): GraphStoreAPI {
      *                  （undo/redo 恢复型逆元批传 true，正向用户操作默认 false）；
      *                  source：操作来源的工具标识，透传写入 entry.source
      *                  （缺省 undefined = 未知来源，供操作日志树 UI 按来源分类）；
-     *                  executedAt：时间戳来源（缺省内部生成当前时刻，前端即 Runtime 时间源）
+     *                  executedAt：时间戳来源（缺省内部生成当前时刻）
      * @returns 校验结果（valid + issues 汇总）。
      */
     function commitBatchToGraphs(
@@ -280,11 +280,11 @@ function createGraphStore(): GraphStoreAPI {
         // 操作日志写入（正逆操作双存模型）
         // 整批成功后组装 entry 追加、cursor 前进、清空 redoStack
         if (options?.recordLog !== false && operationBatch.length > 0) {
-            const entry: OperationLogEntry = {
-                operation: operationBatch.map(toItemOperations),
+            const entry: CommitLog = {
+                batch: operationBatch.map(toBatchLog),
                 // 图级逆元（add_graph ↔ delete_graph）由 graphSignals + 三段式 undo 兑现，
-                // 不进入 reversalOperations（保持现状日志结构；07 统一日志模型时再启用）
-                reversalOperations: result.reversalOperations.filter(
+                // 不进入 reversalBatch（保持现状日志结构；07 统一日志模型时再启用）
+                reversalBatch: result.reversalOperations.filter(
                     (item) => !isGraphLevelReversal(item),
                 ),
                 graphSignals: result.graphSignals,
@@ -405,12 +405,12 @@ function createGraphStore(): GraphStoreAPI {
                 revertDeleteGraph(store.graphRegistry, graphId)
             }
 
-            // 阶段二：图内逆元执行（reversalOperations 顺序遍历，组装时已逆序）。
+            // 阶段二：图内逆元执行（reversalBatch 顺序遍历，组装时已逆序）。
             // 跳过 added 图的 item：③ 注销后其逆元无意义，且执行会把空壳中间态写回
             // 持久化，覆盖正向批的填充版（数据丢失）。
             const addedGraphIds = new Set(entry.graphSignals.added)
             const batch: OperationBatch[] = []
-            for (const reversalItem of entry.reversalOperations) {
+            for (const reversalItem of entry.reversalBatch) {
                 if (reversalItem.operations.length === 0) continue
                 if (addedGraphIds.has(reversalItem.graphId)) continue // 跳过 added 图的 item：模型本质要求（见JSDoc）
 
@@ -458,7 +458,7 @@ function createGraphStore(): GraphStoreAPI {
         } else if (direction === 'forward') {
             // forward（redo）：operation 顺序遍历组装 commitBatchToGraphs 可执行的 batch
             const batch: OperationBatch[] = []
-            for (const forwardItem of entry.operation) {
+            for (const forwardItem of entry.batch) {
                 let graph = lookupGraph(
                     store.graphRegistry,
                     forwardItem.graphId,
@@ -466,8 +466,8 @@ function createGraphStore(): GraphStoreAPI {
 
                 if (!graph) {
                     // registry 缺失（undo 注销的 added 图）→ 用批内 add_graph.graph 兜底
-                    // （跨 item 查找：add_graph 批与填充批在 entry.operation 中可能分离）
-                    const addGraphOp = entry.operation
+                    // （跨 item 查找：add_graph 批与填充批在 entry.batch 中可能分离）
+                    const addGraphOp = entry.batch
                         .flatMap((item) => item.operations)
                         .find(
                             (op) =>
@@ -750,12 +750,12 @@ function reportReversalApplyFailure(
 // ── 私有辅助（日志组装） ──
 
 /**
- * 将批次映射为日志 item（graphId + operations）。
+ * 将批次映射为按图分组批（graphId + operations）。
  *
  * @remarks
  * inGraph 批取批目标图 id；graphLevel 批取首个操作的图 id（add_graph / delete_graph 均携带图数据）。
  */
-function toItemOperations(batch: OperationBatch): ItemOperations {
+function toBatchLog(batch: OperationBatch): BatchLog {
     if (batch.kind === 'inGraph') {
         return {
             graphId: batch.graph.id,
@@ -769,12 +769,12 @@ function toItemOperations(batch: OperationBatch): ItemOperations {
 }
 
 /**
- * 判断日志 item 是否含图级逆元（add_graph / delete_graph）。
+ * 判断按图分组批是否含图级逆元（add_graph / delete_graph）。
  *
  * @remarks
- * 图级逆元由 graphSignals + 三段式 undo 兑现，不进入 reversalOperations（07 统一日志模型时再启用）。
+ * 图级逆元由 graphSignals + 三段式 undo 兑现，不进入 reversalBatch（07 统一日志模型时再启用）。
  */
-function isGraphLevelReversal(item: ItemOperations): boolean {
+function isGraphLevelReversal(item: BatchLog): boolean {
     return item.operations.some(
         (op) => op.type === 'add_graph' || op.type === 'delete_graph',
     )

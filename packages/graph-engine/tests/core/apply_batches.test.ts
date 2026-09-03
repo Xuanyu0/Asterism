@@ -5,6 +5,7 @@
  */
 
 import { applyBatches } from '../../src/core/apply_batches'
+import { deconstruct } from '../../src/compose/cognitive/deconstruct'
 import type {
     GraphData,
     GraphId,
@@ -16,7 +17,11 @@ import type {
     AtomicGraphOperation,
     AtomicOperationInGraph,
 } from '../../src/types/atomic_operations'
-import { createNode, assembleGraph } from '../test_case_factory'
+import {
+    createNode,
+    assembleGraph,
+    createDeconstructInputGraph,
+} from '../test_case_factory'
 
 const G = 'parent' as GraphId
 const CHILD = 'child' as GraphId
@@ -397,5 +402,40 @@ describe('applyBatches 事务性与纯函数', () => {
         expect(result.registry.get(CHILD)).toBe(child)
         // 变化图是新引用
         expect(result.registry.get(G)).not.toBe(parent)
+    })
+})
+
+// ═══════════ U-1：add_graph 补写图级时间戳 ═══════════
+
+describe('U-1：add_graph 补写图级时间戳', () => {
+    test('deconstruct 真实 compose → applyBatches 后，新建子图 createdAt/updatedAt = executedAt', () => {
+        const parent = createDeconstructInputGraph()
+        const registry = makeRegistry(parent)
+
+        const CUSTOM_NOW = '2026-02-02T02:02:02.000Z'
+
+        const { batches } = deconstruct({
+            nodeId: 'decon-A' as NodeId,
+            parentGraph: parent,
+        })
+
+        const result = applyBatches(registry, batches, {
+            executedAt: CUSTOM_NOW,
+        })
+
+        expect(result.validation.valid).toBe(true)
+
+        // 子图 id 由 deconstruct 内部生成：从 add_graph 批读取
+        const graphLevelBatch = batches[0]!
+        expect(graphLevelBatch.kind).toBe('graphLevel')
+        const addGraphOp = graphLevelBatch.operations[0] as {
+            type: 'add_graph'
+            graph: GraphData
+        }
+        const childId = addGraphOp.graph.id
+
+        const child = result.registry.get(childId)!
+        expect(child.createdAt).toBe(CUSTOM_NOW)
+        expect(child.updatedAt).toBe(CUSTOM_NOW)
     })
 })

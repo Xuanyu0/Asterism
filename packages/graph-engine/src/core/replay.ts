@@ -3,13 +3,15 @@
  *
  * @remarks
  * 纯函数，不修改入参；从基线图逐步 apply 操作，不依赖外部状态。
- * 回放语义 = 重放变更，时间戳 = 重放时刻（历史时间戳由 undo 经逆元快照恢复，
- * 重放按当前时刻如实记录）。executedAt 缺省时内部兜底生成（回放场景调用方无需指定时间源）。
+ *
+ * 时间戳语义 = 重放时刻（按当前时刻如实记录），历史时间戳由 undo 经逆元快照恢复。
+ * executedAt 缺省时内部兜底生成——回放场景调用方无需指定时间源。
  */
 
 import type { GraphData } from '../types/graph_data'
 import type { AtomicOperationInGraph } from '../types/atomic_operations'
 import { executeOperation } from './execute_operation'
+
 /**
  * 从基线 GraphData + 操作序列回放到末尾。
  *
@@ -23,7 +25,6 @@ export function replayGraph(
     operations: AtomicOperationInGraph[],
     executedAt?: string,
 ): GraphData {
-    // 缺省兜底：回放场景调用方无需指定时间源（重放时刻如实记录）
     const effectiveExecutedAt = executedAt ?? new Date().toISOString()
 
     return operations.reduce(
@@ -51,7 +52,6 @@ export function replayToStep(
     executedAt?: string,
 ): GraphData {
     const clampedStep = Math.max(0, Math.min(step, operations.length))
-    // 缺省兜底：回放场景调用方无需指定时间源（重放时刻如实记录）
     const effectiveExecutedAt = executedAt ?? new Date().toISOString()
 
     return operations
