@@ -14,7 +14,7 @@
 行为：
 - 硬编码术语表名称→路径映射，校验路径存在
 - 无条件按各术语表文件的 mtime 更新三行日期（幂等：日期未变则无 diff）
-- 修改 CLAUDE.md 后自动 git add，使时间戳改动进入本次 commit
+- 修改 CLAUDE.md 后自动 git add（**仅当 CLAUDE.md 无其他未暂存改动时**），使时间戳改动进入本次 commit；若存在非时间戳的未暂存改动，跳过 add 并提示（避免卷入用户无关改动）
 - 退出码：0 = 成功；1 = 解析/执行错误
 """
 
@@ -98,8 +98,23 @@ def main() -> int:
     claude_text = claude_text.replace(section, new_section, 1)
     CLAUDE_PATH.write_text(claude_text, encoding="utf-8")
 
-    # 重新暂存 CLAUDE.md，使时间戳改动进入本次 commit
-    subprocess.run(["git", "add", "CLAUDE.md"], cwd=ROOT, check=True)
+    # 重新暂存 CLAUDE.md：仅当 diff 只含时间戳行改动时 add。
+    # git add 是文件级操作——若用户有未暂存的非时间戳改动，add 会一并卷入本次 commit。
+    diff = subprocess.run(
+        ["git", "diff", "--", "CLAUDE.md"], cwd=ROOT, capture_output=True, text=True
+    ).stdout.splitlines()
+    changed_lines = [
+        line
+        for line in diff
+        if (line.startswith("+") or line.startswith("-"))
+        and not line.startswith("+++")
+        and not line.startswith("---")
+    ]
+    non_stamp_changes = [line for line in changed_lines if "Last updated: " not in line]
+    if non_stamp_changes:
+        print("⚠ CLAUDE.md 存在非时间戳的未暂存改动，本次不自动暂存术语表时间戳")
+    else:
+        subprocess.run(["git", "add", "CLAUDE.md"], cwd=ROOT, check=True)
 
     print("术语表时间戳已更新")
     return 0
