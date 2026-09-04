@@ -30,7 +30,6 @@
 
 /** 消费者：全部前端模块（类型注解、接口契约）。 */
 export type {
-    GraphPosition,
     GraphId,
     NodeId,
     EdgeId,

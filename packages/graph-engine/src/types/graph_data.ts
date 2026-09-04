@@ -5,19 +5,14 @@
  * 总体结构：
  * 1. Graph：图数据、图类型、认知状态
  * 2. Node：两级判别（role → kind/referenceKind）、通用属性、专有属性
- * 3. Edge：边数据、2×2 矩阵（kind × direction）
+ * 3. Edge：边数据、2 × 2（kind × direction）
  * 4. 派生契约：form / abstractionLevel 的派生函数签名（实现见 core/derive.ts）
- *
- * @example
- * ```ts
- * import type { GraphData, NodeData, EdgeData } from '@my-project/graph-engine'
- * ```
  */
 
 // ——————Graph——————
 
 /** 图空间中的二维坐标，不表示 DOM 像素坐标。 */
-export interface GraphPosition {
+export interface NodePosition {
     x: number
     y: number
 }
@@ -32,8 +27,7 @@ export type GraphKind = 'root' | 'subgraph' | 'learningBlock' | 'commonLayer'
  * 多图注册表：GraphId → GraphData 的映射。
  *
  * @remarks
- * 供多图管理层（applyBatches）作为参数使用。引擎是纯函数，不持有注册表状态，
- * 由调用方（前端 Runtime）持有并传入。前端 graph_registry.ts 的对接在 06.3。
+ * 供多图管理层（applyBatches）作为参数使用。
  */
 export type GraphRegistry = Map<GraphId, GraphData>
 
@@ -74,19 +68,17 @@ export interface FoldedDependencyState {
  */
 export type NodeKind = 'knowledge' | 'reference'
 
-// --- 知识节点子类型 (role === 'knowledge') ---
+// 知识节点子类型（2 × 2）
 
 export type KnowledgeState = 'virtual' | 'real'
 
 export type RealNodeForm = 'atomic' | 'abstract'
 
-// --- 引用节点子类型 (role === 'reference') ---
+// 引用节点子类型
 
 export type ReferenceNodeKind = 'communication' | 'heuristic'
 
 // ——————通用属性——————
-
-export type NodePosition = GraphPosition
 
 /**
  * 所有节点的共享属性：不依赖 role，无需 narrow 即可安全读取。
@@ -146,7 +138,7 @@ export type EdgeKind = 'real' | 'virtual'
 export type EdgeDirection = 'directed' | 'undirected'
 
 /**
- * 边数据：kind（实 / 虚）× direction（有向 / 无向）的 2×2 矩阵。
+ * 边数据。
  *
  * @remarks
  * 沟通边的视觉效果（一端半悬空、逐渐淡化）不由边类型决定，
