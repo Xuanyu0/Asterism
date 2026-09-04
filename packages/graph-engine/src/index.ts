@@ -257,6 +257,7 @@ export {
     diverge,
     induce,
     internalize,
+    deleteAbstractNode,
 } from './compose'
 export type {
     DraftPosition,
@@ -269,6 +270,7 @@ export type {
     DivergeParams,
     InduceParams,
     InternalizeParams,
+    DeleteAbstractNodeParams,
 } from './compose'
 
 // ═══════════════════════════════════════════════════════════════════
