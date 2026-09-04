@@ -685,10 +685,6 @@ function findParentGraph(
 
 /**
  * 祖先链断裂报告（开发者通道）。沿 parentGraphId 回溯时父图不可达（缺失或损坏）时调用。
- *
- * @param graphId - 发起回溯的图 ID
- * @param terminalId - 链断裂处（最后成功回溯到的图 ID）
- * @param missingParentId - 缺失的父图 ID
  */
 function reportBrokenAncestorChain(
     graphId: GraphId,
@@ -702,8 +698,6 @@ function reportBrokenAncestorChain(
 
 /**
  * 环检测报告（开发者通道）。parentGraphId 链检测到环、回溯被迫中断时调用。
- *
- * @param parentId - 导致回退的重复父图 ID（环的入口）
  */
 function reportCycleDetected(parentId: GraphId): void {
     console.warn(
@@ -714,9 +708,6 @@ function reportCycleDetected(parentId: GraphId): void {
 /**
  * applyEntry 组装 batch 时 registry 解析失败报告（开发者通道）。
  * 正常流程不可达（undo 的图在 registry 中、redo 的图有 add_graph 兜底），防御性处理。
- *
- * @param graphId - 解析失败的图 ID
- * @param context - 发生场景（'undo 逆元执行' / 'redo 正向执行'）
  */
 function reportRegistryResolveFailure(graphId: GraphId, context: string): void {
     console.warn(
@@ -727,9 +718,6 @@ function reportRegistryResolveFailure(graphId: GraphId, context: string): void {
 /**
  * applyEntry 逆元执行校验失败报告（开发者通道）。
  * 正常流程不可达（逆元目标存在由 validate 保证），防御性处理。
- *
- * @param entryIndex - 失败的日志 entry 索引
- * @param direction - 'undo' 或 'redo'
  */
 function reportReversalApplyFailure(
     entryIndex: number,
