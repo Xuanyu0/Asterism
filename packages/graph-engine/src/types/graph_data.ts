@@ -90,11 +90,6 @@ export type NodePosition = GraphPosition
 
 /**
  * 所有节点的共享属性：不依赖 role，无需 narrow 即可安全读取。
- *
- * @remarks
- * `childGraphId` 放在通用区的原因：引用节点创建时从源节点复制该值
- * （denormalization），保证交互层透明——用户在任何地方看到引用节点，
- * 都直接支持"展开子图"等操作，不需要先跳转到源节点所在图。
  */
 export interface NodeBase {
     readonly id: NodeId
@@ -104,7 +99,6 @@ export interface NodeBase {
     degree: number
     radius?: number
     position?: NodePosition
-    childGraphId?: GraphId
     groupId?: string
     createdAt?: string
     updatedAt?: string
@@ -115,6 +109,8 @@ export interface NodeBase {
 export interface KnowledgeNodeData extends NodeBase {
     role: 'knowledge'
     kind: KnowledgeState
+    /** 抽象节点指向的子图 id；undefined 表示原子节点。 */
+    childGraphId?: GraphId
     summary?: string
     noteLink?: string
 }
@@ -126,7 +122,8 @@ export interface KnowledgeNodeData extends NodeBase {
  *
  * @remarks
  * 1. 修改同时作用于源节点（C++ 引用语义）。
- * 2. `label` / `childGraphId` 在创建时从源节点复制。
+ * 2. `childGraphId` 不再从源节点复制
+ *    其 abstractionLevel 由 deriveAbstractionLevel 解引用源节点推导。
  * 3. `sourceGraphId` / `sourceNodeId` 是实现引用语义的底层指针，
  *    仅在 operation_executor 内部穿透和用户"定位源节点"时使用。
  */
@@ -152,9 +149,8 @@ export type EdgeDirection = 'directed' | 'undirected'
  * 边数据：kind（实 / 虚）× direction（有向 / 无向）的 2×2 矩阵。
  *
  * @remarks
- * 沟通边的视觉效果（一端半悬空、逐渐淡化）不由边类型决定，而是渲染层
- * 根据端点节点是否为 `communication` 节点推导得出。沟通边不是独立的边概念——
- * 它属于 2×2 矩阵的某一格，仅因连接了 `communication` 节点而获得额外视觉行为。
+ * 沟通边的视觉效果（一端半悬空、逐渐淡化）不由边类型决定，
+ * 由渲染层根据端点节点是否为 `communication` 节点推导得出。
  */
 export interface EdgeData {
     readonly id: EdgeId
@@ -174,7 +170,7 @@ export interface EdgeData {
  * 推导知识节点 form（原子 / 抽象）的契约签名。
  *
  * @remarks
- * 权威源 = childGraphId（子图结构）。实现见 core/derive.ts 的 deriveNodeForm。
+ * 实现见 core/derive.ts 的 deriveNodeForm。
  */
 export type DeriveNodeForm = (node: KnowledgeNodeData) => RealNodeForm
 
@@ -182,10 +178,10 @@ export type DeriveNodeForm = (node: KnowledgeNodeData) => RealNodeForm
  * 推导节点 abstractionLevel 的契约签名。
  *
  * @remarks
- * 派生规则：abstractionLevel = 内部最大子图层数；空子图 = 1，原子节点 = 0。
- * 该值不持久化，读取时计算。实现见 core/derive.ts 的 deriveAbstractionLevel。
+ * 顶层可传知识节点或引用节点——引用节点经解引用源节点推导。
+ * 实现见 core/derive.ts 的 deriveAbstractionLevel。
  */
 export type DeriveAbstractionLevel = (
     lookupGraph: (graphId: GraphId) => GraphData | undefined,
-    node: NodeBase,
+    node: NodeData,
 ) => number

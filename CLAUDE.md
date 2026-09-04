@@ -29,7 +29,7 @@
 - **狭义 GraphData**：`packages/graph-engine/src/types/graph_data.ts` 中需要持久化存储的图结构类型。
 - **广义 GraphData**：需要持久化存储的图数据 + 由持久化存储图数据在运行时派生出来的数据。
 - **GraphEngine**：框架无关、本项目特定义下无副作用（不通过引用修改外部数据）的广义 GraphData 状态迁移引擎，是系统中所有 GraphData 转换操作的唯一入口。
-  （隐患：execute 内部 `new Date().toISOString()` 产生非确定性时间戳。当前快照式 undo 无影响，若未来升级 Event Sourcing 需提升为参数由 Runtime 传入）
+  （时间戳约定：execute 层不自行生成时间戳，由调用方（Runtime）经裸参数 `executedAt`（本批次执行的时刻）统一传入。对象级 createdAt/updatedAt = 操作携带值 ?? executedAt（逆元快照携带历史值 → undo 恢复历史时刻）。`new Date()` 兜底仅存于调用方缺省路径：`core/replay.ts`（回放时刻）与前端 `commitBatchToGraphs`）
   - 负责：定义类型、validate / execute / compose / replay
   - 不负责：I/O、持久化、持有状态
   - 与框架无关
@@ -124,6 +124,8 @@ npx prettier --write <文件路径>
 ## 项目架构（严格单向数据流）
 
 ```
+共享组合式函数 (src/composables/)      — 工具与组件共用的组合式函数（useFloatingWindow 浮空窗状态单例 + 外部点击关闭规则 / useCanvasFocus / useDragPosition / useOverflowDetection 等）
+
 用户交互 (DOM)
     ↓  点击/拖拽/悬停等被 Cytoscape 捕获
 Cytoscape Renderer
@@ -138,7 +140,6 @@ Cytoscape Renderer
 交互逻辑层 (feature-tools/)            — 工具注册/激活/事件路由/各自互斥；不直接写 GraphData
     ├── types.ts           — ToolId 联合 / ToolHandler / ToolConfig / ToolNotification
     ├── mediator.ts        — 注册/激活/转发/互斥；deactivate 恢复 default（不存在"无工具"状态）
-    ├── composables/       — 工具层共享组合式函数（useFloatingWindow：浮空窗状态单例 + 外部点击关闭规则）
     ├── default_tool.ts    — 默认工具 baseline：点节点/边 → 浮空窗 → 确认后写入
     ├── toolbar/           — 常驻工具：config.ts（按钮注册表）+ add_node / add_edge / delete / fold / move_node
     ├── cognition/         — 认知工具 handler（当前仅 deconstruct；induce / internalize / diverge 待从 operation_controller 迁入）
@@ -157,20 +158,20 @@ Runtime / UI 状态层 (graph/ + ui/)
     ├── utils/             — 公共工具函数（无状态纯函数）
     ├── graph_registry.ts  — 多图注册表（Map：GraphId → GraphData）
     ├── graph_persistence.ts — localStorage 持久化实现
-    └── operation_controller.ts — 认知/布局操作编排【历史遗留：待迁移至 feature-tools/】
-    │  提前报告图规则校验外的系统异常（数据损坏 / 链断裂 / 环），用户默认不可见
+    └── ui/operation_controller.ts — 认知/布局操作编排【历史遗留：待迁移至 feature-tools/】
+       提前报告图规则校验外的系统异常（数据损坏 / 链断裂 / 环），用户默认不可见
     ↓  委托纯函数
 GraphEngine (@my-project/graph-engine) — 框架无关；广义 GraphData 唯一转换入口；无副作用
     ├── types/             — 类型定义（graph_data / atomic_operations / cognitive / validation / operation_log ...）
-    ├── compose/           — 编排操作：cognitive/（deconstruct·induce·internalize·diverge）+ arrangement/（move·path·adjust·orbit）
-    ├── compose/pipeline.ts — 【applyBatch 事务流水线：逐条校验 → dry-run 执行 → 全局规则；任一失败整批丢弃】
-    ├── core/              — execute(执行) / validate(校验) / replay(回放) / reversal(逆操作→undo)
-    │                        utils/(normalize 认知状态补全 / traversal 图遍历 / id 生成) / validators/
+    ├── compose/           — 编排操作：cognitive/（deconstruct·induce·internalize·diverge）+ arrangement/（move·path·adjust·orbit）；index.ts 聚合导出
+    ├── core/              — 执行与事务：execute_operation(原子操作执行) / apply_batch(单图事务流水线：逐条校验 → dry-run 执行 → 全局规则，任一失败整批丢弃)
+    │                        / apply_batches(多图批处理：统一执行图内/图级批，返回新注册表 + 聚合校验 + 逆元序列) / reversal(逆操作→undo) / replay(回放) / derive(派生)
+    │                        validate(校验) + utils/(traversal 图遍历 / normalize 认知状态补全 / id 生成) / validators/
     ├── infrastructure/    — collision(碰撞检测) / placement(位置放置) / search(搜索) / geometry(几何)
     └── spi/               — 持久化适配器接口（Phase 3 扩展点）
     ↓  返回新 GraphData 与图规则校验结果
     ↓  GraphView 引用替换
-    ↓  图校验结果：lastValidationResult 写入仅经 commitBatchToGraphs 的 applyBatch 返回 / 用例层 reportComposeValidation 转发
+    ↓  图校验结果：lastValidationResult 写入仅经 commitBatchToGraphs 的 applyBatches 返回 / 用例层 reportComposeValidation 转发
     views/Graph.vue        — 【装配层】
     │                        渲染用户看到的当前图谱：watch(GraphView) → renderer.syncFromGraphData(newGraph)；
     │                        渲染校验信息：canvasErrorIssues（lastValidationResult 的 error 级 issues）→ NotificationPanel
@@ -195,7 +196,7 @@ Cytoscape Renderer
 
 ## 开发策略
 
-**Graph Engine 是整个项目的底层核心系统**，已作为独立、框架无关的 `@my-project/graph-engine` 包实现。前端通过 `graph_store.ts` 直接调用引擎 API（`applyBatch` / compose 函数）。
+**Graph Engine 是整个项目的底层核心系统**，已作为独立、框架无关的 `@my-project/graph-engine` 包实现。前端通过 `graph_store.ts` 直接调用引擎 API（`applyBatches` / compose 函数）。
 
 ## 项目演进
 

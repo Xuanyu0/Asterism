@@ -7,6 +7,7 @@
 import type {
     GraphId,
     GraphRegistry,
+    KnowledgeNodeData,
     NodeId,
 } from '../../../src/types/graph_data'
 import { induce } from '../../../src/compose/cognitive/induce'
@@ -109,7 +110,8 @@ describe('induce', () => {
 
         // 抽象节点：knowledge + childGraphId 指向子图，label 已截断 ≤ 8
         const abstractNode = parent.nodes.find(
-            (n) => n.childGraphId !== undefined,
+            (n): n is KnowledgeNodeData & { childGraphId: GraphId } =>
+                n.role === 'knowledge' && n.childGraphId !== undefined,
         )
         expect(abstractNode).toBeDefined()
         expect(abstractNode!.role).toBe('knowledge')

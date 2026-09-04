@@ -379,8 +379,6 @@ export function diverge(params: DivergeParams): {
     }
 }
 
-// ═══════════ 内部 ───────────────────────────────
-
 /**
  * 功能：
  *

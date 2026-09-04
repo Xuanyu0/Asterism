@@ -112,7 +112,6 @@ export function createNode(overrides: NodeOverrides): NodeData {
         label: overrides.label ?? overrides.id,
         degree: overrides.degree ?? 0,
         position: overrides.position,
-        childGraphId: overrides.childGraphId,
         sourceGraphId: overrides.sourceGraphId!,
         sourceNodeId: overrides.sourceNodeId!,
     }
