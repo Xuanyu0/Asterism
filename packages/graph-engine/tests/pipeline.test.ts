@@ -8,6 +8,8 @@ import { applyBatch } from '../src/core/apply_batch'
 import type { GraphData } from '../src/types/graph_data'
 import type { AtomicOperationInGraph } from '../src/types/atomic_operations'
 
+const TEST_NOW = '2026-01-01T00:00:00.000Z'
+
 function emptyGraph(): GraphData {
     return {
         id: 'test-graph',
@@ -40,7 +42,7 @@ describe('applyBatch', () => {
         const graph = emptyGraph()
         const ops = [addNodeOp('a', 'Node A'), addNodeOp('b', 'Node B')]
 
-        const result = applyBatch(graph, ops)
+        const result = applyBatch(graph, ops, { executedAt: TEST_NOW })
 
         expect(result.validation.valid).toBe(true)
         expect(result.graph.nodes).toHaveLength(2)
@@ -51,11 +53,13 @@ describe('applyBatch', () => {
 
     test('returns original graph unchanged on validation failure', () => {
         const graph = emptyGraph()
-        const graphWithA = applyBatch(graph, [addNodeOp('a', 'Node A')]).graph
+        const graphWithA = applyBatch(graph, [addNodeOp('a', 'Node A')], {
+            executedAt: TEST_NOW,
+        }).graph
 
         // 尝试添加重复节点
         const ops = [addNodeOp('a', 'Duplicate Node A')]
-        const result = applyBatch(graphWithA, ops)
+        const result = applyBatch(graphWithA, ops, { executedAt: TEST_NOW })
 
         expect(result.validation.valid).toBe(false)
         expect(result.graph).toBe(graphWithA) // 原样返回
@@ -66,7 +70,10 @@ describe('applyBatch', () => {
         const graph = emptyGraph()
         const ops = [addNodeOp('a', 'Node A')]
 
-        const result = applyBatch(graph, ops, { dryRun: true })
+        const result = applyBatch(graph, ops, {
+            executedAt: TEST_NOW,
+            dryRun: true,
+        })
 
         expect(result.validation.valid).toBe(true)
         expect(result.graph).toBe(graph) // 入参原封不动
@@ -81,7 +88,10 @@ describe('applyBatch', () => {
             addNodeOp('y', 'Valid'),
         ]
 
-        const result = applyBatch(graph, ops, { stopOnFirst: true })
+        const result = applyBatch(graph, ops, {
+            executedAt: TEST_NOW,
+            stopOnFirst: true,
+        })
 
         // validate-all-first：所有校验都针对原始 graph（空图），
         // 第二个 x 也不重复（原图没有 x）→ 全部通过。
@@ -92,11 +102,13 @@ describe('applyBatch', () => {
 
     test('validation fails when op violates rules on original graph', () => {
         const graph = emptyGraph()
-        const graphWithX = applyBatch(graph, [addNodeOp('x', 'Node X')]).graph
+        const graphWithX = applyBatch(graph, [addNodeOp('x', 'Node X')], {
+            executedAt: TEST_NOW,
+        }).graph
 
         // x 已在图中，再添加同 ID 节点 → 校验失败
         const ops = [addNodeOp('y', 'Node Y'), addNodeOp('x', 'Dupe')]
-        const result = applyBatch(graphWithX, ops)
+        const result = applyBatch(graphWithX, ops, { executedAt: TEST_NOW })
 
         expect(result.validation.valid).toBe(false)
         expect(result.graph).toBe(graphWithX)
@@ -107,7 +119,7 @@ describe('applyBatch', () => {
     test('returns empty results for empty ops', () => {
         const graph = emptyGraph()
 
-        const result = applyBatch(graph, [])
+        const result = applyBatch(graph, [], { executedAt: TEST_NOW })
 
         expect(result.validation.valid).toBe(true)
         expect(result.results).toHaveLength(0)

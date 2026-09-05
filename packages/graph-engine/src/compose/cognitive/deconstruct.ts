@@ -132,7 +132,6 @@ export function deconstruct(params: DeconstructParams): {
     // ── 构造子图 ──
 
     const childGraphId = generateGraphId()
-    const now = new Date().toISOString()
 
     // 沟通节点均匀分布在圆周上，避免堆叠
     const communicationCenter: NodePosition = { x: 0, y: 0 }
@@ -160,8 +159,6 @@ export function deconstruct(params: DeconstructParams): {
             sourceNodeId: neighbor.id,
             position: positionOnCircle(communicationCenter, orbitRadius, angle),
             degree: 0,
-            createdAt: now,
-            updatedAt: now,
         }
     })
 
@@ -175,8 +172,6 @@ export function deconstruct(params: DeconstructParams): {
         nodes: [],
         edges: [],
         cognitiveState: { foldedDependencies: [] },
-        createdAt: now,
-        updatedAt: now,
     }
 
     // ── 构造批次 ──
@@ -184,7 +179,6 @@ export function deconstruct(params: DeconstructParams): {
     const updatedNode = {
         ...targetNode,
         childGraphId,
-        updatedAt: now,
     }
 
     // 沟通节点经 add_node 填充子图

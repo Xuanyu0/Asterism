@@ -1,13 +1,18 @@
 /**
- * 多图批处理（多图管理层）：统一循环执行图内（委托 applyBatch）与图级
- * （add_graph / delete_graph 兑现）操作，返回新注册表 + 聚合校验 + 逆元序列 + graphSignals。
+ * 多图批处理：统一循环执行图内与图级操作。
  *
  * @remarks
- * 统一循环（融合而非拼接）：逐批遍历，按 kind if-else 直接分派——图内委托 applyBatch、
- * 图级先 validateGraphOperation 校验再路由兑现，禁止"图内先执行、图级后兑现"的两段式拼接。
+ * 统一循环（融合而非拼接）：逐批遍历，按 kind if-else 直接分派，禁止
+ * "图内先执行、图级后兑现"的两段式拼接：
+ * - 图内批：委托 applyBatch 执行
+ * - 图级批：先 validateGraphOperation 校验再路由兑现
+ *
  * 纯函数：不修改入参注册表，返回新 GraphRegistry（复用未变化图引用，不深拷贝）。
- * 逆元：图内经 createReversal 构造（执行前捕获操作前状态）；图级经路由逆元构造函数
- * 构造（add ↔ delete 互逆，签名统一为操作图数据 { type, graph }）。
+ *
+ * 逆元构造：
+ * - 图内：经 createReversal（执行前捕获操作前状态）
+ * - 图级：经路由逆元构造函数（add ↔ delete 互逆，签名统一为操作图数据 { type, graph }）
+ *
  * 事务性：任一操作校验失败整批丢弃，注册表不变。
  */
 
@@ -17,22 +22,11 @@ import type {
     GraphOperation,
 } from '../types/atomic_operations'
 import type { ValidationIssue, ValidationResult } from '../types/validation'
-import type { ItemOperations } from '../types/operation_log'
+import type { BatchesLog } from '../types/operation_log'
 import type { OperationBatch } from '../types/compose_types'
 import { applyBatch } from './apply_batch'
 import { createReversal } from './reversal'
 import { validateGraphOperation } from './validate_graph_operation'
-
-/**
- * 图级摘要：本批新增 / 删除的图 ID。
- *
- * @remarks
- * 中间态，供 07 操作日志改造前的现状日志组装使用，07 移除。
- */
-export interface GraphSignals {
-    added: GraphId[]
-    deleted: GraphId[]
-}
 
 /**
  * applyBatches 的返回值。
@@ -45,16 +39,16 @@ export interface ApplyBatchesResult {
     validation: ValidationResult
 
     /** 逆元序列，按批分组（item 间逆序，item 内逆序打平）。 */
-    reversalOperations: ItemOperations[]
-
-    /** 图级摘要（中间态，07 移除）。 */
-    graphSignals: GraphSignals
+    reversalBatches: BatchesLog[]
 }
 
 /**
- * applyBatches 的可选配置。
+ * applyBatches 的配置。
  */
 export interface ApplyBatchesOptions {
+    /** 时间戳来源（必传），透传 applyBatch / executeOperation。语义 = 本批次执行的时刻。 */
+    executedAt: string
+
     /** 透传 applyBatch，跳过 Phase 1 前提校验（undo/redo 恢复型逆元批传 true）。 */
     skipValidate?: boolean
 
@@ -75,16 +69,17 @@ export interface ApplyBatchesOptions {
  *
  * @param registry - 操作前的多图注册表（不修改）
  * @param batches - 多批次操作（图内 / 图级判别联合）
- * @param options - [可选] skipValidate / recordLog
- * @returns 新注册表 + 聚合校验 + 逆元序列 + graphSignals。
+ * @param options - 配置（executedAt 必传；skipValidate / recordLog 可选）
+ * @returns 新注册表 + 聚合校验 + 逆元序列。
  */
 export function applyBatches(
     registry: GraphRegistry,
     batches: OperationBatch[],
-    options?: ApplyBatchesOptions,
+    options: ApplyBatchesOptions,
 ): ApplyBatchesResult {
-    const skipValidate = options?.skipValidate ?? false
-    const recordLog = options?.recordLog ?? true
+    const executedAt = options.executedAt
+    const skipValidate = options.skipValidate ?? false
+    const recordLog = options.recordLog ?? true
 
     // 纯函数：构建新 Map（复用未变化图引用，不深拷贝），失败时丢弃返回入参
     let newRegistry = new Map(registry)
@@ -93,8 +88,7 @@ export function applyBatches(
     const latestGraphs = new Map<GraphId, GraphData>()
 
     const allIssues: ValidationIssue[] = []
-    const reversalItems: ItemOperations[] = []
-    const graphSignals: GraphSignals = { added: [], deleted: [] }
+    const reversalItems: BatchesLog[] = []
 
     for (const batch of batches) {
         // 批级契约校验：批内操作类型必须与批的 kind 一致（图级独立成批由执行前校验强制）。
@@ -126,7 +120,7 @@ export function applyBatches(
                         targetId:
                             batch.kind === 'inGraph'
                                 ? batch.graph.id
-                                : batch.operations[0]?.graph.id ?? '',
+                                : (batch.operations[0]?.graph.id ?? ''),
                     },
                 ],
             })
@@ -157,6 +151,7 @@ export function applyBatches(
                 inputGraph,
                 batch.operations,
                 {
+                    executedAt,
                     skipValidate,
                     onBeforeEachOperation:
                         recordLog === false
@@ -196,13 +191,12 @@ export function applyBatches(
                 }
 
                 // 纯函数：输入注册表 + 操作 → 输出新注册表（引用替换）
-                newRegistry = executeGraphOperation(newRegistry, op)
+                newRegistry = executeGraphOperation(newRegistry, op, executedAt)
 
-                // 图级摘要累积（由调用方从操作类型推导）
                 if (op.type === 'add_graph') {
-                    graphSignals.added.push(op.graph.id)
-                } else {
-                    graphSignals.deleted.push(op.graph.id)
+                    // 记录补写时间戳后的注册图：后续图内填充批基于它执行，
+                    // 否则会用原始无时间戳骨架作输入，覆盖掉刚补写的 createdAt
+                    latestGraphs.set(op.graph.id, newRegistry.get(op.graph.id)!)
                 }
 
                 if (recordLog) {
@@ -221,8 +215,7 @@ export function applyBatches(
     return {
         registry: newRegistry,
         validation: { valid: true, issues: allIssues },
-        reversalOperations: reversalItems.reverse(), // item 间逆序
-        graphSignals,
+        reversalBatches: reversalItems.reverse(), // item 间逆序
     }
 }
 
@@ -235,21 +228,34 @@ export function applyBatches(
  * 输入注册表 + 图级操作 → 输出新注册表（引用替换，不修改入参）。
  * add_graph 直接注册操作自带的空图——顺序由操作构造方（compose）保证：
  * add_graph 批在对应子图填充批之前，注册空图后由后续图内批填充覆盖。
- * 图级摘要（graphSignals）由调用方从操作类型推导累积。
+ * add_graph 注册时补写图级时间戳（图骨架未携带时用 executedAt 兜底，与 execute 层
+ * resolveObjectTimestamp 的"携带值 ?? executedAt"一致）。
  *
  * @param registry - 操作前的注册表（不修改）
  * @param op - 待兑现的图级操作
+ * @param executedAt - 本批次执行的时刻（add_graph 补写图级时间戳的来源）
  * @returns 新注册表（引用替换，未变化图复用引用）
  */
 function executeGraphOperation(
     registry: GraphRegistry,
     op: AtomicGraphOperation,
+    executedAt: string,
 ): GraphRegistry {
     switch (op.type) {
         case 'add_graph': {
             // add_graph 只注册空图：顺序由操作构造方保证（add_graph 批在填充批之前）
             const next = new Map(registry)
-            next.set(op.graph.id, op.graph)
+            // 图骨架未携带时间戳时补写 executedAt（已携带则尊重并复用原引用）
+            const graph =
+                op.graph.createdAt === undefined ||
+                op.graph.updatedAt === undefined
+                    ? {
+                          ...op.graph,
+                          createdAt: op.graph.createdAt ?? executedAt,
+                          updatedAt: op.graph.updatedAt ?? executedAt,
+                      }
+                    : op.graph
+            next.set(op.graph.id, graph)
             return next
         }
         case 'delete_graph': {
@@ -285,7 +291,7 @@ function createGraphReversal(op: AtomicGraphOperation): GraphOperation[] {
 }
 
 /**
- * 事务性中断的统一返回：保留入参注册表（整批丢弃），清空逆元与图级摘要。
+ * 事务性中断的统一返回：保留入参注册表（整批丢弃），清空逆元。
  *
  * @param registry - 入参注册表（不变，直接回传）
  * @param validation - 导致中断的校验结果
@@ -298,7 +304,6 @@ function aborted(
     return {
         registry,
         validation,
-        reversalOperations: [],
-        graphSignals: { added: [], deleted: [] },
+        reversalBatches: [],
     }
 }

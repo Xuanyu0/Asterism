@@ -18,6 +18,8 @@ import {
     createDivergeCrossGraphInput,
 } from '../../test_case_factory'
 
+const TEST_NOW = '2026-01-01T00:00:00.000Z'
+
 /** 构造 lookupGraph + graphIds 辅助。 */
 function makeLookup(graphs: GraphData[]): {
     graphIds: GraphId[]
@@ -128,7 +130,9 @@ describe('diverge', () => {
             result.issues.filter((i) => i.severity === 'error'),
         ).toHaveLength(0)
 
-        const applied = applyBatches(registry, result.batches)
+        const applied = applyBatches(registry, result.batches, {
+            executedAt: TEST_NOW,
+        })
         expect(applied.validation.valid).toBe(true)
 
         // 当前图：启发节点 + 一条边（启发 → 知识节点）

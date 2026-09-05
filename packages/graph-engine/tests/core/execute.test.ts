@@ -11,6 +11,7 @@ import { executeOperation } from '../../src/core/execute_operation'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
 
 const G = 'test-exec' as GraphId
+const TEST_NOW = '2026-01-01T00:00:00.000Z'
 
 function makeGraph(nodes = 2, edges = 0): GraphData {
     const n: GraphData['nodes'] = []
@@ -36,20 +37,28 @@ function makeGraph(nodes = 2, edges = 0): GraphData {
 describe('execute add_node', () => {
     test('node 数量 +1', () => {
         const graph = makeGraph(2)
-        const next = executeOperation(graph, {
-            type: 'add_node',
-            node: createNode({ id: 'n-new' as NodeId, graphId: G }),
-        })
+        const next = executeOperation(
+            graph,
+            {
+                type: 'add_node',
+                node: createNode({ id: 'n-new' as NodeId, graphId: G }),
+            },
+            TEST_NOW,
+        )
         expect(next.nodes.length).toBe(3)
         expect(next.nodes.some((node) => node.id === 'n-new')).toBe(true)
     })
 
     test('入参不变', () => {
         const graph = makeGraph(2)
-        executeOperation(graph, {
-            type: 'add_node',
-            node: createNode({ id: 'n-new' as NodeId, graphId: G }),
-        })
+        executeOperation(
+            graph,
+            {
+                type: 'add_node',
+                node: createNode({ id: 'n-new' as NodeId, graphId: G }),
+            },
+            TEST_NOW,
+        )
         expect(graph.nodes.length).toBe(2)
     })
 })
@@ -57,17 +66,21 @@ describe('execute add_node', () => {
 describe('execute add_edge', () => {
     test('edge 数量 +1，端点 degree +1', () => {
         const graph = makeGraph(3)
-        const next = executeOperation(graph, {
-            type: 'add_edge',
-            edge: createEdge({
-                id: 'e-new' as NodeId,
-                graphId: G,
-                source: 'n0' as NodeId,
-                target: 'n1' as NodeId,
-                kind: 'real',
-                direction: 'directed',
-            }),
-        })
+        const next = executeOperation(
+            graph,
+            {
+                type: 'add_edge',
+                edge: createEdge({
+                    id: 'e-new' as NodeId,
+                    graphId: G,
+                    source: 'n0' as NodeId,
+                    target: 'n1' as NodeId,
+                    kind: 'real',
+                    direction: 'directed',
+                }),
+            },
+            TEST_NOW,
+        )
         expect(next.edges.length).toBe(graph.edges.length + 1)
         const src = next.nodes.find((node) => node.id === 'n0')!
         const tgt = next.nodes.find((node) => node.id === 'n1')!
@@ -79,10 +92,14 @@ describe('execute add_edge', () => {
 describe('execute delete_node', () => {
     test('node 消失，关联边消失', () => {
         const graph = makeGraph(3, 2) // e0: n0→n1, e1: n1→n2
-        const next = executeOperation(graph, {
-            type: 'delete_node',
-            nodeId: 'n1' as NodeId,
-        })
+        const next = executeOperation(
+            graph,
+            {
+                type: 'delete_node',
+                nodeId: 'n1' as NodeId,
+            },
+            TEST_NOW,
+        )
         expect(next.nodes.length).toBe(2)
         expect(next.edges.length).toBe(0) // both edges involved n1
     })
@@ -101,10 +118,14 @@ describe('execute delete_node', () => {
             nodes: [createNode({ id: 'n0' as NodeId, graphId: G }), refNode],
             edges: [],
         })
-        const next = executeOperation(graph, {
-            type: 'delete_node',
-            nodeId: 'n0' as NodeId,
-        })
+        const next = executeOperation(
+            graph,
+            {
+                type: 'delete_node',
+                nodeId: 'n0' as NodeId,
+            },
+            TEST_NOW,
+        )
         expect(next.nodes.length).toBe(0) // 引用节点也删了
     })
 })
@@ -113,10 +134,14 @@ describe('execute delete_edge', () => {
     test('edge 消失，端点 degree -1', () => {
         const graph = makeGraph(2, 1) // e0: n0→n1
         const srcBefore = graph.nodes.find((node) => node.id === 'n0')!.degree
-        const next = executeOperation(graph, {
-            type: 'delete_edge',
-            edgeId: 'e0' as NodeId,
-        })
+        const next = executeOperation(
+            graph,
+            {
+                type: 'delete_edge',
+                edgeId: 'e0' as NodeId,
+            },
+            TEST_NOW,
+        )
         expect(next.edges.length).toBe(0)
         expect(next.nodes.find((node) => node.id === 'n0')!.degree).toBe(
             srcBefore - 1,
@@ -127,10 +152,14 @@ describe('execute delete_edge', () => {
 describe('execute update_node', () => {
     test('label 更新', () => {
         const graph = makeGraph(2)
-        const next = executeOperation(graph, {
-            type: 'update_node',
-            node: { ...graph.nodes[0]!, label: 'updated' },
-        })
+        const next = executeOperation(
+            graph,
+            {
+                type: 'update_node',
+                node: { ...graph.nodes[0]!, label: 'updated' },
+            },
+            TEST_NOW,
+        )
         expect(next.nodes.find((node) => node.id === 'n0')!.label).toBe(
             'updated',
         )
@@ -154,10 +183,14 @@ describe('execute update_node', () => {
             ],
             edges: [],
         })
-        const next = executeOperation(graph, {
-            type: 'update_node',
-            node: { ...refNode, label: 'updated' },
-        })
+        const next = executeOperation(
+            graph,
+            {
+                type: 'update_node',
+                node: { ...refNode, label: 'updated' },
+            },
+            TEST_NOW,
+        )
         expect(next.nodes.find((node) => node.id === 'n0')!.label).toBe(
             'updated',
         )
@@ -167,11 +200,15 @@ describe('execute update_node', () => {
 describe('execute move_node', () => {
     test('position 变更', () => {
         const graph = makeGraph(2)
-        const next = executeOperation(graph, {
-            type: 'move_node',
-            nodeId: 'n0' as NodeId,
-            position: { x: 100, y: 200 },
-        })
+        const next = executeOperation(
+            graph,
+            {
+                type: 'move_node',
+                nodeId: 'n0' as NodeId,
+                position: { x: 100, y: 200 },
+            },
+            TEST_NOW,
+        )
         expect(next.nodes.find((node) => node.id === 'n0')!.position).toEqual({
             x: 100,
             y: 200,
@@ -182,23 +219,35 @@ describe('execute move_node', () => {
 describe('execute collapse / expand', () => {
     test('collapse_dependency 写入 cognitiveState', () => {
         const graph = makeGraph(3, 2) // n0→n1→n2
-        const next = executeOperation(graph, {
-            type: 'collapse_dependency',
-            targetNodeId: 'n2' as NodeId,
-        })
+        const next = executeOperation(
+            graph,
+            {
+                type: 'collapse_dependency',
+                targetNodeId: 'n2' as NodeId,
+            },
+            TEST_NOW,
+        )
         expect(next.cognitiveState.foldedDependencies.length).toBeGreaterThan(0)
     })
 
     test('expand_dependency 清除折叠', () => {
         const graph = makeGraph(3, 2)
-        const collapsed = executeOperation(graph, {
-            type: 'collapse_dependency',
-            targetNodeId: 'n2' as NodeId,
-        })
-        const expanded = executeOperation(collapsed, {
-            type: 'expand_dependency',
-            targetNodeId: 'n2' as NodeId,
-        })
+        const collapsed = executeOperation(
+            graph,
+            {
+                type: 'collapse_dependency',
+                targetNodeId: 'n2' as NodeId,
+            },
+            TEST_NOW,
+        )
+        const expanded = executeOperation(
+            collapsed,
+            {
+                type: 'expand_dependency',
+                targetNodeId: 'n2' as NodeId,
+            },
+            TEST_NOW,
+        )
         expect(expanded.cognitiveState.foldedDependencies.length).toBe(0)
     })
 })

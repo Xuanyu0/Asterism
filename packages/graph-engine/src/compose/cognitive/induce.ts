@@ -230,10 +230,9 @@ export function induce(params: InduceParams): {
             nodesWithPos.length,
     }
 
-    // ── 子图 ID 与时间戳 ──
+    // ── 子图 ID ──
 
     const childGraphId = generateGraphId()
-    const now = new Date().toISOString()
 
     // ── 半径辅助 ──
 
@@ -337,8 +336,6 @@ export function induce(params: InduceParams): {
             sourceNodeId: neighbor.id,
             position,
             degree: 0,
-            createdAt: now,
-            updatedAt: now,
         })
     }
 
@@ -360,8 +357,6 @@ export function induce(params: InduceParams): {
         nodes: [],
         edges: [],
         cognitiveState: { foldedDependencies: [] },
-        createdAt: now,
-        updatedAt: now,
     }
 
     // 被选节点移入子图
@@ -371,7 +366,6 @@ export function induce(params: InduceParams): {
             node: {
                 ...node,
                 graphId: childGraphId,
-                updatedAt: now,
             },
         })
     }
@@ -402,8 +396,6 @@ export function induce(params: InduceParams): {
                     target: targetInChild,
                     kind: edge.kind,
                     direction: edge.direction,
-                    createdAt: now,
-                    updatedAt: now,
                 },
             })
         }
@@ -417,7 +409,6 @@ export function induce(params: InduceParams): {
                 edge: {
                     ...edge,
                     graphId: childGraphId,
-                    updatedAt: now,
                 },
             })
         }
@@ -475,8 +466,6 @@ export function induce(params: InduceParams): {
         degree: abstractDegree,
         position: abstractPosition,
         childGraphId,
-        createdAt: now,
-        updatedAt: now,
     }
 
     const parentDeleteOps: AtomicOperationInGraph[] = []
@@ -505,8 +494,6 @@ export function induce(params: InduceParams): {
                 target: neighbor.id,
                 kind: firstEdge?.kind ?? 'real',
                 direction: firstEdge?.direction ?? 'undirected',
-                createdAt: now,
-                updatedAt: now,
             },
         })
     }

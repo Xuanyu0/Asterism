@@ -20,6 +20,7 @@ import {
 } from '../../test_case_factory'
 
 const R = new Map()
+const TEST_NOW = '2026-01-01T00:00:00.000Z'
 
 describe('induce', () => {
     test('标准归纳（5 节点）', () => {
@@ -94,7 +95,9 @@ describe('induce', () => {
             result.issues.filter((i) => i.severity === 'error'),
         ).toHaveLength(0)
 
-        const applied = applyBatches(registry, result.batches)
+        const applied = applyBatches(registry, result.batches, {
+            executedAt: TEST_NOW,
+        })
         expect(applied.validation.valid).toBe(true)
 
         // 父图：被选节点已删除，未选邻居保留

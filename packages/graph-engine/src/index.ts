@@ -105,9 +105,9 @@ export type {
 
 /** 消费者：graph_store（操作日志 & undo/redo）。 */
 export type {
-    ItemOperations,
-    OperationLogEntry,
-    OperationLog,
+    BatchesLog,
+    CommitLog,
+    OperationLogTree,
     State,
 } from './types/operation_log'
 
@@ -146,14 +146,14 @@ export type { BatchOptions, PerOpResult, BatchResult } from './core/apply_batch'
 //
 // 消费者：
 //     graph_store.commitBatchToGraphs — 委托 applyBatches 统一执行多批次操作。
-//     输入注册表 + 多批次操作，输出新注册表 + 校验 + 逆元 + graphSignals（中间态）。
+//     输入注册表 + 多批次操作，输出新注册表 + 校验 + 逆元序列。
 // ═══════════════════════════════════════════════════════════════════
 
 /**
  * 功能：
  *
  *     多图批处理。统一循环处理图内（委托 applyBatch）与图级（add_graph / delete_graph 兑现）
- *     操作，返回新注册表 + 聚合校验 + 逆元序列 + graphSignals（中间态，07 移除）。
+ *     操作，返回新注册表 + 聚合校验 + 逆元序列。
  *
  * 消费者：
  *
@@ -165,7 +165,7 @@ export type { BatchOptions, PerOpResult, BatchResult } from './core/apply_batch'
  *     if (!result.validation.valid) { ... }  // 整批丢弃，注册表不变
  */
 export { applyBatches } from './core/apply_batches'
-export type { GraphSignals, ApplyBatchesResult } from './core/apply_batches'
+export type { ApplyBatchesResult } from './core/apply_batches'
 export type { OperationBatch } from './types/compose_types'
 
 // ═══════════════════════════════════════════════════════════════════
@@ -210,7 +210,7 @@ export { replayGraph, replayToStep } from './core/replay'
  * 使用：
  *
  *     const reversals = createReversal(graph, operation)
- *     // 执行后追加到 OperationLog
+ *     // 执行后追加到 OperationLogTree
  */
 export { createReversal } from './core/reversal'
 
@@ -256,6 +256,7 @@ export {
     diverge,
     induce,
     internalize,
+    deleteAbstractNode,
 } from './compose'
 export type {
     DraftPosition,
@@ -268,6 +269,7 @@ export type {
     DivergeParams,
     InduceParams,
     InternalizeParams,
+    DeleteAbstractNodeParams,
 } from './compose'
 
 // ═══════════════════════════════════════════════════════════════════

@@ -1,11 +1,20 @@
 /**
- * 单图操作序列事务流水线。所有 GraphData 修改的唯一入口。
+ * 单图操作序列事务流水线。
  *
  * @remarks
- * 三阶段事务：Phase 1 逐条校验操作前提 → Phase 2 dry-run execute 全部操作 →
- * Phase 3 对结果图运行全局不变量规则。任一阶段失败整批丢弃（graph 原封不动，
- * 返回全部 issue）——不存在"执行一半回滚"的场景，全通过后才开始 execute。
- * applyBatch 是纯函数，不内部调用 createReversal（逆元构造时机由上层决定）。
+ * 是全部 GraphData 修改的唯一入口。
+ *
+ * 三阶段事务：
+ * 1. Phase 1：逐条校验操作前提
+ * 2. Phase 2：dry-run execute 全部操作
+ * 3. Phase 3：对结果图运行全局不变量规则
+ *
+ * 任一阶段失败整批丢弃（graph 原封不动，返回全部 issue）——不存在"执行一半回滚"的场景，
+ * 全通过后才开始 execute。
+ *
+ * 其他契约：
+ * - 纯函数，不内部调用 createReversal（逆元构造时机由上层决定）
+ * - 时间戳来源由 options.executedAt 从前端统一传入
  */
 
 import type { GraphData } from '../types/graph_data'
@@ -21,19 +30,12 @@ import {
 
 /**
  * 批处理配置。
- *
- * @remarks
- * - dryRun：只校验不执行，用于认知操作正式执行前预判。
- * - stopOnFirst：遇第一个失败即停（默认 false，聚合全部 issue 后返回）。
- * - globalRulesTable：全局规则开关表，未传入时使用默认全开配置。
- * - onBeforeEachOperation：逐操作执行前回调，仅暴露中间态，不改变执行结果。
- * - skipValidate：跳过 Phase 1 逐条前提校验（默认 false）。供 undo/redo 恢复型
- *   逆元批使用——validate-all-first 基于输入图校验，恢复型批（如 add_edge 端点
- *   依赖批内 add_node 恢复的节点）必然误报。跳过前提校验后 execute 仍逐操作
- *   顺序执行（依赖由操作内部顺序保证），Phase 3 全局规则仍运行。
  */
 export interface BatchOptions {
-    /** 只校验不执行。默认 false。 */
+    /** 时间戳来源（必传）。语义 = 本批次执行的时刻；对象级时间戳兜底值与图级 updatedAt 均取此值。 */
+    executedAt: string
+
+    /** 只校验不执行（默认 false）。用于认知操作正式执行前预判。 */
     dryRun?: boolean
 
     /** 遇第一个失败即停。默认 false——聚合所有 issue。 */
@@ -53,7 +55,9 @@ export interface BatchOptions {
 
     /**
      * 跳过 Phase 1 逐条前提校验（默认 false）。正常正向操作保持默认校验；
-     * undo/redo 恢复型逆元批传 true（恢复已知合法状态，校验基于输入图必然误报）。
+     * undo/redo 恢复型逆元批传 true——恢复已知合法状态，校验基于输入图必然误报
+     * （如 add_edge 端点依赖批内 add_node 恢复的节点）。跳过校验后 execute 仍
+     * 逐操作顺序执行（依赖由操作内部顺序保证），Phase 3 全局规则仍运行。
      */
     skipValidate?: boolean
 }
@@ -89,19 +93,20 @@ export interface BatchResult {
  *
  * @param graph - 操作前的 GraphData 快照
  * @param ops - 待执行的操作序列
- * @param options - [可选] dryRun / stopOnFirst / globalRulesTable / onBeforeEachOperation / skipValidate
+ * @param options - 批处理配置（executedAt 必传；其余 dryRun / stopOnFirst / globalRulesTable / onBeforeEachOperation / skipValidate 可选）
  * @returns 新图 + 聚合校验 + 每操作独立结果。
  */
 export function applyBatch(
     graph: GraphData,
     ops: AtomicOperationInGraph[],
-    options?: BatchOptions,
+    options: BatchOptions,
 ): BatchResult {
-    const dryRun = options?.dryRun ?? false
-    const stopOnFirst = options?.stopOnFirst ?? false
-    const skipValidate = options?.skipValidate ?? false
+    const executedAt = options.executedAt
+    const dryRun = options.dryRun ?? false
+    const stopOnFirst = options.stopOnFirst ?? false
+    const skipValidate = options.skipValidate ?? false
     const globalRulesTable =
-        options?.globalRulesTable ?? DEFAULT_GLOBAL_RULES_TABLE
+        options.globalRulesTable ?? DEFAULT_GLOBAL_RULES_TABLE
 
     // Phase 1 — 逐条校验操作前提条件
     // skipValidate（undo/redo 恢复型逆元批）：跳过全部前提校验，直接 Phase 2——
@@ -134,9 +139,8 @@ export function applyBatch(
 
     for (const op of ops) {
         // 逐操作挂点：入参为 op 执行前的中间态，不改变执行结果
-        options?.onBeforeEachOperation?.(op, resultGraph)
-
-        resultGraph = executeOperation(resultGraph, op)
+        options.onBeforeEachOperation?.(op, resultGraph)
+        resultGraph = executeOperation(resultGraph, op, executedAt)
     }
 
     // Phase 3 — 对 resultGraph 运行全局不变量规则
