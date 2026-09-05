@@ -48,7 +48,7 @@
     - 事件捕获与转发：`cytoscape/cy_interaction.ts`（Cytoscape 事件 → 语义事件）→ `feature-tools/mediator.ts`（转发至活跃 handler）
   - 垂直自包含（每个工具独立）：
     - 工具逻辑 + 中间变量：每个工具拥有自己的激活状态、光标样式、画布点击处理、操作构造
-    - 数据修改：经工具层用例 `useGraphOperation.commitToCurrentGraph` 委托 Runtime（提交 + 校验同步）
+    - 数据修改：经工具层用例 `useGraphOperation.commitToCurrentGraph`（单图）或 `commitBatches`（跨图批次）委托 Runtime（提交 + 校验同步）
   - 不负责：GraphData 存储、持久化、UI 模式切换
 
 ## 命令
@@ -153,7 +153,7 @@ Runtime / UI 状态层 (graph/ + ui/)
     │                        四入口：loadGraphToView（唯一切换）/ commitBatchToGraphs（唯一图操作）/ undo / redo（唯一回溯）
     ├── use-case/          — 业务用例层（graph 域业务逻辑，经 store 公开状态访问共享运行时数据）
     │    ├── useNavigation.ts     — 导航用例：breadcrumb 派生 / goToGraph / createRootGraph / listRootGraphInfos / deleteRootGraphTree / getGraphById
-    │    ├── useGraphOperation.ts — 图操作用例：commitToCurrentGraph（提交+校验同步）/ reportComposeValidation / makeLookup（跨图查询）/ clearValidationResult
+    │    ├── useGraphOperation.ts — 图操作用例：commitToCurrentGraph（单图提交）/ commitBatches（多图批次提交）/ reportComposeValidation / makeLookup（跨图查询）/ clearValidationResult
     │    └── useLifecycle.ts      — 生命周期用例：registerAllGraphs（全量注册）/ restoreLastActiveRootId（恢复上次视图）/ ensureWorkspaceRoot（引导兜底创建）
     ├── utils/             — 公共工具函数（无状态纯函数）
     ├── graph_registry.ts  — 多图注册表（Map：GraphId → GraphData）
@@ -163,10 +163,10 @@ Runtime / UI 状态层 (graph/ + ui/)
     ↓  委托纯函数
 GraphEngine (@my-project/graph-engine) — 框架无关；广义 GraphData 唯一转换入口；无副作用
     ├── types/             — 类型定义（graph_data / atomic_operations / cognitive / validation / operation_log ...）
-    ├── compose/           — 编排操作：cognitive/（deconstruct·induce·internalize·diverge）+ arrangement/（move·path·adjust·orbit）；index.ts 聚合导出
+    ├── compose/           — 编排操作：cognitive/（deconstruct·delete_abstract_node·induce·internalize·diverge）+ arrangement/（move·path·adjust·orbit）；index.ts 聚合导出
     ├── core/              — 执行与事务：execute_operation(原子操作执行) / apply_batch(单图事务流水线：逐条校验 → dry-run 执行 → 全局规则，任一失败整批丢弃)
     │                        / apply_batches(多图批处理：统一执行图内/图级批，返回新注册表 + 聚合校验 + 逆元序列) / reversal(逆操作→undo) / replay(回放) / derive(派生)
-    │                        validate(校验) + utils/(traversal 图遍历 / normalize 认知状态补全 / id 生成) / validators/
+    │                        validate(校验) + utils/(traversal 图遍历 / id 生成) / validators/
     ├── infrastructure/    — collision(碰撞检测) / placement(位置放置) / search(搜索) / geometry(几何)
     └── spi/               — 持久化适配器接口（Phase 3 扩展点）
     ↓  返回新 GraphData 与图规则校验结果
