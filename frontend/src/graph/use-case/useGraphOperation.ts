@@ -7,6 +7,9 @@
  * 收敛写入，不做错误翻译/结构化）。方法调用时解析 GraphStore 模块级单例
  * （内部 useGraphStore），懒创建，无前置初始化，后续调用返回同一实例。空图守卫由
  * 调用方保留——图缺失属编程错误，直接 throw。
+ *
+ * 图提交双入口：commitToCurrentGraph（单图，扁平操作 → 固定 graphView 组批）与
+ * commitBatches（多图，消费预组装 OperationBatch[]，跨图场景转发）。
  */
 
 import type {
@@ -47,6 +50,24 @@ export interface GraphOperationAPI {
      */
     commitToCurrentGraph(
         operations: GraphOperation[],
+        options?: { source?: string },
+    ): ValidationResult
+
+    /**
+     * 对多个目标图提交预组装批次并返回校验结果。
+     *
+     * @remarks
+     * 与 commitToCurrentGraph 的区分：本方法接收已按图分组的 OperationBatch[]
+     * （跨图场景，如 deleteAbstractNode compose 输出）；commitToCurrentGraph 接收
+     * 扁平原子操作（单图场景）。提交经 store.commitBatchToGraphs——内部已同步
+     * 校验结果到 store.lastValidationResult，本方法仅透传返回。
+     *
+     * @param batches - 预组装的批次序列（图内批携带 graph 对象）
+     * @param options - [可选] source：操作来源的工具标识
+     * @returns 校验结果（valid + issues 汇总）。
+     */
+    commitBatches(
+        batches: OperationBatch[],
         options?: { source?: string },
     ): ValidationResult
 
@@ -151,6 +172,13 @@ function createGraphOperation(): GraphOperationAPI {
         return result.validation
     }
 
+    function commitBatches(
+        batches: OperationBatch[],
+        options?: { source?: string },
+    ): ValidationResult {
+        return useGraphStore().commitBatchToGraphs(batches, options).validation
+    }
+
     function reportComposeValidation(
         issues: ComposeIssue[],
         targetType: ValidationTargetType,
@@ -194,6 +222,7 @@ function createGraphOperation(): GraphOperationAPI {
 
     return {
         commitToCurrentGraph,
+        commitBatches,
         reportComposeValidation,
         makeLookup,
         clearValidationResult,

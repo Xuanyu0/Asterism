@@ -15,12 +15,16 @@
  *     2. 点击不同目标时切换待定目标。
  *     3. notification 暴露删除确认信息供视图渲染。
  *     4. 内部管理 pendingDeleteNodeId / pendingDeleteEdgeId 状态。
+ *     5. 按 deriveNodeForm 分发：抽象节点 → deleteAbstractNode 递归删除整棵
+ *        子图树；非抽象节点（含引用节点）→ 普通 delete_node。
  */
 
 import { ref, computed } from 'vue'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
+
+import { deleteAbstractNode, deriveNodeForm } from '@my-project/graph-engine'
 
 import type { NodeId, EdgeId } from '@my-project/graph-engine'
 
@@ -50,16 +54,23 @@ export function useDeleteTool(): ToolHandler {
 
         const nodeId = pendingDeleteNodeId.value
         let targetLabel = '此边'
+        let deletesSubtree = false
         if (nodeId !== null) {
             const node = graphStore.graphView?.nodes.find(
                 (n) => n.id === nodeId,
             )
             targetLabel = node?.label ?? '此节点'
+            // 抽象节点（childGraphId 非空）：确认删除将连带子图树
+            deletesSubtree =
+                node?.role === 'knowledge' &&
+                deriveNodeForm(node) === 'abstract'
         }
 
         return {
             visible: true,
-            message: `再次点击将删除："${targetLabel}"`,
+            message: deletesSubtree
+                ? `再次点击将删除："${targetLabel}"（及其子图）`
+                : `再次点击将删除："${targetLabel}"`,
             onCancel: clearPending,
         }
     })
@@ -115,15 +126,33 @@ export function useDeleteTool(): ToolHandler {
     function executeDeleteNode(nodeId: NodeId): void {
         if (!graphStore.graphView) return
 
-        operations.commitToCurrentGraph(
-            [
-                {
-                    type: 'delete_node',
-                    nodeId,
-                },
-            ],
-            { source: id },
-        )
+        const node = graphStore.graphView.nodes.find((n) => n.id === nodeId)
+        if (!node) return // 防御：节点不存在（两击确认保证在图中，正常不可达）
+
+        // 抽象节点 → 递归删除整棵子图树（07.3 compose）；非抽象 → 普通 delete_node
+        if (node.role === 'knowledge' && deriveNodeForm(node) === 'abstract') {
+            const result = deleteAbstractNode({
+                nodeId,
+                registry: graphStore.graphRegistry,
+            })
+            if (result.issues.some((issue) => issue.severity === 'error')) {
+                // 防御：正常不可达（TARGET_NOT_FOUND / NOT_ABSTRACT）
+                console.warn(`[delete] 抽象节点删除被拒绝：${nodeId}`)
+                return
+            }
+            operations.commitBatches(result.batches, { source: id })
+        } else {
+            operations.commitToCurrentGraph(
+                [
+                    {
+                        type: 'delete_node',
+                        nodeId,
+                    },
+                ],
+                { source: id },
+            )      
+        }
+        
     }
 
     function executeDeleteEdge(edgeId: EdgeId): void {
