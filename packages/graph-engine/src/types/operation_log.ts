@@ -7,8 +7,8 @@
  * - 状态标签：粗粒度，由用户显式提交，驱动历史回顾
  *
  * 总体结构：
- * 1. BatchLog：按图分组的一批操作
- * 2. CommitLog：单条提交日志（一批正向操作 + 一批逆元 + 图级元数据 + 父节点引用 + 时间戳）
+ * 1. BatchesLog：按图分组的一批操作
+ * 2. CommitLog：单条提交日志（一批正向操作 + 一批逆元 + 父节点引用 + 时间戳）
  * 3. OperationLogTree：操作树本体（entries + cursor）
  * 4. State：用户显式提交的状态标签，指向操作树中的某个 entry
  *
@@ -42,16 +42,14 @@ export interface OperationLogTree {
  * 单条提交日志（批粒度），对应一次 commitBatchToGraphs = 一次回溯单元。
  *
  * @remarks
- * - batch：一批正向操作，按图分组
- * - reversalBatch：一批逆元，undo 执行顺序——item 间逆序 + item 内逆序
- * - graphSignals：图级元数据（新增 / 删除的图）
+ * - batches：一批正向操作，按图分组
+ * - reversalBatches：一批逆元，undo 执行顺序——item 间逆序 + item 内逆序；
+ *   含图级逆元（add_graph ↔ delete_graph 互逆），undo 直接消费完整序列
  * - source：操作来源的工具标识（如前端 ToolId），可选，缺省表示未知来源
  */
 export interface CommitLog {
-    batch: BatchLog[]
-    reversalBatch: BatchLog[]
-    /** 图级元数据（新增 / 删除的图）。中间态——07 与前端对称化操作日志模型时移除。 */
-    graphSignals: { added: GraphId[]; deleted: GraphId[] }
+    batches: BatchesLog[]
+    reversalBatches: BatchesLog[]
     parentIndex: number
     timestamp: string
     /**
@@ -64,7 +62,7 @@ export interface CommitLog {
 /**
  * 按图分组的一批操作的日志。
  */
-export interface BatchLog {
+export interface BatchesLog {
     graphId: GraphId
     operations: GraphOperation[]
 }

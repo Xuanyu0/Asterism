@@ -149,7 +149,7 @@ describe('applyBatches 图内批（inGraph 委托）', () => {
             { executedAt: TEST_NOW },
         )
 
-        const reversal = result.reversalOperations.flatMap((r) => r.operations)
+        const reversal = result.reversalBatches.flatMap((r) => r.operations)
         expect(reversal).toEqual([{ type: 'delete_node', nodeId: 'n2' }])
     })
 
@@ -205,7 +205,12 @@ describe('applyBatches 图级批（graphLevel 路由兑现）', () => {
         expect(result.validation.valid).toBe(true)
         const child = result.registry.get(CHILD)!
         expect(child.nodes).toHaveLength(2) // 后续图内批覆盖 add_graph 注册的空图（顺序由操作构造方保证）
-        expect(result.graphSignals.added).toEqual([CHILD])
+        // 逆元序列含 add_graph 的逆元 delete_graph（携带空图骨架）
+        const reversal = result.reversalBatches.flatMap((r) => r.operations)
+        expect(reversal).toContainEqual({
+            type: 'delete_graph',
+            graph: emptyChild,
+        })
     })
 
     test('路由函数：add_graph 用操作自带图注册（未被批内构造）', () => {
@@ -252,7 +257,9 @@ describe('applyBatches 图级批（graphLevel 路由兑现）', () => {
 
         expect(result.validation.valid).toBe(true)
         expect(result.registry.has(CHILD)).toBe(false)
-        expect(result.graphSignals.deleted).toEqual([CHILD])
+        // 逆元序列含 delete_graph 的逆元 add_graph（携带被删空图骨架）
+        const reversal = result.reversalBatches.flatMap((r) => r.operations)
+        expect(reversal).toContainEqual({ type: 'add_graph', graph: child })
     })
 
     test('delete_graph 非空目标图：图级校验失败整批丢弃', () => {
@@ -320,7 +327,7 @@ describe('applyBatches 图级逆元（路由逆元构造函数）', () => {
             { executedAt: TEST_NOW },
         )
 
-        const reversal = result.reversalOperations.flatMap((r) => r.operations)
+        const reversal = result.reversalBatches.flatMap((r) => r.operations)
         expect(reversal).toEqual([{ type: 'delete_graph', graph: child }])
     })
 
@@ -340,7 +347,7 @@ describe('applyBatches 图级逆元（路由逆元构造函数）', () => {
             { executedAt: TEST_NOW },
         )
 
-        const reversal = result.reversalOperations.flatMap((r) => r.operations)
+        const reversal = result.reversalBatches.flatMap((r) => r.operations)
         expect(reversal).toHaveLength(1)
         expect(reversal[0]).toMatchObject({ type: 'add_graph' })
 
