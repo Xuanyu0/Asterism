@@ -53,6 +53,13 @@ export function createCytoscapeStyle() {
                 width: 'data(edgeWidth)',
                 'line-color': '#ccc',
                 'curve-style': 'bezier',
+                // 边标签：与节点同源 data(label)；白底半透明保证跨线可读
+                label: 'data(label)',
+                'font-size': 16,
+                color: '#6b7280',
+                'text-background-color': '#ffffff',
+                'text-background-opacity': 0.75,
+                'text-background-padding': '2px',
             },
         },
         {
