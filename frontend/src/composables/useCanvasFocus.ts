@@ -38,6 +38,23 @@ interface CanvasFocusAPI {
      *     清除画布定位请求。由消费方（Graph.vue）在执行后调用。
      */
     clearCanvasFocus(): void
+
+    /** 画布复位视图请求。true = 有待处理的复位请求。 */
+    pendingResetView: Ref<boolean>
+
+    /**
+     * 说明：
+     *
+     *     发起画布复位请求：将视口复位到原点（pan = (0,0)，zoom = 1）。
+     */
+    requestResetView(): void
+
+    /**
+     * 说明：
+     *
+     *     清除画布复位请求。由消费方（Graph.vue）在执行后调用。
+     */
+    clearResetView(): void
 }
 
 let singleton: CanvasFocusAPI | null = null
@@ -69,9 +86,22 @@ function createCanvasFocus(): CanvasFocusAPI {
         pendingCanvasFocusId.value = null
     }
 
+    const pendingResetView = ref<boolean>(false)
+
+    function requestResetView(): void {
+        pendingResetView.value = true
+    }
+
+    function clearResetView(): void {
+        pendingResetView.value = false
+    }
+
     return {
         pendingCanvasFocusId,
         requestCanvasFocus,
         clearCanvasFocus,
+        pendingResetView,
+        requestResetView,
+        clearResetView,
     }
 }

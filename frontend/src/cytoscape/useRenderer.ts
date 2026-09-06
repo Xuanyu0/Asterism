@@ -112,6 +112,17 @@ interface RendererAPI {
     /**
      * 说明：
      *
+     *     将视口复位到原点（pan = (0,0)，zoom = 1）。
+     *
+     * @remarks
+     * 只操作 Cytoscape 视口，不触碰 GraphData。提供动画过渡以平滑回到
+     * 默认视角，供用户丢失节点时找回默认视野。
+     */
+    resetView(): void
+
+    /**
+     * 说明：
+     *
      *     获取节点的当前视觉位置。
      *
      * 调用契约：
@@ -400,6 +411,19 @@ export function useRenderer(
         return { x: pos.x, y: pos.y }
     }
 
+    function resetView(): void {
+        if (!cy) {
+            return
+        }
+
+        cy.animate(
+            { pan: { x: 0, y: 0 }, zoom: 1 },
+            {
+                duration: 300,
+            },
+        )
+    }
+
     function addNodeClass(
         nodeId: string,
         className: string,
@@ -609,6 +633,7 @@ export function useRenderer(
         destroy,
         syncFromGraphData,
         centerOnElement,
+        resetView,
         getNodePosition,
         addNodeClass,
         removeNodeClass,

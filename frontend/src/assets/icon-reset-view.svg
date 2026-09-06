@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <!-- 十字短线：图标四边指向圆环（定位/复位视图） -->
+  <path d="M12 1.5 v2.5 M12 20 v2.5 M1.5 12 h2.5 M20 12 h2.5"/>
+  <!-- 圆环：外沿贴住十字短线内端（y=4/x=4，半径 8） -->
+  <path d="M12 4 a8 8 0 1 1 0 16 8 8 0 0 1 0-16Z"/>
+  <!-- 中心点（实心）：半径 2.5 -->
+  <path fill="currentColor" stroke="none" d="M12 9.5 a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"/>
+</svg>

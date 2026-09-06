@@ -229,6 +229,21 @@ watch(
     },
 )
 
+/**
+ * 消费画布复位请求
+ */
+watch(
+    () => canvasFocus.pendingResetView.value,
+    (shouldReset) => {
+        if (!shouldReset) {
+            return
+        }
+
+        renderer.resetView()
+        canvasFocus.clearResetView()
+    },
+)
+
 onBeforeUnmount(() => {
     window.removeEventListener('keydown', handleUndoRedoKeydown)
     window.removeEventListener('pointerdown', handleErrorPanelPointerdown)

@@ -142,6 +142,15 @@ function goToSegment(graphId: GraphId): void {
     switchGraphTo(graphId)
 }
 
+/**
+ * 功能：
+ *     复位画布视图到原点。仅发起渲染层意图，经 canvasFocus 单例由
+ *     Graph.vue 消费并执行 renderer.resetView，本编排器不直接触达渲染层。
+ */
+function resetView(): void {
+    canvasFocus.requestResetView()
+}
+
 // ── 全局事件 ──
 function onDocumentPointerdown(event: PointerEvent): void {
     if (!hasOpenPanel.value) return
@@ -220,6 +229,7 @@ onBeforeUnmount(() => {
             v-on:go-segment-graph="goToSegment"
             v-on:toggle-search="toggleSearchPanel"
             v-on:toggle-navigation="toggleNavigationPanel"
+            v-on:reset-view="resetView"
         />
 
         <Transition v-bind:name="panelTransitionName">

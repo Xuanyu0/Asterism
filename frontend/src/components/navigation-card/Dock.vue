@@ -12,7 +12,8 @@
  *     3. 根图谱图标按钮 — 返回根图谱
  *     4. 面包屑路径条 — 逐段展示当前路径，祖先段可点击跳转
  *     5. 搜索按钮 — 切换搜索面板
- *     6. 展开按钮 — 切换导航面板
+ *     6. 复位按钮 — 复位视图到原点
+ *     7. 展开按钮 — 切换导航面板
  *
  * 规则：
  *
@@ -34,6 +35,7 @@ import type { GraphId } from '@my-project/graph-engine'
 import type { PanelKind, PathSegment } from './types'
 
 import AsterismLogo from '@/assets/icon-asterism.svg?component'
+import ResetViewIcon from '@/assets/icon-reset-view.svg?component'
 import { useOverflowDetection } from '@/composables/useOverflowDetection'
 
 const props = defineProps<{
@@ -54,6 +56,7 @@ const emits = defineEmits<{
     goSegmentGraph: [graphId: GraphId]
     toggleSearch: []
     toggleNavigation: []
+    resetView: []
 }>()
 
 // ── 路径截断检测 ──
@@ -153,6 +156,15 @@ watch(
             v-on:click="emits('toggleSearch')"
         >
             <MagnifyingGlassIcon class="size-4" />
+        </button>
+
+        <button
+            type="button"
+            class="icon-btn"
+            v-bind:title="'复位视图到原点'"
+            v-on:click="emits('resetView')"
+        >
+            <ResetViewIcon class="size-4" />
         </button>
 
         <div class="dock-divider"></div>
