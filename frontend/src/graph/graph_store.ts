@@ -17,38 +17,18 @@ import { shallowReactive } from 'vue'
 
 import type { GraphData, GraphId } from '@my-project/graph-engine'
 import type { ValidationResult } from '@my-project/graph-engine'
-import type {
-    BatchesLog,
-    OperationBatch,
-    OperationLogTree,
-    CommitLog,
-} from '@my-project/graph-engine'
+import type { BatchesLog, OperationBatch, OperationLogTree, CommitLog } from '@my-project/graph-engine'
 
 import { applyBatches } from '@my-project/graph-engine'
 
 import type { GraphRegistry } from '@/graph/graph_registry'
-import {
-    createRegistry,
-    registerGraph,
-    lookupGraph,
-} from '@/graph/graph_registry'
+import { createRegistry, registerGraph, lookupGraph } from '@/graph/graph_registry'
 
-import {
-    saveGraph,
-    loadGraph,
-    deleteGraph,
-    saveLastActiveRootId,
-} from '@/graph/graph_persistence'
+import { saveGraph, loadGraph, deleteGraph, saveLastActiveRootId } from '@/graph/graph_persistence'
 
-import {
-    DATA_INTEGRITY_PREFIX,
-    reportCorruptedGraph,
-} from '@/graph/utils/data_integrity_reporter'
+import { DATA_INTEGRITY_PREFIX, reportCorruptedGraph } from '@/graph/utils/data_integrity_reporter'
 
-import {
-    isInGraphOperation,
-    isGraphLevelOperation,
-} from '@/graph/utils/operation_guards'
+import { isInGraphOperation, isGraphLevelOperation } from '@/graph/utils/operation_guards'
 
 /**
  * GraphStore 公开 API：状态 + 方法入口。
@@ -178,11 +158,7 @@ function createGraphStore(): GraphStoreAPI {
         const previousRootId = store.graphPath[0]
         const { path, terminal } = buildGraphPath(loadedResult.graph)
         store.graphPath = path
-        if (
-            path.length > 0 &&
-            previousRootId !== undefined &&
-            previousRootId !== path[0]
-        ) {
+        if (path.length > 0 && previousRootId !== undefined && previousRootId !== path[0]) {
             store.operationLog = { entries: [], cursor: -1 }
             store.redoStack = []
         }
@@ -386,8 +362,7 @@ function createGraphStore(): GraphStoreAPI {
             return { ok: false }
         }
 
-        const sourceItems =
-            direction === 'undo' ? entry.reversalBatches : entry.batches
+        const sourceItems = direction === 'undo' ? entry.reversalBatches : entry.batches
         const batch = buildBatchesFromLogItems(sourceItems, store.graphRegistry)
 
         if (batch.length > 0) {
@@ -406,8 +381,7 @@ function createGraphStore(): GraphStoreAPI {
             }
         }
 
-        store.operationLog.cursor =
-            direction === 'undo' ? entry.parentIndex : entryIndex
+        store.operationLog.cursor = direction === 'undo' ? entry.parentIndex : entryIndex
 
         // 视图图已被本次执行注销（registry 无该图）时，从 entry 正向批提取其创建时的父图 id
         // 提供给 goToNearestAvailableGraph 恢复视图
@@ -415,9 +389,7 @@ function createGraphStore(): GraphStoreAPI {
         let orphanedParentHint: GraphId | undefined
         if (viewId && !store.graphRegistry.has(viewId)) {
             for (const item of entry.batches) {
-                const addGraphOp = item.operations.find(
-                    (op) => op.type === 'add_graph' && op.graph.id === viewId,
-                )
+                const addGraphOp = item.operations.find((op) => op.type === 'add_graph' && op.graph.id === viewId)
                 if (addGraphOp && addGraphOp.type === 'add_graph') {
                     orphanedParentHint = addGraphOp.graph.parentGraphId
                     break
@@ -541,10 +513,7 @@ function createGraphStore(): GraphStoreAPI {
  * @param parentId - 父图 ID
  * @returns 父图 GraphData；registry 与持久化均不可达时返回 undefined，调用方据此判定链断裂。
  */
-function findParentGraph(
-    registry: GraphRegistry,
-    parentId: GraphId,
-): GraphData | undefined {
+function findParentGraph(registry: GraphRegistry, parentId: GraphId): GraphData | undefined {
     const inRegistry = lookupGraph(registry, parentId)
     if (inRegistry) return inRegistry
 
@@ -562,11 +531,7 @@ function findParentGraph(
 /**
  * 祖先链断裂报告（开发者通道）。沿 parentGraphId 回溯时父图不可达（缺失或损坏）时调用。
  */
-function reportBrokenAncestorChain(
-    graphId: GraphId,
-    terminalId: GraphId,
-    missingParentId: GraphId,
-): void {
+function reportBrokenAncestorChain(graphId: GraphId, terminalId: GraphId, missingParentId: GraphId): void {
     console.warn(
         `${DATA_INTEGRITY_PREFIX} [ANCESTOR_CHAIN_BROKEN] 图谱 "${graphId}" 的父链在 "${terminalId}" 处中断：祖先图谱 "${missingParentId}" 不可达`,
     )
@@ -595,10 +560,7 @@ function reportRegistryResolveFailure(graphId: GraphId, context: string): void {
  * applyLogEntry 执行校验失败报告（开发者通道）。
  * 正常流程不可达（逆元目标存在由 validate 保证），防御性处理。
  */
-function reportReversalApplyFailure(
-    entryIndex: number,
-    direction: 'undo' | 'redo',
-): void {
+function reportReversalApplyFailure(entryIndex: number, direction: 'undo' | 'redo'): void {
     console.warn(
         `${DATA_INTEGRITY_PREFIX} [REVERSAL_APPLY_FAILED] ${direction} 执行 entry #${entryIndex} 时校验失败（正常流程不可达），已中断`,
     )
@@ -639,10 +601,7 @@ function toBatchesLog(batch: OperationBatch): BatchesLog {
  * @param registry - 当前图注册表
  * @returns 判别联合批序列（可能为空——无操作或全部解析失败）。
  */
-function buildBatchesFromLogItems(
-    items: BatchesLog[],
-    registry: GraphRegistry,
-): OperationBatch[] {
+function buildBatchesFromLogItems(items: BatchesLog[], registry: GraphRegistry): OperationBatch[] {
     const batch: OperationBatch[] = []
 
     for (const item of items) {
@@ -654,10 +613,7 @@ function buildBatchesFromLogItems(
             // registry 缺失（undo 注销的 added 图）→ 用批内 add_graph.graph 兜底
             const addGraphOp = items
                 .flatMap((i) => i.operations)
-                .find(
-                    (op) =>
-                        op.type === 'add_graph' && op.graph.id === item.graphId,
-                )
+                .find((op) => op.type === 'add_graph' && op.graph.id === item.graphId)
             if (addGraphOp && addGraphOp.type === 'add_graph') {
                 graph = addGraphOp.graph
             } else {
