@@ -23,8 +23,9 @@ graphView 改 shallowRef 持有，当前视图图数据永不进深代理。消�
 ### 决策项
 
 **已确定决策**：
-* 本子步骤已完成（fixer 执行，用户检查通过）。
-* cy_element_mapper 的 position 拷贝保留（架构防御：渲染层只读映射，GraphData 唯一事实源）。
+
+- 本子步骤已完成（fixer 执行，用户检查通过）。
+- cy_element_mapper 的 position 拷贝保留（架构防御：渲染层只读映射，GraphData 唯一事实源）。
 
 ---
 
@@ -41,46 +42,52 @@ graphView 改 shallowRef 持有，当前视图图数据永不进深代理。消�
 **已完成**：`graphRegistry` / `operationLog` / `redoStack` 已降级为普通字段（shallowReactive 内搭浅响应便车，保持 raw，注释分组明确）；`lastSaveTime` 已删除（全库无匹配）。
 
 **子目标**：
-  * 审计 graph_store 各 ref 的 UI 响应式消费（watch/computed/模板依赖）
-  * 保留响应式：`graphView`（Graph.vue watch）、`graphPath`（导航面包屑）、`lastValidationResult`（canvasErrorIssues）
-  * 降级为普通字段：`graphRegistry` / `operationLog` / `redoStack`（无 UI 消费）
-  * 删除：`lastSaveTime`（只写不读，无任何消费）
+
+- 审计 graph_store 各 ref 的 UI 响应式消费（watch/computed/模板依赖）
+- 保留响应式：`graphView`（Graph.vue watch）、`graphPath`（导航面包屑）、`lastValidationResult`（canvasErrorIssues）
+- 降级为普通字段：`graphRegistry` / `operationLog` / `redoStack`（无 UI 消费）
+- 删除：`lastSaveTime`（只写不读，无任何消费）
 
 难度：
-* 不确定度：低（oracle 已审计消费点）
-* 算法复杂度：无
-* 工作量：小
+
+- 不确定度：低（oracle 已审计消费点）
+- 算法复杂度：无
+- 工作量：小
 
 ### 2.2. 移除 Pinia，单例化
 
 **已完成**：Pinia 依赖已移除（package.json / main.ts）；模块级单例 + `useGraphStore()` 返回公开 interface `GraphStoreAPI`；shallowReactive 单例保持 `store.graphView` 无 `.value` 访问形态（90 处调用点零改动）；`resetGraphStoreForTests` 替换 12 个测试文件的 `setActivePinia(createPinia())`；前端测试全绿（183）。
 
 **子目标**：
-  * 移除 Pinia 依赖（package.json、main.ts 的 createPinia）
-  * 模块级单例 + 组合式函数 `useGraphStore()` 返回公开 interface
-  * 用 `shallowReactive` 单例保持 `store.graphView` 无 `.value` 访问形态（90 处调用点零改动）
-  * 公开 interface：只读 state + 方法入口（语义化命名）
-  * 测试隔离：`resetGraphStoreForTests()` 替代 `setActivePinia(createPinia())`
+
+- 移除 Pinia 依赖（package.json、main.ts 的 createPinia）
+- 模块级单例 + 组合式函数 `useGraphStore()` 返回公开 interface
+- 用 `shallowReactive` 单例保持 `store.graphView` 无 `.value` 访问形态（90 处调用点零改动）
+- 公开 interface：只读 state + 方法入口（语义化命名）
+- 测试隔离：`resetGraphStoreForTests()` 替代 `setActivePinia(createPinia())`
 
 难度：
-* 不确定度：中（影响整个前端调用点 + 测试 setup）
-* 算法复杂度：无
-* 工作量：大
+
+- 不确定度：中（影响整个前端调用点 + 测试 setup）
+- 算法复杂度：无
+- 工作量：大
 
 ### 2.3. OOP 化（语义命名 + 职责分组）→ 由步骤 05 接管
 
 **子目标**：
-  * 不再按本子步骤原案（`loadGraphToView` → `openGraph` 等简单改名）实施
-  * 改由 [05-graph_store核心化与生命周期适配层下沉](05-graph_store核心化与生命周期适配层下沉.md) 接管：
-    * store 收窄为四入口（切图 loadGraphToView / 操作 commitBatchToGraphs / 回溯 undo·redo）
-    * 生命周期管理下沉新适配层 useLifecycleAdapter（restoreLastRootTree / ensureWorkspaceRoot）
-    * 创建根图下沉导航适配层（走 commitBatchToGraphs 统一管道）；校验清理下沉操作适配层
-    * 启动引导收口（Graph.vue onMounted 四步哨兵序列 → 单方法）
+
+- 不再按本子步骤原案（`loadGraphToView` → `openGraph` 等简单改名）实施
+- 改由 [05-graph_store核心化与生命周期适配层下沉](05-graph_store核心化与生命周期适配层下沉.md) 接管：
+  - store 收窄为四入口（切图 loadGraphToView / 操作 commitBatchToGraphs / 回溯 undo·redo）
+  - 生命周期管理下沉新适配层 useLifecycleAdapter（restoreLastRootTree / ensureWorkspaceRoot）
+  - 创建根图下沉导航适配层（走 commitBatchToGraphs 统一管道）；校验清理下沉操作适配层
+  - 启动引导收口（Graph.vue onMounted 四步哨兵序列 → 单方法）
 
 难度：
-* 不确定度：已由步骤 05 方案接管
-* 算法复杂度：无
-* 工作量：并入步骤 05
+
+- 不确定度：已由步骤 05 方案接管
+- 算法复杂度：无
+- 工作量：并入步骤 05
 
 ### 影响范围
 
@@ -110,10 +117,11 @@ frontend/src/
 > **理由**：步骤 05（graph_store核心化与生命周期适配层下沉）以"职责重组 + 适配层拆分"替代简单改名，语义命名需求全部覆盖。
 
 **已确定决策**：
-* 移除 Pinia（决策点 1 已确认 A）。
-* 子步骤 2 + 3 合并（去死 ref 与移除 Pinia 是同一件事的两面）。
-* 保持 `useGraphStore()` 调用签名与解包访问形态（shallowReactive 单例，90 处调用点零改动）。
-* 接受 devtools 状态面板与 store HMR 的损失（MVP 单 store，价值低）。
+
+- 移除 Pinia（决策点 1 已确认 A）。
+- 子步骤 2 + 3 合并（去死 ref 与移除 Pinia 是同一件事的两面）。
+- 保持 `useGraphStore()` 调用签名与解包访问形态（shallowReactive 单例，90 处调用点零改动）。
+- 接受 devtools 状态面板与 store HMR 的损失（MVP 单 store，价值低）。
 
 ---
 
@@ -126,13 +134,15 @@ frontend/src/
 ### 3.1. 割裂问题分析
 
 **子目标**：
-  * 确认割裂现状：GE 对 add/delete_graph 静默，前端 commitBatchToGraphs 第三阶段重新扫描信号兑现；逆元模型分裂（图内走 createReversal，图级手写三段式）
-  * 评估统一方案：GE 返回值携带图级副作用描述 + 逆元统一为 add↔delete 互逆
+
+- 确认割裂现状：GE 对 add/delete_graph 静默，前端 commitBatchToGraphs 第三阶段重新扫描信号兑现；逆元模型分裂（图内走 createReversal，图级手写三段式）
+- 评估统一方案：GE 返回值携带图级副作用描述 + 逆元统一为 add↔delete 互逆
 
 难度：
-* 不确定度：高（GE 契约变更，影响面大）
-* 算法复杂度：无
-* 工作量：大
+
+- 不确定度：高（GE 契约变更，影响面大）
+- 算法复杂度：无
+- 工作量：大
 
 ### 影响范围
 
@@ -150,5 +160,6 @@ frontend/src/graph/graph_store.ts（applyEntry 三段式退化）
 > **理由**：决策点 2 已确认 A（统一）；GE 成为图级操作的决策点，Runtime 仍是执行点。
 
 **已确定决策**：
-* 图级信号进 GE 返回值（决策点 2 已确认 A）。
-* 本子步骤不再单独实施，由 [06-多图管理层搭建与前端对接](06-多图管理层搭建与前端对接.md) + [07-操作日志系统改造](07-操作日志系统改造.md) 接管并扩展为实施（GE 多图管理层 + 前端对接 + 操作日志统一形态）。
+
+- 图级信号进 GE 返回值（决策点 2 已确认 A）。
+- 本子步骤不再单独实施，由 [06-多图管理层搭建与前端对接](06-多图管理层搭建与前端对接.md) + [07-操作日志系统改造](07-操作日志系统改造.md) 接管并扩展为实施（GE 多图管理层 + 前端对接 + 操作日志统一形态）。

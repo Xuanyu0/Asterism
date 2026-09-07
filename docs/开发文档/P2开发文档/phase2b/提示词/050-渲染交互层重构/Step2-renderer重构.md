@@ -196,14 +196,8 @@ import {
 - 删除 `function watchPendingTarget(getter, className)` 定义及内部 `cy.getElementById().addClass/removeClass`
 - 在 `onMounted` / setup 内改为：
   ```ts
-  renderer.bindHighlight(
-    () => mediator.activeHandler.value?.highlightNode,
-    'delete-target',
-  )
-  renderer.bindHighlight(
-    () => mediator.activeHandler.value?.highlightEdge,
-    'delete-target',
-  )
+  renderer.bindHighlight(() => mediator.activeHandler.value?.highlightNode, 'delete-target')
+  renderer.bindHighlight(() => mediator.activeHandler.value?.highlightEdge, 'delete-target')
   ```
 - 同样用 `bindHighlight` 处理 add-edge 的 `edge-source-target` 高亮
 
