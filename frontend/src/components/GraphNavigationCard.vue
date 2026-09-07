@@ -47,13 +47,7 @@ const drag = useDragPosition({
     margin: 16,
     snapthreshold: 32,
 })
-const {
-    position: cardPosition,
-    isDragging,
-    elementRef: cardElement,
-    handlers: dragHandlers,
-    clampToViewport,
-} = drag
+const { position: cardPosition, isDragging, elementRef: cardElement, handlers: dragHandlers, clampToViewport } = drag
 
 // ── 面板状态管理 ──
 const activePanel = ref<PanelKind>('none')
@@ -82,15 +76,9 @@ function toggleSearchPanel(): void {
 // ── 面板自适应（展开后不越过视口） ──
 const viewportHeight = ref(window.innerHeight)
 const viewportWidth = ref(window.innerWidth)
-const panelOpensUpward = computed(
-    () => cardPosition.value.y > viewportHeight.value * 0.5,
-)
-const panelAlignRight = computed(
-    () => cardPosition.value.x + 290 > viewportWidth.value,
-)
-const panelTransitionName = computed(() =>
-    panelOpensUpward.value ? 'panel-rise' : 'panel-drop',
-)
+const panelOpensUpward = computed(() => cardPosition.value.y > viewportHeight.value * 0.5)
+const panelAlignRight = computed(() => cardPosition.value.x + 290 > viewportWidth.value)
+const panelTransitionName = computed(() => (panelOpensUpward.value ? 'panel-rise' : 'panel-drop'))
 
 // ── 自动淡化 ──
 const { isFaded, onPointerEnter, onPointerLeave } = useAutoFade({
@@ -98,14 +86,7 @@ const { isFaded, onPointerEnter, onPointerLeave } = useAutoFade({
 })
 
 // ── 路径与位置（经导航用例层派生） ──
-const {
-    breadcrumb: pathSegments,
-    currentRootId,
-    isAtRoot,
-    parentGraphId,
-    hasCurrentGraph,
-    goToGraph,
-} = useNavigation()
+const { breadcrumb: pathSegments, currentRootId, isAtRoot, parentGraphId, hasCurrentGraph, goToGraph } = useNavigation()
 
 /**
  * 功能：
@@ -247,9 +228,7 @@ onBeforeUnmount(() => {
                 key="search"
                 v-bind:panel-opens-upward="panelOpensUpward"
                 v-bind:panel-align-right="panelAlignRight"
-                v-on:focus-element="
-                    (id: string) => canvasFocus.requestCanvasFocus(id)
-                "
+                v-on:focus-element="(id: string) => canvasFocus.requestCanvasFocus(id)"
                 v-on:close="closePanels"
             />
         </Transition>

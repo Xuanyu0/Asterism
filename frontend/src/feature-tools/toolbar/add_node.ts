@@ -54,8 +54,7 @@ export interface DraftNode {
 export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
     const graphStore = useGraphStore()
     const operations = useGraphOperation()
-    const { syncFromGraphData, addNodeClass, clearAllPreviews, trackCursor } =
-        useRenderer()
+    const { syncFromGraphData, addNodeClass, clearAllPreviews, trackCursor } = useRenderer()
 
     const id: ToolId = kind === 'real' ? 'add-real-node' : 'add-virtual-node'
 
@@ -218,11 +217,7 @@ export function useAddNodeTool(kind: 'real' | 'virtual'): ToolHandler {
     } {
         if (!graphStore.graphView) return { collides: false, nodeId: null }
 
-        const { previewGraph, collides, nodeId } = previewAddNode(
-            graphStore.graphView,
-            pos,
-            kind,
-        )
+        const { previewGraph, collides, nodeId } = previewAddNode(graphStore.graphView, pos, kind)
 
         syncFromGraphData(previewGraph)
         addNodeClass(nodeId, 'add-node-preview', 'add-node')

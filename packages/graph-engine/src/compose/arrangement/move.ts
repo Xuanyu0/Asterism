@@ -62,12 +62,7 @@ export function moveNode(params: {
 }): ComposeResult<DraftPosition> {
     const { nodeId, desiredPosition, allNodes, nodeRadiusOverrides } = params
 
-    const blocked = hasCollisionAt(
-        nodeId,
-        desiredPosition,
-        allNodes,
-        nodeRadiusOverrides,
-    )
+    const blocked = hasCollisionAt(nodeId, desiredPosition, allNodes, nodeRadiusOverrides)
 
     const draft: DraftPosition = {
         nodeId,

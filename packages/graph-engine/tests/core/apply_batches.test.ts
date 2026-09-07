@@ -6,22 +6,10 @@
 
 import { applyBatches } from '../../src/core/apply_batches'
 import { deconstruct } from '../../src/compose/cognitive/deconstruct'
-import type {
-    GraphData,
-    GraphId,
-    GraphRegistry,
-    NodeId,
-} from '../../src/types/graph_data'
+import type { GraphData, GraphId, GraphRegistry, NodeId } from '../../src/types/graph_data'
 import type { OperationBatch } from '../../src/types/compose_types'
-import type {
-    AtomicGraphOperation,
-    AtomicOperationInGraph,
-} from '../../src/types/atomic_operations'
-import {
-    createNode,
-    assembleGraph,
-    createDeconstructInputGraph,
-} from '../test_case_factory'
+import type { AtomicGraphOperation, AtomicOperationInGraph } from '../../src/types/atomic_operations'
+import { createNode, assembleGraph, createDeconstructInputGraph } from '../test_case_factory'
 
 const G = 'parent' as GraphId
 const CHILD = 'child' as GraphId
@@ -30,10 +18,7 @@ const TEST_NOW = '2026-01-01T00:00:00.000Z'
 function makeParentGraph(): GraphData {
     return assembleGraph({
         id: G,
-        nodes: [
-            createNode({ id: 'n0' as NodeId, graphId: G }),
-            createNode({ id: 'n1' as NodeId, graphId: G }),
-        ],
+        nodes: [createNode({ id: 'n0' as NodeId, graphId: G }), createNode({ id: 'n1' as NodeId, graphId: G })],
         edges: [],
     })
 }

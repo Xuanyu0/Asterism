@@ -27,26 +27,15 @@
  *     // applyBatches(registry, result.batches)
  */
 
-import type {
-    GraphData,
-    GraphId,
-    NodeId,
-    NodePosition,
-} from '../../types/graph_data'
-import type {
-    GraphLookup,
-    NodeRadiusMap,
-} from '../../types/infrastructure_types'
+import type { GraphData, GraphId, NodeId, NodePosition } from '../../types/graph_data'
+import type { GraphLookup, NodeRadiusMap } from '../../types/infrastructure_types'
 import type { ComposeIssue } from '../../types/compose_types'
 import type { OperationBatch } from '../../types/compose_types'
 import type { AtomicOperationInGraph } from '../../types/atomic_operations'
 import { generateNodeId } from '../../core/utils/id'
 import { deriveNodeForm } from '../../core/derive'
 import { scatterInCircle } from '../../infrastructure/placement'
-import {
-    hasCollisionAt,
-    hasCollisionInDrafts,
-} from '../../infrastructure/collision'
+import { hasCollisionAt, hasCollisionInDrafts } from '../../infrastructure/collision'
 import { DEFAULT_LAYOUT_RULES } from '../../core/layout_rules'
 
 // ═══════════ 常量 ═══════════
@@ -99,13 +88,7 @@ export function internalize(params: InternalizeParams): {
     batches: OperationBatch[]
     issues: ComposeIssue[]
 } {
-    const {
-        nodeIds,
-        parentGraph,
-        commonLayer,
-        lookupGraph,
-        nodeRadiusOverrides,
-    } = params
+    const { nodeIds, parentGraph, commonLayer, lookupGraph, nodeRadiusOverrides } = params
     const issues: ComposeIssue[] = []
 
     // ── 语义预检 ──
@@ -129,11 +112,7 @@ export function internalize(params: InternalizeParams): {
     const notFoundIds: string[] = []
 
     for (const nodeId of nodeIds) {
-        const found = findNodeInGraphOrChildGraphs(
-            nodeId,
-            parentGraph,
-            lookupGraph,
-        )
+        const found = findNodeInGraphOrChildGraphs(nodeId, parentGraph, lookupGraph)
         if (found) {
             resolvedNodes.push(found)
         } else {
@@ -153,12 +132,8 @@ export function internalize(params: InternalizeParams): {
     }
 
     // 分类：引用节点 vs 知识节点
-    const referenceNodes = resolvedNodes.filter(
-        (r) => r.node.role === 'reference',
-    )
-    const knowledgeNodes = resolvedNodes.filter(
-        (r) => r.node.role === 'knowledge',
-    )
+    const referenceNodes = resolvedNodes.filter((r) => r.node.role === 'reference')
+    const knowledgeNodes = resolvedNodes.filter((r) => r.node.role === 'knowledge')
 
     if (knowledgeNodes.length === 0) {
         issues.push({
@@ -170,11 +145,7 @@ export function internalize(params: InternalizeParams): {
     }
 
     for (const rn of knowledgeNodes) {
-        if (
-            rn.node.role === 'knowledge' &&
-            rn.node.kind === 'real' &&
-            deriveNodeForm(rn.node) === 'abstract'
-        ) {
+        if (rn.node.role === 'knowledge' && rn.node.kind === 'real' && deriveNodeForm(rn.node) === 'abstract') {
             issues.push({
                 severity: 'warning',
                 code: 'INTERNALIZE_ABSTRACT_NODE_RECURSIVE',
@@ -211,21 +182,14 @@ export function internalize(params: InternalizeParams): {
         const graph = kn.graph
 
         // 删除连接到该节点的所有边
-        const connectedEdges = graph.edges.filter(
-            (edge) => edge.source === nodeId || edge.target === nodeId,
-        )
+        const connectedEdges = graph.edges.filter((edge) => edge.source === nodeId || edge.target === nodeId)
         for (const edge of connectedEdges) {
             pushOp(graph, { type: 'delete_edge', edgeId: edge.id })
         }
 
         // 抽象节点：递归清理子图
-        if (
-            kn.node.role === 'knowledge' &&
-            deriveNodeForm(kn.node) === 'abstract'
-        ) {
-            const childGraph = kn.node.childGraphId
-                ? lookupGraph(kn.node.childGraphId)
-                : undefined
+        if (kn.node.role === 'knowledge' && deriveNodeForm(kn.node) === 'abstract') {
+            const childGraph = kn.node.childGraphId ? lookupGraph(kn.node.childGraphId) : undefined
 
             if (childGraph) {
                 // 删除子图内所有普通边
@@ -235,9 +199,7 @@ export function internalize(params: InternalizeParams): {
 
                 // 删除子图内所有沟通节点
                 const commNodes = childGraph.nodes.filter(
-                    (node) =>
-                        node.role === 'reference' &&
-                        node.referenceKind === 'communication',
+                    (node) => node.role === 'reference' && node.referenceKind === 'communication',
                 )
                 for (const commNode of commNodes) {
                     pushOp(childGraph, {
@@ -264,13 +226,8 @@ export function internalize(params: InternalizeParams): {
         toMove.push({ node: kn.node })
 
         // 抽象节点：子图内知识节点也一并迁入
-        if (
-            kn.node.role === 'knowledge' &&
-            deriveNodeForm(kn.node) === 'abstract'
-        ) {
-            const childGraph = kn.node.childGraphId
-                ? lookupGraph(kn.node.childGraphId)
-                : undefined
+        if (kn.node.role === 'knowledge' && deriveNodeForm(kn.node) === 'abstract') {
+            const childGraph = kn.node.childGraphId ? lookupGraph(kn.node.childGraphId) : undefined
             if (childGraph) {
                 for (const childNode of childGraph.nodes) {
                     if (childNode.role === 'knowledge') {
@@ -293,12 +250,7 @@ export function internalize(params: InternalizeParams): {
             const candidate = scatterInCircle({ x: 0, y: 0 }, radius)
 
             // 检测 vs 常识层已有节点 + 同批已放置节点
-            const hitsExisting = hasCollisionAt(
-                item.node.id,
-                candidate,
-                commonLayer.nodes,
-                nodeRadiusOverrides,
-            )
+            const hitsExisting = hasCollisionAt(item.node.id, candidate, commonLayer.nodes, nodeRadiusOverrides)
             const hitsPeer = hasCollisionInDrafts(
                 [{ nodeId: item.node.id, position: candidate }],
                 placedDrafts.map((d) => ({
@@ -327,10 +279,7 @@ export function internalize(params: InternalizeParams): {
             type: 'add_node',
             node: {
                 ...item.node,
-                id:
-                    item.node.role === 'knowledge'
-                        ? item.node.id
-                        : generateNodeId(),
+                id: item.node.role === 'knowledge' ? item.node.id : generateNodeId(),
                 graphId: commonLayer.id,
                 degree: 0,
                 position: nodePosition,
@@ -378,11 +327,7 @@ function findNodeInGraphOrChildGraphs(
         ) {
             const childGraph = lookupGraph(maybeAbstract.childGraphId)
             if (childGraph) {
-                const found = findNodeInGraphOrChildGraphs(
-                    nodeId,
-                    childGraph,
-                    lookupGraph,
-                )
+                const found = findNodeInGraphOrChildGraphs(nodeId, childGraph, lookupGraph)
                 if (found) return found
             }
         }

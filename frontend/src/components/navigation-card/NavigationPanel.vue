@@ -24,13 +24,7 @@ import { ref, computed, onMounted } from 'vue'
 
 import type { GraphId } from '@my-project/graph-engine'
 
-import {
-    PlusIcon,
-    TrashIcon,
-    BookOpenIcon,
-    GlobeAltIcon,
-    Cog6ToothIcon,
-} from '@heroicons/vue/24/outline'
+import { PlusIcon, TrashIcon, BookOpenIcon, GlobeAltIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
 import AsterismLogo from '@/assets/icon-asterism.svg?component'
 
 import { useNavigation } from '@/graph/use-case/useNavigation'
@@ -137,20 +131,14 @@ function requestDeleteRoot(info: RootGraphInfo): void {
                 >
                     <AsterismLogo class="root-item-icon size-3.5" />
                     <span class="root-item-title">{{ info.title }}</span>
-                    <span v-if="info.id === currentRootId" class="current-badge"
-                        >当前</span
-                    >
+                    <span v-if="info.id === currentRootId" class="current-badge">当前</span>
                 </button>
                 <button
                     v-if="info.id !== currentRootId"
                     type="button"
                     class="root-delete-btn"
                     v-bind:class="{ armed: armedDeleteId === info.id }"
-                    v-bind:title="
-                        armedDeleteId === info.id
-                            ? '再次点击确认删除（含全部子图）'
-                            : '删除图谱'
-                    "
+                    v-bind:title="armedDeleteId === info.id ? '再次点击确认删除（含全部子图）' : '删除图谱'"
                     v-on:click.stop="requestDeleteRoot(info)"
                 >
                     <span v-if="armedDeleteId === info.id">确认</span>
@@ -160,19 +148,8 @@ function requestDeleteRoot(info: RootGraphInfo): void {
         </ul>
 
         <form class="create-row" v-on:submit.prevent="createAndSwitch">
-            <input
-                v-model="newRootTitle"
-                type="text"
-                class="text-input"
-                placeholder="新根图谱名称…"
-                maxlength="40"
-            />
-            <button
-                type="submit"
-                class="create-btn"
-                v-bind:disabled="!canCreate"
-                v-bind:title="'创建并切换'"
-            >
+            <input v-model="newRootTitle" type="text" class="text-input" placeholder="新根图谱名称…" maxlength="40" />
+            <button type="submit" class="create-btn" v-bind:disabled="!canCreate" v-bind:title="'创建并切换'">
                 <PlusIcon class="size-4" />
             </button>
         </form>
@@ -180,30 +157,15 @@ function requestDeleteRoot(info: RootGraphInfo): void {
         <div class="panel-divider"></div>
 
         <div class="placeholder-row">
-            <button
-                type="button"
-                class="btn-secondary placeholder-btn"
-                disabled
-                v-bind:title="'笔记库 — 后续阶段'"
-            >
+            <button type="button" class="btn-secondary placeholder-btn" disabled v-bind:title="'笔记库 — 后续阶段'">
                 <BookOpenIcon class="size-4" />
                 <span>笔记库</span>
             </button>
-            <button
-                type="button"
-                class="btn-secondary placeholder-btn"
-                disabled
-                v-bind:title="'常识层 — 后续阶段'"
-            >
+            <button type="button" class="btn-secondary placeholder-btn" disabled v-bind:title="'常识层 — 后续阶段'">
                 <GlobeAltIcon class="size-4" />
                 <span>常识层</span>
             </button>
-            <button
-                type="button"
-                class="btn-secondary placeholder-btn"
-                disabled
-                v-bind:title="'设置 — 后续阶段'"
-            >
+            <button type="button" class="btn-secondary placeholder-btn" disabled v-bind:title="'设置 — 后续阶段'">
                 <Cog6ToothIcon class="size-4" />
                 <span>设置</span>
             </button>

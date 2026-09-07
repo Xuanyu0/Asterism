@@ -20,12 +20,8 @@
             </svg>
 
             <!-- 标题卡：橙底白字，对称圆角（rounded-2xl）与托盘一致 -->
-            <div
-                class="flex items-center rounded-2xl bg-(--product-color) px-1 py-3 font-bold text-white shadow-md"
-            >
-                <h3
-                    class="text-base font-semibold tracking-widest text-white [writing-mode:vertical-rl]"
-                >
+            <div class="flex items-center rounded-2xl bg-(--product-color) px-1 py-3 font-bold text-white shadow-md">
+                <h3 class="text-base font-semibold tracking-widest text-white [writing-mode:vertical-rl]">
                     {{ formModel.title }}
                 </h3>
             </div>
@@ -35,9 +31,7 @@
             <div class="rounded-2xl bg-(--product-color) p-1 pt-1 shadow-md">
                 <!-- 标签输入条：托盘顶部橙色区（白字 + 透明输入框） -->
                 <div class="flex items-center gap-1 px-2 pb-1">
-                    <label class="text-sm font-semibold text-white"
-                        >标签：</label
-                    >
+                    <label class="text-sm font-semibold text-white">标签：</label>
                     <input
                         class="min-w-0 flex-1 rounded-md px-2 py-0.5 text-center text-sm text-white outline-none"
                         v-bind:value="formModel.label"
@@ -48,18 +42,18 @@
                 <!-- 白色内容卡：内嵌托盘内，投影落于托盘橙面；仅承载摘要（无摘要时保持空卡） -->
                 <div class="w-60 rounded-xl bg-white px-4 py-1 shadow-md">
                     <template v-if="formModel.showSummary">
-                        <label class="flex items-center justify-between text-sm font-semibold text-stone-800 mb-1">
+                        <label class="mb-1 flex items-center justify-between text-sm font-semibold text-stone-800">
                             <!-- 左边：标题文字 -->
                             <span>摘要</span>
                             <!-- 右边：字数统计（去掉 absolute，加 font-normal 防止继承加粗） -->
-                            <span class="text-xs font-normal font-mono text-stone-400">
+                            <span class="font-mono text-xs font-normal text-stone-400">
                                 {{ formModel.summary.length }}/80
                             </span>
                         </label>
                         <textarea
                             rows="3"
                             maxlength="80"
-                            class="w-full rounded-md border border-stone-200 px-2 py-1 text-sm text-slate-900 outline-none resize-none [field-sizing:content] min-h-15 max-h-40"
+                            class="[field-sizing:content] max-h-40 min-h-15 w-full resize-none rounded-md border border-stone-200 px-2 py-1 text-sm text-slate-900 outline-none"
                             v-bind:value="formModel.summary"
                             v-on:input="formModel.onSummaryInput"
                         />
@@ -126,19 +120,13 @@ import { useFloatingWindow } from '@/composables/useFloatingWindow'
 import { useRenderer } from '@/cytoscape/useRenderer'
 
 import type { ComponentPublicInstance } from 'vue'
-import type {
-    NodeData,
-    EdgeData,
-    KnowledgeNodeData,
-} from '@my-project/graph-engine'
+import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
 
 const mediator = useToolMediator()
 const floatingWindow = useFloatingWindow()
 const renderer = useRenderer()
 
-const draftNode = computed(
-    () => mediator.activeHandler.value?.draftNode ?? null,
-)
+const draftNode = computed(() => mediator.activeHandler.value?.draftNode ?? null)
 
 // 数据源切换：经 default handler 门面转发单例状态（getter 在 computed 内访问以建立响应式依赖）
 const defaultHandler = mediator.registry.get('default')
@@ -160,9 +148,7 @@ const isEdge = computed(() => {
 
 const isKnowledgeNode = computed(() => {
     const data = floatingData.value
-    return (
-        !!data && !isEdge.value && 'role' in data && data.role === 'knowledge'
-    )
+    return !!data && !isEdge.value && 'role' in data && data.role === 'knowledge'
 })
 
 // ── 统一视图模型 ──
@@ -201,10 +187,7 @@ const formModel = computed<FloatingFormModel | null>(() => {
         return {
             title: '编辑',
             label: editingData.value?.label ?? data.label ?? '',
-            summary: isKnowledgeNode.value
-                ? (((editingData.value ?? data) as KnowledgeNodeData).summary ??
-                  '')
-                : '',
+            summary: isKnowledgeNode.value ? (((editingData.value ?? data) as KnowledgeNodeData).summary ?? '') : '',
             showSummary: isKnowledgeNode.value,
             onLabelInput: handleFloatingLabelInput,
             onSummaryInput: handleFloatingSummaryInput,
@@ -283,9 +266,7 @@ function handleFloatingConfirm(): void {
     }
 
     const label = editingData.value.label ?? ''
-    const summary = isKnowledgeNode.value
-        ? ((editingData.value as KnowledgeNodeData).summary ?? '')
-        : ''
+    const summary = isKnowledgeNode.value ? ((editingData.value as KnowledgeNodeData).summary ?? '') : ''
 
     mediator.activeHandler.value?.onConfirm?.(label, summary)
 
@@ -360,9 +341,7 @@ onBeforeUnmount(() => {
  *
  * @param el - ref 回调参数（本窗口根元素是原生 div，卸载时为 null）
  */
-function registerWindowRoot(
-    el: Element | ComponentPublicInstance | null,
-): void {
+function registerWindowRoot(el: Element | ComponentPublicInstance | null): void {
     // Vue 的 ref 回调参数类型较宽；本窗口根元素是原生 div，卸载时为 null
     const htmlEl = el instanceof HTMLElement ? el : null
     windowRootEl.value = htmlEl

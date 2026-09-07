@@ -43,24 +43,19 @@ describe('useFoldTool', () => {
         handler.onNodeClick!('node-g2')
 
         const store = useGraphStore()
-        expect(
-            store.graphView!.cognitiveState.foldedDependencies.length,
-        ).toBeGreaterThan(0)
+        expect(store.graphView!.cognitiveState.foldedDependencies.length).toBeGreaterThan(0)
     })
 
     test('再次点击同一节点展开', () => {
         handler.onNodeClick!('node-g2')
 
         const store = useGraphStore()
-        const foldCount =
-            store.graphView!.cognitiveState.foldedDependencies.length
+        const foldCount = store.graphView!.cognitiveState.foldedDependencies.length
         expect(foldCount).toBeGreaterThan(0)
 
         // 再次点击同一个节点展开
         handler.onNodeClick!('node-g2')
-        expect(store.graphView!.cognitiveState.foldedDependencies.length).toBe(
-            0,
-        )
+        expect(store.graphView!.cognitiveState.foldedDependencies.length).toBe(0)
     })
 
     test('折叠非依赖节点不改变 foldedDependencies', () => {

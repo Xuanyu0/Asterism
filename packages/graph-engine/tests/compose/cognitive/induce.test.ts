@@ -4,12 +4,7 @@
  * 归纳操作测试。
  */
 
-import type {
-    GraphId,
-    GraphRegistry,
-    KnowledgeNodeData,
-    NodeId,
-} from '../../../src/types/graph_data'
+import type { GraphId, GraphRegistry, KnowledgeNodeData, NodeId } from '../../../src/types/graph_data'
 import { induce } from '../../../src/compose/cognitive/induce'
 import { applyBatches } from '../../../src/core/apply_batches'
 import {
@@ -32,9 +27,7 @@ describe('induce', () => {
             nodeRadiusOverrides: R,
             allEdges: graph.edges,
         })
-        expect(
-            result.issues.filter((i) => i.severity === 'error'),
-        ).toHaveLength(0)
+        expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0)
         // 6 批：graphLevel add_graph（空图）+ 子图 add_node / add_edge + 父图 delete_node / add_node / add_edge
         expect(result.batches).toHaveLength(6)
         expect(result.batches[0]!.kind).toBe('graphLevel')
@@ -57,28 +50,16 @@ describe('induce', () => {
         // 批1/批2 为子图批：先 add_node 后 add_edge
         const childNodeBatch = result.batches[1]!
         const childEdgeBatch = result.batches[2]!
-        expect(
-            childNodeBatch.operations.every((op) => op.type === 'add_node'),
-        ).toBe(true)
-        expect(
-            childEdgeBatch.operations.every((op) => op.type === 'add_edge'),
-        ).toBe(true)
+        expect(childNodeBatch.operations.every((op) => op.type === 'add_node')).toBe(true)
+        expect(childEdgeBatch.operations.every((op) => op.type === 'add_edge')).toBe(true)
 
         // 批3/批4/批5 为父图批：delete_node → add_node（抽象）→ add_edge
         const parentDeleteBatch = result.batches[3]!
         const parentAddNodeBatch = result.batches[4]!
         const parentAddEdgeBatch = result.batches[5]!
-        expect(
-            parentDeleteBatch.operations.every(
-                (op) => op.type === 'delete_node',
-            ),
-        ).toBe(true)
-        expect(
-            parentAddNodeBatch.operations.every((op) => op.type === 'add_node'),
-        ).toBe(true)
-        expect(
-            parentAddEdgeBatch.operations.every((op) => op.type === 'add_edge'),
-        ).toBe(true)
+        expect(parentDeleteBatch.operations.every((op) => op.type === 'delete_node')).toBe(true)
+        expect(parentAddNodeBatch.operations.every((op) => op.type === 'add_node')).toBe(true)
+        expect(parentAddEdgeBatch.operations.every((op) => op.type === 'add_edge')).toBe(true)
     })
 
     test('集成：compose → applyBatches 完整执行（A-1 回归防护）', () => {
@@ -91,9 +72,7 @@ describe('induce', () => {
             nodeRadiusOverrides: R,
             allEdges: graph.edges,
         })
-        expect(
-            result.issues.filter((i) => i.severity === 'error'),
-        ).toHaveLength(0)
+        expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0)
 
         const applied = applyBatches(registry, result.batches, {
             executedAt: TEST_NOW,
@@ -118,24 +97,14 @@ describe('induce', () => {
         expect(abstractNode!.label.length).toBeLessThanOrEqual(8)
 
         // 抽象节点连接两个未选邻居
-        expect(
-            parent.edges.filter(
-                (e) =>
-                    e.source === abstractNode!.id ||
-                    e.target === abstractNode!.id,
-            ),
-        ).toHaveLength(2)
+        expect(parent.edges.filter((e) => e.source === abstractNode!.id || e.target === abstractNode!.id)).toHaveLength(
+            2,
+        )
 
         // 子图：3 被选节点 + 2 沟通节点 + 7 条边（3 内部 + 4 外部投影）
         const child = applied.registry.get(abstractNode!.childGraphId!)!
         expect(child.nodes).toHaveLength(5)
-        expect(
-            child.nodes.filter(
-                (n) =>
-                    n.role === 'reference' &&
-                    n.referenceKind === 'communication',
-            ),
-        ).toHaveLength(2)
+        expect(child.nodes.filter((n) => n.role === 'reference' && n.referenceKind === 'communication')).toHaveLength(2)
         expect(child.edges).toHaveLength(7)
     })
 
@@ -148,9 +117,7 @@ describe('induce', () => {
             nodeRadiusOverrides: R,
             allEdges: graph.edges,
         })
-        expect(
-            result.issues.filter((i) => i.severity === 'error'),
-        ).toHaveLength(0)
+        expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0)
     })
 
     test('沟通节点拒绝', () => {
@@ -179,9 +146,7 @@ describe('induce', () => {
             nodeRadiusOverrides: R,
             allEdges: graph.edges,
         })
-        expect(result.issues.some((i) => i.message.includes('沟通节点'))).toBe(
-            true,
-        )
+        expect(result.issues.some((i) => i.message.includes('沟通节点'))).toBe(true)
     })
 
     test('< 2 节点拒绝', () => {
@@ -193,8 +158,6 @@ describe('induce', () => {
             nodeRadiusOverrides: R,
             allEdges: graph.edges,
         })
-        expect(
-            result.issues.some((i) => i.message.includes('至少需要两个')),
-        ).toBe(true)
+        expect(result.issues.some((i) => i.message.includes('至少需要两个'))).toBe(true)
     })
 })

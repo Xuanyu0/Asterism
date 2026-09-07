@@ -14,16 +14,8 @@ import { generateGraphId } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { registerGraph } from '@/graph/graph_registry'
-import {
-    loadGraph,
-    listSavedGraphIds,
-    loadLastActiveRootId,
-    clearLastActiveRootId,
-} from '@/graph/graph_persistence'
-import {
-    DATA_INTEGRITY_PREFIX,
-    reportCorruptedGraph,
-} from '@/graph/utils/data_integrity_reporter'
+import { loadGraph, listSavedGraphIds, loadLastActiveRootId, clearLastActiveRootId } from '@/graph/graph_persistence'
+import { DATA_INTEGRITY_PREFIX, reportCorruptedGraph } from '@/graph/utils/data_integrity_reporter'
 
 /**
  * useLifecycle 返回的生命周期用例单例 API。

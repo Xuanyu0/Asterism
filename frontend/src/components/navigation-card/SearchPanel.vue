@@ -112,29 +112,16 @@ function onSearchInputEnter(): void {
             v-on:keydown.escape="emit('close')"
         />
 
-        <div v-if="searchQuery.trim().length === 0" class="search-hint">
-            输入以匹配当前图谱中的节点 / 边标签
-        </div>
+        <div v-if="searchQuery.trim().length === 0" class="search-hint">输入以匹配当前图谱中的节点 / 边标签</div>
 
-        <div v-else-if="searchResults.length === 0" class="search-hint">
-            无匹配结果
-        </div>
+        <div v-else-if="searchResults.length === 0" class="search-hint">无匹配结果</div>
 
         <ul v-else class="result-list">
-            <li
-                v-for="result in searchResults"
-                v-bind:key="result.kind + '-' + result.id"
-            >
-                <button
-                    type="button"
-                    class="result-item"
-                    v-on:click="selectSearchResult(result)"
-                >
+            <li v-for="result in searchResults" v-bind:key="result.kind + '-' + result.id">
+                <button type="button" class="result-item" v-on:click="selectSearchResult(result)">
                     <span class="result-dot" v-bind:class="result.kind"></span>
                     <span class="result-item-title">{{ result.label }}</span>
-                    <span class="result-kind">{{
-                        result.kind === 'node' ? '节点' : '边'
-                    }}</span>
+                    <span class="result-kind">{{ result.kind === 'node' ? '节点' : '边' }}</span>
                 </button>
             </li>
         </ul>

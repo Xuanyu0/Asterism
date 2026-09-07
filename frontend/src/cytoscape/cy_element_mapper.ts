@@ -7,14 +7,7 @@
  *     3. 调用 class_mapper 派生 CSS class
  */
 
-import type {
-    EdgeData,
-    EdgeId,
-    GraphData,
-    NodeData,
-    NodeId,
-    NodePosition,
-} from '@my-project/graph-engine'
+import type { EdgeData, EdgeId, GraphData, NodeData, NodeId, NodePosition } from '@my-project/graph-engine'
 
 import { getNodeClasses, getEdgeClasses } from './mapper-utils/class_mapper'
 import {
@@ -79,19 +72,12 @@ export function mapGraphDataToCyElements(graph: GraphData): CyElements {
             .map((node) => mapNodeToCyElement(node, foldedParentIds)),
 
         edges: graph.edges
-            .filter(
-                (edge) =>
-                    !foldedNodeIds.has(edge.source) &&
-                    !foldedNodeIds.has(edge.target),
-            )
+            .filter((edge) => !foldedNodeIds.has(edge.source) && !foldedNodeIds.has(edge.target))
             .map((edge) => mapEdgeToCyElement(edge, nodeMassLookup)),
     }
 }
 
-function mapNodeToCyElement(
-    node: NodeData,
-    foldedParentIds: Set<NodeId>,
-): CyNodeElement {
+function mapNodeToCyElement(node: NodeData, foldedParentIds: Set<NodeId>): CyNodeElement {
     return {
         group: 'nodes',
         data: {
@@ -105,9 +91,7 @@ function mapNodeToCyElement(
         // 原地写回该对象。若传入 GraphData 的 position（graphView 场景下是 Vue reactive
         // Proxy），预览 sync 就会把预览位置写穿回 graphStore.graphView——move 预览污染
         // 根因。渲染层必须持有自己的副本，GraphData 是唯一事实源。
-        position: node.position
-            ? { x: node.position.x, y: node.position.y }
-            : undefined,
+        position: node.position ? { x: node.position.x, y: node.position.y } : undefined,
         classes: getNodeClasses(node, foldedParentIds),
     }
 }

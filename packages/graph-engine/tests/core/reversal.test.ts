@@ -5,16 +5,8 @@
  * 且逆操作执行后状态与操作前一致。图级操作（add_graph / delete_graph）不构造逆元。
  */
 
-import type {
-    GraphData,
-    EdgeId,
-    GraphId,
-    NodeId,
-} from '../../src/types/graph_data'
-import type {
-    AddEdgeOperation,
-    AddNodeOperation,
-} from '../../src/types/atomic_operations'
+import type { GraphData, EdgeId, GraphId, NodeId } from '../../src/types/graph_data'
+import type { AddEdgeOperation, AddNodeOperation } from '../../src/types/atomic_operations'
 import { createReversal } from '../../src/core/reversal'
 import { executeOperation } from '../../src/core/execute_operation'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
@@ -44,10 +36,7 @@ function makeGraph(nodes = 2, edges = 0): GraphData {
 }
 
 // 回放逆操作后状态应与操作前一致
-function assertReversalRoundTrip(
-    graph: GraphData,
-    op: Parameters<typeof executeOperation>[1],
-): void {
+function assertReversalRoundTrip(graph: GraphData, op: Parameters<typeof executeOperation>[1]): void {
     const reversals = createReversal(graph, op)
     const after = executeOperation(graph, op, TEST_NOW)
     let reverted = after
@@ -136,21 +125,12 @@ describe('createReversal delete_node', () => {
         const revs = createReversal(graph, op)
 
         // 恢复顺序：先节点（被删节点 + 级联引用节点）后边
-        expect(revs.map((r) => r.type)).toEqual([
-            'add_node',
-            'add_node',
-            'add_edge',
-            'add_edge',
-        ])
+        expect(revs.map((r) => r.type)).toEqual(['add_node', 'add_node', 'add_edge', 'add_edge'])
 
-        const addNodes = revs.filter(
-            (r): r is AddNodeOperation => r.type === 'add_node',
-        )
+        const addNodes = revs.filter((r): r is AddNodeOperation => r.type === 'add_node')
         expect(addNodes.map((n) => n.node.id).sort()).toEqual(['n-ref', 'n1'])
 
-        const addEdges = revs.filter(
-            (r): r is AddEdgeOperation => r.type === 'add_edge',
-        )
+        const addEdges = revs.filter((r): r is AddEdgeOperation => r.type === 'add_edge')
         expect(addEdges.map((e) => e.edge.id).sort()).toEqual(['e0', 'e1'])
 
         // 级联引用节点随逆元恢复，不缺失
@@ -236,9 +216,7 @@ describe('createReversal expand_dependency', () => {
         for (const rev of revs) {
             reverted = executeOperation(reverted, rev, TEST_NOW)
         }
-        expect(reverted.cognitiveState.foldedDependencies).toEqual(
-            graph.cognitiveState.foldedDependencies,
-        )
+        expect(reverted.cognitiveState.foldedDependencies).toEqual(graph.cognitiveState.foldedDependencies)
     })
 })
 
@@ -259,10 +237,7 @@ function makeCollapseGraph(): GraphData {
     return assembleGraph({
         id: G,
         title: '折叠测试',
-        nodes: [
-            createNode({ id: 'n0' as NodeId, graphId: G }),
-            createNode({ id: 'n1' as NodeId, graphId: G }),
-        ],
+        nodes: [createNode({ id: 'n0' as NodeId, graphId: G }), createNode({ id: 'n1' as NodeId, graphId: G })],
         edges: [
             createEdge({
                 id: 'c-e' as EdgeId,
@@ -285,9 +260,7 @@ describe('executeCollapseDependency 显式折叠成员', () => {
             foldedNodeIds: ['nX' as NodeId],
         }
         const after = executeOperation(graph, op, TEST_NOW)
-        expect(after.cognitiveState.foldedDependencies).toEqual([
-            { targetNodeId: 'n0', foldedNodeIds: ['nX'] },
-        ])
+        expect(after.cognitiveState.foldedDependencies).toEqual([{ targetNodeId: 'n0', foldedNodeIds: ['nX'] }])
     })
 
     test('不带 foldedNodeIds 时重算折叠成员', () => {
@@ -297,9 +270,7 @@ describe('executeCollapseDependency 显式折叠成员', () => {
             targetNodeId: 'n0' as NodeId,
         }
         const after = executeOperation(graph, op, TEST_NOW)
-        expect(after.cognitiveState.foldedDependencies).toEqual([
-            { targetNodeId: 'n0', foldedNodeIds: ['n1'] },
-        ])
+        expect(after.cognitiveState.foldedDependencies).toEqual([{ targetNodeId: 'n0', foldedNodeIds: ['n1'] }])
     })
 
     test('foldedNodeIds 为空数组时不写折叠条目（空成员语义）', () => {

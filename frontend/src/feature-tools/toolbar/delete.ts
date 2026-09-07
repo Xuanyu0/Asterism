@@ -45,10 +45,7 @@ export function useDeleteTool(): ToolHandler {
 
     const notification = computed<ToolNotification | null>(() => {
         if (!isActive.value) return null
-        if (
-            pendingDeleteNodeId.value === null &&
-            pendingDeleteEdgeId.value === null
-        ) {
+        if (pendingDeleteNodeId.value === null && pendingDeleteEdgeId.value === null) {
             return null
         }
 
@@ -56,14 +53,10 @@ export function useDeleteTool(): ToolHandler {
         let targetLabel = '此边'
         let deletesSubtree = false
         if (nodeId !== null) {
-            const node = graphStore.graphView?.nodes.find(
-                (n) => n.id === nodeId,
-            )
+            const node = graphStore.graphView?.nodes.find((n) => n.id === nodeId)
             targetLabel = node?.label ?? '此节点'
             // 抽象节点（childGraphId 非空）：确认删除将连带子图树
-            deletesSubtree =
-                node?.role === 'knowledge' &&
-                deriveNodeForm(node) === 'abstract'
+            deletesSubtree = node?.role === 'knowledge' && deriveNodeForm(node) === 'abstract'
         }
 
         return {
@@ -150,9 +143,8 @@ export function useDeleteTool(): ToolHandler {
                     },
                 ],
                 { source: id },
-            )      
+            )
         }
-        
     }
 
     function executeDeleteEdge(edgeId: EdgeId): void {

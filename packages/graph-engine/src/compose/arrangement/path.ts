@@ -28,18 +28,9 @@
  *     })
  */
 
-import type {
-    EdgeData,
-    NodeData,
-    NodeId,
-    NodePosition,
-} from '../../types/graph_data'
+import type { EdgeData, NodeData, NodeId, NodePosition } from '../../types/graph_data'
 import type { NodeRadiusMap } from '../../types/infrastructure_types'
-import type {
-    ComposeIssue,
-    ComposeResult,
-    DraftPosition,
-} from '../../types/compose_types'
+import type { ComposeIssue, ComposeResult, DraftPosition } from '../../types/compose_types'
 import { distributeOnLine } from '../../infrastructure/placement'
 import { hasCollisionInDrafts } from '../../infrastructure/collision'
 
@@ -88,15 +79,7 @@ export interface PathParams {
  *     见 PathParams。
  */
 export function pathLayout(params: PathParams): ComposeResult<DraftPosition> {
-    const {
-        axis,
-        pathNodes,
-        direction,
-        spacing,
-        allNodes,
-        allEdges,
-        nodeRadiusOverrides,
-    } = params
+    const { axis, pathNodes, direction, spacing, allNodes, allEdges, nodeRadiusOverrides } = params
 
     const issues: ComposeIssue[] = []
 
@@ -120,12 +103,7 @@ export function pathLayout(params: PathParams): ComposeResult<DraftPosition> {
     }
 
     // ── 位置计算 ──
-    const positions = distributeOnLine(
-        axis.position,
-        direction,
-        pathNodes.length,
-        spacing,
-    )
+    const positions = distributeOnLine(axis.position, direction, pathNodes.length, spacing)
 
     const drafts: DraftPosition[] = pathNodes.map((pn, i) => ({
         nodeId: pn.id,

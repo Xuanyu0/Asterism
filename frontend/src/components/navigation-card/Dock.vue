@@ -24,11 +24,7 @@
  */
 
 import { watch, onMounted, ref } from 'vue'
-import {
-    ChevronLeftIcon,
-    ChevronDownIcon,
-    MagnifyingGlassIcon,
-} from '@heroicons/vue/24/outline'
+import { ChevronLeftIcon, ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 
 import type { GraphId } from '@my-project/graph-engine'
 
@@ -61,8 +57,7 @@ const emits = defineEmits<{
 
 // ── 路径截断检测 ──
 const pathStripElement = ref<HTMLElement | null>(null)
-const { isOverflowing: isPathTruncated, measure } =
-    useOverflowDetection(pathStripElement)
+const { isOverflowing: isPathTruncated, measure } = useOverflowDetection(pathStripElement)
 
 onMounted(() => {
     void measure()
@@ -86,13 +81,7 @@ watch(
             v-on:pointerup="dragHandlers.onPointerup"
             v-on:pointercancel="dragHandlers.onPointerup"
         >
-            <svg
-                width="10"
-                height="16"
-                viewBox="0 0 10 16"
-                fill="currentColor"
-                aria-hidden="true"
-            >
+            <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" aria-hidden="true">
                 <circle cx="2.5" cy="3" r="1.3" />
                 <circle cx="7.5" cy="3" r="1.3" />
                 <circle cx="2.5" cy="8" r="1.3" />
@@ -123,19 +112,10 @@ watch(
 
         <div class="dock-divider"></div>
 
-        <div
-            ref="pathStripElement"
-            class="path-strip"
-            v-bind:class="{ truncated: isPathTruncated }"
-        >
-            <template
-                v-for="(segment, index) in pathSegments"
-                v-bind:key="segment.graphId"
-            >
+        <div ref="pathStripElement" class="path-strip" v-bind:class="{ truncated: isPathTruncated }">
+            <template v-for="(segment, index) in pathSegments" v-bind:key="segment.graphId">
                 <span v-if="index > 0" class="path-separator">›</span>
-                <span v-if="segment.isCurrent" class="path-segment current">{{
-                    segment.title
-                }}</span>
+                <span v-if="segment.isCurrent" class="path-segment current">{{ segment.title }}</span>
                 <button
                     v-else
                     type="button"
@@ -158,12 +138,7 @@ watch(
             <MagnifyingGlassIcon class="size-4" />
         </button>
 
-        <button
-            type="button"
-            class="icon-btn"
-            v-bind:title="'复位视图到原点'"
-            v-on:click="emits('resetView')"
-        >
+        <button type="button" class="icon-btn" v-bind:title="'复位视图到原点'" v-on:click="emits('resetView')">
             <ResetViewIcon class="size-4" />
         </button>
 
@@ -172,15 +147,10 @@ watch(
         <button
             type="button"
             class="icon-btn"
-            v-bind:title="
-                activePanel === 'navigation' ? '收起导航面板' : '展开导航面板'
-            "
+            v-bind:title="activePanel === 'navigation' ? '收起导航面板' : '展开导航面板'"
             v-on:click="emits('toggleNavigation')"
         >
-            <ChevronDownIcon
-                class="chevron-icon size-4"
-                v-bind:class="{ rotated: activePanel === 'navigation' }"
-            />
+            <ChevronDownIcon class="chevron-icon size-4" v-bind:class="{ rotated: activePanel === 'navigation' }" />
         </button>
     </div>
 </template>

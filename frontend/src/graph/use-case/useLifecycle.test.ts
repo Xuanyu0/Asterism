@@ -15,12 +15,7 @@
  */
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
-import {
-    saveGraph,
-    loadGraph,
-    saveLastActiveRootId,
-    loadLastActiveRootId,
-} from '@/graph/graph_persistence'
+import { saveGraph, loadGraph, saveLastActiveRootId, loadLastActiveRootId } from '@/graph/graph_persistence'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 import { useLifecycle } from './useLifecycle'
 
@@ -64,9 +59,7 @@ describe('useLifecycle', () => {
 
         lifecycle.registerAllGraphs()
 
-        expect(warnSpy).toHaveBeenCalledWith(
-            expect.stringContaining('CORRUPTED_GRAPH'),
-        )
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('CORRUPTED_GRAPH'))
         expect(store.graphRegistry.has('graph-golden' as GraphId)).toBe(true)
     })
 
@@ -103,12 +96,8 @@ describe('useLifecycle', () => {
 
         expect(rootId).toBeNull()
         expect(loadLastActiveRootId()).toBeNull()
-        expect(warnSpy).toHaveBeenCalledWith(
-            expect.stringContaining('[data-integrity]'),
-        )
-        expect(warnSpy).toHaveBeenCalledWith(
-            expect.stringContaining('LAST_ACTIVE_NOT_ROOT'),
-        )
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[data-integrity]'))
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('LAST_ACTIVE_NOT_ROOT'))
     })
 
     test('restoreLastActiveRootId：lastActiveRootId 指向损坏图 → 报告 + 清理 + 返回 null', () => {
@@ -122,9 +111,7 @@ describe('useLifecycle', () => {
 
         expect(rootId).toBeNull()
         expect(loadLastActiveRootId()).toBeNull()
-        expect(warnSpy).toHaveBeenCalledWith(
-            expect.stringContaining('CORRUPTED_GRAPH'),
-        )
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('CORRUPTED_GRAPH'))
     })
 
     test('restoreLastActiveRootId：lastActiveRootId 指向已删图 → 静默清理 + 返回 null', () => {

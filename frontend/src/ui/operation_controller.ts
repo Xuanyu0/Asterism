@@ -71,9 +71,7 @@ export function useOperationController() {
             parentGraph: graphStore.graphView,
             // 待 operation_controller 迁移后移除：经用例层取 makeLookup
             lookupGraph: graphOperations.makeLookup(),
-            nodeRadiusOverrides: computeNodeRadiusOverrides(
-                graphStore.graphView,
-            ),
+            nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.graphView),
             allEdges: graphStore.graphView.edges,
         })
 
@@ -104,9 +102,7 @@ export function useOperationController() {
         if (!commonLayer) {
             // 编程错误通道：internalize 前置条件违约（常识层图缺失，当前不可达）。
             // 前端不再构造规则展示给用户——由调用方保证常识层图存在（useLifecycle.registerAllGraphs 建立）
-            throw new Error(
-                'COMMON_LAYER_NOT_FOUND: 未找到常识层图谱，无法执行内化操作。',
-            )
+            throw new Error('COMMON_LAYER_NOT_FOUND: 未找到常识层图谱，无法执行内化操作。')
         }
 
         const result = composeInternalize({
@@ -115,9 +111,7 @@ export function useOperationController() {
             commonLayer,
             // 待 operation_controller 迁移后移除：经用例层取 makeLookup
             lookupGraph: graphOperations.makeLookup(),
-            nodeRadiusOverrides: computeNodeRadiusOverrides(
-                graphStore.graphView,
-            ),
+            nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.graphView),
         })
 
         // compose 校验收口在用例层：失败则写 lastValidationResult 并阻断本次操作

@@ -11,11 +11,7 @@
  * - attachElementPopper 使用 mock cy（getElementById / on / off / popper）
  */
 
-import {
-    attachElementPopper,
-    popperFactory,
-    registerPopperExtension,
-} from './cy_popper'
+import { attachElementPopper, popperFactory, registerPopperExtension } from './cy_popper'
 
 import type { Core } from 'cytoscape'
 
@@ -56,10 +52,7 @@ describe('popperFactory', () => {
 
         mockComputePosition.mockResolvedValue({ x: 100, y: 200 })
 
-        const handle = popperFactory(
-            ref as unknown as Pick<Element, 'getBoundingClientRect'>,
-            content,
-        )
+        const handle = popperFactory(ref as unknown as Pick<Element, 'getBoundingClientRect'>, content)
         handle.update()
 
         expect(mockComputePosition).toHaveBeenCalledTimes(2)
@@ -99,11 +92,7 @@ describe('popperFactory', () => {
 
         mockComputePosition.mockResolvedValue({ x: 0, y: 0 })
 
-        popperFactory(
-            ref as unknown as Pick<Element, 'getBoundingClientRect'>,
-            content,
-            { middleware: [] },
-        )
+        popperFactory(ref as unknown as Pick<Element, 'getBoundingClientRect'>, content, { middleware: [] })
 
         const options = mockComputePosition.mock.calls.at(-1)![2]
         expect(options.middleware).toEqual([])
@@ -124,11 +113,7 @@ describe('popperFactory', () => {
 
         mockComputePosition.mockResolvedValue({ x: 0, y: 0 })
 
-        popperFactory(
-            ref as unknown as Pick<Element, 'getBoundingClientRect'>,
-            content,
-            { placement: 'bottom-start' },
-        )
+        popperFactory(ref as unknown as Pick<Element, 'getBoundingClientRect'>, content, { placement: 'bottom-start' })
 
         const options = mockComputePosition.mock.calls.at(-1)![2]
         expect(options.placement).toBe('bottom-start')
@@ -161,11 +146,7 @@ describe('attachElementPopper', () => {
         }
 
         const contentEl = document.createElement('div')
-        const handle = attachElementPopper(
-            cy as unknown as Core,
-            'node-g1',
-            contentEl,
-        )
+        const handle = attachElementPopper(cy as unknown as Core, 'node-g1', contentEl)
 
         expect(cy.getElementById).toHaveBeenCalledWith('node-g1')
         // content 传入 + popper 选项；不覆盖 renderedPosition（沿用扩展默认锚点）
@@ -174,24 +155,14 @@ describe('attachElementPopper', () => {
             popper: undefined,
         })
         expect(mockEleOn).toHaveBeenCalledWith('position', expect.any(Function))
-        expect(mockCyOn).toHaveBeenCalledWith(
-            'pan zoom resize',
-            expect.any(Function),
-        )
+        expect(mockCyOn).toHaveBeenCalledWith('pan zoom resize', expect.any(Function))
 
         handle.update()
         expect(mockUpdate).toHaveBeenCalledTimes(1)
 
         handle.destroy()
-        expect(mockEleOff).toHaveBeenCalledWith(
-            'position',
-            undefined,
-            expect.any(Function),
-        )
-        expect(mockCyOff).toHaveBeenCalledWith(
-            'pan zoom resize',
-            expect.any(Function),
-        )
+        expect(mockEleOff).toHaveBeenCalledWith('position', undefined, expect.any(Function))
+        expect(mockCyOff).toHaveBeenCalledWith('pan zoom resize', expect.any(Function))
         expect(mockPopperDestroy).toHaveBeenCalledTimes(1)
     })
 
@@ -222,11 +193,7 @@ describe('attachElementPopper', () => {
         }
 
         const contentEl = document.createElement('div')
-        const handle = attachElementPopper(
-            cy as unknown as Core,
-            'missing',
-            contentEl,
-        )
+        const handle = attachElementPopper(cy as unknown as Core, 'missing', contentEl)
 
         expect(() => {
             handle.update()

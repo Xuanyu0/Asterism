@@ -51,13 +51,7 @@ export function useDragPosition(options: {
     /** 以当前 elementRef 的实际尺寸将位置钳制到视口内。 */
     clampToViewport: () => void
 } {
-    const {
-        storageKey,
-        defaultPosition,
-        margin = 8,
-        snapthreshold,
-        onDragEnd,
-    } = options
+    const { storageKey, defaultPosition, margin = 8, snapthreshold, onDragEnd } = options
 
     const position = ref<{ x: number; y: number }>(loadPersistedPosition())
     const elementRef = ref<HTMLElement | null>(null)
@@ -113,12 +107,7 @@ export function useDragPosition(options: {
     }
 
     // 内部函数
-    function clampCardToViewport(
-        x: number,
-        y: number,
-        width: number,
-        height: number,
-    ): { x: number; y: number } {
+    function clampCardToViewport(x: number, y: number, width: number, height: number): { x: number; y: number } {
         const maxX = Math.max(margin, window.innerWidth - width - margin)
         const maxY = Math.max(margin, window.innerHeight - height - margin)
 
@@ -138,12 +127,7 @@ export function useDragPosition(options: {
         const el = elementRef.value
         if (!el) return
 
-        position.value = clampCardToViewport(
-            position.value.x,
-            position.value.y,
-            el.offsetWidth,
-            el.offsetHeight,
-        )
+        position.value = clampCardToViewport(position.value.x, position.value.y, el.offsetWidth, el.offsetHeight)
     }
 
     /**

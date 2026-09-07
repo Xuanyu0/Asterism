@@ -17,10 +17,7 @@
  */
 
 import type { GraphData, GraphId, GraphRegistry } from '../types/graph_data'
-import type {
-    AtomicGraphOperation,
-    GraphOperation,
-} from '../types/atomic_operations'
+import type { AtomicGraphOperation, GraphOperation } from '../types/atomic_operations'
 import type { ValidationIssue, ValidationResult } from '../types/validation'
 import type { BatchesLog } from '../types/operation_log'
 import type { OperationBatch } from '../types/compose_types'
@@ -98,13 +95,11 @@ export function applyBatches(
             batch.kind === 'inGraph'
                 ? batch.operations.some(
                       (op) =>
-                          (op as GraphOperation).type === 'add_graph' ||
-                          (op as GraphOperation).type === 'delete_graph',
+                          (op as GraphOperation).type === 'add_graph' || (op as GraphOperation).type === 'delete_graph',
                   )
                 : batch.operations.some(
                       (op) =>
-                          (op as GraphOperation).type !== 'add_graph' &&
-                          (op as GraphOperation).type !== 'delete_graph',
+                          (op as GraphOperation).type !== 'add_graph' && (op as GraphOperation).type !== 'delete_graph',
                   )
         if (hasKindMismatch) {
             return aborted(registry, {
@@ -117,10 +112,7 @@ export function applyBatches(
                             batch.kind === 'inGraph' ? '图级操作' : '图内操作'
                         }`,
                         targetType: 'graph',
-                        targetId:
-                            batch.kind === 'inGraph'
-                                ? batch.graph.id
-                                : (batch.operations[0]?.graph.id ?? ''),
+                        targetId: batch.kind === 'inGraph' ? batch.graph.id : (batch.operations[0]?.graph.id ?? ''),
                     },
                 ],
             })
@@ -147,22 +139,16 @@ export function applyBatches(
             const inputGraph = latestGraphs.get(batch.graph.id) ?? batch.graph
             const perOpReversals: GraphOperation[][] = []
 
-            const { graph, validation } = applyBatch(
-                inputGraph,
-                batch.operations,
-                {
-                    executedAt,
-                    skipValidate,
-                    onBeforeEachOperation:
-                        recordLog === false
-                            ? undefined // undo/redo 执行时不收集逆元（日志已有）
-                            : (op, graphBeforeOp) => {
-                                  perOpReversals.push(
-                                      createReversal(graphBeforeOp, op),
-                                  )
-                              },
-                },
-            )
+            const { graph, validation } = applyBatch(inputGraph, batch.operations, {
+                executedAt,
+                skipValidate,
+                onBeforeEachOperation:
+                    recordLog === false
+                        ? undefined // undo/redo 执行时不收集逆元（日志已有）
+                        : (op, graphBeforeOp) => {
+                              perOpReversals.push(createReversal(graphBeforeOp, op))
+                          },
+            })
 
             if (!validation.valid) {
                 // 事务性：任一操作校验失败整批丢弃，注册表不变
@@ -236,19 +222,14 @@ export function applyBatches(
  * @param executedAt - 本批次执行的时刻（add_graph 补写图级时间戳的来源）
  * @returns 新注册表（引用替换，未变化图复用引用）
  */
-function executeGraphOperation(
-    registry: GraphRegistry,
-    op: AtomicGraphOperation,
-    executedAt: string,
-): GraphRegistry {
+function executeGraphOperation(registry: GraphRegistry, op: AtomicGraphOperation, executedAt: string): GraphRegistry {
     switch (op.type) {
         case 'add_graph': {
             // add_graph 只注册空图：顺序由操作构造方保证（add_graph 批在填充批之前）
             const next = new Map(registry)
             // 图骨架未携带时间戳时补写 executedAt（已携带则尊重并复用原引用）
             const graph =
-                op.graph.createdAt === undefined ||
-                op.graph.updatedAt === undefined
+                op.graph.createdAt === undefined || op.graph.updatedAt === undefined
                     ? {
                           ...op.graph,
                           createdAt: op.graph.createdAt ?? executedAt,
@@ -297,10 +278,7 @@ function createGraphReversal(op: AtomicGraphOperation): GraphOperation[] {
  * @param validation - 导致中断的校验结果
  * @returns 中断态的 ApplyBatchesResult。
  */
-function aborted(
-    registry: GraphRegistry,
-    validation: ValidationResult,
-): ApplyBatchesResult {
+function aborted(registry: GraphRegistry, validation: ValidationResult): ApplyBatchesResult {
     return {
         registry,
         validation,

@@ -146,18 +146,10 @@ function createNavigation(): NavigationAPI {
         }))
     })
 
-    const currentRootId = computed<GraphId | null>(
-        () => useGraphStore().graphPath[0] ?? null,
-    )
-    const isAtRoot = computed<boolean>(
-        () => useGraphStore().graphPath.length <= 1,
-    )
-    const parentGraphId = computed<GraphId | null>(
-        () => useGraphStore().graphView?.parentGraphId ?? null,
-    )
-    const hasCurrentGraph = computed<boolean>(
-        () => useGraphStore().graphView !== null,
-    )
+    const currentRootId = computed<GraphId | null>(() => useGraphStore().graphPath[0] ?? null)
+    const isAtRoot = computed<boolean>(() => useGraphStore().graphPath.length <= 1)
+    const parentGraphId = computed<GraphId | null>(() => useGraphStore().graphView?.parentGraphId ?? null)
+    const hasCurrentGraph = computed<boolean>(() => useGraphStore().graphView !== null)
 
     function goToGraph(graphId: GraphId): boolean {
         return useGraphStore().loadGraphToView(graphId)
@@ -181,9 +173,7 @@ function createNavigation(): NavigationAPI {
             })
         }
 
-        return infos.sort((a, b) =>
-            a.title.localeCompare(b.title, 'zh-Hans-CN'),
-        )
+        return infos.sort((a, b) => a.title.localeCompare(b.title, 'zh-Hans-CN'))
     }
 
     function createRootGraph(title: string, opts?: { id?: GraphId }): GraphId {

@@ -9,13 +9,7 @@
  * 递归遇环会栈溢出（崩溃可见而非静默）；前端渲染期 deriveAbstractionLevel 对同场景先抛错拦截。
  */
 
-import type {
-    GraphData,
-    GraphRegistry,
-    KnowledgeNodeData,
-    NodeData,
-    NodeId,
-} from '../../types/graph_data'
+import type { GraphData, GraphRegistry, KnowledgeNodeData, NodeData, NodeId } from '../../types/graph_data'
 
 import type { AtomicOperationInGraph } from '../../types/atomic_operations'
 
@@ -87,10 +81,7 @@ export function deleteAbstractNode(params: DeleteAbstractNodeParams): {
         return { batches: [], issues }
     }
 
-    if (
-        targetNode.role !== 'knowledge' ||
-        deriveNodeForm(targetNode) !== 'abstract'
-    ) {
+    if (targetNode.role !== 'knowledge' || deriveNodeForm(targetNode) !== 'abstract') {
         issues.push({
             severity: 'error',
             code: 'DELETE_ABSTRACT_TARGET_NOT_ABSTRACT',
@@ -117,14 +108,8 @@ export function deleteAbstractNode(params: DeleteAbstractNodeParams): {
 // ═══════════ 内部 ═══════════
 
 /** 后序 DFS 清空并注销 node 的子图树，批序累积进 batches。 */
-function collectAbstractSubtree(
-    node: KnowledgeNodeData,
-    registry: GraphRegistry,
-    batches: OperationBatch[],
-): void {
-    const subGraph = node.childGraphId
-        ? registry.get(node.childGraphId)
-        : undefined
+function collectAbstractSubtree(node: KnowledgeNodeData, registry: GraphRegistry, batches: OperationBatch[]): void {
+    const subGraph = node.childGraphId ? registry.get(node.childGraphId) : undefined
     // 原子节点路径 / 链中断：无子图可清空，直接返回
     if (!subGraph) return
 
@@ -151,9 +136,7 @@ function collectAbstractSubtree(
     // 注销批：清空批之后（delete_graph 只接受空图）
     batches.push({
         kind: 'graphLevel',
-        operations: [
-            { type: 'delete_graph', graph: buildEmptyGraphSkeleton(subGraph) },
-        ],
+        operations: [{ type: 'delete_graph', graph: buildEmptyGraphSkeleton(subGraph) }],
     })
 }
 

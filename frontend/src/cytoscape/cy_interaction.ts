@@ -61,10 +61,7 @@ export interface CyInteractionHandlers {
  *     4. 禁止创建 GraphOperation。
  *     5. 借用 vue 组合式函数的功能，但非真正的组合式函数
  */
-export function bindCyEvents(
-    cy: Core,
-    handlers: CyInteractionHandlers,
-): { destroy(): void } {
+export function bindCyEvents(cy: Core, handlers: CyInteractionHandlers): { destroy(): void } {
     cy.on('tap', (event: EventObject) => {
         if (event.target === cy) {
             handlers.onCanvasClicked?.({

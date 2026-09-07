@@ -65,11 +65,7 @@ export function searchNodes(
     return results
 }
 
-function searchInGraph(
-    query: string,
-    graph: GraphData,
-    lookupGraph: GraphLookup,
-): SearchResult[] {
+function searchInGraph(query: string, graph: GraphData, lookupGraph: GraphLookup): SearchResult[] {
     const results: SearchResult[] = []
 
     for (const node of graph.nodes) {

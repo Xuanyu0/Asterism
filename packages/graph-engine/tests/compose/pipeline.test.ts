@@ -15,10 +15,7 @@ const TEST_NOW = '2026-01-01T00:00:00.000Z'
 function makeBase(): GraphData {
     return assembleGraph({
         id: G,
-        nodes: [
-            createNode({ id: 'n0' as NodeId, graphId: G }),
-            createNode({ id: 'n1' as NodeId, graphId: G }),
-        ],
+        nodes: [createNode({ id: 'n0' as NodeId, graphId: G }), createNode({ id: 'n1' as NodeId, graphId: G })],
         edges: [],
     })
 }
@@ -142,11 +139,7 @@ describe('applyBatch', () => {
         ]
         const result = applyBatch(graph, ops, { executedAt: TEST_NOW })
         expect(result.validation.valid).toBe(false)
-        expect(
-            result.validation.issues.some(
-                (i) => i.code === 'SELF_LOOP_FORBIDDEN',
-            ),
-        ).toBe(true)
+        expect(result.validation.issues.some((i) => i.code === 'SELF_LOOP_FORBIDDEN')).toBe(true)
         expect(result.graph.edges.length).toBe(0)
     })
 
@@ -178,11 +171,7 @@ describe('applyBatch', () => {
         ]
         const result = applyBatch(graph, ops, { executedAt: TEST_NOW })
         expect(result.validation.valid).toBe(false)
-        expect(
-            result.validation.issues.some(
-                (i) => i.code === 'DUPLICATE_EDGE_FORBIDDEN',
-            ),
-        ).toBe(true)
+        expect(result.validation.issues.some((i) => i.code === 'DUPLICATE_EDGE_FORBIDDEN')).toBe(true)
         expect(result.graph.edges.length).toBe(0)
     })
 

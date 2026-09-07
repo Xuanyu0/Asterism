@@ -9,20 +9,9 @@
  */
 
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
-import {
-    previewAddEdge,
-    previewAddNode,
-    previewMoveNode,
-} from './preview_engine'
+import { previewAddEdge, previewAddNode, previewMoveNode } from './preview_engine'
 
-import type {
-    EdgeData,
-    GraphData,
-    GraphId,
-    KnowledgeNodeData,
-    NodeData,
-    NodeId,
-} from '@my-project/graph-engine'
+import type { EdgeData, GraphData, GraphId, KnowledgeNodeData, NodeData, NodeId } from '@my-project/graph-engine'
 
 describe('previewAddEdge', () => {
     let golden: GraphData
@@ -44,14 +33,9 @@ describe('previewAddEdge', () => {
             expect(result.valid).toBe(true)
             expect(result.sourceCollides).toBe(false)
             expect(result.targetCollides).toBe(false)
-            expect(result.previewGraph.edges.length).toBe(
-                golden.edges.length + 1,
-            )
+            expect(result.previewGraph.edges.length).toBe(golden.edges.length + 1)
             expect(
-                result.previewGraph.edges.some(
-                    (edge) =>
-                        edge.source === 'node-g1' && edge.target === 'node-g6',
-                ),
+                result.previewGraph.edges.some((edge) => edge.source === 'node-g1' && edge.target === 'node-g6'),
             ).toBe(true)
         })
 
@@ -63,15 +47,9 @@ describe('previewAddEdge', () => {
                 direction: 'directed',
             })
 
-            const g1 = result.previewGraph.nodes.find(
-                (node) => node.id === 'node-g1',
-            )
-            const g6 = result.previewGraph.nodes.find(
-                (node) => node.id === 'node-g6',
-            )
-            const g2 = result.previewGraph.nodes.find(
-                (node) => node.id === 'node-g2',
-            )
+            const g1 = result.previewGraph.nodes.find((node) => node.id === 'node-g1')
+            const g6 = result.previewGraph.nodes.find((node) => node.id === 'node-g6')
+            const g2 = result.previewGraph.nodes.find((node) => node.id === 'node-g2')
 
             expect(g1?.degree).toBe(3) // 原 2
             expect(g6?.degree).toBe(2) // 原 1
@@ -89,9 +67,7 @@ describe('previewAddEdge', () => {
             })
 
             expect(golden.edges.length).toBe(edgesBefore)
-            expect(
-                golden.nodes.find((node) => node.id === 'node-g1')?.degree,
-            ).toBe(2)
+            expect(golden.nodes.find((node) => node.id === 'node-g1')?.degree).toBe(2)
             expect(result.previewGraph).not.toBe(golden)
         })
 
@@ -105,9 +81,7 @@ describe('previewAddEdge', () => {
 
             expect(result.valid).toBe(true)
 
-            const edge = result.previewGraph.edges.find(
-                (e) => e.source === 'node-g2' && e.target === 'node-g6',
-            )
+            const edge = result.previewGraph.edges.find((e) => e.source === 'node-g2' && e.target === 'node-g6')
             expect(edge?.kind).toBe('virtual')
             expect(edge?.direction).toBe('undirected')
         })
@@ -131,12 +105,7 @@ describe('previewAddEdge', () => {
         // 加边前各节点互不重叠（degree 0 时 minDist = 84）；加边后端点 degree+1，
         // 半径扩大为 unitDistance * sqrt(1 + degree)，与 90 距离的邻居重叠
         test('两端都与各自邻居碰撞', () => {
-            const graph = buildGraph([
-                node('s', 0, 0),
-                node('t', 300, 0),
-                node('x', 90, 0),
-                node('y', 210, 0),
-            ])
+            const graph = buildGraph([node('s', 0, 0), node('t', 300, 0), node('x', 90, 0), node('y', 210, 0)])
 
             const result = previewAddEdge(graph, {
                 sourceId: 's' as NodeId,
@@ -151,11 +120,7 @@ describe('previewAddEdge', () => {
         })
 
         test('仅 source 端碰撞', () => {
-            const graph = buildGraph([
-                node('s', 0, 0),
-                node('t', 300, 0),
-                node('x', 90, 0),
-            ])
+            const graph = buildGraph([node('s', 0, 0), node('t', 300, 0), node('x', 90, 0)])
 
             const result = previewAddEdge(graph, {
                 sourceId: 's' as NodeId,
@@ -169,11 +134,7 @@ describe('previewAddEdge', () => {
         })
 
         test('仅 target 端碰撞', () => {
-            const graph = buildGraph([
-                node('s', 0, 0),
-                node('t', 300, 0),
-                node('y', 210, 0),
-            ])
+            const graph = buildGraph([node('s', 0, 0), node('t', 300, 0), node('y', 210, 0)])
 
             const result = previewAddEdge(graph, {
                 sourceId: 's' as NodeId,
@@ -221,18 +182,9 @@ describe('previewMoveNode', () => {
         })
 
         expect(result.collides).toBe(false)
-        expect(
-            result.previewGraph.nodes.find((node) => node.id === 'node-g1')
-                ?.position,
-        ).toEqual({ x: 1000, y: 400 })
-        expect(
-            result.previewGraph.nodes.find((node) => node.id === 'node-g2')
-                ?.position,
-        ).toEqual({ x: 350, y: 200 })
-        expect(
-            result.previewGraph.nodes.find((node) => node.id === 'node-g3')
-                ?.position,
-        ).toEqual({ x: 650, y: 200 })
+        expect(result.previewGraph.nodes.find((node) => node.id === 'node-g1')?.position).toEqual({ x: 1000, y: 400 })
+        expect(result.previewGraph.nodes.find((node) => node.id === 'node-g2')?.position).toEqual({ x: 350, y: 200 })
+        expect(result.previewGraph.nodes.find((node) => node.id === 'node-g3')?.position).toEqual({ x: 650, y: 200 })
     })
 
     test('移动到 node-g2 所在位置 (350,200) → collides true', () => {
@@ -243,10 +195,7 @@ describe('previewMoveNode', () => {
 
         expect(result.collides).toBe(true)
         // 碰撞不阻止移动模拟——预览图仍生成新位置
-        expect(
-            result.previewGraph.nodes.find((node) => node.id === 'node-g1')
-                ?.position,
-        ).toEqual({ x: 350, y: 200 })
+        expect(result.previewGraph.nodes.find((node) => node.id === 'node-g1')?.position).toEqual({ x: 350, y: 200 })
     })
 
     test('不修改入参 graph', () => {
@@ -255,9 +204,7 @@ describe('previewMoveNode', () => {
             y: 400,
         })
 
-        expect(
-            golden.nodes.find((node) => node.id === 'node-g1')?.position,
-        ).toEqual({ x: 50, y: 200 })
+        expect(golden.nodes.find((node) => node.id === 'node-g1')?.position).toEqual({ x: 50, y: 200 })
         expect(result.previewGraph).not.toBe(golden)
     })
 })
@@ -277,9 +224,9 @@ describe('previewAddNode', () => {
         expect(result.collides).toBe(false)
         expect(result.previewGraph.nodes.length).toBe(golden.nodes.length + 1)
 
-        const added = result.previewGraph.nodes.find(
-            (node) => node.id === result.nodeId,
-        ) as KnowledgeNodeData | undefined
+        const added = result.previewGraph.nodes.find((node) => node.id === result.nodeId) as
+            | KnowledgeNodeData
+            | undefined
         expect(added?.position).toEqual({ x: 1000, y: 400 })
         expect(added?.kind).toBe('real')
     })
@@ -289,9 +236,7 @@ describe('previewAddNode', () => {
 
         expect(result.valid).toBe(true)
         expect(result.collides).toBe(true)
-        expect(
-            result.previewGraph.nodes.some((node) => node.id === result.nodeId),
-        ).toBe(true)
+        expect(result.previewGraph.nodes.some((node) => node.id === result.nodeId)).toBe(true)
     })
 
     test('不修改入参 graph', () => {
@@ -308,9 +253,9 @@ describe('previewAddNode', () => {
 
         expect(result.valid).toBe(true)
 
-        const added = result.previewGraph.nodes.find(
-            (node) => node.id === result.nodeId,
-        ) as KnowledgeNodeData | undefined
+        const added = result.previewGraph.nodes.find((node) => node.id === result.nodeId) as
+            | KnowledgeNodeData
+            | undefined
         expect(added?.kind).toBe('virtual')
     })
 })

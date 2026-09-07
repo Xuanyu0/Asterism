@@ -143,9 +143,7 @@ describe('execute delete_edge', () => {
             TEST_NOW,
         )
         expect(next.edges.length).toBe(0)
-        expect(next.nodes.find((node) => node.id === 'n0')!.degree).toBe(
-            srcBefore - 1,
-        )
+        expect(next.nodes.find((node) => node.id === 'n0')!.degree).toBe(srcBefore - 1)
     })
 })
 
@@ -160,9 +158,7 @@ describe('execute update_node', () => {
             },
             TEST_NOW,
         )
-        expect(next.nodes.find((node) => node.id === 'n0')!.label).toBe(
-            'updated',
-        )
+        expect(next.nodes.find((node) => node.id === 'n0')!.label).toBe('updated')
     })
 
     test('label 穿透到同图引用节点', () => {
@@ -177,10 +173,7 @@ describe('execute update_node', () => {
         })
         const graph = assembleGraph({
             id: G,
-            nodes: [
-                createNode({ id: 'n0' as NodeId, graphId: G, label: 'src' }),
-                refNode,
-            ],
+            nodes: [createNode({ id: 'n0' as NodeId, graphId: G, label: 'src' }), refNode],
             edges: [],
         })
         const next = executeOperation(
@@ -191,9 +184,7 @@ describe('execute update_node', () => {
             },
             TEST_NOW,
         )
-        expect(next.nodes.find((node) => node.id === 'n0')!.label).toBe(
-            'updated',
-        )
+        expect(next.nodes.find((node) => node.id === 'n0')!.label).toBe('updated')
     })
 })
 

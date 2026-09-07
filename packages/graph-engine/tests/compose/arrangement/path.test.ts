@@ -4,10 +4,7 @@
  * Path 布局测试。直线排列 + 碰撞检测触发 + 无边 error。
  */
 
-import type {
-    GraphId,
-    NodeId,
-} from '../../../src/types/graph_data'
+import type { GraphId, NodeId } from '../../../src/types/graph_data'
 import type { NodeRadiusMap } from '../../../src/types/infrastructure_types'
 import { pathLayout } from '../../../src/compose/arrangement/path'
 import { createNode, createEdge, assembleGraph } from '../../test_case_factory'
@@ -67,9 +64,7 @@ describe('pathLayout', () => {
             allEdges: graph.edges,
             nodeRadiusOverrides: R,
         })
-        expect(
-            result.issues.filter((i) => i.severity === 'error'),
-        ).toHaveLength(0)
+        expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0)
         expect(result.operations).toHaveLength(2)
     })
 
@@ -95,8 +90,6 @@ describe('pathLayout', () => {
             allEdges: graph.edges,
             nodeRadiusOverrides: R,
         })
-        expect(result.issues.some((i) => i.message.includes('有向实边'))).toBe(
-            true,
-        )
+        expect(result.issues.some((i) => i.message.includes('有向实边'))).toBe(true)
     })
 })

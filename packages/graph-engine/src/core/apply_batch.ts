@@ -23,10 +23,7 @@ import type { ValidationResult } from '../types/validation'
 import { validateOperationInGraph } from '../core/validate_operation_in_graph'
 import { executeOperation } from './execute_operation'
 import type { GlobalRulesTable } from '../core/validators/global_rules'
-import {
-    DEFAULT_GLOBAL_RULES_TABLE,
-    runGlobalRules,
-} from '../core/validators/global_rules'
+import { DEFAULT_GLOBAL_RULES_TABLE, runGlobalRules } from '../core/validators/global_rules'
 
 /**
  * 批处理配置。
@@ -48,10 +45,7 @@ export interface BatchOptions {
      * 每原子操作执行前的回调。在逐操作执行循环（Phase 2）中、executeOperation
      * 之前调用，入参为该操作与其执行前的图状态（中间态）。未传时不调用（零行为变化）。
      */
-    onBeforeEachOperation?: (
-        op: AtomicOperationInGraph,
-        graphBeforeOp: GraphData,
-    ) => void
+    onBeforeEachOperation?: (op: AtomicOperationInGraph, graphBeforeOp: GraphData) => void
 
     /**
      * 跳过 Phase 1 逐条前提校验（默认 false）。正常正向操作保持默认校验；
@@ -96,17 +90,12 @@ export interface BatchResult {
  * @param options - 批处理配置（executedAt 必传；其余 dryRun / stopOnFirst / globalRulesTable / onBeforeEachOperation / skipValidate 可选）
  * @returns 新图 + 聚合校验 + 每操作独立结果。
  */
-export function applyBatch(
-    graph: GraphData,
-    ops: AtomicOperationInGraph[],
-    options: BatchOptions,
-): BatchResult {
+export function applyBatch(graph: GraphData, ops: AtomicOperationInGraph[], options: BatchOptions): BatchResult {
     const executedAt = options.executedAt
     const dryRun = options.dryRun ?? false
     const stopOnFirst = options.stopOnFirst ?? false
     const skipValidate = options.skipValidate ?? false
-    const globalRulesTable =
-        options.globalRulesTable ?? DEFAULT_GLOBAL_RULES_TABLE
+    const globalRulesTable = options.globalRulesTable ?? DEFAULT_GLOBAL_RULES_TABLE
 
     // Phase 1 — 逐条校验操作前提条件
     // skipValidate（undo/redo 恢复型逆元批）：跳过全部前提校验，直接 Phase 2——
@@ -145,9 +134,7 @@ export function applyBatch(
 
     // Phase 3 — 对 resultGraph 运行全局不变量规则
     const globalIssues = runGlobalRules(resultGraph, globalRulesTable)
-    const hasGlobalFailure = globalIssues.some(
-        (issue) => issue.severity === 'error',
-    )
+    const hasGlobalFailure = globalIssues.some((issue) => issue.severity === 'error')
 
     if (hasGlobalFailure) {
         return {

@@ -71,9 +71,7 @@ export function validateNodeLabels(graph: GraphData): ValidationIssue[] {
     const issues: ValidationIssue[] = []
 
     for (const node of graph.nodes) {
-        if (
-            (node.label ?? '').length > DEFAULT_GRAPH_RULES.nodeLabelMaxLength
-        ) {
+        if ((node.label ?? '').length > DEFAULT_GRAPH_RULES.nodeLabelMaxLength) {
             issues.push({
                 severity: 'error',
                 code: 'NODE_LABEL_TOO_LONG',
@@ -92,10 +90,7 @@ export function validateNodeSummaries(graph: GraphData): ValidationIssue[] {
 
     for (const node of graph.nodes) {
         if (node.role === 'knowledge') {
-            if (
-                (node.summary ?? '').length >
-                DEFAULT_GRAPH_RULES.summaryMaxLength
-            ) {
+            if ((node.summary ?? '').length > DEFAULT_GRAPH_RULES.summaryMaxLength) {
                 issues.push({
                     severity: 'error',
                     code: 'NODE_SUMMARY_TOO_LONG',
@@ -107,10 +102,7 @@ export function validateNodeSummaries(graph: GraphData): ValidationIssue[] {
         }
 
         if (node.role === 'reference' && node.referenceKind === 'heuristic') {
-            if (
-                (node.contextSummary ?? '').length >
-                DEFAULT_GRAPH_RULES.summaryMaxLength
-            ) {
+            if ((node.contextSummary ?? '').length > DEFAULT_GRAPH_RULES.summaryMaxLength) {
                 issues.push({
                     severity: 'error',
                     code: 'NODE_SUMMARY_TOO_LONG',
@@ -127,15 +119,10 @@ export function validateNodeSummaries(graph: GraphData): ValidationIssue[] {
 
 // ═══════════ 节点数量规则 ═══════════
 
-export function validateNodeCountSoftLimit(
-    graph: GraphData,
-): ValidationIssue[] {
+export function validateNodeCountSoftLimit(graph: GraphData): ValidationIssue[] {
     const nodeCount = graph.nodes.length
 
-    if (
-        nodeCount > DEFAULT_GRAPH_RULES.nodeSoftLimit &&
-        nodeCount <= DEFAULT_GRAPH_RULES.nodeWarningLimit
-    ) {
+    if (nodeCount > DEFAULT_GRAPH_RULES.nodeSoftLimit && nodeCount <= DEFAULT_GRAPH_RULES.nodeWarningLimit) {
         return [
             {
                 severity: 'info',
@@ -150,15 +137,10 @@ export function validateNodeCountSoftLimit(
     return []
 }
 
-export function validateNodeCountWarningLimit(
-    graph: GraphData,
-): ValidationIssue[] {
+export function validateNodeCountWarningLimit(graph: GraphData): ValidationIssue[] {
     const nodeCount = graph.nodes.length
 
-    if (
-        nodeCount > DEFAULT_GRAPH_RULES.nodeWarningLimit &&
-        nodeCount <= DEFAULT_GRAPH_RULES.nodeHardLimit
-    ) {
+    if (nodeCount > DEFAULT_GRAPH_RULES.nodeWarningLimit && nodeCount <= DEFAULT_GRAPH_RULES.nodeHardLimit) {
         return [
             {
                 severity: 'warning',
@@ -173,9 +155,7 @@ export function validateNodeCountWarningLimit(
     return []
 }
 
-export function validateNodeCountHardLimit(
-    graph: GraphData,
-): ValidationIssue[] {
+export function validateNodeCountHardLimit(graph: GraphData): ValidationIssue[] {
     const nodeCount = graph.nodes.length
 
     if (nodeCount > DEFAULT_GRAPH_RULES.nodeHardLimit) {
@@ -199,9 +179,7 @@ export function validateEdgeLabels(graph: GraphData): ValidationIssue[] {
     const issues: ValidationIssue[] = []
 
     for (const edge of graph.edges) {
-        if (
-            (edge.label ?? '').length > DEFAULT_GRAPH_RULES.edgeLabelMaxLength
-        ) {
+        if ((edge.label ?? '').length > DEFAULT_GRAPH_RULES.edgeLabelMaxLength) {
             issues.push({
                 severity: 'error',
                 code: 'EDGE_LABEL_TOO_LONG',
@@ -238,10 +216,7 @@ export function validateDuplicateEdges(graph: GraphData): ValidationIssue[] {
     const seen = new Set<string>()
 
     for (const edge of graph.edges) {
-        const key =
-            edge.source < edge.target
-                ? `${edge.source}|${edge.target}`
-                : `${edge.target}|${edge.source}`
+        const key = edge.source < edge.target ? `${edge.source}|${edge.target}` : `${edge.target}|${edge.source}`
 
         if (seen.has(key)) {
             issues.push({
@@ -261,9 +236,7 @@ export function validateDuplicateEdges(graph: GraphData): ValidationIssue[] {
 
 // ═══════════ 虚节点连接规则 ═══════════
 
-export function validateVirtualNodeEdgeType(
-    graph: GraphData,
-): ValidationIssue[] {
+export function validateVirtualNodeEdgeType(graph: GraphData): ValidationIssue[] {
     const issues: ValidationIssue[] = []
     const nodeMap = new Map(graph.nodes.map((node) => [node.id, node]))
 
@@ -272,10 +245,8 @@ export function validateVirtualNodeEdgeType(
         const targetNode = nodeMap.get(edge.target)
 
         if (!sourceNode || !targetNode) continue
-        if (sourceNode.role !== 'knowledge' || targetNode.role !== 'knowledge')
-            continue
-        if (sourceNode.kind !== 'virtual' && targetNode.kind !== 'virtual')
-            continue
+        if (sourceNode.role !== 'knowledge' || targetNode.role !== 'knowledge') continue
+        if (sourceNode.kind !== 'virtual' && targetNode.kind !== 'virtual') continue
 
         if (edge.kind !== 'virtual' || edge.direction !== 'undirected') {
             issues.push({
@@ -291,9 +262,7 @@ export function validateVirtualNodeEdgeType(
     return issues
 }
 
-export function validateVirtualNodeNeighborCount(
-    graph: GraphData,
-): ValidationIssue[] {
+export function validateVirtualNodeNeighborCount(graph: GraphData): ValidationIssue[] {
     const issues: ValidationIssue[] = []
     const nodeMap = new Map(graph.nodes.map((node) => [node.id, node]))
 
@@ -305,10 +274,7 @@ export function validateVirtualNodeNeighborCount(
             if (otherId === nodeId) continue
 
             const otherNode = nodeMap.get(otherId)
-            if (
-                otherNode?.role === 'knowledge' &&
-                otherNode.kind === 'virtual'
-            ) {
+            if (otherNode?.role === 'knowledge' && otherNode.kind === 'virtual') {
                 count++
             }
         }
@@ -335,9 +301,7 @@ export function validateVirtualNodeNeighborCount(
 
 // ═══════════ 启发节点边类型规则 ═══════════
 
-export function validateHeuristicReferences(
-    graph: GraphData,
-): ValidationIssue[] {
+export function validateHeuristicReferences(graph: GraphData): ValidationIssue[] {
     const issues: ValidationIssue[] = []
     const nodeMap = new Map(graph.nodes.map((node) => [node.id, node]))
 
@@ -345,12 +309,8 @@ export function validateHeuristicReferences(
         const sourceNode = nodeMap.get(edge.source)
         const targetNode = nodeMap.get(edge.target)
 
-        const sourceIsHeuristic =
-            sourceNode?.role === 'reference' &&
-            sourceNode.referenceKind === 'heuristic'
-        const targetIsHeuristic =
-            targetNode?.role === 'reference' &&
-            targetNode.referenceKind === 'heuristic'
+        const sourceIsHeuristic = sourceNode?.role === 'reference' && sourceNode.referenceKind === 'heuristic'
+        const targetIsHeuristic = targetNode?.role === 'reference' && targetNode.referenceKind === 'heuristic'
 
         if (!sourceIsHeuristic && !targetIsHeuristic) continue
 
@@ -421,19 +381,14 @@ export function validateRealDirectedCycle(graph: GraphData): ValidationIssue[] {
 
 // ═══════════ 引用节点一致性 ═══════════
 
-export function validateReferenceNodeConsistency(
-    graph: GraphData,
-): ValidationIssue[] {
+export function validateReferenceNodeConsistency(graph: GraphData): ValidationIssue[] {
     const issues: ValidationIssue[] = []
     const nodeIdSet = new Set(graph.nodes.map((node) => node.id))
 
     for (const node of graph.nodes) {
         if (node.role !== 'reference') continue
 
-        if (
-            node.sourceGraphId === graph.id &&
-            !nodeIdSet.has(node.sourceNodeId)
-        ) {
+        if (node.sourceGraphId === graph.id && !nodeIdSet.has(node.sourceNodeId)) {
             issues.push({
                 severity: 'error',
                 code: 'DANGLING_REFERENCE',

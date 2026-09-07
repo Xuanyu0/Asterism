@@ -9,16 +9,10 @@
             <!-- 模式选择子列表 -->
             <Transition name="slide-left">
                 <div v-if="showModeSelector" class="mode-selector-list">
-                    <button
-                        v-bind:class="{ active: activeMode === 'cognition' }"
-                        v-on:click="setMode('cognition')"
-                    >
+                    <button v-bind:class="{ active: activeMode === 'cognition' }" v-on:click="setMode('cognition')">
                         Cognition
                     </button>
-                    <button
-                        v-bind:class="{ active: activeMode === 'arrangement' }"
-                        v-on:click="setMode('arrangement')"
-                    >
+                    <button v-bind:class="{ active: activeMode === 'arrangement' }" v-on:click="setMode('arrangement')">
                         Arrangement
                     </button>
                 </div>
@@ -26,25 +20,19 @@
 
             <!-- Cognition 子操作 -->
             <Transition name="slide-left">
-                <div
-                    v-if="!showModeSelector && activeMode === 'cognition'"
-                    class="cognition-action-list"
-                >
+                <div v-if="!showModeSelector && activeMode === 'cognition'" class="cognition-action-list">
                     <button v-on:click="controller.explore()">Explore</button>
                     <button v-on:click="controller.unearth()">Unearth</button>
                     <button
                         v-bind:class="{
-                            active:
-                                mediator.activeToolId.value === 'deconstruct',
+                            active: mediator.activeToolId.value === 'deconstruct',
                         }"
                         v-on:click="mediator.activate('deconstruct')"
                     >
                         Deconstruct
                     </button>
                     <button v-on:click="controller.induce([])">Induce</button>
-                    <button v-on:click="controller.internalize([])">
-                        Internalize
-                    </button>
+                    <button v-on:click="controller.internalize([])">Internalize</button>
                 </div>
             </Transition>
 

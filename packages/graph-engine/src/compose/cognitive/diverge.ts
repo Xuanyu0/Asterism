@@ -29,17 +29,8 @@
  *     // applyBatches(registry, result.batches)
  */
 
-import type {
-    EdgeData,
-    GraphData,
-    GraphId,
-    NodeId,
-    NodePosition,
-} from '../../types/graph_data'
-import type {
-    GraphLookup,
-    NodeRadiusMap,
-} from '../../types/infrastructure_types'
+import type { EdgeData, GraphData, GraphId, NodeId, NodePosition } from '../../types/graph_data'
+import type { GraphLookup, NodeRadiusMap } from '../../types/infrastructure_types'
 import type { ComposeIssue, DraftPosition } from '../../types/compose_types'
 import type { OperationBatch } from '../../types/compose_types'
 import type { GraphOperation } from '../../types/atomic_operations'
@@ -119,22 +110,11 @@ export function diverge(params: DivergeParams): {
     drafts: DraftHeuristicPosition[]
     issues: ComposeIssue[]
 } {
-    const {
-        sourceNodeId,
-        targetNodeId,
-        currentGraph,
-        heuristicPosition,
-        lookupGraph,
-        graphIds,
-    } = params
+    const { sourceNodeId, targetNodeId, currentGraph, heuristicPosition, lookupGraph, graphIds } = params
     const issues: ComposeIssue[] = []
 
-    const sourceInCurrent = currentGraph.nodes.some(
-        (node) => node.id === sourceNodeId,
-    )
-    const targetInCurrent = currentGraph.nodes.some(
-        (node) => node.id === targetNodeId,
-    )
+    const sourceInCurrent = currentGraph.nodes.some((node) => node.id === sourceNodeId)
+    const targetInCurrent = currentGraph.nodes.some((node) => node.id === targetNodeId)
 
     // ── 情况判定 ──
 
@@ -151,17 +131,10 @@ export function diverge(params: DivergeParams): {
         }
 
         // 链式引用检查
-        const sourceNode = currentGraph.nodes.find(
-            (node) => node.id === sourceNodeId,
-        )!
-        const targetNode = currentGraph.nodes.find(
-            (node) => node.id === targetNodeId,
-        )!
+        const sourceNode = currentGraph.nodes.find((node) => node.id === sourceNodeId)!
+        const targetNode = currentGraph.nodes.find((node) => node.id === targetNodeId)!
 
-        if (
-            sourceNode.role === 'reference' &&
-            targetNode.role === 'reference'
-        ) {
+        if (sourceNode.role === 'reference' && targetNode.role === 'reference') {
             issues.push({
                 severity: 'error',
                 code: 'DIVERGE_CHAIN_REFERENCE_FORBIDDEN',
@@ -207,9 +180,7 @@ export function diverge(params: DivergeParams): {
     // 链式引用检查：在图中那一端的节点必须是 knowledge
     const inGraphNodeId = sourceInCurrent ? sourceNodeId : targetNodeId
     const missingNodeId = sourceInCurrent ? targetNodeId : sourceNodeId
-    const inGraphNode = currentGraph.nodes.find(
-        (node) => node.id === inGraphNodeId,
-    )
+    const inGraphNode = currentGraph.nodes.find((node) => node.id === inGraphNodeId)
 
     if (!inGraphNode) {
         issues.push({
@@ -230,13 +201,7 @@ export function diverge(params: DivergeParams): {
     }
 
     // 查找哪个已注册图包含 source 或 target 节点
-    const peerGraph = findPeerGraph(
-        graphIds,
-        lookupGraph,
-        sourceNodeId,
-        targetNodeId,
-        currentGraph.id,
-    )
+    const peerGraph = findPeerGraph(graphIds, lookupGraph, sourceNodeId, targetNodeId, currentGraph.id)
 
     if (!peerGraph) {
         issues.push({
@@ -247,9 +212,7 @@ export function diverge(params: DivergeParams): {
         return { batches: [], drafts: [], issues }
     }
 
-    const missingNode = peerGraph.graph.nodes.find(
-        (node) => node.id === missingNodeId,
-    )
+    const missingNode = peerGraph.graph.nodes.find((node) => node.id === missingNodeId)
 
     if (!missingNode || missingNode.role !== 'knowledge') {
         issues.push({
@@ -293,10 +256,7 @@ export function diverge(params: DivergeParams): {
     const mirrorHeuristicId = generateNodeId()
 
     // scatterInCircle 在对端图中找空位
-    const mirrorPosition = findScatterPosition(
-        mirrorHeuristicId,
-        peerGraph.graph,
-    )
+    const mirrorPosition = findScatterPosition(mirrorHeuristicId, peerGraph.graph)
 
     if (!mirrorPosition) {
         issues.push({
@@ -351,9 +311,7 @@ export function diverge(params: DivergeParams): {
             {
                 kind: 'inGraph',
                 graph: currentGraph,
-                operations: [
-                    { type: 'add_node' as const, node: heuristicNode },
-                ],
+                operations: [{ type: 'add_node' as const, node: heuristicNode }],
             },
             {
                 kind: 'inGraph',
@@ -364,9 +322,7 @@ export function diverge(params: DivergeParams): {
             {
                 kind: 'inGraph',
                 graph: peerGraph.graph,
-                operations: [
-                    { type: 'add_node' as const, node: mirrorHeuristicNode },
-                ],
+                operations: [{ type: 'add_node' as const, node: mirrorHeuristicNode }],
             },
             {
                 kind: 'inGraph',
@@ -402,11 +358,7 @@ function findPeerGraph(
         if (!graph) continue
 
         // 查找知识节点（源节点或目标节点在哪个图里）
-        if (
-            graph.nodes.some(
-                (node) => node.id === sourceNodeId || node.id === targetNodeId,
-            )
-        ) {
+        if (graph.nodes.some((node) => node.id === sourceNodeId || node.id === targetNodeId)) {
             return { graph }
         }
     }
@@ -423,19 +375,14 @@ function findPeerGraph(
  *
  *     最多重试 MAX_ATTEMPTS 次。全失败返回 null。
  */
-function findScatterPosition(
-    nodeId: NodeId,
-    graph: GraphData,
-): NodePosition | null {
+function findScatterPosition(nodeId: NodeId, graph: GraphData): NodePosition | null {
     const center = { x: 0, y: 0 }
     const nodeRadiusOverrides: NodeRadiusMap = new Map()
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         const position = scatterInCircle(center, MAX_SCATTER_RADIUS)
 
-        if (
-            !hasCollisionAt(nodeId, position, graph.nodes, nodeRadiusOverrides)
-        ) {
+        if (!hasCollisionAt(nodeId, position, graph.nodes, nodeRadiusOverrides)) {
             return position
         }
     }

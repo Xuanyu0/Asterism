@@ -190,12 +190,7 @@ export function assembleGraph(params: {
 
 // ═══════════ 布局辅助 ═══════════
 
-export function layoutChain(
-    nodes: NodeData[],
-    spacing = 300,
-    startX = 50,
-    y = 120,
-): NodeData[] {
+export function layoutChain(nodes: NodeData[], spacing = 300, startX = 50, y = 120): NodeData[] {
     return nodes.map((node, i) => ({
         ...node,
         position: { x: startX + i * spacing, y },
@@ -481,9 +476,7 @@ export function createDeleteUndoTestGraph(graphId: GraphId = G): GraphData {
     })
 }
 
-export function createGoldenTestGraph(
-    graphId: GraphId = 'graph-golden' as GraphId,
-): GraphData {
+export function createGoldenTestGraph(graphId: GraphId = 'graph-golden' as GraphId): GraphData {
     const nodes: NodeData[] = [
         createNode({
             id: 'node-1' as NodeId,
@@ -587,9 +580,7 @@ export function createGoldenTestGraph(
  *
  *     测试解构的正常路径和非正常路径（修改 A 的 role/kind/form 即可覆盖全部前置校验）。
  */
-export function createDeconstructInputGraph(
-    graphId: GraphId = 'graph-decon' as GraphId,
-): GraphData {
+export function createDeconstructInputGraph(graphId: GraphId = 'graph-decon' as GraphId): GraphData {
     const a = createNode({
         id: 'decon-A' as NodeId,
         graphId,
@@ -651,9 +642,7 @@ export function createDeconstructInputGraph(
  *
  *     测试归纳的正常路径。
  */
-export function createInduceInputGraph(
-    graphId: GraphId = 'graph-induce' as GraphId,
-): GraphData {
+export function createInduceInputGraph(graphId: GraphId = 'graph-induce' as GraphId): GraphData {
     const a = createNode({ id: 'ind-A' as NodeId, graphId, label: '被选A' })
     const b = createNode({ id: 'ind-B' as NodeId, graphId, label: '被选B' })
     const c = createNode({ id: 'ind-C' as NodeId, graphId, label: '被选C' })
@@ -732,9 +721,7 @@ export function createInduceInputGraph(
  *
  *     induce 含启发节点的输入图。一个启发引用节点参与归纳。
  */
-export function createInduceWithHeuristicInputGraph(
-    graphId: GraphId = 'graph-ind-heur' as GraphId,
-): GraphData {
+export function createInduceWithHeuristicInputGraph(graphId: GraphId = 'graph-ind-heur' as GraphId): GraphData {
     const a = createNode({ id: 'ih-A' as NodeId, graphId, label: '被选A' })
     const h = createNode({
         id: 'ih-H' as NodeId,
@@ -783,9 +770,7 @@ export function createInduceWithHeuristicInputGraph(
  *
  *     测试内化时引用节点自动删除、知识节点正常迁入常识层。
  */
-export function createInternalizeInputGraph(
-    graphId: GraphId = 'graph-intern' as GraphId,
-): GraphData {
+export function createInternalizeInputGraph(graphId: GraphId = 'graph-intern' as GraphId): GraphData {
     const k1 = createNode({
         id: 'int-K1' as NodeId,
         graphId,
@@ -881,9 +866,7 @@ export function createInternalizeAbstractInputGraph(
  *
  *     diverge Case A 标准输入图。两个知识节点在同一图中。
  */
-export function createDivergeInputGraph(
-    graphId: GraphId = 'graph-div' as GraphId,
-): GraphData {
+export function createDivergeInputGraph(graphId: GraphId = 'graph-div' as GraphId): GraphData {
     const a = createNode({ id: 'div-A' as NodeId, graphId, label: '源节点' })
     const b = createNode({ id: 'div-B' as NodeId, graphId, label: '目标节点' })
 
@@ -900,9 +883,7 @@ export function createDivergeInputGraph(
  *
  *     diverge 跨图输入——当前图只有目标节点，源节点在对端图中。
  */
-export function createDivergeCrossGraphInput(
-    graphId: GraphId = 'graph-div-cur' as GraphId,
-): {
+export function createDivergeCrossGraphInput(graphId: GraphId = 'graph-div-cur' as GraphId): {
     current: GraphData
     peer: GraphData
 } {
@@ -940,9 +921,7 @@ export function createDivergeCrossGraphInput(
  *
  *     创建空常识层图。
  */
-export function createCommonLayerGraph(
-    graphId: GraphId = 'graph-common' as GraphId,
-): GraphData {
+export function createCommonLayerGraph(graphId: GraphId = 'graph-common' as GraphId): GraphData {
     return assembleGraph({
         id: graphId,
         kind: 'commonLayer',
@@ -965,8 +944,6 @@ function validateOrThrow(graph: GraphData): void {
             )
             .join('\n')
 
-        throw new Error(
-            `test_case_factory: 生成的 GraphData 未通过 schema 校验。\n${details}`,
-        )
+        throw new Error(`test_case_factory: 生成的 GraphData 未通过 schema 校验。\n${details}`)
     }
 }

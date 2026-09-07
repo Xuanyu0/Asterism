@@ -54,11 +54,7 @@ export type {
 } from './types/graph_data'
 
 /** 消费者：前端 graph_store / operation_controller、引擎 compose 层。 */
-export type {
-    GraphLookup,
-    SearchResult,
-    NodeRadiusMap,
-} from './types/infrastructure_types'
+export type { GraphLookup, SearchResult, NodeRadiusMap } from './types/infrastructure_types'
 
 /** 消费者：引擎内部 & 前端渲染层。 */
 export type { LayoutRules } from './core/layout_rules'
@@ -96,20 +92,10 @@ export type {
 } from './types/cognitive_operations'
 
 /** 消费者：graph_store（校验返回值）。 */
-export type {
-    ValidationSeverity,
-    ValidationTargetType,
-    ValidationIssue,
-    ValidationResult,
-} from './types/validation'
+export type { ValidationSeverity, ValidationTargetType, ValidationIssue, ValidationResult } from './types/validation'
 
 /** 消费者：graph_store（操作日志 & undo/redo）。 */
-export type {
-    BatchesLog,
-    CommitLog,
-    OperationLogTree,
-    State,
-} from './types/operation_log'
+export type { BatchesLog, CommitLog, OperationLogTree, State } from './types/operation_log'
 
 /** 消费者：graph_persistence.ts（localStorage 实现 SPI 契约）。Phase 3 扩展点。 */
 export type { PersistenceAdapter } from './spi/persistence'
@@ -345,11 +331,7 @@ export { validateGraph } from './core/validators/whole_graph_validator'
  *     const edgeId = generateEdgeId()
  *     const graphId = generateGraphId()
  */
-export {
-    generateNodeId,
-    generateEdgeId,
-    generateGraphId,
-} from './core/utils/id'
+export { generateNodeId, generateEdgeId, generateGraphId } from './core/utils/id'
 
 export { DEFAULT_LAYOUT_RULES } from './core/layout_rules'
 

@@ -421,13 +421,8 @@ function validateOrThrow(graph: GraphData): void {
     const result = validateGraph(graph)
     if (!result.valid) {
         const details = result.issues
-            .map(
-                (i) =>
-                    `  [${i.severity}] ${i.code}: ${i.message} (target: ${i.targetType} ${i.targetId ?? ''})`,
-            )
+            .map((i) => `  [${i.severity}] ${i.code}: ${i.message} (target: ${i.targetType} ${i.targetId ?? ''})`)
             .join('\n')
-        throw new Error(
-            `test_case_factory: 生成的 GraphData 未通过 schema 校验。\n${details}`,
-        )
+        throw new Error(`test_case_factory: 生成的 GraphData 未通过 schema 校验。\n${details}`)
     }
 }

@@ -22,11 +22,7 @@
  */
 
 import type { NodeId, NodePosition, GraphData } from './graph_data'
-import type {
-    AtomicOperationInGraph,
-    AtomicGraphOperation,
-    GraphOperation,
-} from './atomic_operations'
+import type { AtomicOperationInGraph, AtomicGraphOperation, GraphOperation } from './atomic_operations'
 
 /**
  * 功能：
@@ -98,11 +94,11 @@ export interface ComposeResult<Draft extends DraftPosition = DraftPosition> {
  */
 export type OperationBatch =
     | {
-        kind: 'inGraph'
-        graph: GraphData
-        operations: AtomicOperationInGraph[]
+          kind: 'inGraph'
+          graph: GraphData
+          operations: AtomicOperationInGraph[]
       }
     | {
-        kind: 'graphLevel'
-        operations: AtomicGraphOperation[]
+          kind: 'graphLevel'
+          operations: AtomicGraphOperation[]
       }

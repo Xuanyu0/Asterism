@@ -73,15 +73,9 @@ describe('graph_store loadGraphToView 错误出口（08.2）', () => {
 
         expect(loaded).toBe(false)
         expect(store.lastValidationResult).toEqual({ valid: false, issues: [] })
-        expect(warnSpy).toHaveBeenCalledWith(
-            expect.stringContaining('[data-integrity]'),
-        )
-        expect(warnSpy).toHaveBeenCalledWith(
-            expect.stringContaining('CORRUPTED_GRAPH'),
-        )
-        expect(warnSpy).toHaveBeenCalledWith(
-            expect.stringContaining('graph-corrupt'),
-        )
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[data-integrity]'))
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('CORRUPTED_GRAPH'))
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('graph-corrupt'))
     })
 
     test('祖先链断裂：图加载成功返回 true，不再写 lastValidationResult，message 含三要素（graphId / terminalId / 缺失父图 id）', () => {
@@ -105,19 +99,11 @@ describe('graph_store loadGraphToView 错误出口（08.2）', () => {
         expect(store.lastValidationResult).toBeNull()
         // 恰好一次：报告只在 buildGraphPath 断裂点产出，loadGraphToView 不重复报告
         expect(warnSpy).toHaveBeenCalledTimes(1)
-        expect(warnSpy).toHaveBeenCalledWith(
-            expect.stringContaining('[data-integrity]'),
-        )
-        expect(warnSpy).toHaveBeenCalledWith(
-            expect.stringContaining('ANCESTOR_CHAIN_BROKEN'),
-        )
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[data-integrity]'))
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('ANCESTOR_CHAIN_BROKEN'))
         // 三要素：发起回溯的 graphId / 断裂处 terminalId（此处同为断裂子图）/ 缺失父图 id
-        expect(warnSpy).toHaveBeenCalledWith(
-            expect.stringContaining('graph-broken-sub'),
-        )
-        expect(warnSpy).toHaveBeenCalledWith(
-            expect.stringContaining('graph-missing-parent'),
-        )
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('graph-broken-sub'))
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('graph-missing-parent'))
     })
 
     test('环检测：parentGraphId 链成环（A→B→A），console.warn 恰好一次且含 CYCLE_DETECTED 与环入口 id', () => {
@@ -152,15 +138,9 @@ describe('graph_store loadGraphToView 错误出口（08.2）', () => {
         expect(store.lastValidationResult).toBeNull()
         // 恰好一次：环检测报告只在 buildGraphPath 环 break 处产出
         expect(warnSpy).toHaveBeenCalledTimes(1)
-        expect(warnSpy).toHaveBeenCalledWith(
-            expect.stringContaining('[data-integrity]'),
-        )
-        expect(warnSpy).toHaveBeenCalledWith(
-            expect.stringContaining('CYCLE_DETECTED'),
-        )
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[data-integrity]'))
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('CYCLE_DETECTED'))
         // 环入口 id（被重复访问的父图）应在 message 中
-        expect(warnSpy).toHaveBeenCalledWith(
-            expect.stringContaining('graph-cyc-a'),
-        )
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('graph-cyc-a'))
     })
 })

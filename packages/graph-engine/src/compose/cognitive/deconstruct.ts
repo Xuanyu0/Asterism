@@ -125,9 +125,7 @@ export function deconstruct(params: DeconstructParams): {
         }
     }
 
-    const neighbors = parentGraph.nodes.filter((node) =>
-        neighborIds.has(node.id),
-    )
+    const neighbors = parentGraph.nodes.filter((node) => neighborIds.has(node.id))
 
     // ── 构造子图 ──
 
@@ -146,8 +144,7 @@ export function deconstruct(params: DeconstructParams): {
             : 0
 
     const communicationNodes = neighbors.map((neighbor, index) => {
-        const angle =
-            neighborCount > 0 ? (2 * Math.PI * index) / neighborCount : 0
+        const angle = neighborCount > 0 ? (2 * Math.PI * index) / neighborCount : 0
 
         return {
             id: generateNodeId(),
@@ -182,12 +179,10 @@ export function deconstruct(params: DeconstructParams): {
     }
 
     // 沟通节点经 add_node 填充子图
-    const addCommNodeOps: AtomicOperationInGraph[] = communicationNodes.map(
-        (node) => ({
-            type: 'add_node',
-            node,
-        }),
-    )
+    const addCommNodeOps: AtomicOperationInGraph[] = communicationNodes.map((node) => ({
+        type: 'add_node',
+        node,
+    }))
 
     const batches: OperationBatch[] = [
         // add_graph 批在子图填充批之前：先注册空子图，再填充

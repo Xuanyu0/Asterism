@@ -35,11 +35,7 @@ export function computeFontSize(degree: number): number {
  *
  *     计算边渲染宽度。
  */
-export function computeEdgeWidth(
-    srcMass: number,
-    tgtMass: number,
-    dist: number,
-): number {
+export function computeEdgeWidth(srcMass: number, tgtMass: number, dist: number): number {
     const k = 4 * DEFAULT_LAYOUT_RULES.unitDistance
     if (dist <= 0) return 2
     const edgeWidth = Math.round((k * srcMass * tgtMass) / dist)

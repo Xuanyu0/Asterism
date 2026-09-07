@@ -54,13 +54,10 @@ export function useFoldTool(): ToolHandler {
             return
         }
 
-        const foldedDeps =
-            graphStore.graphView.cognitiveState.foldedDependencies
+        const foldedDeps = graphStore.graphView.cognitiveState.foldedDependencies
         const isFolded = foldedDeps.some((f) => f.targetNodeId === nodeId)
 
-        const operationType = isFolded
-            ? ('expand_dependency' as const)
-            : ('collapse_dependency' as const)
+        const operationType = isFolded ? ('expand_dependency' as const) : ('collapse_dependency' as const)
 
         operations.commitToCurrentGraph(
             [

@@ -29,18 +29,9 @@
  *     })
  */
 
-import type {
-    EdgeData,
-    NodeData,
-    NodeId,
-    NodePosition,
-} from '../../types/graph_data'
+import type { EdgeData, NodeData, NodeId, NodePosition } from '../../types/graph_data'
 import type { NodeRadiusMap } from '../../types/infrastructure_types'
-import type {
-    ComposeIssue,
-    ComposeResult,
-    DraftPosition,
-} from '../../types/compose_types'
+import type { ComposeIssue, ComposeResult, DraftPosition } from '../../types/compose_types'
 import { computeTierSpacing, snapOrbit } from '../../infrastructure/placement'
 import { hasCollisionInDrafts } from '../../infrastructure/collision'
 
@@ -96,14 +87,7 @@ export interface OrbitParams {
  *     见 OrbitParams。
  */
 export function orbit(params: OrbitParams): ComposeResult<DraftPosition> {
-    const {
-        center,
-        satellites,
-        tierCount,
-        allNodes,
-        allEdges,
-        nodeRadiusOverrides,
-    } = params
+    const { center, satellites, tierCount, allNodes, allEdges, nodeRadiusOverrides } = params
 
     const issues: ComposeIssue[] = []
 
@@ -113,8 +97,7 @@ export function orbit(params: OrbitParams): ComposeResult<DraftPosition> {
             (edge) =>
                 edge.kind === 'real' &&
                 ((edge.source === center.id && edge.target === satellite.id) ||
-                    (edge.source === satellite.id &&
-                        edge.target === center.id)),
+                    (edge.source === satellite.id && edge.target === center.id)),
         )
 
         if (!hasRealEdge) {

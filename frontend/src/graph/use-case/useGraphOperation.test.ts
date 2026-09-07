@@ -79,9 +79,7 @@ describe('useGraphOperation', () => {
 
         expect(validation.valid).toBe(false)
         expect(store.lastValidationResult).toEqual(validation)
-        expect(store.lastValidationResult!.issues[0]?.code).toBe(
-            'NODE_NOT_FOUND',
-        )
+        expect(store.lastValidationResult!.issues[0]?.code).toBe('NODE_NOT_FOUND')
         expect(store.graphView!.nodes.length).toBe(nodeCountBefore)
     })
 

@@ -30,9 +30,7 @@ const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
 
 // ═══════════ 内部：节点辅助 ═══════════
 
-function hasPosition(
-    node: NodeData,
-): node is NodeData & { position: NodePosition } {
+function hasPosition(node: NodeData): node is NodeData & { position: NodePosition } {
     return node.position !== undefined
 }
 
@@ -120,9 +118,7 @@ export function hasCollisionAt(
 
     // 目标节点不在 allNodes 中（新建节点）：无法通过 node 计算半径，
     // 回退为覆盖值或 unitDistance，但仍需检测该位置与已有节点的碰撞。
-    const targetRadius = target
-        ? target.radius
-        : (nodeRadiusOverrides.get(nodeId) ?? unitDistance)
+    const targetRadius = target ? target.radius : (nodeRadiusOverrides.get(nodeId) ?? unitDistance)
 
     for (const node of allNodes) {
         if (node.id === nodeId) continue
@@ -193,10 +189,7 @@ export function hasCollisionInDrafts(
         for (let j = i + 1; j < draftItems.length; j++) {
             const b = draftItems[j]!
             const minDist = a.radius + b.radius
-            if (
-                squaredDistance(a.draft.position, b.draft.position) <
-                minDist * minDist
-            ) {
+            if (squaredDistance(a.draft.position, b.draft.position) < minDist * minDist) {
                 return true
             }
         }
@@ -210,15 +203,7 @@ export function hasCollisionInDrafts(
     for (const draft of drafts) {
         const peerIds = new Set(draftIdSet)
         peerIds.delete(draft.nodeId) // 排除当前草稿同伴，但保留自身（hasCollisionAt 自带排除）
-        if (
-            hasCollisionAt(
-                draft.nodeId,
-                draft.position,
-                allNodes,
-                nodeRadiusOverrides,
-                peerIds,
-            )
-        ) {
+        if (hasCollisionAt(draft.nodeId, draft.position, allNodes, nodeRadiusOverrides, peerIds)) {
             return true
         }
     }

@@ -27,10 +27,7 @@ export function replayGraph(
 ): GraphData {
     const effectiveExecutedAt = executedAt ?? new Date().toISOString()
 
-    return operations.reduce(
-        (graph, op) => executeOperation(graph, op, effectiveExecutedAt),
-        baseGraph,
-    )
+    return operations.reduce((graph, op) => executeOperation(graph, op, effectiveExecutedAt), baseGraph)
 }
 
 /**
@@ -56,8 +53,5 @@ export function replayToStep(
 
     return operations
         .slice(0, clampedStep)
-        .reduce(
-            (graph, op) => executeOperation(graph, op, effectiveExecutedAt),
-            baseGraph,
-        )
+        .reduce((graph, op) => executeOperation(graph, op, effectiveExecutedAt), baseGraph)
 }

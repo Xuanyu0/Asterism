@@ -6,11 +6,7 @@
 
 import type { GraphId, NodeId } from '../../../src/types/graph_data'
 import { deconstruct } from '../../../src/compose/cognitive/deconstruct'
-import {
-    createDeconstructInputGraph,
-    createNode,
-    assembleGraph,
-} from '../../test_case_factory'
+import { createDeconstructInputGraph, createNode, assembleGraph } from '../../test_case_factory'
 
 describe('deconstruct', () => {
     test('正常解构（含邻居）', () => {
@@ -19,9 +15,7 @@ describe('deconstruct', () => {
             nodeId: 'decon-A' as NodeId,
             parentGraph: graph,
         })
-        expect(
-            result.issues.filter((i) => i.severity === 'error'),
-        ).toHaveLength(0)
+        expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0)
         // 3 批：graphLevel add_graph（空图）+ inGraph 子图填充 + inGraph 父图 update_node
         expect(result.batches).toHaveLength(3)
         expect(result.batches[0]!.kind).toBe('graphLevel')
@@ -51,9 +45,7 @@ describe('deconstruct', () => {
         // 沟通节点经 add_node 填充子图（B/C/D 三个邻居）
         const childBatch = result.batches[1]!
         expect(childBatch.kind).toBe('inGraph')
-        const addNodeOps = childBatch.operations.filter(
-            (op) => op.type === 'add_node',
-        )
+        const addNodeOps = childBatch.operations.filter((op) => op.type === 'add_node')
         expect(addNodeOps).toHaveLength(3)
     })
 
@@ -73,9 +65,7 @@ describe('deconstruct', () => {
             nodeId: 'v' as NodeId,
             parentGraph: graph,
         })
-        expect(result.issues.some((i) => i.message.includes('虚节点'))).toBe(
-            true,
-        )
+        expect(result.issues.some((i) => i.message.includes('虚节点'))).toBe(true)
         expect(result.batches).toHaveLength(0)
     })
 
@@ -117,9 +107,7 @@ describe('deconstruct', () => {
             nodeId: 'r' as NodeId,
             parentGraph: graph,
         })
-        expect(result.issues.some((i) => i.message.includes('知识节点'))).toBe(
-            true,
-        )
+        expect(result.issues.some((i) => i.message.includes('知识节点'))).toBe(true)
     })
 
     test('无邻居节点', () => {
@@ -137,14 +125,10 @@ describe('deconstruct', () => {
             nodeId: 'solo' as NodeId,
             parentGraph: graph,
         })
-        expect(
-            result.issues.filter((i) => i.severity === 'error'),
-        ).toHaveLength(0)
+        expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0)
         // 子图无沟通节点：add_graph 空图 + 子图填充批无 add_node
         const childBatch = result.batches[1]!
         expect(childBatch.kind).toBe('inGraph')
-        expect(
-            childBatch.operations.filter((op) => op.type === 'add_node'),
-        ).toHaveLength(0)
+        expect(childBatch.operations.filter((op) => op.type === 'add_node')).toHaveLength(0)
     })
 })

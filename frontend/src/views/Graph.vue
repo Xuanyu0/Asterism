@@ -91,17 +91,12 @@ function handleUndoRedoKeydown(event: KeyboardEvent): void {
 const canvasErrorIssues = computed(() => {
     const validation = graphStore.lastValidationResult
     if (!validation || !validation.valid) {
-        return (
-            validation?.issues.filter((issue) => issue.severity === 'error') ??
-            []
-        )
+        return validation?.issues.filter((issue) => issue.severity === 'error') ?? []
     }
     return []
 })
 
-const activeNotification = computed(
-    () => mediator.activeHandler.value?.notification ?? null,
-)
+const activeNotification = computed(() => mediator.activeHandler.value?.notification ?? null)
 
 // 错误通知面板根元素（组件 ref → $el 取根 DOM）
 const errorPanelRef = ref<ComponentPublicInstance | null>(null)
@@ -117,11 +112,7 @@ const errorPanelRef = ref<ComponentPublicInstance | null>(null)
 function handleErrorPanelPointerdown(event: PointerEvent): void {
     const target = event.target
     const panelEl = errorPanelRef.value?.$el
-    if (
-        panelEl instanceof HTMLElement &&
-        target instanceof Node &&
-        panelEl.contains(target)
-    ) {
+    if (panelEl instanceof HTMLElement && target instanceof Node && panelEl.contains(target)) {
         return
     }
     useGraphOperation().clearValidationResult()
@@ -200,14 +191,8 @@ watch(
 )
 
 // 删除目标高亮：通过 ToolHandler 接口的可选 highlightNode / highlightEdge 统一消费
-renderer.bindHighlight(
-    () => mediator.activeHandler.value?.highlightNode ?? null,
-    'delete-target',
-)
-renderer.bindHighlight(
-    () => mediator.activeHandler.value?.highlightEdge ?? null,
-    'delete-target',
-)
+renderer.bindHighlight(() => mediator.activeHandler.value?.highlightNode ?? null, 'delete-target')
+renderer.bindHighlight(() => mediator.activeHandler.value?.highlightEdge ?? null, 'delete-target')
 
 /**
  * 功能：
@@ -252,10 +237,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div
-        class="relative h-screen w-screen bg-slate-50"
-        v-on:contextmenu.prevent
-    >
+    <div class="relative h-screen w-screen bg-slate-50" v-on:contextmenu.prevent>
         <!--
             功能：
                 Cytoscape 真正挂载的 DOM 容器。
@@ -265,12 +247,7 @@ onBeforeUnmount(() => {
                 2. h-full / w-full 继承父容器尺寸。
                 3. 本节点只给 Cytoscape 使用，不放业务逻辑。
         -->
-        <div
-            ref="cyContainer"
-            class="h-full w-full"
-            v-bind:class="containerClasses"
-            v-on:contextmenu.prevent
-        ></div>
+        <div ref="cyContainer" class="h-full w-full" v-bind:class="containerClasses" v-on:contextmenu.prevent></div>
 
         <!--
             功能：
@@ -310,11 +287,7 @@ onBeforeUnmount(() => {
             功能：
                 画布操作错误通知区。浮空窗关闭或打开时均显示错误，统一展示位置。
         -->
-        <NotificationPanel
-            ref="errorPanelRef"
-            v-bind:visible="canvasErrorIssues.length > 0"
-            accent="red"
-        >
+        <NotificationPanel ref="errorPanelRef" v-bind:visible="canvasErrorIssues.length > 0" accent="red">
             <p
                 v-for="(issue, index) in canvasErrorIssues"
                 v-bind:key="issue.code + '-' + index"
@@ -329,13 +302,8 @@ onBeforeUnmount(() => {
                 工具通知面板。由活跃 handler 的 notification 字段驱动，
                 渲染 handler 自包含的完整消息文本。
         -->
-        <NotificationPanel
-            v-bind:visible="activeNotification?.visible ?? false"
-            accent="red"
-        >
-            <span v-if="activeNotification">{{
-                activeNotification.message
-            }}</span>
+        <NotificationPanel v-bind:visible="activeNotification?.visible ?? false" accent="red">
+            <span v-if="activeNotification">{{ activeNotification.message }}</span>
             <template #actions>
                 <button
                     type="button"

@@ -23,10 +23,7 @@ const G = 'test-grt' as GraphId
 function makeBase(): GraphData {
     return assembleGraph({
         id: G,
-        nodes: [
-            createNode({ id: 'n0' as NodeId, graphId: G }),
-            createNode({ id: 'n1' as NodeId, graphId: G }),
-        ],
+        nodes: [createNode({ id: 'n0' as NodeId, graphId: G }), createNode({ id: 'n1' as NodeId, graphId: G })],
         edges: [],
     })
 }
@@ -64,16 +61,12 @@ describe('global rules table', () => {
         )
 
         const issuesWithRule = runGlobalRules(graph)
-        expect(
-            issuesWithRule.some((i) => i.code === 'SELF_LOOP_FORBIDDEN'),
-        ).toBe(true)
+        expect(issuesWithRule.some((i) => i.code === 'SELF_LOOP_FORBIDDEN')).toBe(true)
 
         const issuesWithoutRule = runGlobalRules(graph, {
             SELF_LOOP_FORBIDDEN: false,
         })
-        expect(
-            issuesWithoutRule.some((i) => i.code === 'SELF_LOOP_FORBIDDEN'),
-        ).toBe(false)
+        expect(issuesWithoutRule.some((i) => i.code === 'SELF_LOOP_FORBIDDEN')).toBe(false)
     })
 })
 
@@ -127,9 +120,7 @@ describe('validateDuplicateEdges', () => {
 
         const issues = validateDuplicateEdges(graph)
         expect(issues.length).toBeGreaterThan(0)
-        expect(issues.some((i) => i.code === 'DUPLICATE_EDGE_FORBIDDEN')).toBe(
-            true,
-        )
+        expect(issues.some((i) => i.code === 'DUPLICATE_EDGE_FORBIDDEN')).toBe(true)
     })
 
     test('反向边也视为重边', () => {
@@ -154,9 +145,7 @@ describe('validateDuplicateEdges', () => {
         )
 
         const issues = validateDuplicateEdges(graph)
-        expect(issues.some((i) => i.code === 'DUPLICATE_EDGE_FORBIDDEN')).toBe(
-            true,
-        )
+        expect(issues.some((i) => i.code === 'DUPLICATE_EDGE_FORBIDDEN')).toBe(true)
     })
 })
 
@@ -272,15 +261,9 @@ describe('validateNodeCountLimits', () => {
     test('runGlobalRules 不重复报告节点数问题', () => {
         const graph = makeGraphWithNodeCount(151)
         const issues = runGlobalRules(graph)
-        const softCount = issues.filter(
-            (i) => i.code === 'NODE_COUNT_SOFT_LIMIT_EXCEEDED',
-        ).length
-        const warningCount = issues.filter(
-            (i) => i.code === 'NODE_COUNT_WARNING_LIMIT_EXCEEDED',
-        ).length
-        const hardCount = issues.filter(
-            (i) => i.code === 'NODE_COUNT_HARD_LIMIT_EXCEEDED',
-        ).length
+        const softCount = issues.filter((i) => i.code === 'NODE_COUNT_SOFT_LIMIT_EXCEEDED').length
+        const warningCount = issues.filter((i) => i.code === 'NODE_COUNT_WARNING_LIMIT_EXCEEDED').length
+        const hardCount = issues.filter((i) => i.code === 'NODE_COUNT_HARD_LIMIT_EXCEEDED').length
         expect(softCount).toBe(0)
         expect(warningCount).toBe(0)
         expect(hardCount).toBe(1)

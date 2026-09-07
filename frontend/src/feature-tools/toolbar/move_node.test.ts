@@ -62,9 +62,7 @@ const { capturedCallback, nodePositionsMap, stopFn } = vi.hoisted(() => {
 
 vi.mock('@/cytoscape/useRenderer', () => {
     const mockSyncFromGraphData = vi.fn(
-        (graph: {
-            nodes: Array<{ id: string; position?: { x: number; y: number } }>
-        }) => {
+        (graph: { nodes: Array<{ id: string; position?: { x: number; y: number } }> }) => {
             // 模拟真实 sync 语义：cy 节点位置 = 图位置（供 getNodePosition mock 读取）
             nodePositionsMap.clear()
             for (const node of graph.nodes) {
@@ -77,20 +75,16 @@ vi.mock('@/cytoscape/useRenderer', () => {
             }
         },
     )
-    const mockGetNodePosition = vi.fn(
-        (nodeId: string): { x: number; y: number } | null => {
-            return nodePositionsMap.get(nodeId) ?? null
-        },
-    )
+    const mockGetNodePosition = vi.fn((nodeId: string): { x: number; y: number } | null => {
+        return nodePositionsMap.get(nodeId) ?? null
+    })
     const mockAddNodeClass = vi.fn()
     const mockRemoveNodeClass = vi.fn()
     const mockClearAllPreviews = vi.fn()
-    const mockTrackCursor = vi.fn(
-        (cb: (pos: { x: number; y: number }) => void) => {
-            capturedCallback.current = cb
-            return { stop: stopFn }
-        },
-    )
+    const mockTrackCursor = vi.fn((cb: (pos: { x: number; y: number }) => void) => {
+        capturedCallback.current = cb
+        return { stop: stopFn }
+    })
     return {
         useRenderer: () => ({
             syncFromGraphData: mockSyncFromGraphData,
@@ -215,11 +209,7 @@ describe('idle → picked', () => {
         const renderer = useRenderer()
         handler.onNodeClick!('node-g1')
 
-        expect(renderer.addNodeClass).toHaveBeenCalledWith(
-            'node-g1',
-            'move-picked',
-            'move',
-        )
+        expect(renderer.addNodeClass).toHaveBeenCalledWith('node-g1', 'move-picked', 'move')
     })
 
     test('onNodeClick 拾取吸附：syncFromGraphData 收到含 node-g1 @ (300,400) 的预览图', () => {
@@ -232,16 +222,10 @@ describe('idle → picked', () => {
         const syncMock = vi.mocked(renderer.syncFromGraphData)
         expect(syncMock).toHaveBeenCalledTimes(1)
         const previewGraph = syncMock.mock.calls[0]![0]
-        const moved = previewGraph.nodes.find(
-            (node: { id: string }) => node.id === 'node-g1',
-        )!
+        const moved = previewGraph.nodes.find((node: { id: string }) => node.id === 'node-g1')!
         expect(moved.position).toEqual({ x: 300, y: 400 })
         // sync 后重施 move-picked（applyPreviewMove 内部）
-        expect(renderer.addNodeClass).toHaveBeenCalledWith(
-            'node-g1',
-            'move-picked',
-            'move',
-        )
+        expect(renderer.addNodeClass).toHaveBeenCalledWith('node-g1', 'move-picked', 'move')
     })
 
     test('拾取后拖动：syncFromGraphData 被调用且 move-picked 保持', () => {
@@ -255,15 +239,9 @@ describe('idle → picked', () => {
         const syncMock = vi.mocked(renderer.syncFromGraphData)
         expect(syncMock).toHaveBeenCalledTimes(2)
         const lastGraph = syncMock.mock.calls.at(-1)![0]
-        const moved = lastGraph.nodes.find(
-            (node: { id: string }) => node.id === 'node-g1',
-        )!
+        const moved = lastGraph.nodes.find((node: { id: string }) => node.id === 'node-g1')!
         expect(moved.position).toEqual({ x: 600, y: 350 })
-        expect(renderer.addNodeClass).toHaveBeenCalledWith(
-            'node-g1',
-            'move-picked',
-            'move',
-        )
+        expect(renderer.addNodeClass).toHaveBeenCalledWith('node-g1', 'move-picked', 'move')
     })
 
     test('拖动到碰撞位置 → preview-collision 被施加', () => {
@@ -274,11 +252,7 @@ describe('idle → picked', () => {
         capturedCallback.current!({ x: 350, y: 200 })
 
         expect(renderer.syncFromGraphData).toHaveBeenCalledTimes(1)
-        expect(renderer.addNodeClass).toHaveBeenCalledWith(
-            'node-g1',
-            'preview-collision',
-            'move',
-        )
+        expect(renderer.addNodeClass).toHaveBeenCalledWith('node-g1', 'preview-collision', 'move')
     })
 
     test('拖动到空位 → preview-collision 不被施加', () => {
@@ -287,11 +261,7 @@ describe('idle → picked', () => {
 
         capturedCallback.current!({ x: 1000, y: 400 })
 
-        expect(renderer.addNodeClass).not.toHaveBeenCalledWith(
-            'node-g1',
-            'preview-collision',
-            'move',
-        )
+        expect(renderer.addNodeClass).not.toHaveBeenCalledWith('node-g1', 'preview-collision', 'move')
     })
 
     test('idle 时 mousemove → syncFromGraphData 不被调用', () => {
@@ -325,9 +295,7 @@ describe('picked → idle 无碰撞放置', () => {
 
     test('无碰撞放置后 commitBatchToGraph 被调用', () => {
         const store = useGraphStore()
-        const nodeBefore = store.graphView!.nodes.find(
-            (n) => n.id === 'node-g1',
-        )!
+        const nodeBefore = store.graphView!.nodes.find((n) => n.id === 'node-g1')!
         // 验证原始位置
         expect(nodeBefore.position).toEqual({ x: 50, y: 200 })
 
@@ -335,9 +303,7 @@ describe('picked → idle 无碰撞放置', () => {
         handler.onCanvasClick!({ x: 2000, y: 2000 })
 
         // 验证 graphView 中节点位置已更新
-        const nodeAfter = store.graphView!.nodes.find(
-            (n) => n.id === 'node-g1',
-        )!
+        const nodeAfter = store.graphView!.nodes.find((n) => n.id === 'node-g1')!
         expect(nodeAfter.position).toEqual({ x: 2000, y: 2000 })
     })
 
@@ -345,11 +311,7 @@ describe('picked → idle 无碰撞放置', () => {
         const renderer = useRenderer()
         handler.onCanvasClick!({ x: 2000, y: 2000 })
 
-        expect(renderer.removeNodeClass).toHaveBeenCalledWith(
-            'node-g1',
-            'move-picked',
-            'move',
-        )
+        expect(renderer.removeNodeClass).toHaveBeenCalledWith('node-g1', 'move-picked', 'move')
     })
 
     test('无碰撞放置后 isActive 仍为 true（工具未停用）', () => {
@@ -404,9 +366,7 @@ describe('cancelPick', () => {
         const calls = vi.mocked(renderer.syncFromGraphData).mock.calls
         expect(calls).toHaveLength(2)
         const realGraph = calls[1]![0]
-        const g1 = realGraph.nodes.find(
-            (node: { id: string }) => node.id === 'node-g1',
-        )!
+        const g1 = realGraph.nodes.find((node: { id: string }) => node.id === 'node-g1')!
         expect(g1.position).toEqual({ x: 50, y: 200 })
     })
 

@@ -4,10 +4,7 @@
  * 测试 hasCollisionAt 和 hasCollisionInDrafts。
  */
 
-import {
-    hasCollisionAt,
-    hasCollisionInDrafts,
-} from '../src/infrastructure/collision'
+import { hasCollisionAt, hasCollisionInDrafts } from '../src/infrastructure/collision'
 import type { NodeData } from '../src/types/graph_data'
 import type { NodeRadiusMap } from '../src/types/infrastructure_types'
 
@@ -75,13 +72,7 @@ describe('hasCollisionInDrafts', () => {
     })
 
     test('returns false for single draft with no other nodes', () => {
-        expect(
-            hasCollisionInDrafts(
-                [{ nodeId: 'a', position: pos(50, 0) }],
-                [],
-                emptyMap,
-            ),
-        ).toBe(false)
+        expect(hasCollisionInDrafts([{ nodeId: 'a', position: pos(50, 0) }], [], emptyMap)).toBe(false)
     })
 
     test('detects collision between two drafts', () => {

@@ -26,10 +26,7 @@ import type {
 import { useGraphStore } from '@/graph/graph_store'
 import { lookupGraph } from '@/graph/graph_registry'
 import { hasErrors } from '@/graph/utils/issue_guard'
-import {
-    isInGraphOperation,
-    isGraphLevelOperation,
-} from '@/graph/utils/operation_guards'
+import { isInGraphOperation, isGraphLevelOperation } from '@/graph/utils/operation_guards'
 
 /**
  * useGraphOperation 返回的图操作用例单例 API。
@@ -48,10 +45,7 @@ export interface GraphOperationAPI {
      * （写入 entry.source，缺省 undefined = 未知来源）。
      * @returns 校验结果（valid + issues 汇总）。
      */
-    commitToCurrentGraph(
-        operations: GraphOperation[],
-        options?: { source?: string },
-    ): ValidationResult
+    commitToCurrentGraph(operations: GraphOperation[], options?: { source?: string }): ValidationResult
 
     /**
      * 对多个目标图提交预组装批次并返回校验结果。
@@ -66,10 +60,7 @@ export interface GraphOperationAPI {
      * @param options - [可选] source：操作来源的工具标识
      * @returns 校验结果（valid + issues 汇总）。
      */
-    commitBatches(
-        batches: OperationBatch[],
-        options?: { source?: string },
-    ): ValidationResult
+    commitBatches(batches: OperationBatch[], options?: { source?: string }): ValidationResult
 
     /**
      * 上报 compose 层校验结果。
@@ -85,11 +76,7 @@ export interface GraphOperationAPI {
      * @param targetId - 操作对象的 ID（可选，graph 级别操作无 targetId）
      * @returns 是否校验失败（true 时调用方应阻断后续提交）。
      */
-    reportComposeValidation(
-        issues: ComposeIssue[],
-        targetType: ValidationTargetType,
-        targetId?: string,
-    ): boolean
+    reportComposeValidation(issues: ComposeIssue[], targetType: ValidationTargetType, targetId?: string): boolean
 
     /**
      * 将当前注册表包装为引擎 compose 层所需的纯查询函数
@@ -139,17 +126,12 @@ export function useGraphOperation(): GraphOperationAPI {
 }
 
 function createGraphOperation(): GraphOperationAPI {
-    function commitToCurrentGraph(
-        operations: GraphOperation[],
-        options?: { source?: string },
-    ): ValidationResult {
+    function commitToCurrentGraph(operations: GraphOperation[], options?: { source?: string }): ValidationResult {
         const graphStore = useGraphStore()
         const graphView = graphStore.graphView
         if (!graphView) {
             // 编程错误通道：调用方均保留空图守卫，此处不可达
-            throw new Error(
-                'commitToCurrentGraph: 当前无 graphView，无法提交操作',
-            )
+            throw new Error('commitToCurrentGraph: 当前无 graphView，无法提交操作')
         }
 
         // 图级操作与图内操作分拆为独立批（applyBatches 判别联合要求）
@@ -172,10 +154,7 @@ function createGraphOperation(): GraphOperationAPI {
         return result.validation
     }
 
-    function commitBatches(
-        batches: OperationBatch[],
-        options?: { source?: string },
-    ): ValidationResult {
+    function commitBatches(batches: OperationBatch[], options?: { source?: string }): ValidationResult {
         return useGraphStore().commitBatchToGraphs(batches, options).validation
     }
 
@@ -204,8 +183,7 @@ function createGraphOperation(): GraphOperationAPI {
     }
 
     function makeLookup(): GraphLookup {
-        return (graphId: GraphId): GraphData | undefined =>
-            lookupGraph(useGraphStore().graphRegistry, graphId)
+        return (graphId: GraphId): GraphData | undefined => lookupGraph(useGraphStore().graphRegistry, graphId)
     }
 
     function clearValidationResult(): void {

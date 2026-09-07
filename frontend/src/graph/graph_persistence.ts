@@ -57,9 +57,7 @@ export function saveGraph(graph: GraphData): void {
  *
  *     loadGraph 的返回判别联合，使"图不存在"（正常状态）与"图损坏"（系统异常）在信号层面可区分。
  */
-export type LoadGraphResult =
-    | { ok: true; graph: GraphData }
-    | { ok: false; reason: 'missing' | 'corrupted' }
+export type LoadGraphResult = { ok: true; graph: GraphData } | { ok: false; reason: 'missing' | 'corrupted' }
 
 /**
  * 功能：
@@ -246,9 +244,7 @@ export const localStorageAdapter: PersistenceAdapter = {
 
         return ids
             .map((id) => loadGraph(id))
-            .filter(
-                (result): result is LoadGraphResult & { ok: true } => result.ok,
-            )
+            .filter((result): result is LoadGraphResult & { ok: true } => result.ok)
             .map((result) => result.graph)
     },
 }

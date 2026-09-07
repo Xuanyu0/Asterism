@@ -32,12 +32,7 @@ import { useAddEdgeTool } from './add_edge'
 // ── vi.hoisted：共享 mock 函数 ──
 // vi.mock 是文件级，vi.hoisted 保证 mock 函数在 factory 闭包与测试代码间共享同一实例。
 
-const {
-    mockPreviewAddEdge,
-    mockSyncFromGraphData,
-    mockAddNodeClass,
-    mockClearAllPreviews,
-} = vi.hoisted(() => ({
+const { mockPreviewAddEdge, mockSyncFromGraphData, mockAddNodeClass, mockClearAllPreviews } = vi.hoisted(() => ({
     mockPreviewAddEdge: vi.fn(),
     mockSyncFromGraphData: vi.fn(),
     mockAddNodeClass: vi.fn(),
@@ -95,11 +90,7 @@ describe('useAddEdgeTool', () => {
 
     test('首次 onNodeClick 记录 source 并施加起点高亮', () => {
         handler.onNodeClick!('node-g1')
-        expect(mockAddNodeClass).toHaveBeenCalledWith(
-            'node-g1',
-            'edge-source-target',
-            'add-edge',
-        )
+        expect(mockAddNodeClass).toHaveBeenCalledWith('node-g1', 'edge-source-target', 'add-edge')
     })
 
     test('cursorClass 变化', () => {
@@ -123,9 +114,7 @@ describe('useAddEdgeTool', () => {
         handler.deactivate()
 
         expect(mockClearAllPreviews).toHaveBeenCalledWith('add-edge')
-        expect(mockSyncFromGraphData).toHaveBeenCalledWith(
-            useGraphStore().graphView,
-        )
+        expect(mockSyncFromGraphData).toHaveBeenCalledWith(useGraphStore().graphView)
         expect(handler.isActive).toBe(false)
     })
 
@@ -174,11 +163,7 @@ describe('两次点击添加边', () => {
         expect(mockClearAllPreviews).toHaveBeenCalledWith('add-edge')
         // source 复位后，下一次点击应重新记录 source
         handler.onNodeClick!('node-g2')
-        expect(mockAddNodeClass).toHaveBeenLastCalledWith(
-            'node-g2',
-            'edge-source-target',
-            'add-edge',
-        )
+        expect(mockAddNodeClass).toHaveBeenLastCalledWith('node-g2', 'edge-source-target', 'add-edge')
     })
 
     test('第二次可继续加边', () => {
@@ -263,29 +248,20 @@ describe('hover 预览', () => {
         handler.onNodeClick!('node-g1')
         handler.onNodeHover!('node-g6')
 
-        expect(mockSyncFromGraphData).toHaveBeenCalledWith(
-            useGraphStore().graphView,
-        )
-        expect(mockAddNodeClass).toHaveBeenCalledWith(
-            'node-g1',
-            'edge-source-target',
-            'add-edge',
-        )
+        expect(mockSyncFromGraphData).toHaveBeenCalledWith(useGraphStore().graphView)
+        expect(mockAddNodeClass).toHaveBeenCalledWith('node-g1', 'edge-source-target', 'add-edge')
     })
 
     test('hover 后 previewAddEdge 以正确 kind/direction 调用', () => {
         handler.onNodeClick!('node-g1')
         handler.onNodeHover!('node-g6')
 
-        expect(mockPreviewAddEdge).toHaveBeenCalledWith(
-            useGraphStore().graphView,
-            {
-                sourceId: 'node-g1',
-                targetId: 'node-g6',
-                kind: 'real',
-                direction: 'directed',
-            },
-        )
+        expect(mockPreviewAddEdge).toHaveBeenCalledWith(useGraphStore().graphView, {
+            sourceId: 'node-g1',
+            targetId: 'node-g6',
+            kind: 'real',
+            direction: 'directed',
+        })
     })
 
     test('source 碰撞时施加 preview-collision', () => {
@@ -298,16 +274,8 @@ describe('hover 预览', () => {
         })
         handler.onNodeHover!('node-g6')
 
-        expect(mockAddNodeClass).toHaveBeenCalledWith(
-            'node-g1',
-            'preview-collision',
-            'add-edge',
-        )
-        expect(mockAddNodeClass).not.toHaveBeenCalledWith(
-            'node-g6',
-            'preview-collision',
-            'add-edge',
-        )
+        expect(mockAddNodeClass).toHaveBeenCalledWith('node-g1', 'preview-collision', 'add-edge')
+        expect(mockAddNodeClass).not.toHaveBeenCalledWith('node-g6', 'preview-collision', 'add-edge')
     })
 
     test('target 碰撞时施加 preview-collision', () => {
@@ -320,16 +288,8 @@ describe('hover 预览', () => {
         })
         handler.onNodeHover!('node-g6')
 
-        expect(mockAddNodeClass).toHaveBeenCalledWith(
-            'node-g6',
-            'preview-collision',
-            'add-edge',
-        )
-        expect(mockAddNodeClass).not.toHaveBeenCalledWith(
-            'node-g1',
-            'preview-collision',
-            'add-edge',
-        )
+        expect(mockAddNodeClass).toHaveBeenCalledWith('node-g6', 'preview-collision', 'add-edge')
+        expect(mockAddNodeClass).not.toHaveBeenCalledWith('node-g1', 'preview-collision', 'add-edge')
     })
 
     test('valid=false 时不切换预览图', () => {
@@ -351,14 +311,8 @@ describe('hover 预览', () => {
         handler.onNodeHoverOut!('node-g6')
 
         expect(mockClearAllPreviews).toHaveBeenCalledWith('add-edge')
-        expect(mockSyncFromGraphData).toHaveBeenLastCalledWith(
-            useGraphStore().graphView,
-        )
-        expect(mockAddNodeClass).toHaveBeenLastCalledWith(
-            'node-g1',
-            'edge-source-target',
-            'add-edge',
-        )
+        expect(mockSyncFromGraphData).toHaveBeenLastCalledWith(useGraphStore().graphView)
+        expect(mockAddNodeClass).toHaveBeenLastCalledWith('node-g1', 'edge-source-target', 'add-edge')
     })
 })
 
@@ -372,25 +326,22 @@ describe('四种变体', () => {
         ['virtual', 'undirected', 'add-virtual-undirected'],
     ] as const
 
-    test.each(variants)(
-        '%s-%s 的 id 正确且两次点击可加边',
-        (kind, direction, expectedId) => {
-            const h = useAddEdgeTool(kind, direction)
-            expect(h.id).toBe(expectedId)
-            h.activate()
+    test.each(variants)('%s-%s 的 id 正确且两次点击可加边', (kind, direction, expectedId) => {
+        const h = useAddEdgeTool(kind, direction)
+        expect(h.id).toBe(expectedId)
+        h.activate()
 
-            h.onNodeClick!('node-g1')
-            const graphBefore = useGraphStore().graphView
-            h.onNodeClick!('node-g6')
+        h.onNodeClick!('node-g1')
+        const graphBefore = useGraphStore().graphView
+        h.onNodeClick!('node-g6')
 
-            const store = useGraphStore()
-            expect(store.graphView!.edges.length).toBe(5)
-            expect(mockPreviewAddEdge).toHaveBeenCalledWith(graphBefore, {
-                sourceId: 'node-g1',
-                targetId: 'node-g6',
-                kind,
-                direction,
-            })
-        },
-    )
+        const store = useGraphStore()
+        expect(store.graphView!.edges.length).toBe(5)
+        expect(mockPreviewAddEdge).toHaveBeenCalledWith(graphBefore, {
+            sourceId: 'node-g1',
+            targetId: 'node-g6',
+            kind,
+            direction,
+        })
+    })
 })

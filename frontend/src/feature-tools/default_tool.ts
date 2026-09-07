@@ -16,11 +16,7 @@ import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
 import { useCanvasFocus } from '@/composables/useCanvasFocus'
 import { useFloatingWindow } from '@/composables/useFloatingWindow'
 
-import type {
-    NodeData,
-    EdgeData,
-    KnowledgeNodeData,
-} from '@my-project/graph-engine'
+import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
 import type { ToolHandler, ToolId } from './types'
 
 /**
@@ -152,10 +148,7 @@ export function useDefaultTool(): ToolHandler {
             const { updatedAt: _updatedAt, ...edgeData } = data
             const edge: EdgeData = { ...edgeData, label }
 
-            const validation = operations.commitToCurrentGraph(
-                [{ type: 'update_edge', edge }],
-                { source: id },
-            )
+            const validation = operations.commitToCurrentGraph([{ type: 'update_edge', edge }], { source: id })
 
             if (validation.valid) {
                 floatingWindow.close()
@@ -169,10 +162,7 @@ export function useDefaultTool(): ToolHandler {
                 ;(node as KnowledgeNodeData).summary = summary
             }
 
-            const validation = operations.commitToCurrentGraph(
-                [{ type: 'update_node', node }],
-                { source: id },
-            )
+            const validation = operations.commitToCurrentGraph([{ type: 'update_node', node }], { source: id })
 
             if (validation.valid) {
                 floatingWindow.close()

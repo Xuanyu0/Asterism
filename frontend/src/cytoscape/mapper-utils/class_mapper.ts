@@ -13,10 +13,7 @@ import { deriveNodeForm } from '@my-project/graph-engine'
  * @param foldedParentIds - 有折叠依赖的父节点 id 集合（命中时追加 has-folded-deps）
  * @returns class 名数组。
  */
-export function getNodeClasses(
-    node: NodeData,
-    foldedParentIds?: Set<NodeId>,
-): string[] {
+export function getNodeClasses(node: NodeData, foldedParentIds?: Set<NodeId>): string[] {
     const classes: string[] = []
 
     if (node.role === 'knowledge') {
@@ -42,7 +39,5 @@ export function getNodeClasses(
  * @returns class 名数组（`edge-{kind}` 与 `edge-{direction}`）。
  */
 export function getEdgeClasses(edge: EdgeData): string[] {
-    return [`edge-${edge.kind}`, `edge-${edge.direction}`].filter(
-        (className) => className.length > 0,
-    )
+    return [`edge-${edge.kind}`, `edge-${edge.direction}`].filter((className) => className.length > 0)
 }

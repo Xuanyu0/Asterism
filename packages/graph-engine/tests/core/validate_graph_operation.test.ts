@@ -5,12 +5,7 @@
  */
 
 import { validateGraphOperation } from '../../src/core/validate_graph_operation'
-import type {
-    GraphData,
-    GraphId,
-    GraphRegistry,
-    NodeId,
-} from '../../src/types/graph_data'
+import type { GraphData, GraphId, GraphRegistry, NodeId } from '../../src/types/graph_data'
 import type { AtomicGraphOperation } from '../../src/types/atomic_operations'
 import { createNode, assembleGraph } from '../test_case_factory'
 
@@ -20,10 +15,7 @@ const CHILD = 'child' as GraphId
 function makeNonEmptyGraph(): GraphData {
     return assembleGraph({
         id: G,
-        nodes: [
-            createNode({ id: 'n0' as NodeId, graphId: G }),
-            createNode({ id: 'n1' as NodeId, graphId: G }),
-        ],
+        nodes: [createNode({ id: 'n0' as NodeId, graphId: G }), createNode({ id: 'n1' as NodeId, graphId: G })],
         edges: [],
     })
 }

@@ -48,9 +48,7 @@ describe('validate add_node', () => {
             node: createNode({ id: 'n0' as NodeId, graphId: G }),
         })
         expect(result.valid).toBe(false)
-        expect(result.issues.some((i) => i.code === 'NODE_ID_DUPLICATED')).toBe(
-            true,
-        )
+        expect(result.issues.some((i) => i.code === 'NODE_ID_DUPLICATED')).toBe(true)
     })
 
     test('label 为空字符串 → EMPTY_LABEL', () => {
@@ -189,9 +187,7 @@ describe('validate delete_node', () => {
             nodeId: 'n-x' as NodeId,
         })
         expect(result.valid).toBe(false)
-        expect(result.issues.some((i) => i.code === 'NODE_NOT_FOUND')).toBe(
-            true,
-        )
+        expect(result.issues.some((i) => i.code === 'NODE_NOT_FOUND')).toBe(true)
     })
 })
 
@@ -332,9 +328,7 @@ describe('validate collapse/expand', () => {
             targetNodeId: 'n2' as NodeId,
         })
         expect(result.valid).toBe(false)
-        expect(result.issues.map((issue) => issue.code)).toContain(
-            'NO_DEPENDENCY_TO_COLLAPSE',
-        )
+        expect(result.issues.map((issue) => issue.code)).toContain('NO_DEPENDENCY_TO_COLLAPSE')
     })
 
     test('带 foldedNodeIds 时目标节点存在性检查仍生效', () => {
@@ -345,8 +339,6 @@ describe('validate collapse/expand', () => {
             foldedNodeIds: ['n0' as NodeId],
         })
         expect(result.valid).toBe(false)
-        expect(result.issues.map((issue) => issue.code)).toContain(
-            'NODE_NOT_FOUND',
-        )
+        expect(result.issues.map((issue) => issue.code)).toContain('NODE_NOT_FOUND')
     })
 })

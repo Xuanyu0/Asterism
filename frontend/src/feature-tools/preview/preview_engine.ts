@@ -9,13 +9,7 @@
  * 预览使用；当前按 YAGNI 仅实现 add-edge / add-node / move 专用函数。
  */
 
-import {
-    applyBatch,
-    generateEdgeId,
-    generateNodeId,
-    hasCollisionAt,
-    moveNode,
-} from '@my-project/graph-engine'
+import { applyBatch, generateEdgeId, generateNodeId, hasCollisionAt, moveNode } from '@my-project/graph-engine'
 
 import { computeNodeRadiusOverrides } from '@/graph/utils/node_radius'
 import { hasErrors } from '@/graph/utils/issue_guard'
@@ -84,12 +78,7 @@ export function previewAddNode(
     }
 
     const previewGraph = result.graph
-    const collides = hasCollisionAt(
-        nodeId,
-        position,
-        previewGraph.nodes,
-        computeNodeRadiusOverrides(previewGraph),
-    )
+    const collides = hasCollisionAt(nodeId, position, previewGraph.nodes, computeNodeRadiusOverrides(previewGraph))
 
     return { previewGraph, valid: true, collides, nodeId }
 }
@@ -153,21 +142,11 @@ export function previewAddEdge(
     const target = previewGraph.nodes.find((node) => node.id === edge.targetId)
 
     const sourceCollides = source?.position
-        ? hasCollisionAt(
-              edge.sourceId,
-              source.position,
-              previewGraph.nodes,
-              new Map(),
-          )
+        ? hasCollisionAt(edge.sourceId, source.position, previewGraph.nodes, new Map())
         : false
 
     const targetCollides = target?.position
-        ? hasCollisionAt(
-              edge.targetId,
-              target.position,
-              previewGraph.nodes,
-              new Map(),
-          )
+        ? hasCollisionAt(edge.targetId, target.position, previewGraph.nodes, new Map())
         : false
 
     return { previewGraph, valid: true, sourceCollides, targetCollides }
@@ -202,11 +181,9 @@ export function previewMoveNode(
     })
 
     // moveNode 的 operations 恒为图内操作（move_node），收窄类型以适配 applyBatch 图内批签名
-    const preview = applyBatch(
-        clone,
-        result.operations as AtomicOperationInGraph[],
-        { executedAt: new Date().toISOString() },
-    )
+    const preview = applyBatch(clone, result.operations as AtomicOperationInGraph[], {
+        executedAt: new Date().toISOString(),
+    })
 
     return { previewGraph: preview.graph, collides: hasErrors(result.issues) }
 }

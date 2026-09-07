@@ -5,13 +5,7 @@
  * 契约签名见 types/graph_data.ts 的 DeriveNodeForm / DeriveAbstractionLevel。
  */
 
-import type {
-    DeriveAbstractionLevel,
-    DeriveNodeForm,
-    GraphData,
-    GraphId,
-    KnowledgeNodeData,
-} from '../types/graph_data'
+import type { DeriveAbstractionLevel, DeriveNodeForm, GraphData, GraphId, KnowledgeNodeData } from '../types/graph_data'
 
 /**
  * 推导节点 form（原子 / 抽象）。
@@ -22,8 +16,7 @@ import type {
  *
  * 实现声明为契约类型 DeriveNodeForm（graph_data.ts），签名不兼容时编译报错。
  */
-export const deriveNodeForm: DeriveNodeForm = (node) =>
-    node.childGraphId !== undefined ? 'abstract' : 'atomic'
+export const deriveNodeForm: DeriveNodeForm = (node) => (node.childGraphId !== undefined ? 'abstract' : 'atomic')
 
 /**
  * 推导节点 abstractionLevel：内部最大子图层数。
@@ -48,15 +41,10 @@ export const deriveNodeForm: DeriveNodeForm = (node) =>
  *
  * 实现声明为契约类型 DeriveAbstractionLevel（graph_data.ts），签名不兼容时编译报错。
  */
-export const deriveAbstractionLevel: DeriveAbstractionLevel = (
-    lookupGraph,
-    node,
-) => {
+export const deriveAbstractionLevel: DeriveAbstractionLevel = (lookupGraph, node) => {
     if (node.role === 'reference') {
         const sourceGraph = lookupGraph(node.sourceGraphId)
-        const sourceNode = sourceGraph?.nodes.find(
-            (n) => n.id === node.sourceNodeId,
-        )
+        const sourceNode = sourceGraph?.nodes.find((n) => n.id === node.sourceNodeId)
         // 源节点不可达（图未注册 / 源节点缺失 / 源节点非知识节点）→ 0，链中断防御
         if (sourceNode === undefined || sourceNode.role !== 'knowledge') {
             return 0
@@ -65,8 +53,7 @@ export const deriveAbstractionLevel: DeriveAbstractionLevel = (
     } else {
         return deriveLevel(node, lookupGraph, new Set<GraphId>())
     }
-    }
-    
+}
 
 /**
  * 沿 childGraphId 链递归推导 abstractionLevel 的私有实现。仅处理知识节点。
@@ -87,9 +74,7 @@ function deriveLevel(
 
     // 环检测：该子图已在当前推导路径上，说明 childGraphId 链成环（数据损坏）
     if (onPath.has(childGraphId)) {
-        throw new Error(
-            `deriveAbstractionLevel: childGraphId 链成环（graphId: ${childGraphId}）`,
-        )
+        throw new Error(`deriveAbstractionLevel: childGraphId 链成环（graphId: ${childGraphId}）`)
     }
     onPath.add(childGraphId)
 

@@ -4,10 +4,7 @@
  * moveNode 测试。单节点移动、碰撞检测、空节点列表。
  */
 
-import type {
-    GraphId,
-    NodeId,
-} from '../../../src/types/graph_data'
+import type { GraphId, NodeId } from '../../../src/types/graph_data'
 import type { NodeRadiusMap } from '../../../src/types/infrastructure_types'
 import { moveNode } from '../../../src/compose/arrangement/move'
 import { createNode, createEdge, assembleGraph } from '../../test_case_factory'

@@ -23,10 +23,7 @@ import type { GraphData, NodeData, NodeId } from '../../types/graph_data'
  * 功能：
  *     从目标节点沿有向实边反向搜索所有前置依赖节点。
  */
-export function collectDependencyNodeIds(
-    graph: GraphData,
-    targetNodeId: NodeId,
-): NodeId[] {
+export function collectDependencyNodeIds(graph: GraphData, targetNodeId: NodeId): NodeId[] {
     const visitedNodeIds = new Set<NodeId>()
     const stack: NodeId[] = [targetNodeId]
 
@@ -38,10 +35,7 @@ export function collectDependencyNodeIds(
         }
 
         const incomingDependencyEdges = graph.edges.filter(
-            (edge) =>
-                edge.target === currentNodeId &&
-                edge.kind === 'real' &&
-                edge.direction === 'directed',
+            (edge) => edge.target === currentNodeId && edge.kind === 'real' && edge.direction === 'directed',
         )
 
         for (const edge of incomingDependencyEdges) {
@@ -66,14 +60,8 @@ export function collectDependencyNodeIds(
  *     executeDeleteNode 的级联删除面与 reversal 的逆元捕获面共用此谓词，
  *     避免同一语义在三处各自书写而漂移。
  */
-export function findReferenceNodesPointingTo(
-    graph: GraphData,
-    sourceNodeId: NodeId,
-): NodeData[] {
+export function findReferenceNodesPointingTo(graph: GraphData, sourceNodeId: NodeId): NodeData[] {
     return graph.nodes.filter(
-        (node) =>
-            node.role === 'reference' &&
-            node.sourceNodeId === sourceNodeId &&
-            node.sourceGraphId === graph.id,
+        (node) => node.role === 'reference' && node.sourceNodeId === sourceNodeId && node.sourceGraphId === graph.id,
     )
 }

@@ -4,15 +4,9 @@
  * Adjust Distance 和 Adjust Orbit 测试。
  */
 
-import type {
-    GraphId,
-    NodeId,
-} from '../../../src/types/graph_data'
+import type { GraphId, NodeId } from '../../../src/types/graph_data'
 import type { NodeRadiusMap } from '../../../src/types/infrastructure_types'
-import {
-    adjustDistance,
-    adjustOrbit,
-} from '../../../src/compose/arrangement/adjust'
+import { adjustDistance, adjustOrbit } from '../../../src/compose/arrangement/adjust'
 import { createNode, assembleGraph } from '../../test_case_factory'
 import { DEFAULT_LAYOUT_RULES } from '../../../src/core/layout_rules'
 

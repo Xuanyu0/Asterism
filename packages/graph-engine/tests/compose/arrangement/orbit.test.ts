@@ -4,10 +4,7 @@
  * 环绕布局测试。初始吸附 + 碰撞检测 + 无边 error。
  */
 
-import type {
-    GraphId,
-    NodeId,
-} from '../../../src/types/graph_data'
+import type { GraphId, NodeId } from '../../../src/types/graph_data'
 import type { NodeRadiusMap } from '../../../src/types/infrastructure_types'
 import { orbit } from '../../../src/compose/arrangement/orbit'
 import { createNode, createEdge, assembleGraph } from '../../test_case_factory'
@@ -70,9 +67,7 @@ describe('orbit', () => {
             allEdges: graph.edges,
             nodeRadiusOverrides: R,
         })
-        expect(
-            result.issues.filter((i) => i.severity === 'error'),
-        ).toHaveLength(0)
+        expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0)
         expect(result.operations).toHaveLength(2)
         for (const op of result.operations) {
             expect(op.type).toBe('move_node')
@@ -104,10 +99,6 @@ describe('orbit', () => {
             allEdges: graph.edges,
             nodeRadiusOverrides: R,
         })
-        expect(
-            result.issues.some(
-                (i) => i.severity === 'error' && i.message.includes('实边'),
-            ),
-        ).toBe(true)
+        expect(result.issues.some((i) => i.severity === 'error' && i.message.includes('实边'))).toBe(true)
     })
 })

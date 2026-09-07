@@ -89,9 +89,7 @@ describe('useDeleteTool', () => {
 
     test('notification：非抽象节点 pending 时保持原文案（不含"及其子图"）', () => {
         handler.onNodeClick!('node-g1')
-        expect(handler.notification!.message).toBe(
-            '再次点击将删除："知识节点A"',
-        )
+        expect(handler.notification!.message).toBe('再次点击将删除："知识节点A"')
         expect(handler.notification!.message).not.toContain('（及其子图）')
     })
 

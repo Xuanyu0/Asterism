@@ -28,16 +28,11 @@ import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
  * 参数：
  *     graphView — 当前图的 GraphData 实例。
  */
-export function computeNodeRadiusOverrides(
-    graphView: GraphData,
-): NodeRadiusMap {
+export function computeNodeRadiusOverrides(graphView: GraphData): NodeRadiusMap {
     const overrides: NodeRadiusMap = new Map()
 
     for (const node of graphView.nodes) {
-        overrides.set(
-            node.id,
-            DEFAULT_LAYOUT_RULES.unitDistance * Math.sqrt(1 + node.degree),
-        )
+        overrides.set(node.id, DEFAULT_LAYOUT_RULES.unitDistance * Math.sqrt(1 + node.degree))
     }
 
     return overrides

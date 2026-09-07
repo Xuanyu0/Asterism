@@ -7,11 +7,7 @@
  * 提交前需把混合的 GraphOperation[] 拆成独立批，这两个守卫提供统一收窄逻辑。
  */
 
-import type {
-    AtomicGraphOperation,
-    AtomicOperationInGraph,
-    GraphOperation,
-} from '@my-project/graph-engine'
+import type { AtomicGraphOperation, AtomicOperationInGraph, GraphOperation } from '@my-project/graph-engine'
 
 /**
  * 图内操作类型守卫：收窄 GraphOperation 为 AtomicOperationInGraph。
@@ -19,9 +15,7 @@ import type {
  * @param op - 待判别操作
  * @returns true 表示 op 为图内操作（非 add_graph / delete_graph）。
  */
-export function isInGraphOperation(
-    op: GraphOperation,
-): op is AtomicOperationInGraph {
+export function isInGraphOperation(op: GraphOperation): op is AtomicOperationInGraph {
     return op.type !== 'add_graph' && op.type !== 'delete_graph'
 }
 
@@ -31,8 +25,6 @@ export function isInGraphOperation(
  * @param op - 待判别操作
  * @returns true 表示 op 为图级操作（add_graph / delete_graph）。
  */
-export function isGraphLevelOperation(
-    op: GraphOperation,
-): op is AtomicGraphOperation {
+export function isGraphLevelOperation(op: GraphOperation): op is AtomicGraphOperation {
     return op.type === 'add_graph' || op.type === 'delete_graph'
 }

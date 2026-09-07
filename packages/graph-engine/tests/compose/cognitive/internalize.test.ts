@@ -18,10 +18,7 @@ import {
 const R = new Map()
 
 /** 按图 ID 查找 inGraph 批。 */
-function findBatch(
-    batches: OperationBatch[],
-    graphId: GraphId,
-): OperationBatch | undefined {
+function findBatch(batches: OperationBatch[], graphId: GraphId): OperationBatch | undefined {
     return batches.find((b) => b.kind === 'inGraph' && b.graph.id === graphId)
 }
 
@@ -36,23 +33,16 @@ describe('internalize', () => {
             lookupGraph: () => undefined,
             nodeRadiusOverrides: R,
         })
-        expect(
-            result.issues.filter((i) => i.severity === 'error'),
-        ).toHaveLength(0)
+        expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0)
         // 纯图内批（无 graphLevel 批）
         expect(result.batches.every((b) => b.kind === 'inGraph')).toBe(true)
 
         // 父图批含 delete_node（知识节点和引用节点）
         const parentBatch = findBatch(result.batches, graph.id)!
-        expect(
-            parentBatch.operations.some((op) => op.type === 'delete_node'),
-        ).toBe(true)
+        expect(parentBatch.operations.some((op) => op.type === 'delete_node')).toBe(true)
         // 常识层批含 add_node（只含知识节点）
         const commonBatch = findBatch(result.batches, common.id)!
-        expect(
-            commonBatch.operations.filter((op) => op.type === 'add_node')
-                .length,
-        ).toBe(2) // K1, K2
+        expect(commonBatch.operations.filter((op) => op.type === 'add_node').length).toBe(2) // K1, K2
     })
 
     test('纯引用节点（全部自动删除）', () => {
@@ -101,9 +91,7 @@ describe('internalize', () => {
             lookupGraph: () => undefined,
             nodeRadiusOverrides: R,
         })
-        expect(
-            result.issues.filter((i) => i.severity === 'error'),
-        ).toHaveLength(0)
+        expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0)
         // 有 warning 提示沟通节点将被删除
         expect(result.issues.some((i) => i.severity === 'warning')).toBe(true)
     })
@@ -135,13 +123,9 @@ describe('internalize', () => {
             lookupGraph: () => undefined,
             nodeRadiusOverrides: R,
         })
-        expect(
-            result.issues.filter((i) => i.severity === 'error'),
-        ).toHaveLength(0)
+        expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0)
         const commonBatch = findBatch(result.batches, common.id)!
-        expect(
-            commonBatch.operations.filter((op) => op.type === 'add_node'),
-        ).toHaveLength(3)
+        expect(commonBatch.operations.filter((op) => op.type === 'add_node')).toHaveLength(3)
         // position 各不相同（不碰撞）
         const positions = commonBatch.operations
             .filter((op) => op.type === 'add_node')

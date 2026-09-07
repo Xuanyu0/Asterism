@@ -6,12 +6,7 @@
  *     的模块由对应 Step 填充。被 engine/src/index.ts re-export。
  */
 
-export type {
-    DraftPosition,
-    ComposeIssue,
-    ComposeResult,
-    OperationBatch,
-} from '../types/compose_types'
+export type { DraftPosition, ComposeIssue, ComposeResult, OperationBatch } from '../types/compose_types'
 
 // arrangement
 export { moveNode } from './arrangement/move'

@@ -44,12 +44,10 @@ const {
         mockSyncFromGraphData: vi.fn(),
         mockAddNodeClass: vi.fn(),
         mockClearAllPreviews: vi.fn(),
-        mockTrackCursor: vi.fn(
-            (cb: (pos: { x: number; y: number }) => void) => {
-                capturedCallback.current = cb
-                return { stop: stopFn }
-            },
-        ),
+        mockTrackCursor: vi.fn((cb: (pos: { x: number; y: number }) => void) => {
+            capturedCallback.current = cb
+            return { stop: stopFn }
+        }),
         stopFn: vi.fn(),
         capturedCallback,
     }
@@ -131,11 +129,7 @@ describe('useAddNodeTool', () => {
         expect(store.graphView!.nodes.length).toBe(6)
         expect(store.lastValidationResult).not.toBeNull()
         expect(store.lastValidationResult!.valid).toBe(false)
-        expect(
-            store.lastValidationResult!.issues.some(
-                (issue) => issue.code === 'EMPTY_LABEL',
-            ),
-        ).toBe(true)
+        expect(store.lastValidationResult!.issues.some((issue) => issue.code === 'EMPTY_LABEL')).toBe(true)
     })
 
     test('deactivate 清除草稿', () => {
@@ -150,9 +144,7 @@ describe('useAddNodeTool', () => {
         handler.onCancel!()
         expect(handler.draftNode).toBeNull()
         expect(mockClearAllPreviews).toHaveBeenCalledWith('add-node')
-        expect(mockSyncFromGraphData).toHaveBeenCalledWith(
-            useGraphStore().graphView,
-        )
+        expect(mockSyncFromGraphData).toHaveBeenCalledWith(useGraphStore().graphView)
     })
 })
 
@@ -174,16 +166,8 @@ describe('useAddNodeTool 实时预览', () => {
         capturedCallback.current!({ x: 100, y: 200 })
 
         expect(mockSyncFromGraphData).toHaveBeenCalledTimes(1)
-        expect(mockAddNodeClass).toHaveBeenCalledWith(
-            'preview-node-1',
-            'add-node-preview',
-            'add-node',
-        )
-        expect(mockAddNodeClass).not.toHaveBeenCalledWith(
-            'preview-node-1',
-            'preview-collision',
-            'add-node',
-        )
+        expect(mockAddNodeClass).toHaveBeenCalledWith('preview-node-1', 'add-node-preview', 'add-node')
+        expect(mockAddNodeClass).not.toHaveBeenCalledWith('preview-node-1', 'preview-collision', 'add-node')
     })
 
     test('碰撞 → 叠加 preview-collision class', () => {
@@ -196,16 +180,8 @@ describe('useAddNodeTool 实时预览', () => {
 
         capturedCallback.current!({ x: 50, y: 200 })
 
-        expect(mockAddNodeClass).toHaveBeenCalledWith(
-            'preview-node-1',
-            'add-node-preview',
-            'add-node',
-        )
-        expect(mockAddNodeClass).toHaveBeenCalledWith(
-            'preview-node-1',
-            'preview-collision',
-            'add-node',
-        )
+        expect(mockAddNodeClass).toHaveBeenCalledWith('preview-node-1', 'add-node-preview', 'add-node')
+        expect(mockAddNodeClass).toHaveBeenCalledWith('preview-node-1', 'preview-collision', 'add-node')
     })
 
     test('onCanvasClick 定格预览节点在点击位置并创建草稿，不清理预览', () => {
@@ -214,11 +190,7 @@ describe('useAddNodeTool 实时预览', () => {
 
         // 预览节点定格：重新施加 preview class，不清理（confirm 前画布保留预览节点）
         expect(mockPreviewAddNode).toHaveBeenCalled()
-        expect(mockAddNodeClass).toHaveBeenCalledWith(
-            'preview-node-1',
-            'add-node-preview',
-            'add-node',
-        )
+        expect(mockAddNodeClass).toHaveBeenCalledWith('preview-node-1', 'add-node-preview', 'add-node')
         expect(mockClearAllPreviews).not.toHaveBeenCalled()
         expect(handler.draftNode).not.toBeNull()
     })
@@ -244,9 +216,7 @@ describe('useAddNodeTool 实时预览', () => {
 
         expect(stopFn).toHaveBeenCalledTimes(1)
         expect(mockClearAllPreviews).toHaveBeenCalledWith('add-node')
-        expect(mockSyncFromGraphData).toHaveBeenCalledWith(
-            useGraphStore().graphView,
-        )
+        expect(mockSyncFromGraphData).toHaveBeenCalledWith(useGraphStore().graphView)
         expect(handler.draftNode).toBeNull()
         expect(handler.isActive).toBe(false)
     })

@@ -29,11 +29,7 @@
 
 import type { NodeId, NodePosition, NodeData } from '../../types/graph_data'
 import type { NodeRadiusMap } from '../../types/infrastructure_types'
-import type {
-    ComposeIssue,
-    ComposeResult,
-    DraftPosition,
-} from '../../types/compose_types'
+import type { ComposeIssue, ComposeResult, DraftPosition } from '../../types/compose_types'
 import { positionOnCircle, snapOrbit } from '../../infrastructure/placement'
 import { hasCollisionAt } from '../../infrastructure/collision'
 
@@ -66,16 +62,10 @@ export function adjustDistance(params: {
     allNodes: NodeData[]
     nodeRadiusOverrides: NodeRadiusMap
 }): ComposeResult<DraftPosition> {
-    const { nodeId, center, distance, angle, allNodes, nodeRadiusOverrides } =
-        params
+    const { nodeId, center, distance, angle, allNodes, nodeRadiusOverrides } = params
 
     const position = positionOnCircle(center, distance, angle)
-    const blocked = hasCollisionAt(
-        nodeId,
-        position,
-        allNodes,
-        nodeRadiusOverrides,
-    )
+    const blocked = hasCollisionAt(nodeId, position, allNodes, nodeRadiusOverrides)
 
     const draft: DraftPosition = { nodeId, position }
 
@@ -143,23 +133,10 @@ export function adjustOrbit(params: {
     allNodes: NodeData[]
     nodeRadiusOverrides: NodeRadiusMap
 }): ComposeResult<DraftOrbitPosition> {
-    const {
-        nodeId,
-        center,
-        cursor,
-        D0,
-        tierCount,
-        allNodes,
-        nodeRadiusOverrides,
-    } = params
+    const { nodeId, center, cursor, D0, tierCount, allNodes, nodeRadiusOverrides } = params
 
     const snapped = snapOrbit(center, cursor, D0, tierCount)
-    const blocked = hasCollisionAt(
-        nodeId,
-        snapped.position,
-        allNodes,
-        nodeRadiusOverrides,
-    )
+    const blocked = hasCollisionAt(nodeId, snapped.position, allNodes, nodeRadiusOverrides)
 
     const draft: DraftOrbitPosition = {
         nodeId,

@@ -88,9 +88,7 @@ describe('searchNodes', () => {
             edges: [],
         })
         const { graphIds, lookupGraph } = makeLookup([g1, g2])
-        expect(
-            searchNodes('apple', graphIds, lookupGraph, 's1' as GraphId),
-        ).toHaveLength(1)
+        expect(searchNodes('apple', graphIds, lookupGraph, 's1' as GraphId)).toHaveLength(1)
         expect(searchNodes('apple', graphIds, lookupGraph)).toHaveLength(2)
     })
 })

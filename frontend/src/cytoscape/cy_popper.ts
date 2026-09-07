@@ -70,11 +70,7 @@ export function registerPopperExtension(): void {
  *                  不注入默认 middleware——flip/shift 会把浮窗翻到左侧，违背"永远在右侧"）
  * @returns 可重算的定位句柄 { update }
  */
-export function popperFactory(
-    ref: PopperRef,
-    content: HTMLElement,
-    options?: PopperAnchorOptions,
-): { update(): void } {
+export function popperFactory(ref: PopperRef, content: HTMLElement, options?: PopperAnchorOptions): { update(): void } {
     const update = (): void => {
         // computePosition 为异步：坐标就绪后写 left/top（position 由调用方 CSS 提供）。
         // floating-ui 默认 placement 是 'bottom'——必须显式缺省 'right' 满足"目标右侧"验收契约；

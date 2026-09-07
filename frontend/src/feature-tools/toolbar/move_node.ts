@@ -47,14 +47,8 @@ import type { ToolId, ToolHandler, ToolNotification } from '../types'
 export function useMoveNodeTool(): ToolHandler {
     const graphStore = useGraphStore()
     const operations = useGraphOperation()
-    const {
-        syncFromGraphData,
-        getNodePosition,
-        addNodeClass,
-        removeNodeClass,
-        clearAllPreviews,
-        trackCursor,
-    } = useRenderer()
+    const { syncFromGraphData, getNodePosition, addNodeClass, removeNodeClass, clearAllPreviews, trackCursor } =
+        useRenderer()
     const id: ToolId = 'move'
 
     // ── 命令式变量 ──
@@ -200,11 +194,7 @@ export function useMoveNodeTool(): ToolHandler {
     function applyPreviewMove(pos: NodePosition): void {
         if (!graphStore.graphView || pickedNodeId === null) return
 
-        const { previewGraph, collides } = previewMoveNode(
-            graphStore.graphView,
-            pickedNodeId as NodeId,
-            pos,
-        )
+        const { previewGraph, collides } = previewMoveNode(graphStore.graphView, pickedNodeId as NodeId, pos)
 
         // 整图切换到预览图——sync 清空 class，以下 class 必须在 sync 后重施
         syncFromGraphData(previewGraph)
@@ -268,9 +258,7 @@ export function useMoveNodeTool(): ToolHandler {
             nodeId: pickedNodeId as NodeId,
             desiredPosition,
             allNodes: graphStore.graphView.nodes,
-            nodeRadiusOverrides: computeNodeRadiusOverrides(
-                graphStore.graphView,
-            ),
+            nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.graphView),
         })
 
         // 有碰撞 → 拒绝放置

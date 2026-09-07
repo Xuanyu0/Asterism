@@ -1,16 +1,7 @@
 <template>
     <Transition name="slide-up">
-        <div
-            v-if="visible"
-            class="notification-panel"
-            v-bind:class="accentClass"
-        >
-            <button
-                v-if="closable"
-                type="button"
-                class="notification-panel-close"
-                v-on:click.stop="emit('close')"
-            >
+        <div v-if="visible" class="notification-panel" v-bind:class="accentClass">
+            <button v-if="closable" type="button" class="notification-panel-close" v-on:click.stop="emit('close')">
                 ×
             </button>
 

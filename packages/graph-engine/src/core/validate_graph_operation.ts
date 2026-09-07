@@ -26,10 +26,7 @@ import type { ValidationIssue, ValidationResult } from '../types/validation'
  * @param op - 待校验的图级操作
  * @returns 校验结果（valid + issues）。
  */
-export function validateGraphOperation(
-    registry: GraphRegistry,
-    op: AtomicGraphOperation,
-): ValidationResult {
+export function validateGraphOperation(registry: GraphRegistry, op: AtomicGraphOperation): ValidationResult {
     const issues: ValidationIssue[] = []
 
     if (op.type === 'add_graph') {

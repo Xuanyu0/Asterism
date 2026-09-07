@@ -224,10 +224,7 @@ interface RendererAPI {
      *     getter — 返回需要高亮的元素 ID
      *     className — 要施加/移除的 class 名
      */
-    bindHighlight(
-        getter: () => string | null | undefined,
-        className: string,
-    ): void
+    bindHighlight(getter: () => string | null | undefined, className: string): void
 
     /**
      * 将 DOM 元素锚定到指定 Cytoscape 元素（节点/边），跟随目标位移与画布平移缩放。
@@ -243,11 +240,7 @@ interface RendererAPI {
      * @param options - 透传给 floating-ui 的选项（placement / strategy / middleware）
      * @returns 可重算的锚定句柄 { update, destroy }
      */
-    attachPopper(
-        elementId: string,
-        contentEl: HTMLElement,
-        options?: PopperAnchorOptions,
-    ): PopperAnchorHandle
+    attachPopper(elementId: string, contentEl: HTMLElement, options?: PopperAnchorOptions): PopperAnchorHandle
 }
 
 /**
@@ -266,9 +259,7 @@ interface RendererAPI {
  *     containerRef — 可选。首次调用时必须传入 Vue 模板中 cy 容器的 ref。
  *                    后续调用（无参）返回已创建的单例。
  */
-export function useRenderer(
-    containerRef?: Ref<HTMLElement | null>,
-): RendererAPI {
+export function useRenderer(containerRef?: Ref<HTMLElement | null>): RendererAPI {
     if (singleton) {
         return singleton
     }
@@ -424,11 +415,7 @@ export function useRenderer(
         )
     }
 
-    function addNodeClass(
-        nodeId: string,
-        className: string,
-        owner: string,
-    ): void {
+    function addNodeClass(nodeId: string, className: string, owner: string): void {
         if (!cy) {
             return
         }
@@ -457,11 +444,7 @@ export function useRenderer(
         classSet.add(className)
     }
 
-    function removeNodeClass(
-        nodeId: string,
-        className: string,
-        owner: string,
-    ): void {
+    function removeNodeClass(nodeId: string, className: string, owner: string): void {
         if (!cy) {
             return
         }
@@ -526,12 +509,8 @@ export function useRenderer(
         const handler = (event: MouseEvent) => {
             const rect = container.getBoundingClientRect()
             const modelPos = {
-                x:
-                    (event.clientX - rect.left - currentCy.pan().x) /
-                    currentCy.zoom(),
-                y:
-                    (event.clientY - rect.top - currentCy.pan().y) /
-                    currentCy.zoom(),
+                x: (event.clientX - rect.left - currentCy.pan().x) / currentCy.zoom(),
+                y: (event.clientY - rect.top - currentCy.pan().y) / currentCy.zoom(),
             }
             callback(modelPos)
         }
@@ -545,10 +524,7 @@ export function useRenderer(
         }
     }
 
-    function bindHighlight(
-        getter: () => string | null | undefined,
-        className: string,
-    ): void {
+    function bindHighlight(getter: () => string | null | undefined, className: string): void {
         watch(getter, (id, prevId) => {
             if (!cy) {
                 return

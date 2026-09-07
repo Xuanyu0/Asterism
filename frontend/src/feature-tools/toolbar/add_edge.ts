@@ -20,10 +20,7 @@ import type { GraphData, NodeId } from '@my-project/graph-engine'
 
 import type { ToolId, ToolHandler, ToolNotification } from '../types'
 
-export function useAddEdgeTool(
-    kind: 'real' | 'virtual',
-    direction: 'directed' | 'undirected',
-): ToolHandler {
+export function useAddEdgeTool(kind: 'real' | 'virtual', direction: 'directed' | 'undirected'): ToolHandler {
     const graphStore = useGraphStore()
     const operations = useGraphOperation()
     const { syncFromGraphData, addNodeClass, clearAllPreviews } = useRenderer()
@@ -88,22 +85,16 @@ export function useAddEdgeTool(
         if (nodeId === sourceNodeId.value) return
         if (!graphStore.graphView) return
 
-        const { previewGraph, valid, sourceCollides, targetCollides } =
-            previewAddEdge(graphStore.graphView, {
-                sourceId: sourceNodeId.value,
-                targetId: nodeId as NodeId,
-                kind,
-                direction,
-            })
+        const { previewGraph, valid, sourceCollides, targetCollides } = previewAddEdge(graphStore.graphView, {
+            sourceId: sourceNodeId.value,
+            targetId: nodeId as NodeId,
+            kind,
+            direction,
+        })
 
         if (valid === false) return
 
-        applyHoverPreview(
-            previewGraph,
-            nodeId as NodeId,
-            sourceCollides,
-            targetCollides,
-        )
+        applyHoverPreview(previewGraph, nodeId as NodeId, sourceCollides, targetCollides)
     }
 
     /**
@@ -157,15 +148,12 @@ export function useAddEdgeTool(
         }
 
         // 用预览层进行碰撞校验
-        const { valid, sourceCollides, targetCollides } = previewAddEdge(
-            graphStore.graphView,
-            {
-                sourceId: sourceNodeId.value,
-                targetId: nodeId as NodeId,
-                kind,
-                direction,
-            },
-        )
+        const { valid, sourceCollides, targetCollides } = previewAddEdge(graphStore.graphView, {
+            sourceId: sourceNodeId.value,
+            targetId: nodeId as NodeId,
+            kind,
+            direction,
+        })
         if (valid === false || sourceCollides || targetCollides) {
             return
         }
