@@ -5,13 +5,13 @@
  *     定义引擎层原子操作的类型。引擎最小不可分修改单位。
  *
  * 总体结构：
- *     1. 11 种原子操作 interface
+ *     1. 12 种原子操作 interface
  *     2. AtomicOperationInGraph：图内 9 种联合
- *     3. AtomicGraphOperation：图级 2 种联合
+ *     3. AtomicGraphOperation：图级 3 种联合
  *
  * 规则：
- *     - 图内原子操作由 execute_operation.ts / validate_operation_in_graph.ts / reversal.ts / replay.ts 处理
- *     - 图级原子操作（add_graph / delete_graph）由 apply_batches.ts 兑现
+ *     - 图内原子操作由 execute_operation_in_graph.ts / validate_operation_in_graph.ts / create_reversal_in_graph.ts / replay.ts 处理
+ *     - 图级原子操作（add_graph / delete_graph / update_graph）由 apply_batches.ts 兑现
  *     - 认知操作（explore / unearth / deconstruct / induce / internalize）不属于此层
  *     - CognitiveView 合并进原子层（collapse_dependency / expand_dependency 直接修改 cognitiveState）
  *
@@ -92,6 +92,15 @@ export interface DeleteGraphOperation {
     graph: GraphData
 }
 
+export interface UpdateGraphOperation {
+    type: 'update_graph'
+    /**
+     * 携带更新后的完整图对象（update_node 式全量替换，非字段级增量）。
+     * 不新增空值 / 唯一性等业务校验（由前端用例层承担）。
+     */
+    graph: GraphData
+}
+
 /** 图内原子操作：单图变换，由 executeOperation 执行。 */
 export type AtomicOperationInGraph =
     | AddNodeOperation
@@ -104,8 +113,8 @@ export type AtomicOperationInGraph =
     | CollapseDependencyOperation
     | ExpandDependencyOperation
 
-/** 图级原子操作：多图注册表层面的建图 / 删图，由 applyBatches 兑现。 */
-export type AtomicGraphOperation = AddGraphOperation | DeleteGraphOperation
+/** 图级原子操作：多图注册表层面的建图 / 删图 / 整图更新，由 applyBatches 兑现。 */
+export type AtomicGraphOperation = AddGraphOperation | DeleteGraphOperation | UpdateGraphOperation
 
 /** 向后兼容别名。前端 / 操作日志沿用此名称。 */
 export type GraphOperation = AtomicOperationInGraph | AtomicGraphOperation

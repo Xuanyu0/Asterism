@@ -7,8 +7,8 @@
  */
 
 import type { GraphData, GraphId, NodeId } from '../../src/types/graph_data'
-import { executeOperation } from '../../src/core/execute_operation'
-import { createReversal } from '../../src/core/reversal'
+import { executeOperation } from '../../src/core/execute_operation_in_graph'
+import { createReversalInGraph } from '../../src/core/create_reversal_in_graph'
 import { createNode, assembleGraph } from '../test_case_factory'
 
 const G = 'test-ts' as GraphId
@@ -95,7 +95,7 @@ describe('逆元默认恢复历史时间戳（无模式标记）', () => {
             type: 'update_node' as const,
             node: { ...nodeData, label: 'changed' },
         }
-        const reversals = createReversal(graph, forwardOp)
+        const reversals = createReversalInGraph(graph, forwardOp)
         const after = executeOperation(graph, forwardOp, EXECUTED_AT)
 
         // 正向：构造不携带 → executedAt
@@ -119,7 +119,7 @@ describe('逆元默认恢复历史时间戳（无模式标记）', () => {
             type: 'delete_node' as const,
             nodeId: 'n0' as NodeId,
         }
-        const reversals = createReversal(graph, forwardOp)
+        const reversals = createReversalInGraph(graph, forwardOp)
         const after = executeOperation(graph, forwardOp, EXECUTED_AT)
         expect(after.nodes.length).toBe(0)
 

@@ -7,8 +7,8 @@
 
 import type { GraphData, EdgeId, GraphId, NodeId } from '../../src/types/graph_data'
 import type { AddEdgeOperation, AddNodeOperation } from '../../src/types/atomic_operations'
-import { createReversal } from '../../src/core/reversal'
-import { executeOperation } from '../../src/core/execute_operation'
+import { createReversalInGraph } from '../../src/core/create_reversal_in_graph'
+import { executeOperation } from '../../src/core/execute_operation_in_graph'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
 
 const G = 'test-rev' as GraphId
@@ -37,7 +37,7 @@ function makeGraph(nodes = 2, edges = 0): GraphData {
 
 // 回放逆操作后状态应与操作前一致
 function assertReversalRoundTrip(graph: GraphData, op: Parameters<typeof executeOperation>[1]): void {
-    const reversals = createReversal(graph, op)
+    const reversals = createReversalInGraph(graph, op)
     const after = executeOperation(graph, op, TEST_NOW)
     let reverted = after
     for (const rev of reversals) {
@@ -81,7 +81,7 @@ describe('createReversal delete_node', () => {
     test('逆操作重建节点和直接边', () => {
         const graph = makeGraph(3, 2) // n0→n1→n2
         const op = { type: 'delete_node' as const, nodeId: 'n1' as NodeId }
-        const revs = createReversal(graph, op)
+        const revs = createReversalInGraph(graph, op)
         expect(revs.length).toBeGreaterThan(0)
         assertReversalRoundTrip(graph, op)
     })
@@ -122,7 +122,7 @@ describe('createReversal delete_node', () => {
             ],
         })
         const op = { type: 'delete_node' as const, nodeId: 'n1' as NodeId }
-        const revs = createReversal(graph, op)
+        const revs = createReversalInGraph(graph, op)
 
         // 恢复顺序：先节点（被删节点 + 级联引用节点）后边
         expect(revs.map((r) => r.type)).toEqual(['add_node', 'add_node', 'add_edge', 'add_edge'])
@@ -200,7 +200,7 @@ describe('createReversal expand_dependency', () => {
             type: 'expand_dependency' as const,
             targetNodeId: 'n0' as NodeId,
         }
-        const revs = createReversal(graph, op)
+        const revs = createReversalInGraph(graph, op)
 
         expect(revs).toEqual([
             {
@@ -292,7 +292,7 @@ describe('createReversal 目标缺失显式化', () => {
             type: 'delete_node' as const,
             nodeId: 'n-missing' as NodeId,
         }
-        expect(() => createReversal(graph, op)).toThrow(/delete_node/)
+        expect(() => createReversalInGraph(graph, op)).toThrow(/delete_node/)
     })
 
     test('delete_edge 目标边缺失时抛异常', () => {
@@ -301,7 +301,7 @@ describe('createReversal 目标缺失显式化', () => {
             type: 'delete_edge' as const,
             edgeId: 'e-missing' as EdgeId,
         }
-        expect(() => createReversal(graph, op)).toThrow(/delete_edge/)
+        expect(() => createReversalInGraph(graph, op)).toThrow(/delete_edge/)
     })
 
     test('update_node 目标节点缺失时抛异常', () => {
@@ -310,7 +310,7 @@ describe('createReversal 目标缺失显式化', () => {
             type: 'update_node' as const,
             node: createNode({ id: 'n-missing' as NodeId, graphId: G }),
         }
-        expect(() => createReversal(graph, op)).toThrow(/update_node/)
+        expect(() => createReversalInGraph(graph, op)).toThrow(/update_node/)
     })
 
     test('update_edge 目标边缺失时抛异常', () => {
@@ -326,7 +326,7 @@ describe('createReversal 目标缺失显式化', () => {
                 direction: 'directed',
             }),
         }
-        expect(() => createReversal(graph, op)).toThrow(/update_edge/)
+        expect(() => createReversalInGraph(graph, op)).toThrow(/update_edge/)
     })
 
     test('move_node 目标节点缺失时抛异常', () => {
@@ -336,7 +336,7 @@ describe('createReversal 目标缺失显式化', () => {
             nodeId: 'n-missing' as NodeId,
             position: { x: 1, y: 2 },
         }
-        expect(() => createReversal(graph, op)).toThrow(/move_node/)
+        expect(() => createReversalInGraph(graph, op)).toThrow(/move_node/)
     })
 
     test('move_node 节点无 position 字段时抛异常', () => {
@@ -346,7 +346,7 @@ describe('createReversal 目标缺失显式化', () => {
             nodeId: 'n0' as NodeId,
             position: { x: 1, y: 2 },
         }
-        expect(() => createReversal(graph, op)).toThrow(/move_node/)
+        expect(() => createReversalInGraph(graph, op)).toThrow(/move_node/)
     })
 
     test('expand_dependency 目标折叠条目缺失时抛异常', () => {
@@ -355,6 +355,6 @@ describe('createReversal 目标缺失显式化', () => {
             type: 'expand_dependency' as const,
             targetNodeId: 'n0' as NodeId,
         }
-        expect(() => createReversal(graph, op)).toThrow(/expand_dependency/)
+        expect(() => createReversalInGraph(graph, op)).toThrow(/expand_dependency/)
     })
 })

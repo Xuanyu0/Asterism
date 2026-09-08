@@ -37,7 +37,7 @@ import { findReferenceNodesPointingTo } from './utils/traversal'
  * @param operation - 待反转的图内原子操作
  * @returns 逆操作序列。
  */
-export function createReversal(graph: GraphData, operation: AtomicOperationInGraph): AtomicOperationInGraph[] {
+export function createReversalInGraph(graph: GraphData, operation: AtomicOperationInGraph): AtomicOperationInGraph[] {
     switch (operation.type) {
         case 'add_node':
             return createReversalForAddNode(operation)

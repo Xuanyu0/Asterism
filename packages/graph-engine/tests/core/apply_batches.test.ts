@@ -345,6 +345,297 @@ describe('applyBatches 图级逆元（路由逆元构造函数）', () => {
     })
 })
 
+// ═══════════ update_graph：整图替换（路由兑现 + 逆元 + 批级契约） ═══════════
+
+describe('applyBatches update_graph（整图替换）', () => {
+    const OTHER_NOW = '2026-03-03T03:03:03.000Z'
+    const REPLAY_NOW = '2026-04-04T04:04:04.000Z'
+
+    function renamedGraph(graph: GraphData, title: string): GraphData {
+        return { ...graph, title }
+    }
+
+    test('路由函数：未携带时间戳时 createdAt / updatedAt 兜底 executedAt，title 替换', () => {
+        const parent = makeParentGraph()
+        const child = makeEmptyChildGraph()
+        const registry = makeRegistry(parent, child)
+
+        // 去掉时间戳：模拟正向操作构造（未携带 createdAt / updatedAt）
+        const { createdAt, updatedAt, ...noStamp } = renamedGraph(parent, '新标题')
+        const opGraph: GraphData = noStamp
+
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'update_graph', graph: opGraph }],
+                },
+            ],
+            { executedAt: OTHER_NOW },
+        )
+
+        expect(result.validation.valid).toBe(true)
+        const updated = result.registry.get(G)!
+        expect(updated.title).toBe('新标题')
+        expect(updated.createdAt).toBe(OTHER_NOW) // 未携带 → executedAt
+        expect(updated.updatedAt).toBe(OTHER_NOW) // 未携带 → executedAt
+        expect(updated).not.toBe(parent)
+        // 未命中的其他图引用复用（不深拷贝）
+        expect(result.registry.get(CHILD)).toBe(child)
+    })
+
+    test('路由函数：携带时间戳时 createdAt / updatedAt 保留原值', () => {
+        const parent = makeParentGraph() // createdAt = updatedAt = TEST_NOW
+        const registry = makeRegistry(parent)
+
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'update_graph', graph: renamedGraph(parent, '新标题') }],
+                },
+            ],
+            { executedAt: OTHER_NOW },
+        )
+
+        expect(result.validation.valid).toBe(true)
+        const updated = result.registry.get(G)!
+        expect(updated.title).toBe('新标题')
+        expect(updated.createdAt).toBe(parent.createdAt) // 携带 → 保留原值
+        expect(updated.updatedAt).toBe(parent.updatedAt) // 携带 → 保留原值（不刷成 executedAt）
+    })
+
+    test('update_graph 目标图不存在：校验失败整批丢弃，注册表不变', () => {
+        const parent = makeParentGraph()
+        const registry = makeRegistry() // 空注册表
+
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'update_graph', graph: renamedGraph(parent, '新标题') }],
+                },
+            ],
+            { executedAt: OTHER_NOW },
+        )
+
+        expect(result.validation.valid).toBe(false)
+        expect(result.registry).toBe(registry) // 原样返回
+        expect(result.validation.issues[0]?.code).toBe('UPDATE_GRAPH_NOT_FOUND')
+    })
+
+    test('逆元携带操作前旧图（旧 title + 旧 updatedAt）；回放逆元批后 title 回退且 updatedAt 恢复旧值', () => {
+        const parent = makeParentGraph()
+        const registry = makeRegistry(parent)
+
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'update_graph', graph: renamedGraph(parent, '新标题') }],
+                },
+            ],
+            { executedAt: OTHER_NOW },
+        )
+
+        const reversal = result.reversalBatches.flatMap((r) => r.operations)
+        expect(reversal).toHaveLength(1)
+        const updateOp = reversal[0] as { type: 'update_graph'; graph: GraphData }
+        expect(updateOp.type).toBe('update_graph')
+        expect(updateOp.graph).toBe(parent) // 操作前旧图引用
+        expect(updateOp.graph.title).toBe('parent') // 旧 title
+        expect(updateOp.graph.updatedAt).toBe(parent.updatedAt) // 旧 updatedAt
+
+        // undo 语义：回放逆元批——title 回退且 updatedAt 恢复旧值（历史时刻），而非回放时刻
+        const undoResult = applyBatches(
+            result.registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'update_graph', graph: updateOp.graph }],
+                },
+            ],
+            { executedAt: REPLAY_NOW },
+        )
+
+        expect(undoResult.validation.valid).toBe(true)
+        const undone = undoResult.registry.get(G)!
+        expect(undone.title).toBe('parent')
+        expect(undone.updatedAt).toBe(parent.updatedAt) // 恢复旧 updatedAt
+        expect(undone.updatedAt).not.toBe(REPLAY_NOW) // 非回放时刻
+    })
+
+    test('update_graph 后同图图内批基于更新后状态执行（latestGraphs 同步）', () => {
+        const parent = makeParentGraph()
+        const registry = makeRegistry(parent)
+
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'update_graph', graph: renamedGraph(parent, '新标题') }],
+                },
+                {
+                    kind: 'inGraph',
+                    graph: parent, // 引用为操作前旧图，应被 latestGraphs 覆盖
+                    operations: [addNodeOp('n2', G)],
+                },
+            ],
+            { executedAt: OTHER_NOW },
+        )
+
+        expect(result.validation.valid).toBe(true)
+        const updated = result.registry.get(G)!
+        expect(updated.title).toBe('新标题') // 后续批基于更新后数据，title 未被旧引用覆盖
+        expect(updated.nodes).toHaveLength(3)
+    })
+
+    test('inGraph 批混入 update_graph：批级契约校验失败整批丢弃', () => {
+        const parent = makeParentGraph()
+        const registry = makeRegistry(parent)
+
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'inGraph',
+                    graph: parent,
+                    operations: [
+                        addNodeOp('n2', G),
+                        {
+                            type: 'update_graph',
+                            graph: renamedGraph(parent, '新标题'),
+                        } as unknown as AtomicOperationInGraph,
+                    ],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
+
+        expect(result.validation.valid).toBe(false)
+        expect(result.registry).toBe(registry)
+        expect(result.validation.issues[0]?.code).toBe('BATCH_KIND_MISMATCH')
+    })
+
+    test('graphLevel 批含 update_graph 混入图内操作：批级契约校验失败整批丢弃', () => {
+        const parent = makeParentGraph()
+        const registry = makeRegistry(parent)
+
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [
+                        { type: 'update_graph', graph: renamedGraph(parent, '新标题') },
+                        addNodeOp('n2', G) as unknown as AtomicGraphOperation,
+                    ],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
+
+        expect(result.validation.valid).toBe(false)
+        expect(result.registry).toBe(registry)
+        expect(result.validation.issues[0]?.code).toBe('BATCH_KIND_MISMATCH')
+    })
+})
+
+// ═══════════ update_graph title 校验（EMPTY_TITLE / TITLE_DUPLICATE 整批丢弃） ═══════════
+
+describe('applyBatches update_graph title 校验', () => {
+    test('title trim 后为空：EMPTY_TITLE，整批丢弃、注册表不变', () => {
+        const parent = makeParentGraph()
+        const registry = makeRegistry(parent)
+
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'update_graph', graph: { ...parent, title: '   ' } }],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
+
+        expect(result.validation.valid).toBe(false)
+        expect(result.registry).toBe(registry)
+        expect(result.validation.issues[0]?.code).toBe('EMPTY_TITLE')
+    })
+
+    test('root 图与另一 root 图同名：TITLE_DUPLICATE，整批丢弃、注册表不变', () => {
+        const parent = makeParentGraph() // root，title 'parent'
+        const peerRoot = assembleGraph({
+            id: 'root-peer' as GraphId,
+            kind: 'root',
+            title: '新标题',
+            nodes: [],
+            edges: [],
+        })
+        const registry = makeRegistry(parent, peerRoot)
+
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'update_graph', graph: { ...parent, title: '新标题' } }],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
+
+        expect(result.validation.valid).toBe(false)
+        expect(result.registry).toBe(registry)
+        expect(result.validation.issues[0]?.code).toBe('TITLE_DUPLICATE')
+    })
+
+    test('子图改为与 root 同名：不拦截（子图不做唯一性校验）', () => {
+        const parent = makeParentGraph() // root，title 'parent'
+        const child = makeEmptyChildGraph() // 子图，title 'child'
+        const registry = makeRegistry(parent, child)
+
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'update_graph', graph: { ...child, title: 'parent' } }],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
+
+        expect(result.validation.valid).toBe(true)
+        expect(result.registry.get(CHILD)!.title).toBe('parent')
+    })
+
+    test('改回自身当前 title：不报重名（排除自身 id）', () => {
+        const parent = makeParentGraph() // root，title 'parent'
+        const registry = makeRegistry(parent)
+
+        const result = applyBatches(
+            registry,
+            [
+                {
+                    kind: 'graphLevel',
+                    operations: [{ type: 'update_graph', graph: { ...parent, title: 'parent' } }],
+                },
+            ],
+            { executedAt: TEST_NOW },
+        )
+
+        expect(result.validation.valid).toBe(true)
+        expect(result.registry.get(G)!.title).toBe('parent')
+    })
+})
+
 // ═══════════ 事务性与纯函数 ═══════════
 
 describe('applyBatches 事务性与纯函数', () => {

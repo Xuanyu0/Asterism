@@ -7,7 +7,7 @@
  */
 
 import type { GraphData, GraphId, NodeId } from '../../src/types/graph_data'
-import { executeOperation } from '../../src/core/execute_operation'
+import { executeOperation } from '../../src/core/execute_operation_in_graph'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
 
 const G = 'test-exec' as GraphId

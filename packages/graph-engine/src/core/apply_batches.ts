@@ -11,18 +11,21 @@
  *
  * 逆元构造：
  * - 图内：经 createReversal（执行前捕获操作前状态）
- * - 图级：经路由逆元构造函数（add ↔ delete 互逆，签名统一为操作图数据 { type, graph }）
+ * - 图级：经 createGraphReversal（执行前捕获操作前注册表状态）——
+ *   add ↔ delete 互逆；update 以同型操作携带旧图全量；签名统一为操作图数据 { type, graph }
  *
  * 事务性：任一操作校验失败整批丢弃，注册表不变。
  */
 
 import type { GraphData, GraphId, GraphRegistry } from '../types/graph_data'
-import type { AtomicGraphOperation, GraphOperation } from '../types/atomic_operations'
+import type { GraphOperation } from '../types/atomic_operations'
 import type { ValidationIssue, ValidationResult } from '../types/validation'
 import type { BatchesLog } from '../types/operation_log'
 import type { OperationBatch } from '../types/compose_types'
 import { applyBatch } from './apply_batch'
-import { createReversal } from './reversal'
+import { createGraphReversal } from './create_graph_reversal'
+import { createReversalInGraph } from './create_reversal_in_graph'
+import { executeGraphOperation } from './execute_graph_operation'
 import { validateGraphOperation } from './validate_graph_operation'
 
 /**
@@ -60,7 +63,7 @@ export interface ApplyBatchesOptions {
  * 逐批遍历，按 kind if-else 直接分派（单循环，融合而非拼接）：
  * - inGraph 批：委托 applyBatch（单图批事务）执行，逆元经 createReversal 构造；
  * - graphLevel 批：经路由函数 executeGraphOperation 兑现（add_graph 注册 /
- *   delete_graph 注销），逆元经路由逆元构造函数 createGraphReversal 构造。
+ *   delete_graph 注销 / update_graph 整图替换），逆元经 createGraphReversal 构造。
  *
  * 事务性：任一操作校验失败整批丢弃，返回入参注册表（不变）。
  *
@@ -88,50 +91,23 @@ export function applyBatches(
     const reversalItems: BatchesLog[] = []
 
     for (const batch of batches) {
-        // 批级契约校验：批内操作类型必须与批的 kind 一致（图级独立成批由执行前校验强制）。
-        // 判别联合类型已收窄 operations，此处经 as GraphOperation 检查运行时实际类型
-        // （防御 as 断言绕过 / 构造方错误）。
+        // 批级契约校验：批内操作类型必须与批的 kind 一致（判别联合已收窄 operations，
+        // 此处经 as GraphOperation 检查运行时实际类型，防御 as 断言绕过 / 构造方错误）
         const hasKindMismatch =
             batch.kind === 'inGraph'
-                ? batch.operations.some(
-                      (op) =>
-                          (op as GraphOperation).type === 'add_graph' || (op as GraphOperation).type === 'delete_graph',
-                  )
-                : batch.operations.some(
-                      (op) =>
-                          (op as GraphOperation).type !== 'add_graph' && (op as GraphOperation).type !== 'delete_graph',
-                  )
+                ? batch.operations.some((op) => isGraphLevelType(op as GraphOperation))
+                : batch.operations.some((op) => !isGraphLevelType(op as GraphOperation))
         if (hasKindMismatch) {
-            return aborted(registry, {
-                valid: false,
-                issues: [
-                    {
-                        severity: 'error',
-                        code: 'BATCH_KIND_MISMATCH',
-                        message: `批次 kind 与操作类型不一致：${batch.kind} 批包含 ${
-                            batch.kind === 'inGraph' ? '图级操作' : '图内操作'
-                        }`,
-                        targetType: 'graph',
-                        targetId: batch.kind === 'inGraph' ? batch.graph.id : (batch.operations[0]?.graph.id ?? ''),
-                    },
-                ],
-            })
+            return aborted(registry, { valid: false, issues: [buildKindMismatchIssue(batch)] })
         }
 
         if (batch.kind === 'inGraph') {
+            // 图内批
             // 图内批操作对象（图）必须存在：防止操作构造方对不存在的图操作被隐式创建
             if (!newRegistry.has(batch.graph.id)) {
                 return aborted(registry, {
                     valid: false,
-                    issues: [
-                        {
-                            severity: 'error',
-                            code: 'BATCH_GRAPH_NOT_FOUND',
-                            message: `图内批操作的目标图不存在：${batch.graph.id}`,
-                            targetType: 'graph',
-                            targetId: batch.graph.id,
-                        },
-                    ],
+                    issues: [buildBatchGraphNotFoundIssue(batch.graph.id)],
                 })
             }
 
@@ -146,7 +122,7 @@ export function applyBatches(
                     recordLog === false
                         ? undefined // undo/redo 执行时不收集逆元（日志已有）
                         : (op, graphBeforeOp) => {
-                              perOpReversals.push(createReversal(graphBeforeOp, op))
+                              perOpReversals.push(createReversalInGraph(graphBeforeOp, op))
                           },
             })
 
@@ -167,7 +143,8 @@ export function applyBatches(
                 })
             }
         } else {
-            // 图级批：for 循环内边校验边执行（逐 op：validateGraphOperation → executeGraphOperation）
+            // 图级批：for 循环内逐 op 校验 → 构造逆元 → 兑现
+            // （逆元须在兑现前构造：此时注册表仍是操作前状态）
             for (const op of batch.operations) {
                 // 图级操作局部规则校验（validate_graph_operation 单 op）
                 const validation = validateGraphOperation(newRegistry, op)
@@ -176,23 +153,23 @@ export function applyBatches(
                     return aborted(registry, validation)
                 }
 
-                // 纯函数：输入注册表 + 操作 → 输出新注册表（引用替换）
-                newRegistry = executeGraphOperation(newRegistry, op, executedAt)
-
-                if (op.type === 'add_graph') {
-                    // 记录补写时间戳后的注册图：后续图内填充批基于它执行，
-                    // 否则会用原始无时间戳骨架作输入，覆盖掉刚补写的 createdAt
-                    latestGraphs.set(op.graph.id, newRegistry.get(op.graph.id)!)
-                }
-
                 if (recordLog) {
-                    const reversal = createGraphReversal(op)
+                    // 执行前构造逆元：update_graph 需要操作前旧图全量（执行后即被替换丢失）
+                    const reversal = createGraphReversal(newRegistry, op)
                     if (reversal.length > 0) {
                         reversalItems.push({
                             graphId: op.graph.id,
                             operations: reversal,
                         })
                     }
+                }
+
+                // 纯函数：输入注册表 + 操作 → 输出新注册表（引用替换）
+                newRegistry = executeGraphOperation(newRegistry, op, executedAt)
+
+                if (op.type === 'add_graph' || op.type === 'update_graph') {
+                    // 同步操作后的注册图：同图后续 inGraph 批基于它执行（如 add_graph 补写的时间戳 / update_graph 替换的字段）
+                    latestGraphs.set(op.graph.id, newRegistry.get(op.graph.id)!)
                 }
             }
         }
@@ -205,70 +182,16 @@ export function applyBatches(
     }
 }
 
-// ═══════════ 路由函数 ═══════════
+// ═══════════ 批级契约辅助 ═══════════
 
 /**
- * 路由函数：兑现单个图级操作（类 executeOperation 的 switch 分派，纯函数）。
+ * 批级类型判别：操作是否为图级操作。
  *
- * @remarks
- * 输入注册表 + 图级操作 → 输出新注册表（引用替换，不修改入参）。
- * add_graph 直接注册操作自带的空图——顺序由操作构造方（compose）保证：
- * add_graph 批在对应子图填充批之前，注册空图后由后续图内批填充覆盖。
- * add_graph 注册时补写图级时间戳（图骨架未携带时用 executedAt 兜底，与 execute 层
- * resolveObjectTimestamp 的"携带值 ?? executedAt"一致）。
- *
- * @param registry - 操作前的注册表（不修改）
- * @param op - 待兑现的图级操作
- * @param executedAt - 本批次执行的时刻（add_graph 补写图级时间戳的来源）
- * @returns 新注册表（引用替换，未变化图复用引用）
+ * @param op - 跨图内 / 图级联合的操作（运行时经 as 断言检查）
+ * @returns 图级操作（add_graph / delete_graph / update_graph）返回 true。
  */
-function executeGraphOperation(registry: GraphRegistry, op: AtomicGraphOperation, executedAt: string): GraphRegistry {
-    switch (op.type) {
-        case 'add_graph': {
-            // add_graph 只注册空图：顺序由操作构造方保证（add_graph 批在填充批之前）
-            const next = new Map(registry)
-            // 图骨架未携带时间戳时补写 executedAt（已携带则尊重并复用原引用）
-            const graph =
-                op.graph.createdAt === undefined || op.graph.updatedAt === undefined
-                    ? {
-                          ...op.graph,
-                          createdAt: op.graph.createdAt ?? executedAt,
-                          updatedAt: op.graph.updatedAt ?? executedAt,
-                      }
-                    : op.graph
-            next.set(op.graph.id, graph)
-            return next
-        }
-        case 'delete_graph': {
-            const next = new Map(registry)
-            next.delete(op.graph.id)
-            return next
-        }
-    }
-}
-
-// ═══════════ 路由逆元构造函数 ═══════════
-
-/**
- * 路由逆元构造函数：构造单个图级操作的逆元（类 createReversal 的 switch 分派）。
- *
- * @remarks
- * add_graph ↔ delete_graph 互逆，签名统一为操作图数据（{ type, graph }）：
- * - add_graph 逆元 = delete_graph（携带 op.graph 空图骨架）
- * - delete_graph 逆元 = add_graph（op.graph 即被删空图骨架，内容由 redo 图内操作重放重建）
- *
- * @param op - 图级操作
- * @returns 逆元操作序列
- */
-function createGraphReversal(op: AtomicGraphOperation): GraphOperation[] {
-    switch (op.type) {
-        case 'add_graph':
-            // add_graph 逆元 = delete_graph（携带图数据，签名统一）
-            return [{ type: 'delete_graph', graph: op.graph }]
-        case 'delete_graph':
-            // delete_graph 逆元 = add_graph（op.graph 即被删空图骨架）
-            return [{ type: 'add_graph', graph: op.graph }]
-    }
+function isGraphLevelType(op: GraphOperation): boolean {
+    return op.type === 'add_graph' || op.type === 'delete_graph' || op.type === 'update_graph'
 }
 
 /**
@@ -283,5 +206,41 @@ function aborted(registry: GraphRegistry, validation: ValidationResult): ApplyBa
         registry,
         validation,
         reversalBatches: [],
+    }
+}
+
+// ═══════════ 错误消息构造 ═══════════
+
+/**
+ * 批级契约不一致的校验 issue 构造：批内操作类型与批的 kind 不匹配。
+ *
+ * @param batch - kind 与操作类型不一致的批次
+ * @returns BATCH_KIND_MISMATCH 错误 issue
+ */
+function buildKindMismatchIssue(batch: OperationBatch): ValidationIssue {
+    return {
+        severity: 'error',
+        code: 'BATCH_KIND_MISMATCH',
+        message: `批次 kind 与操作类型不一致：${batch.kind} 批包含 ${
+            batch.kind === 'inGraph' ? '图级操作' : '图内操作'
+        }`,
+        targetType: 'graph',
+        targetId: batch.kind === 'inGraph' ? batch.graph.id : (batch.operations[0]?.graph.id ?? ''),
+    }
+}
+
+/**
+ * 图内批目标图不存在的校验 issue 构造。
+ *
+ * @param graphId - 目标图 ID
+ * @returns BATCH_GRAPH_NOT_FOUND 错误 issue
+ */
+function buildBatchGraphNotFoundIssue(graphId: GraphId): ValidationIssue {
+    return {
+        severity: 'error',
+        code: 'BATCH_GRAPH_NOT_FOUND',
+        message: `图内批操作的目标图不存在：${graphId}`,
+        targetType: 'graph',
+        targetId: graphId,
     }
 }

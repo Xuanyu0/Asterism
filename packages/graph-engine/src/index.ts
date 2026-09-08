@@ -72,6 +72,7 @@ export type {
     ExpandDependencyOperation,
     AddGraphOperation,
     DeleteGraphOperation,
+    UpdateGraphOperation,
     AtomicOperationInGraph,
     AtomicGraphOperation,
     GraphOperation,
@@ -138,8 +139,8 @@ export type { BatchOptions, PerOpResult, BatchResult } from './core/apply_batch'
 /**
  * 功能：
  *
- *     多图批处理。统一循环处理图内（委托 applyBatch）与图级（add_graph / delete_graph 兑现）
- *     操作，返回新注册表 + 聚合校验 + 逆元序列。
+ *     多图批处理。统一循环处理图内（委托 applyBatch）与图级（add_graph / delete_graph /
+ *     update_graph 兑现）操作，返回新注册表 + 聚合校验 + 逆元序列。
  *
  * 消费者：
  *
@@ -198,7 +199,7 @@ export { replayGraph, replayToStep } from './core/replay'
  *     const reversals = createReversal(graph, operation)
  *     // 执行后追加到 OperationLogTree
  */
-export { createReversal } from './core/reversal'
+export { createReversalInGraph } from './core/create_reversal_in_graph'
 
 // ═══════════════════════════════════════════════════════════════════
 // compose — 编排操作

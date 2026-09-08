@@ -21,7 +21,7 @@ import type { GraphData } from '../types/graph_data'
 import type { AtomicOperationInGraph } from '../types/atomic_operations'
 import type { ValidationResult } from '../types/validation'
 import { validateOperationInGraph } from '../core/validate_operation_in_graph'
-import { executeOperation } from './execute_operation'
+import { executeOperation } from './execute_operation_in_graph'
 import type { GlobalRulesTable } from '../core/validators/global_rules'
 import { DEFAULT_GLOBAL_RULES_TABLE, runGlobalRules } from '../core/validators/global_rules'
 

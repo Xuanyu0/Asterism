@@ -10,7 +10,7 @@
 
 import type { GraphData } from '../types/graph_data'
 import type { AtomicOperationInGraph } from '../types/atomic_operations'
-import { executeOperation } from './execute_operation'
+import { executeOperation } from './execute_operation_in_graph'
 
 /**
  * 从基线 GraphData + 操作序列回放到末尾。
