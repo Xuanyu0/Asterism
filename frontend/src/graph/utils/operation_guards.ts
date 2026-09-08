@@ -3,8 +3,9 @@
  *
  * @remarks
  * GraphOperation = AtomicOperationInGraph | AtomicGraphOperation，二者以 type 是否
- * 属于 add_graph / delete_graph 区分。applyBatches 的 OperationBatch 是判别联合，
- * 提交前需把混合的 GraphOperation[] 拆成独立批，这两个守卫提供统一收窄逻辑。
+ * 属于图级类型（add_graph / delete_graph / update_graph）区分。applyBatches 的
+ * OperationBatch 是判别联合，提交前需把混合的 GraphOperation[] 拆成独立批，
+ * 这两个守卫提供统一收窄逻辑。
  */
 
 import type { AtomicGraphOperation, AtomicOperationInGraph, GraphOperation } from '@my-project/graph-engine'
@@ -12,19 +13,22 @@ import type { AtomicGraphOperation, AtomicOperationInGraph, GraphOperation } fro
 /**
  * 图内操作类型守卫：收窄 GraphOperation 为 AtomicOperationInGraph。
  *
+ * @remarks
+ * 基于 isGraphLevelOperation 取反：图级类型列表只维护一处，新增图级操作不会漏同步。
+ *
  * @param op - 待判别操作
- * @returns true 表示 op 为图内操作（非 add_graph / delete_graph）。
+ * @returns true 表示 op 为图内操作（非图级类型）。
  */
 export function isInGraphOperation(op: GraphOperation): op is AtomicOperationInGraph {
-    return op.type !== 'add_graph' && op.type !== 'delete_graph'
+    return !isGraphLevelOperation(op)
 }
 
 /**
  * 图级操作类型守卫：收窄 GraphOperation 为 AtomicGraphOperation。
  *
  * @param op - 待判别操作
- * @returns true 表示 op 为图级操作（add_graph / delete_graph）。
+ * @returns true 表示 op 为图级操作（add_graph / delete_graph / update_graph）。
  */
 export function isGraphLevelOperation(op: GraphOperation): op is AtomicGraphOperation {
-    return op.type === 'add_graph' || op.type === 'delete_graph'
+    return op.type === 'add_graph' || op.type === 'delete_graph' || op.type === 'update_graph'
 }

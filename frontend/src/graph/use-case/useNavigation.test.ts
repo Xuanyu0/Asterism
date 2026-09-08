@@ -4,7 +4,8 @@
  * 功能：
  *     导航用例层（useNavigation）的集成测试。
  *     覆盖单例性、导航派生（面包屑 / currentRootId / isAtRoot / parentGraphId / hasCurrentGraph）、
- *     切图与图谱树管理、createRootGraph 统一管道创建（含 opts.id 幂等）。
+ *     切图与图谱树管理、createRootGraph 统一管道创建（含 opts.id 幂等，重名由引擎 add_graph 校验兜底）、
+ *     renameRootGraph 更名（update_graph 批构造 / TARGET_NOT_FOUND·引擎 EMPTY_TITLE·TITLE_DUPLICATE 防御 / 列表重排 / undo·redo 集成）。
  *
  * 规则：
  *     1. 使用金牌图（graph-golden 根图 + sub-golden 子图）作为测试数据。
@@ -203,5 +204,151 @@ describe('useNavigation', () => {
         navigation.deleteRootGraphTree('graph-golden' as GraphId)
 
         expect(navigation.listRootGraphInfos().some((info) => info.id === 'graph-golden')).toBe(true)
+    })
+
+    test('renameRootGraph 提交 update_graph 批：registry / 持久化更新、进操作日志、逆元携带旧 title', () => {
+        const store = loadGoldenGraph()
+
+        const result = navigation.renameRootGraph('graph-golden' as GraphId, '金牌改名图')
+        expect(result.valid).toBe(true)
+
+        // registry 与持久化同步更新
+        expect(navigation.getGraphById('graph-golden' as GraphId)?.title).toBe('金牌改名图')
+        const loaded = loadGraph('graph-golden' as GraphId)
+        expect(loaded.ok).toBe(true)
+        if (loaded.ok) {
+            expect(loaded.graph.title).toBe('金牌改名图')
+        }
+
+        // recordLog 默认 true：更名进操作日志（undo 逆元来源）
+        expect(store.operationLog.entries).toHaveLength(1)
+        // 逆元携带操作前旧图全量（含旧 title），undo 时经 update_graph 整图回退
+        const reversalOp = store.operationLog.entries[0]?.reversalBatches[0]?.operations[0]
+        expect(reversalOp).toMatchObject({
+            type: 'update_graph',
+            graph: expect.objectContaining({ id: 'graph-golden', title: '金牌测试图' }),
+        })
+    })
+
+    test('renameRootGraph 构造 graphLevel update_graph 批并显式剔除 updatedAt', () => {
+        loadGoldenGraph()
+        const store = storeModule.useGraphStore()
+        const spy = vi.spyOn(store, 'commitBatchToGraphs')
+        spy.mockReturnValue({ validation: { valid: true, issues: [] } })
+
+        const result = navigation.renameRootGraph('graph-golden' as GraphId, '金牌改名图')
+        expect(result.valid).toBe(true)
+
+        expect(spy).toHaveBeenCalledTimes(1)
+        const call = spy.mock.calls[0]
+        if (!call) throw new Error('commitBatchToGraphs 未被调用')
+        const [batches, options] = call
+        // recordLog 默认 true：不传 recordLog: false
+        expect(options).toBeUndefined()
+
+        expect(batches).toHaveLength(1)
+        expect(batches[0]).toMatchObject({ kind: 'graphLevel' })
+        const op = batches[0]?.operations[0]
+        if (!op || op.type !== 'update_graph') {
+            throw new Error(`预期 update_graph 操作，实际 ${op?.type ?? 'undefined'}`)
+        }
+        expect(op.graph.id).toBe('graph-golden')
+        expect(op.graph.title).toBe('金牌改名图')
+        expect(op.graph.updatedAt).toBeUndefined()
+    })
+
+    test('renameRootGraph 防御：目标不在注册表返回 TARGET_NOT_FOUND 且写入 lastValidationResult', () => {
+        loadGoldenGraph()
+        const store = storeModule.useGraphStore()
+        const spy = vi.spyOn(store, 'commitBatchToGraphs')
+
+        const result = navigation.renameRootGraph('graph-ghost' as GraphId, '幽灵图')
+        expect(result.valid).toBe(false)
+        expect(result.issues).toEqual([
+            expect.objectContaining({
+                severity: 'error',
+                code: 'TARGET_NOT_FOUND',
+                targetType: 'graph',
+                targetId: 'graph-ghost',
+            }),
+        ])
+        // 统一校验通道：失败结果已同步到 lastValidationResult
+        expect(store.lastValidationResult).toEqual(result)
+        expect(spy).not.toHaveBeenCalled()
+    })
+
+    test('renameRootGraph 防御：trim 后空名由引擎返回 EMPTY_TITLE 且不落库', () => {
+        loadGoldenGraph()
+        const store = storeModule.useGraphStore()
+
+        const result = navigation.renameRootGraph('graph-golden' as GraphId, '   ')
+        expect(result.valid).toBe(false)
+        expect(result.issues.some((issue) => issue.code === 'EMPTY_TITLE')).toBe(true)
+        expect(store.lastValidationResult).toEqual(result)
+        // 整批丢弃：标题未修改、不进操作日志
+        expect(navigation.getGraphById('graph-golden' as GraphId)?.title).toBe('金牌测试图')
+        expect(store.operationLog.entries).toHaveLength(0)
+    })
+
+    test('renameRootGraph 防御：与已有根图谱重名由引擎返回 TITLE_DUPLICATE 且不落库', () => {
+        loadGoldenGraph()
+        const store = storeModule.useGraphStore()
+        navigation.createRootGraph('并列根图')
+
+        const result = navigation.renameRootGraph('graph-golden' as GraphId, '并列根图')
+        expect(result.valid).toBe(false)
+        expect(result.issues.some((issue) => issue.code === 'TITLE_DUPLICATE')).toBe(true)
+        expect(store.lastValidationResult).toEqual(result)
+        expect(navigation.getGraphById('graph-golden' as GraphId)?.title).toBe('金牌测试图')
+        expect(store.operationLog.entries).toHaveLength(0)
+    })
+
+    test('createRootGraph 重名：引擎 add_graph 校验兜底拒绝（不落库）', () => {
+        loadGoldenGraph()
+        const beforeCount = navigation.listRootGraphInfos().filter((info) => info.title === '金牌测试图').length
+
+        const id = navigation.createRootGraph('金牌测试图')
+        // 引擎 TITLE_DUPLICATE 校验兜底：重名根图数量不变，返回的 ID 未被持久化
+        expect(navigation.listRootGraphInfos().filter((info) => info.title === '金牌测试图')).toHaveLength(beforeCount)
+        expect(loadGraph(id).ok).toBe(false)
+    })
+
+    test('renameRootGraph 成功后列表按新标题重排', () => {
+        loadGoldenGraph()
+        const 丙Id = navigation.createRootGraph('丙图')
+        navigation.createRootGraph('丁图')
+
+        const result = navigation.renameRootGraph(丙Id, '阿图')
+        expect(result.valid).toBe(true)
+
+        const infos = navigation.listRootGraphInfos()
+        expect(infos[0]?.id).toBe(丙Id)
+        expect(infos[0]?.title).toBe('阿图')
+    })
+
+    test('renameRootGraph 集成：更名后 undo 回退旧 title、redo 重放新 title', () => {
+        const store = loadGoldenGraph()
+
+        const result = navigation.renameRootGraph('graph-golden' as GraphId, '金牌改名图')
+        expect(result.valid).toBe(true)
+        expect(navigation.getGraphById('graph-golden' as GraphId)?.title).toBe('金牌改名图')
+
+        // undo：逆元批经 buildBatchesFromLogItems 拆分，update_graph 逆元须落在 graphLevel 批
+        expect(store.undo()).toBe(true)
+        expect(navigation.getGraphById('graph-golden' as GraphId)?.title).toBe('金牌测试图')
+        const afterUndo = loadGraph('graph-golden' as GraphId)
+        expect(afterUndo.ok).toBe(true)
+        if (afterUndo.ok) {
+            expect(afterUndo.graph.title).toBe('金牌测试图')
+        }
+
+        // redo：正向批重放，title 恢复新值
+        expect(store.redo()).toBe(true)
+        expect(navigation.getGraphById('graph-golden' as GraphId)?.title).toBe('金牌改名图')
+        const afterRedo = loadGraph('graph-golden' as GraphId)
+        expect(afterRedo.ok).toBe(true)
+        if (afterRedo.ok) {
+            expect(afterRedo.graph.title).toBe('金牌改名图')
+        }
     })
 })

@@ -1,35 +1,30 @@
 <script lang="ts" setup>
 /**
- * 功能：
+ * 导航面板：根图谱的列表管理（切换 / 重命名 / 级联删除）与占位入口。浮层，不参与 Dock 尺寸计算。
  *
- *     导航面板——根图谱 CRUD 管理与占位入口。
- *     浮层，不参与 Dock 尺寸计算。
- *
- * 总体结构：
- *
- *     1. 根图谱列表（切换 + 删除带二次确认）
- *     2. 新建根图谱表单
- *     3. 占位入口：笔记库 / 常识层 / 设置
- *
+ * @remarks
  * 规则：
- *
- *     1. 面板展开时自动刷新根图谱列表。
- *     2. 根图谱列表点击即切换，当前根图带标记且不可删除。
- *     3. 删除需二次点击确认；当前根图不显示删除按钮。
- *     4. 笔记库 / 常识层 / 设置为占位按钮，功能延后。
- *     5. 本组件自管理 rootInfos / newRootTitle / armedDeleteId 状态。
+ * 1. 面板每次展开（组件挂载）自动刷新根图谱列表。
+ * 2. 点击根图谱即切换；"当前"图以蓝色高亮区分（无文字徽标）。
+ * 3. 更名 = 行内编辑：点击铅笔进入输入态（预填 + 聚焦），Enter / 失焦确认，Esc 取消。
+ * 4. 删除需二次点击确认；当前根图不渲染删除按钮（更名按钮仍渲染，更名对当前根图允许）。
+ * 5. 编辑态与删除 armed 态互斥：同一行同一时刻只处于一种操作状态。
+ * 6. 本组件自管理 rootInfos / newRootTitle / editingId / editTitle / armedDeleteId / noticeText 状态。
  */
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 
 import type { GraphId } from '@my-project/graph-engine'
+import type { RootGraphInfo } from '@/graph/use-case/useNavigation'
 
-import { PlusIcon, TrashIcon, BookOpenIcon, GlobeAltIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, TrashIcon, PencilIcon, BookOpenIcon, GlobeAltIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
 import AsterismLogo from '@/assets/icon-asterism.svg?component'
 
 import { useNavigation } from '@/graph/use-case/useNavigation'
 
-import type { RootGraphInfo } from '@/graph/use-case/useNavigation'
+// ── 常量（新建与更名流程共用） ──
+const ROOT_TITLE_MAX_LENGTH = 40
+const DUPLICATE_TITLE_NOTICE = '已存在同名根图谱'
 
 const props = defineProps<{
     currentRootId: GraphId | null
@@ -44,13 +39,11 @@ const emits = defineEmits<{
 
 const navigation = useNavigation()
 
+// 新建 + 重命名共用的轻量提示文本（空名 / 重名 / 失败拦截反馈）
+const noticeText = ref('')
+
 // ── 根图谱列表 ──
 const rootInfos = ref<RootGraphInfo[]>([])
-/**
- * 功能：
- *
- *     从数据层重新拉取所有根图谱摘要。
- */
 function refreshRootList(): void {
     rootInfos.value = navigation.listRootGraphInfos()
 }
@@ -58,11 +51,6 @@ onMounted(() => {
     refreshRootList()
 })
 
-/**
- * 功能：
- *
- *     选择根图谱并切换。
- */
 function selectRootGraph(info: RootGraphInfo): void {
     if (info.id !== props.currentRootId) {
         emits('switchRootGraph', info.id)
@@ -77,8 +65,16 @@ function createAndSwitch(): void {
     const title = newRootTitle.value.trim()
     if (!title) return
 
+    // 重名预检：createRootGraph 无失败信号通道（重名时拒绝创建但返回请求 ID），由 UI 先行拦截
+    // trim 语义与用例层一致：对已有标题与输入均 trim 后比较
+    if (rootInfos.value.some((info) => info.title.trim() === title.trim())) {
+        noticeText.value = DUPLICATE_TITLE_NOTICE
+        return
+    }
+
     const graphId = navigation.createRootGraph(title)
     newRootTitle.value = ''
+    noticeText.value = ''
 
     emits('switchRootGraph', graphId)
     refreshRootList()
@@ -88,17 +84,18 @@ function createAndSwitch(): void {
 // ── 删除根图谱（二次点击确认）──
 const armedDeleteId = ref<GraphId | null>(null)
 /**
- * 功能：
+ * 删除根图谱入口。第一次点击进入待确认态，第二次点击执行级联删除。
  *
- *     删除根图谱入口。第一次点击进入待确认态，第二次点击执行级联删除。
- *
- * 规则：
- *
- *     1. 当前浏览中的根图不可删除。
- *     2. 确认后经导航用例层 deleteRootGraphTree 级联删除整棵图树。
+ * @remarks
+ * 1. 当前浏览中的根图不可删除。
+ * 2. 确认后经导航用例层 deleteRootGraphTree 级联删除整棵图树。
+ * 3. 与行内编辑互斥：任何删除点击先取消编辑态（编辑内容不提交）。
  */
 function requestDeleteRoot(info: RootGraphInfo): void {
     if (info.id === props.currentRootId) return
+
+    // 互斥：点击删除时清空编辑态（行内编辑的失焦确认对操作按钮跳过，此处显式取消）
+    cancelRename()
 
     if (armedDeleteId.value === info.id) {
         navigation.deleteRootGraphTree(info.id)
@@ -108,6 +105,83 @@ function requestDeleteRoot(info: RootGraphInfo): void {
     }
 
     armedDeleteId.value = info.id
+}
+
+// ── 重命名根图谱（行内编辑）──
+const editingId = ref<GraphId | null>(null)
+const editTitle = ref('')
+const editInputEl = ref<HTMLInputElement | null>(null)
+
+/**
+ * 进入某行的行内编辑态：预填当前标题并在下一帧聚焦输入框。
+ *
+ * @remarks
+ * 与删除 armed 态互斥：进入编辑清空 armedDeleteId（同一行同一时刻只处于一种操作状态）。
+ *
+ * @param info - 目标根图谱列表项
+ */
+function startRename(info: RootGraphInfo): void {
+    editingId.value = info.id
+    editTitle.value = info.title
+    noticeText.value = ''
+    armedDeleteId.value = null
+    void nextTick(() => editInputEl.value?.focus())
+}
+
+function cancelRename(): void {
+    editingId.value = null
+    editTitle.value = ''
+    noticeText.value = ''
+}
+
+/**
+ * 提交行内更名：空名本地拦截（保持编辑态 + 轻量提示，不提交）；
+ * 重名由引擎 update_graph 校验返回 TITLE_DUPLICATE issue（保持编辑态）；
+ * 成功（validation.valid）退出编辑态并刷新列表。
+ */
+function confirmRename(): void {
+    const targetId = editingId.value
+    if (targetId === null) return
+
+    const title = editTitle.value.trim()
+    if (!title) {
+        noticeText.value = '名称不能为空'
+        return
+    }
+
+    const validation = navigation.renameRootGraph(targetId, title)
+    if (validation.valid) {
+        cancelRename()
+        refreshRootList()
+        return
+    }
+
+    // 失败（含引擎 EMPTY_TITLE / TITLE_DUPLICATE）：保持编辑态 + 按 issue 提示
+    if (validation.issues.some((issue) => issue.code === 'TITLE_DUPLICATE')) {
+        noticeText.value = DUPLICATE_TITLE_NOTICE
+        return
+    }
+    if (validation.issues.some((issue) => issue.code === 'EMPTY_TITLE')) {
+        noticeText.value = '名称不能为空'
+        return
+    }
+    noticeText.value = '重命名失败，请重试'
+}
+
+/**
+ * 输入框失焦确认。
+ *
+ * @remarks
+ * 焦点移到行操作按钮（铅笔 / 删除）时不提交——点击铅笔会切换编辑目标、
+ * 点击删除会取消编辑（requestDeleteRoot），提前提交会误改标题。
+ */
+function onRenameBlur(event: FocusEvent): void {
+    if (editingId.value === null) return
+
+    const next = event.relatedTarget as HTMLElement | null
+    if (next && next.closest('.root-rename-btn, .root-delete-btn')) return
+
+    confirmRename()
 }
 </script>
 
@@ -124,6 +198,7 @@ function requestDeleteRoot(info: RootGraphInfo): void {
         <ul class="root-list">
             <li v-for="info in rootInfos" v-bind:key="info.id">
                 <button
+                    v-if="editingId !== info.id"
                     type="button"
                     class="root-item"
                     v-bind:class="{ current: info.id === currentRootId }"
@@ -131,7 +206,27 @@ function requestDeleteRoot(info: RootGraphInfo): void {
                 >
                     <AsterismLogo class="root-item-icon size-3.5" />
                     <span class="root-item-title">{{ info.title }}</span>
-                    <span v-if="info.id === currentRootId" class="current-badge">当前</span>
+                </button>
+                <span v-else class="root-edit-row">
+                    <AsterismLogo class="root-item-icon size-3.5" />
+                    <input
+                        v-bind:ref="(el) => (editInputEl = el as HTMLInputElement | null)"
+                        v-model="editTitle"
+                        type="text"
+                        class="root-edit-input"
+                        v-bind:maxlength="ROOT_TITLE_MAX_LENGTH"
+                        v-on:keydown.enter.prevent="confirmRename"
+                        v-on:keydown.esc.prevent="cancelRename"
+                        v-on:blur="onRenameBlur"
+                    />
+                </span>
+                <button
+                    type="button"
+                    class="root-rename-btn"
+                    v-bind:title="'重命名图谱'"
+                    v-on:click.stop="startRename(info)"
+                >
+                    <PencilIcon class="size-3.5" />
                 </button>
                 <button
                     v-if="info.id !== currentRootId"
@@ -147,8 +242,17 @@ function requestDeleteRoot(info: RootGraphInfo): void {
             </li>
         </ul>
 
+        <p v-if="noticeText" class="panel-notice">{{ noticeText }}</p>
+
         <form class="create-row" v-on:submit.prevent="createAndSwitch">
-            <input v-model="newRootTitle" type="text" class="text-input" placeholder="新根图谱名称…" maxlength="40" />
+            <input
+                v-model="newRootTitle"
+                type="text"
+                class="text-input"
+                placeholder="新根图谱名称…"
+                v-bind:maxlength="ROOT_TITLE_MAX_LENGTH"
+                v-on:input="noticeText = ''"
+            />
             <button type="submit" class="create-btn" v-bind:disabled="!canCreate" v-bind:title="'创建并切换'">
                 <PlusIcon class="size-4" />
             </button>
@@ -248,17 +352,32 @@ function requestDeleteRoot(info: RootGraphInfo): void {
     white-space: nowrap;
 }
 
-.current-badge {
-    flex-shrink: 0;
-    padding: 1px 6px;
-    border-radius: 999px;
-    background: #dbeafe;
-    color: #3b82f6;
-    font-size: 10px;
-    font-weight: 600;
+/* 行内编辑：替换标题区的输入行（与 .root-item 同规格，行高一致） */
+.root-edit-row {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    background: #f8fafc;
 }
 
-/* 删除按钮：行悬浮显现，确认态变红 */
+.root-edit-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: #334155;
+    font-size: 13px;
+}
+
+/* 行操作按钮（更名 + 删除）：行悬浮显现，同规格（size-3.5 图标、flex 居中） */
+.root-rename-btn,
 .root-delete-btn {
     flex-shrink: 0;
     display: flex;
@@ -280,9 +399,15 @@ function requestDeleteRoot(info: RootGraphInfo): void {
         color 0.15s;
 }
 
+.root-list li:hover .root-rename-btn,
 .root-list li:hover .root-delete-btn,
 .root-delete-btn.armed {
     opacity: 1;
+}
+
+.root-rename-btn:hover {
+    background: #eff6ff;
+    color: #3b82f6;
 }
 
 .root-delete-btn:hover {
@@ -295,6 +420,14 @@ function requestDeleteRoot(info: RootGraphInfo): void {
     border-color: #dc2626;
     color: #ffffff;
     font-weight: 600;
+}
+
+/* 轻量提示（空名 / 重名拦截等） */
+.panel-notice {
+    margin: 0;
+    padding: 0 2px;
+    font-size: 11px;
+    color: #dc2626;
 }
 
 .create-row {
