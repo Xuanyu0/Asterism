@@ -33,8 +33,8 @@ export interface ScaleRules {
 export interface GraphRules extends LabelRules, ScaleRules {}
 
 export const DEFAULT_LABEL_RULES: LabelRules = {
-    nodeLabelMaxLength: 8,
-    edgeLabelMaxLength: 10,
+    nodeLabelMaxLength: 20,
+    edgeLabelMaxLength: 20,
     summaryMaxLength: 80,
 }
 
