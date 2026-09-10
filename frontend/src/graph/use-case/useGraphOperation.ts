@@ -17,7 +17,7 @@ import type {
     GraphData,
     GraphId,
     GraphLookup,
-    GraphOperation,
+    AtomicOperation,
     OperationBatch,
     ValidationResult,
     ValidationTargetType,
@@ -45,7 +45,7 @@ export interface GraphOperationAPI {
      * （写入 entry.source，缺省 undefined = 未知来源）。
      * @returns 校验结果（valid + issues 汇总）。
      */
-    commitToCurrentGraph(operations: GraphOperation[], options?: { source?: string }): ValidationResult
+    commitToCurrentGraph(operations: AtomicOperation[], options?: { source?: string }): ValidationResult
 
     /**
      * 对多个目标图提交预组装批次并返回校验结果。
@@ -126,7 +126,7 @@ export function useGraphOperation(): GraphOperationAPI {
 }
 
 function createGraphOperation(): GraphOperationAPI {
-    function commitToCurrentGraph(operations: GraphOperation[], options?: { source?: string }): ValidationResult {
+    function commitToCurrentGraph(operations: AtomicOperation[], options?: { source?: string }): ValidationResult {
         const graphStore = useGraphStore()
         const graphView = graphStore.graphView
         if (!graphView) {
