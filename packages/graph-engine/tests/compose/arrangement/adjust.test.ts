@@ -8,11 +8,11 @@ import type { GraphId, NodeId } from '../../../src/types/graph_data'
 import type { NodeRadiusMap } from '../../../src/types/infrastructure_types'
 import { adjustDistance, adjustOrbit } from '../../../src/compose/arrangement/adjust'
 import { createNode, assembleGraph } from '../../test_case_factory'
-import { DEFAULT_LAYOUT_RULES } from '../../../src/core/layout_rules'
+import { DEFAULT_LAYOUT_PARAMETERS } from '../../../src/core/layout_parameters'
 
 const G = 'test-adj' as GraphId
 const R = new Map() as NodeRadiusMap
-const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
+const unitDistance = DEFAULT_LAYOUT_PARAMETERS.unitDistance
 
 describe('adjustDistance', () => {
     test('连续距离调整', () => {

@@ -38,7 +38,7 @@ import type {
     ReferenceNodeKind,
 } from '../src/types/graph_data'
 
-import { validateGraph } from '../src/core/validators/whole_graph_validator'
+import { validateGraph } from '../src/core/rules/whole_graph_validator'
 
 /** 测试固定的图时间戳，避免测试数据依赖 Date.now()。 */
 const TEST_NOW = '2026-01-01T00:00:00.000Z'

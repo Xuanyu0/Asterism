@@ -17,7 +17,7 @@
  *
  * 规则：
  *
- *     - execute / validate / sync / validators / collision / placement / geometry 不导出
+ *     - execute / validate / sync / rules / collision / placement / geometry 不导出
  *     - compose 函数只产出 operations，不执行——执行统一经 apply / applyBatch
  *
  * 外部如何使用：
@@ -57,7 +57,7 @@ export type {
 export type { GraphLookup, SearchResult, NodeRadiusMap } from './types/infrastructure_types'
 
 /** 消费者：引擎内部 & 前端渲染层。 */
-export type { LayoutRules } from './core/layout_rules'
+export type { LayoutParameters } from './core/layout_parameters'
 
 /** 消费者：graph_store.applyBatch / operation_controller / 操作日志。 */
 export type {
@@ -315,7 +315,7 @@ export { hasCollisionAt } from './infrastructure'
  *     const result = validateGraph(graph)
  *     if (!result.valid) { ... }  // 拒绝加载
  */
-export { validateGraph } from './core/validators/whole_graph_validator'
+export { validateGraph } from './core/rules/whole_graph_validator'
 
 /**
  * 功能：
@@ -334,7 +334,7 @@ export { validateGraph } from './core/validators/whole_graph_validator'
  */
 export { generateNodeId, generateEdgeId, generateGraphId } from './core/utils/id'
 
-export { DEFAULT_LAYOUT_RULES } from './core/layout_rules'
+export { DEFAULT_LAYOUT_PARAMETERS } from './core/layout_parameters'
 
 // ═══════════════════════════════════════════════════════════════════
 // derive — 派生值（读取时计算，不持久化）

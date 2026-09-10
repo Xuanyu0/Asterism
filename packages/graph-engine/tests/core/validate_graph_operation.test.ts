@@ -4,7 +4,7 @@
  * 测试 validateGraphOperation（图级操作局部规则校验：add_graph 空图 / delete_graph 目标空图）。
  */
 
-import { validateGraphOperation } from '../../src/core/validate_graph_operation'
+import { validateGraphOperation } from '../../src/core/rules/preconditions/graph_level'
 import type { GraphData, GraphId, GraphRegistry, NodeId } from '../../src/types/graph_data'
 import type { AtomicGraphOperation } from '../../src/types/atomic_operations'
 import { createNode, assembleGraph } from '../test_case_factory'

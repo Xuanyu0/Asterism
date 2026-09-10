@@ -36,11 +36,11 @@ import { generateNodeId } from '../../core/utils/id'
 import { deriveNodeForm } from '../../core/derive'
 import { scatterInCircle } from '../../infrastructure/placement'
 import { hasCollisionAt, hasCollisionInDrafts } from '../../infrastructure/collision'
-import { DEFAULT_LAYOUT_RULES } from '../../core/layout_rules'
+import { DEFAULT_LAYOUT_PARAMETERS } from '../../core/layout_parameters'
 
 // ═══════════ 常量 ═══════════
 
-const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
+const unitDistance = DEFAULT_LAYOUT_PARAMETERS.unitDistance
 
 // ═══════════ 参数类型 ═══════════
 

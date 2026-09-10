@@ -26,7 +26,7 @@ import { applyBatch } from './apply_batch'
 import { createGraphReversal } from './create_graph_reversal'
 import { createReversalInGraph } from './create_reversal_in_graph'
 import { executeGraphOperation } from './execute_graph_operation'
-import { validateGraphOperation } from './validate_graph_operation'
+import { validateGraphOperation } from './rules/preconditions/graph_level'
 
 /**
  * applyBatches 的返回值。
@@ -49,7 +49,7 @@ export interface ApplyBatchesOptions {
     /** 时间戳来源（必传），透传 applyBatch / executeOperation。语义 = 本批次执行的时刻。 */
     executedAt: string
 
-    /** 透传 applyBatch，跳过 Phase 1 前提校验（undo/redo 恢复型逆元批传 true）。 */
+    /** 透传 applyBatch，跳过 Phase 1 前提校验（preview 占位预览专用，⑤ 迁出后退役）。 */
     skipValidate?: boolean
 
     /** 是否收集逆元（默认 true）。undo/redo 执行（recordLog: false）不收集。 */
@@ -146,7 +146,7 @@ export function applyBatches(
             // 图级批：for 循环内逐 op 校验 → 构造逆元 → 兑现
             // （逆元须在兑现前构造：此时注册表仍是操作前状态）
             for (const op of batch.operations) {
-                // 图级操作局部规则校验（validate_graph_operation 单 op）
+                // 图级操作局部规则校验（rules/preconditions/graph_level 单 op）
                 const validation = validateGraphOperation(newRegistry, op)
                 if (!validation.valid) {
                     // 事务性：任一图级操作校验失败整批丢弃，注册表不变

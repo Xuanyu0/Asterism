@@ -35,11 +35,11 @@ import { distributeOnTiers, scatterInCircle } from '../../infrastructure/placeme
 import type { TierAssignment } from '../../infrastructure/placement'
 import { hasCollisionInDrafts, hasCollisionAt } from '../../infrastructure/collision'
 import { distance } from '../../infrastructure/geometry'
-import { DEFAULT_LAYOUT_RULES } from '../../core/layout_rules'
+import { DEFAULT_LAYOUT_PARAMETERS } from '../../core/layout_parameters'
 
 // ═══════════ 常量 ═══════════
 
-const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
+const unitDistance = DEFAULT_LAYOUT_PARAMETERS.unitDistance
 
 /** 碰撞重试最大次数。 */
 const MAX_RETRIES = 20

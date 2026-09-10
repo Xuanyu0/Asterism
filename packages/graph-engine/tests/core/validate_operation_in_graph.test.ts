@@ -3,7 +3,7 @@
  */
 
 import type { GraphData, NodeId, GraphId } from '../../src/types/graph_data'
-import { validateOperationInGraph } from '../../src/core/validate_operation_in_graph'
+import { validateOperationInGraph } from '../../src/core/rules/preconditions/in_graph'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
 
 const G = 'test-v' as GraphId
@@ -117,7 +117,7 @@ describe('validate add_edge', () => {
         expect(result.valid).toBe(true)
     })
 
-    test('端点不存在', () => {
+    test('端点悬空由 Phase 3 悬空边规则检出（validateOperation 只校验前提）', () => {
         const graph = makeGraph(2)
         const result = validateOperationInGraph(graph, {
             type: 'add_edge',
@@ -130,7 +130,9 @@ describe('validate add_edge', () => {
                 direction: 'undirected',
             }),
         })
-        expect(result.valid).toBe(false)
+        // validateOperation 不再检查端点存在性——EDGE_SOURCE/TARGET_NOT_FOUND 悬空边规则
+        // 在 applyBatch Phase 3（structural.ts）统一执行，dry-run 后整批丢弃
+        expect(result.valid).toBe(true)
     })
 
     test('自环由 applyBatch 全局规则检出（validateOperation 只校验前提）', () => {

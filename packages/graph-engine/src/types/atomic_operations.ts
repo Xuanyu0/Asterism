@@ -10,7 +10,7 @@
  *     3. AtomicGraphOperation：图级 3 种联合
  *
  * 规则：
- *     - 图内原子操作由 execute_operation_in_graph.ts / validate_operation_in_graph.ts / create_reversal_in_graph.ts / replay.ts 处理
+ *     - 图内原子操作由 execute_operation_in_graph.ts / rules/preconditions/in_graph.ts / create_reversal_in_graph.ts / replay.ts 处理
  *     - 图级原子操作（add_graph / delete_graph / update_graph）由 apply_batches.ts 兑现
  *     - 认知操作（explore / unearth / deconstruct / induce / internalize）不属于此层
  *     - CognitiveView 合并进原子层（collapse_dependency / expand_dependency 直接修改 cognitiveState）

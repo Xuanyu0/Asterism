@@ -20,13 +20,13 @@
 
 import type { NodeData, NodeId, NodePosition } from '../types/graph_data'
 import type { NodeRadiusMap } from '../types/infrastructure_types'
-import { DEFAULT_LAYOUT_RULES } from '../core/layout_rules'
+import { DEFAULT_LAYOUT_PARAMETERS } from '../core/layout_parameters'
 import { squaredDistance } from './geometry'
 
 // ═══════════ 常量 ═══════════
 
 /** 基准单位距离。 */
-const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
+const unitDistance = DEFAULT_LAYOUT_PARAMETERS.unitDistance
 
 // ═══════════ 内部：节点辅助 ═══════════
 

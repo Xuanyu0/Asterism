@@ -15,9 +15,9 @@ import {
     computeTierSpacing,
 } from '../../src/infrastructure/placement'
 import { distance } from '../../src/infrastructure/geometry'
-import { DEFAULT_LAYOUT_RULES } from '../../src/core/layout_rules'
+import { DEFAULT_LAYOUT_PARAMETERS } from '../../src/core/layout_parameters'
 
-const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
+const unitDistance = DEFAULT_LAYOUT_PARAMETERS.unitDistance
 
 describe('positionOnCircle', () => {
     test('角度 0 时在 x 轴正方向', () => {

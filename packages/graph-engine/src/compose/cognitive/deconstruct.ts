@@ -31,7 +31,7 @@ import type { OperationBatch } from '../../types/compose_types'
 import type { AtomicOperationInGraph } from '../../types/atomic_operations'
 import { generateGraphId, generateNodeId } from '../../core/utils/id'
 import { deriveNodeForm } from '../../core/derive'
-import { DEFAULT_LAYOUT_RULES } from '../../core/layout_rules'
+import { DEFAULT_LAYOUT_PARAMETERS } from '../../core/layout_parameters'
 import { positionOnCircle } from '../../infrastructure/placement'
 
 // ═══════════ 参数类型 ═══════════
@@ -138,8 +138,8 @@ export function deconstruct(params: DeconstructParams): {
     const orbitRadius =
         neighborCount > 0
             ? Math.max(
-                  DEFAULT_LAYOUT_RULES.unitDistance * 2,
-                  (neighborCount * DEFAULT_LAYOUT_RULES.unitDistance) / Math.PI,
+                  DEFAULT_LAYOUT_PARAMETERS.unitDistance * 2,
+                  (neighborCount * DEFAULT_LAYOUT_PARAMETERS.unitDistance) / Math.PI,
               )
             : 0
 

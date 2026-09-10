@@ -41,7 +41,7 @@ describe('applyBatch', () => {
         expect(result.graph.edges.length).toBe(1)
     })
 
-    test('任一失败则整批丢弃', () => {
+    test('任一失败则整批丢弃（悬空边端点由 Phase 3 拦截）', () => {
         const graph = makeBase()
         const ops = [
             {
@@ -65,10 +65,12 @@ describe('applyBatch', () => {
                     kind: 'real',
                     direction: 'directed',
                 }),
-            }, // 失败
+            }, // 悬空端点：Phase 1 不再拦（端点检查迁 Phase 3），dry-run 后由悬空边规则拦截
         ]
         const result = applyBatch(graph, ops, { executedAt: TEST_NOW })
         expect(result.validation.valid).toBe(false)
+        // Phase 3 悬空边规则拦截：EDGE_SOURCE_NOT_FOUND 由 invariants/structural 检出
+        expect(result.validation.issues.some((i) => i.code === 'EDGE_SOURCE_NOT_FOUND')).toBe(true)
         expect(result.graph.edges.length).toBe(0) // 全丢
     })
 
@@ -99,16 +101,9 @@ describe('applyBatch', () => {
         const graph = makeBase()
         const ops = [
             {
-                type: 'add_edge' as const,
-                edge: createEdge({
-                    id: 'e-bad' as NodeId,
-                    graphId: G,
-                    source: 'n-x' as NodeId,
-                    target: 'n0' as NodeId,
-                    kind: 'real',
-                    direction: 'directed',
-                }),
-            },
+                type: 'add_node' as const,
+                node: createNode({ id: 'n0' as NodeId, graphId: G }),
+            }, // 第一个操作：id 重复（Phase 1 NODE_ID_DUPLICATED）失败后停
             {
                 type: 'add_node' as const,
                 node: createNode({ id: 'n2' as NodeId, graphId: G }),
@@ -175,7 +170,37 @@ describe('applyBatch', () => {
         expect(result.graph.edges.length).toBe(0)
     })
 
-    test('globalRulesTable 可关闭指定规则', () => {
+    test('preferenceRulesTable 可关闭偏好规则（标签过长放行）', () => {
+        const graph = makeBase()
+        const ops = [
+            {
+                type: 'add_node' as const,
+                node: createNode({
+                    id: 'n-long' as NodeId,
+                    graphId: G,
+                    label: 'x'.repeat(21), // 超过 NODE_LABEL_MAX_LENGTH(20)
+                }),
+            },
+        ]
+
+        // 默认：偏好规则 NODE_LABEL_TOO_LONG 拦截
+        const blocked = applyBatch(graph, ops, { executedAt: TEST_NOW })
+        expect(blocked.validation.valid).toBe(false)
+        expect(blocked.validation.issues.some((i) => i.code === 'NODE_LABEL_TOO_LONG')).toBe(true)
+        expect(blocked.graph.nodes.length).toBe(2)
+
+        // 关闭偏好规则 → 放行
+        const result = applyBatch(graph, ops, {
+            executedAt: TEST_NOW,
+            preferenceRulesTable: {
+                NODE_LABEL_TOO_LONG: false,
+            },
+        })
+        expect(result.validation.valid).toBe(true)
+        expect(result.graph.nodes.length).toBe(3)
+    })
+
+    test('preferenceRulesTable 关闭硬性规则不生效（自环仍被拦截）', () => {
         const graph = makeBase()
         const ops = [
             {
@@ -192,13 +217,14 @@ describe('applyBatch', () => {
         ]
         const result = applyBatch(graph, ops, {
             executedAt: TEST_NOW,
-            globalRulesTable: {
+            preferenceRulesTable: {
                 SELF_LOOP_FORBIDDEN: false,
                 REAL_DIRECTED_CYCLE_FORBIDDEN: false,
             },
         })
-        expect(result.validation.valid).toBe(true)
-        expect(result.graph.edges.length).toBe(1)
+        expect(result.validation.valid).toBe(false)
+        expect(result.validation.issues.some((i) => i.code === 'SELF_LOOP_FORBIDDEN')).toBe(true)
+        expect(result.graph.edges.length).toBe(0)
     })
 
     // ═══════════ onBeforeEachOperation 回调 ═══════════

@@ -1,19 +1,20 @@
 /**
- * 校验单步图内原子操作的前提条件。
+ * 图内前置条件校验：校验单步图内原子操作的前提条件。
  *
  * @remarks
- * 只校验操作前提（ID 重复、节点存在、位置有效、折叠条件等），GraphData 不变量
- * （标签长度、自环、重边、成环等）由 applyBatch Phase 3 全局规则统一校验。
- * 图级操作（add_graph / delete_graph）不在此校验——由 validate_graph_operation.ts
- * 在多图上下文校验。
+ * 只校验操作前提（ID 重复、节点存在、位置有效、折叠条件等）；GraphData 不变量
+ * （标签长度、自环、重边、悬空边、成环等）由 applyBatch Phase 3 统一校验——
+ * 规则声明与执行见 core/rules/invariants/。
+ * 图级操作（add_graph / delete_graph / update_graph）不在此校验——由同目录
+ * graph_level.ts 在多图上下文校验。
  */
 
-import type { GraphData, NodeData, EdgeData, NodeId } from '../types/graph_data'
-import type { AtomicOperationInGraph } from '../types/atomic_operations'
-import type { ValidationIssue, ValidationResult } from '../types/validation'
-import { collectDependencyNodeIds } from './utils/traversal'
-import { DEFAULT_GRAPH_RULES } from './validators/thresholds'
-import { hasCollisionAt } from '../infrastructure/collision'
+import type { GraphData, NodeData, EdgeData, NodeId } from '../../../types/graph_data'
+import type { AtomicOperationInGraph } from '../../../types/atomic_operations'
+import type { ValidationIssue, ValidationResult } from '../../../types/validation'
+
+import { collectDependencyNodeIds } from '../../utils/traversal'
+import { hasCollisionAt } from '../../../infrastructure/collision'
 
 /**
  * 校验单步图内原子操作的前提条件。
@@ -96,16 +97,6 @@ function validateAddNode(graph: GraphData, operation: { type: 'add_node'; node: 
         })
     }
 
-    if (graph.nodes.length + 1 > DEFAULT_GRAPH_RULES.nodeHardLimit) {
-        issues.push({
-            severity: 'error',
-            code: 'NODE_COUNT_HARD_LIMIT_EXCEEDED',
-            message: `当前图节点数即将超过 ${DEFAULT_GRAPH_RULES.nodeHardLimit}，禁止继续添加新节点。`,
-            targetType: 'graph',
-            targetId: graph.id,
-        })
-    }
-
     // 新节点位置碰撞检测：Phase 1 局部规则，只检测新节点与已有节点是否重叠
     if (operation.node.position && hasCollisionAt(operation.node.id, operation.node.position, graph.nodes, new Map())) {
         issues.push({
@@ -121,11 +112,9 @@ function validateAddNode(graph: GraphData, operation: { type: 'add_node'; node: 
 }
 
 function validateAddEdge(graph: GraphData, operation: { type: 'add_edge'; edge: EdgeData }): ValidationResult {
-    const issues: ValidationIssue[] = []
-
-    issues.push(...validateEdgeEndpointExists(graph, operation.edge))
-
-    return createResult(issues)
+    // 端点存在性已迁至 Phase 3 硬性不变量（structural.ts EDGE_*_NOT_FOUND 悬空边规则）
+    // 刻意留空提醒该操作没有前置条件
+    return createResult([])
 }
 
 function validateDeleteNode(graph: GraphData, operation: { type: 'delete_node'; nodeId: NodeId }): ValidationResult {
@@ -189,7 +178,7 @@ function validateUpdateEdge(graph: GraphData, operation: { type: 'update_edge'; 
         })
     }
 
-    issues.push(...validateEdgeEndpointExists(graph, operation.edge))
+    // 端点存在性已迁至 Phase 3 硬性不变量（structural.ts EDGE_*_NOT_FOUND 悬空边规则）
 
     return createResult(issues)
 }
@@ -294,32 +283,6 @@ function validateExpandDependency(
     }
 
     return createResult(issues)
-}
-
-function validateEdgeEndpointExists(graph: GraphData, edge: EdgeData): ValidationIssue[] {
-    const issues: ValidationIssue[] = []
-
-    if (!hasNode(graph, edge.source)) {
-        issues.push({
-            severity: 'error',
-            code: 'EDGE_SOURCE_NOT_FOUND',
-            message: '边的起点节点不存在。',
-            targetType: 'edge',
-            targetId: edge.id,
-        })
-    }
-
-    if (!hasNode(graph, edge.target)) {
-        issues.push({
-            severity: 'error',
-            code: 'EDGE_TARGET_NOT_FOUND',
-            message: '边的终点节点不存在。',
-            targetType: 'edge',
-            targetId: edge.id,
-        })
-    }
-
-    return issues
 }
 
 function hasUndirectedEdgeInsideNodeSet(graph: GraphData, nodeIds: NodeId[]): boolean {

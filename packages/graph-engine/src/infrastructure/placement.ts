@@ -37,14 +37,14 @@
  *     } from '@my-project/graph-engine'
  */
 
-import { DEFAULT_LAYOUT_RULES } from '../core/layout_rules'
+import { DEFAULT_LAYOUT_PARAMETERS } from '../core/layout_parameters'
 import type { NodeId, NodePosition } from '../types/graph_data'
 import { length } from './geometry'
 
 // ═══════════ 常量 ═══════════
 
 /** 基准单位距离。层级间距以此为缩放因子，保证层间可容纳一个孤立节点。 */
-const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
+const unitDistance = DEFAULT_LAYOUT_PARAMETERS.unitDistance
 
 // ═══════════ 公开 API ═══════════
 
@@ -101,7 +101,7 @@ export function positionOnCircle(center: NodePosition, radius: number, angle: nu
  *     Path 布局和手动 Orbit 调用方用此值作为相邻节点 / 层级间距离。
  */
 export function computeTierSpacing(centerRadius: number, satelliteRadii: number[]): number {
-    const maxSatR = satelliteRadii.length > 0 ? Math.max(...satelliteRadii) : DEFAULT_LAYOUT_RULES.unitDistance
+    const maxSatR = satelliteRadii.length > 0 ? Math.max(...satelliteRadii) : DEFAULT_LAYOUT_PARAMETERS.unitDistance
 
     return centerRadius + maxSatR + unitDistance
 }
@@ -225,9 +225,9 @@ export function distributeOnTiers(
     const satMap = new Map(satellites.map((satellite) => [satellite.id, satellite]))
 
     const allSatRadii = tiers.flatMap((tier) =>
-        tier.nodeIds.map((id) => satMap.get(id)?.radius ?? DEFAULT_LAYOUT_RULES.unitDistance),
+        tier.nodeIds.map((id) => satMap.get(id)?.radius ?? DEFAULT_LAYOUT_PARAMETERS.unitDistance),
     )
-    const maxSatR = allSatRadii.length > 0 ? Math.max(...allSatRadii) : DEFAULT_LAYOUT_RULES.unitDistance
+    const maxSatR = allSatRadii.length > 0 ? Math.max(...allSatRadii) : DEFAULT_LAYOUT_PARAMETERS.unitDistance
 
     // D₀ 基础值（约束 A + B）。层间留 unitDistance 间隙，保证可容纳一个孤立节点。
     let D0 = center.radius + maxSatR + unitDistance
@@ -237,7 +237,7 @@ export function distributeOnTiers(
         const N = tier.nodeIds.length
         if (N <= 1) continue
 
-        const tierRadii = tier.nodeIds.map((id) => satMap.get(id)?.radius ?? DEFAULT_LAYOUT_RULES.unitDistance)
+        const tierRadii = tier.nodeIds.map((id) => satMap.get(id)?.radius ?? DEFAULT_LAYOUT_PARAMETERS.unitDistance)
         const tierMaxR = Math.max(...tierRadii)
         const orbitRadius = (tier.tier + 1) * D0
 

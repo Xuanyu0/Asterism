@@ -1,5 +1,5 @@
 /**
- * 多图批校验：校验单个图级操作（add_graph / delete_graph / update_graph）的局部规则。
+ * 图级前置条件校验：校验单个图级操作（add_graph / delete_graph / update_graph）的局部规则。
  *
  * @remarks
  * 与 apply_batches（多图管理层）对称，为图级操作提供前提校验：
@@ -8,13 +8,13 @@
  * - update_graph：注册表中目标图必须存在（整图替换的前提，目标不存在则无可替换对象）。
  * - add_graph / update_graph：title 非空（trim 后）；root 图间 title 唯一（trim 后比较，
  *   排除自身 id；子图不做唯一性校验——面包屑路径可区分）。
- * 图内操作不进本函数——由 applyBatch（validate_operation_in_graph.ts）在单图上下文校验。
+ * 图内操作不进本函数——由 applyBatch 经同目录的 in_graph.ts 在单图上下文校验。
  * 纯函数：不修改入参注册表，仅读取校验；applyBatches 图级批 for 循环内逐 op 调用（边校验边执行）。
  */
 
-import type { AtomicGraphOperation } from '../types/atomic_operations'
-import type { GraphId, GraphRegistry } from '../types/graph_data'
-import type { ValidationIssue, ValidationResult } from '../types/validation'
+import type { AtomicGraphOperation } from '../../../types/atomic_operations'
+import type { GraphId, GraphRegistry } from '../../../types/graph_data'
+import type { ValidationIssue, ValidationResult } from '../../../types/validation'
 
 /**
  * 校验单个图级操作的局部规则。
