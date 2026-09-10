@@ -118,7 +118,7 @@ describe('applyBatches 图内批（inGraph 委托）', () => {
         expect(result.validation.issues[0]?.code).toBe('BATCH_KIND_MISMATCH')
     })
 
-    test('图内逆元经 createReversal 构造', () => {
+    test('图内逆元经 createReversalInGraph 构造', () => {
         const parent = makeParentGraph()
         const registry = makeRegistry(parent)
 

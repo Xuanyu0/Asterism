@@ -3,7 +3,7 @@
  */
 
 import type { GraphData, GraphId, NodeId } from '../../../src/types/graph_data'
-import { DEFAULT_PREFERENCE_TABLE } from '../../../src/core/rules/invariants/preference_rules_table'
+import { DEFAULT_PREFERENCE_RULES_TABLE } from '../../../src/core/rules/invariants/preference_rules_table'
 import {
     PREFERENCE_RULES,
     validateNodeCountSoftLimit,
@@ -61,15 +61,15 @@ function makeDanglingEdgeGraph(): GraphData {
 }
 
 describe('preference table（偏好开关表语义）', () => {
-    test('DEFAULT_PREFERENCE_TABLE 覆盖全部偏好规则（默认开启）', () => {
+    test('DEFAULT_PREFERENCE_RULES_TABLE 覆盖全部偏好规则（默认开启）', () => {
         for (const rule of PREFERENCE_RULES) {
-            expect(DEFAULT_PREFERENCE_TABLE[rule.code]).toBe(true)
+            expect(DEFAULT_PREFERENCE_RULES_TABLE[rule.code]).toBe(true)
         }
     })
 
-    test('DEFAULT_PREFERENCE_TABLE 不含硬性规则 code（硬性缺席配置面）', () => {
+    test('DEFAULT_PREFERENCE_RULES_TABLE 不含硬性规则 code（硬性缺席配置面）', () => {
         for (const rule of STRUCTURAL_RULES) {
-            expect(DEFAULT_PREFERENCE_TABLE[rule.code]).toBeUndefined()
+            expect(DEFAULT_PREFERENCE_RULES_TABLE[rule.code]).toBeUndefined()
         }
     })
 

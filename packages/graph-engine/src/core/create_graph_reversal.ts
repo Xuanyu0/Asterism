@@ -12,7 +12,7 @@ import type { AtomicGraphOperation, GraphOperation } from '../types/atomic_opera
 import type { GraphRegistry } from '../types/graph_data'
 
 /**
- * 路由逆元构造函数：构造单个图级操作的逆元（类 createReversal 的 switch 分派）。
+ * 路由逆元构造函数：构造单个图级操作的逆元（类 createReversalInGraph 的 switch 分派）。
  *
  * @remarks
  * 在操作兑现前调用（注册表仍是操作前状态），统一签名 { type, graph }：

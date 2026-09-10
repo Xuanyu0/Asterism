@@ -25,7 +25,7 @@ export interface PreferenceRulesTable {
 /**
  * 默认偏好开关表：7 个偏好 code 默认全部开启。
  */
-export const DEFAULT_PREFERENCE_TABLE: PreferenceRulesTable = {
+export const DEFAULT_PREFERENCE_RULES_TABLE: PreferenceRulesTable = {
     NODE_LABEL_TOO_LONG: true, // 节点标签过长（> 20 字，阈值 NODE_LABEL_MAX_LENGTH）
     NODE_SUMMARY_TOO_LONG: true, // 节点摘要 / 启发上下文摘要过长（> 80 字，阈值 SUMMARY_MAX_LENGTH）
     EDGE_LABEL_TOO_LONG: true, // 边标签过长（> 20 字，阈值 EDGE_LABEL_MAX_LENGTH）

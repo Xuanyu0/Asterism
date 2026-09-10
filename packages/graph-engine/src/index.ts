@@ -155,6 +155,18 @@ export { applyBatches } from './core/apply_batches'
 export type { ApplyBatchesResult } from './core/apply_batches'
 export type { OperationBatch } from './types/compose_types'
 
+/**
+ * 功能：
+ *
+ *     图级操作类型守卫。收窄 GraphOperation 为 AtomicGraphOperation
+ *     （add_graph / delete_graph / update_graph）。
+ *
+ * 消费者：
+ *
+ *     operation_guards.ts — 前端提交前把混合 GraphOperation[] 拆成图内 / 图级批的类型收窄。
+ */
+export { isGraphLevelType } from './core/utils/operation_guards'
+
 // ═══════════════════════════════════════════════════════════════════
 // replay — 历史回溯
 //
@@ -196,7 +208,7 @@ export { replayGraph, replayToStep } from './core/replay'
  *
  * 使用：
  *
- *     const reversals = createReversal(graph, operation)
+ *     const reversals = createReversalInGraph(graph, operation)
  *     // 执行后追加到 OperationLogTree
  */
 export { createReversalInGraph } from './core/create_reversal_in_graph'

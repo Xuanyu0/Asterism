@@ -92,7 +92,7 @@ function createReversalForDeleteNode(graph: GraphData, operation: DeleteNodeOper
     const deletedNode = graph.nodes.find((node) => node.id === operation.nodeId)
 
     if (!deletedNode) {
-        throw new Error(`createReversal: delete_node 目标节点不存在: ${operation.nodeId}`)
+        throw new Error(`createReversalInGraph: delete_node 目标节点不存在: ${operation.nodeId}`)
     }
 
     // 级联删除面镜像（executeDeleteNode）：
@@ -133,7 +133,7 @@ function createReversalForDeleteEdge(graph: GraphData, operation: DeleteEdgeOper
     const deletedEdge = graph.edges.find((edge) => edge.id === operation.edgeId)
 
     if (!deletedEdge) {
-        throw new Error(`createReversal: delete_edge 目标边不存在: ${operation.edgeId}`)
+        throw new Error(`createReversalInGraph: delete_edge 目标边不存在: ${operation.edgeId}`)
     }
 
     const inverse: AddEdgeOperation = {
@@ -150,7 +150,7 @@ function createReversalForUpdateNode(graph: GraphData, operation: UpdateNodeOper
     const oldNode = graph.nodes.find((node) => node.id === operation.node.id)
 
     if (!oldNode) {
-        throw new Error(`createReversal: update_node 目标节点不存在: ${operation.node.id}`)
+        throw new Error(`createReversalInGraph: update_node 目标节点不存在: ${operation.node.id}`)
     }
 
     const inverse: UpdateNodeOperation = {
@@ -165,7 +165,7 @@ function createReversalForUpdateEdge(graph: GraphData, operation: UpdateEdgeOper
     const oldEdge = graph.edges.find((edge) => edge.id === operation.edge.id)
 
     if (!oldEdge) {
-        throw new Error(`createReversal: update_edge 目标边不存在: ${operation.edge.id}`)
+        throw new Error(`createReversalInGraph: update_edge 目标边不存在: ${operation.edge.id}`)
     }
 
     const inverse: UpdateEdgeOperation = {
@@ -183,7 +183,7 @@ function createReversalForMoveNode(graph: GraphData, operation: MoveNodeOperatio
 
     // 双条件：节点缺失 或 节点无 position 字段，均视为目标缺失
     if (!current || !current.position) {
-        throw new Error(`createReversal: move_node 目标节点不存在或无位置: ${operation.nodeId}`)
+        throw new Error(`createReversalInGraph: move_node 目标节点不存在或无位置: ${operation.nodeId}`)
     }
 
     const inverse: MoveNodeOperation = {
@@ -220,7 +220,7 @@ function createReversalForExpandDependency(
     )
 
     if (!existingEntry) {
-        throw new Error(`createReversal: expand_dependency 目标折叠条目不存在: ${operation.targetNodeId}`)
+        throw new Error(`createReversalInGraph: expand_dependency 目标折叠条目不存在: ${operation.targetNodeId}`)
     }
 
     const inverse: CollapseDependencyOperation = {

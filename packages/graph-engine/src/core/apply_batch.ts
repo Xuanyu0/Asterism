@@ -13,7 +13,7 @@
  * 全通过后才开始 execute。
  *
  * 其他契约：
- * - 纯函数，不内部调用 createReversal（逆元构造时机由上层决定）
+ * - 纯函数，不内部调用 createReversalInGraph（逆元构造时机由上层决定）
  * - 时间戳来源由 options.executedAt 从前端统一传入
  */
 
@@ -25,7 +25,7 @@ import type { PreferenceRulesTable } from './rules/invariants/preference_rules_t
 import { executeOperation } from './execute_operation_in_graph'
 import { validateOperationInGraph } from './rules/preconditions/in_graph'
 import { checkInvariants } from './rules/invariants/check_invariants'
-import { DEFAULT_PREFERENCE_TABLE } from './rules/invariants/preference_rules_table'
+import { DEFAULT_PREFERENCE_RULES_TABLE } from './rules/invariants/preference_rules_table'
 
 /**
  * 批处理配置。
@@ -42,7 +42,7 @@ export interface BatchOptions {
 
     /**
      * 偏好规则开关表：只作用于偏好规则（标签 / 摘要长度、节点数、虚邻居数），
-     * 硬性不变量恒跑、不受本表影响（缺席配置面）。缺省 DEFAULT_PREFERENCE_TABLE（7 个偏好 code 全开）。
+     * 硬性不变量恒跑、不受本表影响（缺席配置面）。缺省 DEFAULT_PREFERENCE_RULES_TABLE（7 个偏好 code 全开）。
      */
     preferenceRulesTable?: PreferenceRulesTable
 
@@ -87,7 +87,7 @@ export interface BatchResult {
  *
  * @remarks
  * validate-all-first：全部校验通过后才开始 execute。任一阶段失败返回原图 + 聚合
- * issues；不内部调用 createReversal（reversal 由上层管理）；不变量规则在 Phase 3
+ * issues；不内部调用 createReversalInGraph（reversal 由上层管理）；不变量规则在 Phase 3
  * 对结果图统一运行，不依赖操作类型。
  *
  * @param graph - 操作前的 GraphData 快照
@@ -100,7 +100,7 @@ export function applyBatch(graph: GraphData, ops: AtomicOperationInGraph[], opti
     const dryRun = options.dryRun ?? false
     const stopOnFirst = options.stopOnFirst ?? false
     const skipValidate = options.skipValidate ?? false
-    const preferenceRulesTable = options.preferenceRulesTable ?? DEFAULT_PREFERENCE_TABLE
+    const preferenceRulesTable = options.preferenceRulesTable ?? DEFAULT_PREFERENCE_RULES_TABLE
 
     // Phase 1 — 逐条校验操作前提条件
     // skipValidate（preview 占位预览专用）：跳过全部前提校验，直接 Phase 2——

@@ -1,7 +1,7 @@
 /**
  * reversal.test.ts
  *
- * 逆操作构造测试。验证 createReversal 为每种图内 Operation 生成逆操作序列，
+ * 逆操作构造测试。验证 createReversalInGraph 为每种图内 Operation 生成逆操作序列，
  * 且逆操作执行后状态与操作前一致。图级操作（add_graph / delete_graph）不构造逆元。
  */
 
@@ -48,7 +48,7 @@ function assertReversalRoundTrip(graph: GraphData, op: Parameters<typeof execute
     expect(reverted.edges.length).toBe(graph.edges.length)
 }
 
-describe('createReversal add_node', () => {
+describe('createReversalInGraph add_node', () => {
     test('逆操作 delete_node 恢复原状态', () => {
         const graph = makeGraph(2)
         const op = {
@@ -59,7 +59,7 @@ describe('createReversal add_node', () => {
     })
 })
 
-describe('createReversal add_edge', () => {
+describe('createReversalInGraph add_edge', () => {
     test('逆操作 delete_edge 恢复原状态', () => {
         const graph = makeGraph(3)
         const op = {
@@ -77,7 +77,7 @@ describe('createReversal add_edge', () => {
     })
 })
 
-describe('createReversal delete_node', () => {
+describe('createReversalInGraph delete_node', () => {
     test('逆操作重建节点和直接边', () => {
         const graph = makeGraph(3, 2) // n0→n1→n2
         const op = { type: 'delete_node' as const, nodeId: 'n1' as NodeId }
@@ -138,7 +138,7 @@ describe('createReversal delete_node', () => {
     })
 })
 
-describe('createReversal delete_edge', () => {
+describe('createReversalInGraph delete_edge', () => {
     test('逆操作 add_edge 恢复原状态', () => {
         const graph = makeGraph(2, 1)
         const op = { type: 'delete_edge' as const, edgeId: 'e0' as EdgeId }
@@ -146,7 +146,7 @@ describe('createReversal delete_edge', () => {
     })
 })
 
-describe('createReversal update_node', () => {
+describe('createReversalInGraph update_node', () => {
     test('逆操作 update_node 恢复旧值', () => {
         const graph = makeGraph(2)
         const op = {
@@ -157,7 +157,7 @@ describe('createReversal update_node', () => {
     })
 })
 
-describe('createReversal update_edge', () => {
+describe('createReversalInGraph update_edge', () => {
     test('逆操作 update_edge 恢复旧值', () => {
         const graph = makeGraph(2, 1)
         const op = {
@@ -168,7 +168,7 @@ describe('createReversal update_edge', () => {
     })
 })
 
-describe('createReversal move_node', () => {
+describe('createReversalInGraph move_node', () => {
     test('逆操作 move_node 恢复旧位置', () => {
         const graph = makeGraph(2)
         // 节点需带 position 才能构造逆元（无 position 属目标缺失，见"目标缺失显式化"块）
@@ -185,7 +185,7 @@ describe('createReversal move_node', () => {
     })
 })
 
-describe('createReversal expand_dependency', () => {
+describe('createReversalInGraph expand_dependency', () => {
     test('逆操作 collapse_dependency 携带原折叠条目', () => {
         const graph = makeGraph(3)
         graph.cognitiveState = {
@@ -220,7 +220,7 @@ describe('createReversal expand_dependency', () => {
     })
 })
 
-describe('createReversal collapse_dependency', () => {
+describe('createReversalInGraph collapse_dependency', () => {
     test('逆操作 expand_dependency 恢复原状态', () => {
         const graph = makeGraph(2)
         const op = {
@@ -285,7 +285,7 @@ describe('executeCollapseDependency 显式折叠成员', () => {
     })
 })
 
-describe('createReversal 目标缺失显式化', () => {
+describe('createReversalInGraph 目标缺失显式化', () => {
     test('delete_node 目标节点缺失时抛异常', () => {
         const graph = makeGraph(2)
         const op = {

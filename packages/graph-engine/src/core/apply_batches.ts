@@ -10,7 +10,7 @@
  * 纯函数：不修改入参注册表，返回新 GraphRegistry（复用未变化图引用，不深拷贝）。
  *
  * 逆元构造：
- * - 图内：经 createReversal（执行前捕获操作前状态）
+ * - 图内：经 createReversalInGraph（执行前捕获操作前状态）
  * - 图级：经 createGraphReversal（执行前捕获操作前注册表状态）——
  *   add ↔ delete 互逆；update 以同型操作携带旧图全量；签名统一为操作图数据 { type, graph }
  *
@@ -27,6 +27,7 @@ import { createGraphReversal } from './create_graph_reversal'
 import { createReversalInGraph } from './create_reversal_in_graph'
 import { executeGraphOperation } from './execute_graph_operation'
 import { validateGraphOperation } from './rules/preconditions/graph_level'
+import { isGraphLevelType } from './utils/operation_guards'
 
 /**
  * applyBatches 的返回值。
@@ -61,7 +62,7 @@ export interface ApplyBatchesOptions {
  *
  * @remarks
  * 逐批遍历，按 kind if-else 直接分派（单循环，融合而非拼接）：
- * - inGraph 批：委托 applyBatch（单图批事务）执行，逆元经 createReversal 构造；
+ * - inGraph 批：委托 applyBatch（单图批事务）执行，逆元经 createReversalInGraph 构造；
  * - graphLevel 批：经路由函数 executeGraphOperation 兑现（add_graph 注册 /
  *   delete_graph 注销 / update_graph 整图替换），逆元经 createGraphReversal 构造。
  *
@@ -183,16 +184,6 @@ export function applyBatches(
 }
 
 // ═══════════ 批级契约辅助 ═══════════
-
-/**
- * 批级类型判别：操作是否为图级操作。
- *
- * @param op - 跨图内 / 图级联合的操作（运行时经 as 断言检查）
- * @returns 图级操作（add_graph / delete_graph / update_graph）返回 true。
- */
-function isGraphLevelType(op: GraphOperation): boolean {
-    return op.type === 'add_graph' || op.type === 'delete_graph' || op.type === 'update_graph'
-}
 
 /**
  * 事务性中断的统一返回：保留入参注册表（整批丢弃），清空逆元。

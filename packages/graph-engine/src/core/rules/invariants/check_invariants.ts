@@ -19,18 +19,18 @@ import type { ValidationIssue } from '../../../types/validation'
 
 import { STRUCTURAL_RULES } from './structural'
 import { PREFERENCE_RULES } from './preferences'
-import { DEFAULT_PREFERENCE_TABLE, type PreferenceRulesTable } from './preference_rules_table'
+import { DEFAULT_PREFERENCE_RULES_TABLE, type PreferenceRulesTable } from './preference_rules_table'
 
 /**
  * 执行全部不变量校验：硬性恒跑 + 偏好按表。
  *
  * @param graph - 待校验的 GraphData
- * @param preferenceRulesTable - 偏好规则开关表，缺省 DEFAULT_PREFERENCE_TABLE（未显式设置的偏好规则默认开启）
+ * @param preferenceRulesTable - 偏好规则开关表，缺省 DEFAULT_PREFERENCE_RULES_TABLE（未显式设置的偏好规则默认开启）
  * @returns 聚合后的全部 issues
  */
 export function checkInvariants(
     graph: GraphData,
-    preferenceRulesTable: PreferenceRulesTable = DEFAULT_PREFERENCE_TABLE,
+    preferenceRulesTable: PreferenceRulesTable = DEFAULT_PREFERENCE_RULES_TABLE,
 ): ValidationIssue[] {
     const issues: ValidationIssue[] = []
 

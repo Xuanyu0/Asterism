@@ -5,7 +5,7 @@
  * 偏好规则违反后数据仍合法，仅体验 / 性能差异（标签 / 摘要过长、图规模过大、
  * 虚节点邻居过多），属可配置项：默认全开，经偏好开关表选择性关闭。
  * 本文件顶部就近内联各规则使用的阈值常量，各规则直接读取，不经集中阈值模块间接引用。
- * 偏好开关表（PreferenceRulesTable / DEFAULT_PREFERENCE_TABLE）已提取至同目录
+ * 偏好开关表（PreferenceRulesTable / DEFAULT_PREFERENCE_RULES_TABLE）已提取至同目录
  * preference_rules_table.ts——无 UI 阶段手动启停偏好规则的入口；check_invariants.ts 以其为
  * 执行侧唯一开关数据源（硬性不变量恒跑，缺席配置面，见 structural.ts）。
  * 本文件只声明规则（check 函数 + PREFERENCE_RULES 列表），不实现执行循环——
@@ -208,7 +208,7 @@ export function validateVirtualNodeNeighborCount(graph: GraphData): ValidationIs
 // ═══════════ 规则注册列表 ═══════════
 
 /**
- * 偏好规则注册列表。code 与 DEFAULT_PREFERENCE_TABLE 的 key 对应；
+ * 偏好规则注册列表。code 与 DEFAULT_PREFERENCE_RULES_TABLE 的 key 对应；
  * check_invariants.ts 遍历本列表时按偏好开关表 `table[code] ?? true` 决定执行与否。
  */
 export const PREFERENCE_RULES: Array<{
