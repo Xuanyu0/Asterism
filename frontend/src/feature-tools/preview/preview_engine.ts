@@ -66,8 +66,9 @@ export function previewAddNode(
         },
     }
 
-    // 跳过 Phase 1 前提校验（占位预览空 label 会被 EMPTY_LABEL 拒绝），
-    // 碰撞判定由下方 hasCollisionAt 独立承担——复用引擎为 undo/redo 提供的 skipValidate 机制。
+    // 跳过 Phase 1 前提校验：占位节点空 label 会被 UX 前置 EMPTY_LABEL 拒绝，
+    // 碰撞判定由下方 hasCollisionAt 独立承担——skipValidate 为 preview 专用旁路
+    // （undo/redo 已改走完整校验，不再使用本参数）
     const result = applyBatch(clone, [addNodeOp], {
         executedAt: new Date().toISOString(),
         skipValidate: true,

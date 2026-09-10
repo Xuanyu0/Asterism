@@ -198,7 +198,9 @@ function createGraphStore(): GraphStoreAPI {
      * @param operationBatch - 多批次操作（图内 / 图级判别联合）
      * @param options - [可选] recordLog：是否写入操作日志（默认 true）；
      *                  skipValidate：透传引擎 applyBatches，跳过 Phase 1 前提校验
-     *                  （undo/redo 恢复型逆元批传 true，正向用户操作默认 false）；
+     *                  （preview 占位预览场景专用，⑤ 迁出 EMPTY_LABEL 后退役；undo/redo
+     *                  已改走完整校验——悬空边规则在 Phase 3，重放不再需要本旁路；
+     *                  当前无经本入口传参的活跃消费方，preview 直接调引擎 applyBatch）；
      *                  source：操作来源的工具标识
      *                  （缺省 undefined = 未知来源，供操作日志树 UI 按来源分类）；
      *                  executedAt：时间戳来源（缺省内部生成当前时刻）
@@ -219,7 +221,7 @@ function createGraphStore(): GraphStoreAPI {
         // P!委托引擎 applyBatches：统一循环执行图内（applyBatch）与图级（add_graph / delete_graph 兑现）操作
         const result = applyBatches(store.graphRegistry, operationBatch, {
             executedAt,
-            skipValidate: options?.skipValidate, // 由 undo/redo传入，以跳过校验
+            skipValidate: options?.skipValidate, // 休眠透传：当前无活跃消费方（preview 占位预览走引擎 applyBatch；undo/redo 已不走本旁路）
             recordLog: options?.recordLog !== false, // undo/redo 执行时不收集逆元（日志已有）
         })
 
@@ -339,7 +341,7 @@ function createGraphStore(): GraphStoreAPI {
      * 3. 失败报告方向字符串：'undo' / 'redo'
      *
      * 其余逻辑共用：buildBatchesFromLogItems 组装 → commitBatchToGraphs（recordLog: false /
-     * skipValidate: true / executedAt = entry.timestamp）→ 失败报告返回 false → 成功移 cursor。
+     * executedAt = entry.timestamp）→ 失败报告返回 false → 成功移 cursor。
      * 对称化执行路径：图级逆元与图内逆元同序列执行，不依赖持久化恢复
      * （delete_graph 已真删，逆元自包含重建）
      *
@@ -366,12 +368,11 @@ function createGraphStore(): GraphStoreAPI {
         const batch = buildBatchesFromLogItems(sourceItems, store.graphRegistry)
 
         if (batch.length > 0) {
-            // skipValidate：逆元/正向序列中 add_edge 依赖同批 add_node 重建的端点，
-            // applyBatch validate-all-first（Phase 1 基于输入图校验）必然误报
-            // 故 skipValidate 是重放的必要机制（非防御兜底）
+            // undo/redo 重放经完整 Phase 1 + Phase 3 校验：EDGE 端点误报已随悬空边规则
+            // 迁入 Phase 3（structural.ts）消失——逆元批内 add_edge 依赖同批 add_node
+            // 重建端点，Phase 1 不再检查端点，Phase 3 在结果图校验，故不再需要 skipValidate
             const result = commitBatchToGraphs(batch, {
                 recordLog: false,
-                skipValidate: true,
                 executedAt: entry.timestamp,
             })
 

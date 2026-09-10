@@ -18,7 +18,7 @@ import type { Ref } from 'vue'
 import { watch } from 'vue'
 
 import type { GraphData, NodePosition } from '@my-project/graph-engine'
-import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
+import { DEFAULT_LAYOUT_PARAMETERS } from '@my-project/graph-engine'
 
 import type { CyInteractionHandlers } from './cy_interaction'
 
@@ -563,7 +563,7 @@ export function useRenderer(containerRef?: Ref<HTMLElement | null>): RendererAPI
      * 说明：
      *
      *     在 canvas overlay 上绘制离散格点背景。
-     *     格点间距 = DEFAULT_LAYOUT_RULES.unitDistance。
+     *     格点间距 = DEFAULT_LAYOUT_PARAMETERS.unitDistance。
      */
     function drawDotGrid(): void {
         if (!gridBackgroundLayer || !cy) {
@@ -582,7 +582,7 @@ export function useRenderer(containerRef?: Ref<HTMLElement | null>): RendererAPI
         // 切换到模型坐标系（自动跟随 zoom / pan）
         gridBackgroundLayer.setTransform(ctx)
 
-        const unitDistance = DEFAULT_LAYOUT_RULES.unitDistance
+        const unitDistance = DEFAULT_LAYOUT_PARAMETERS.unitDistance
         const dotRadius = 1.4 // 模型空间圆点半径，zoom=1 时对应 1.4 CSS px
 
         // 可视范围（模型坐标）

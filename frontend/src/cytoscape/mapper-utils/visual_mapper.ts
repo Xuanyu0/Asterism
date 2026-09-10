@@ -7,7 +7,7 @@
  *     公式见 docs/设计/ 相关文档。
  */
 
-import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
+import { DEFAULT_LAYOUT_PARAMETERS } from '@my-project/graph-engine'
 import type { NodeId, NodePosition } from '@my-project/graph-engine'
 
 /**
@@ -17,7 +17,7 @@ import type { NodeId, NodePosition } from '@my-project/graph-engine'
  */
 export function computeNodeDiameter(degree: number): number {
     const scale = Math.sqrt(1 + degree)
-    return Math.round(2 * DEFAULT_LAYOUT_RULES.unitDistance * scale)
+    return Math.round(2 * DEFAULT_LAYOUT_PARAMETERS.unitDistance * scale)
 }
 
 /**
@@ -27,7 +27,7 @@ export function computeNodeDiameter(degree: number): number {
  */
 export function computeFontSize(degree: number): number {
     const scale = Math.sqrt(1 + degree)
-    return Math.round((DEFAULT_LAYOUT_RULES.unitDistance / 4) * scale)
+    return Math.round((DEFAULT_LAYOUT_PARAMETERS.unitDistance / 4) * scale)
 }
 
 /**
@@ -36,7 +36,7 @@ export function computeFontSize(degree: number): number {
  *     计算边渲染宽度。
  */
 export function computeEdgeWidth(srcMass: number, tgtMass: number, dist: number): number {
-    const k = 4 * DEFAULT_LAYOUT_RULES.unitDistance
+    const k = 4 * DEFAULT_LAYOUT_PARAMETERS.unitDistance
     if (dist <= 0) return 2
     const edgeWidth = Math.round((k * srcMass * tgtMass) / dist)
     return Math.max(1, Math.min(8, edgeWidth))

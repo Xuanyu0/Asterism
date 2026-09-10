@@ -12,13 +12,16 @@
  *        以 OperationBatch[]（判别联合）直传 commitBatchToGraphs；图内批目标图须先注册
  *        （applyBatches 校验 BATCH_GRAPH_NOT_FOUND），测试经 registerGraph 预置。
  *     2. 多操作批遵守引擎 pipeline 语义：Phase 1 逐操作校验基于输入图（validate-all-first），
- *        后置操作不得依赖前置操作新创建的对象（如 add_edge 端点必须是输入图中已存在的节点）。
+ *        对象存在类前提（delete / update / move / collapse 目标等）不依赖批内前置新建；
+ *        add_edge 端点属例外——端点存在性为 Phase 3 悬空边不变量（dry-run 结果图校验），
+ *        批内允许先 add_node 再 add_edge（undo/redo 逆元重放即依赖该语义）。
  *     3. 图级操作（add_graph / delete_graph）独立成 graphLevel 批；add_graph 只建空图、
  *        delete_graph 只删空图（引擎 06.1 语义），内容经图内批填充。
  * 3. 每用例独立环境：resetGraphStoreForTests() + localStorage.clear() + vi.restoreAllMocks()。
  * 4. 010.1 缺陷 #1（删除带关联边节点的撤销失败）与缺陷 #2（多级 undo 链 DataCloneError）
- *    已由 010.1 回流修复（D1 操作级逆序 + skipValidate、D2 状态去 proxy 化），原「已知缺陷暴露」
- *    describe 的两条测试现为回归保护，不再预期失败。
+ *    已由 010.1 回流修复（D1 操作级逆序、D2 状态去 proxy 化）；后续 EDGE 端点检查迁入
+ *    Phase 3 不变量、undo/redo 撤销 skipValidate 改走完整校验后，D1 的批内依赖误报被根治。
+ *    原「已知缺陷暴露」describe 的两条测试现为回归保护，不再预期失败。
  */
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
@@ -1038,10 +1041,12 @@ describe('边界', () => {
  *
  * 缺陷 #1 —— 撤销「删除带关联边的节点」失败（已修复，D1）：
  *     根因：collectedReversals 整体 reverse 翻转单 op 逆元内部序（[add_node, add_edge] 被翻成
- *     [add_edge, add_node]）；且 applyBatch validate-all-first 基于输入图校验，恢复型逆元批
- *     （add_edge 端点依赖批内 add_node 恢复的节点）必然 EDGE_*_NOT_FOUND。
- *     修复：逆元改「操作级逆序」（perOpReversals.reverse().flat()）+ 引擎 BatchOptions.skipValidate
- *     （undo/redo 恢复型批跳过 Phase 1 前提校验）。
+ *     [add_edge, add_node]）。
+ *     修复（两层）：
+ *     1. 逆元改「操作级逆序」（perOpReversals.reverse().flat()）——保证单 op 逆元内部序；
+ *     2. EDGE 端点检查迁入 Phase 3 悬空边不变量 + undo/redo 撤销 skipValidate（走完整
+ *        Phase 1 + Phase 3 校验）——批内 add_edge 依赖同批 add_node 重建端点的场景由
+ *        Phase 3 在 dry-run 结果图校验，不再基于输入图必然误报。
  *
  * 缺陷 #2 —— 多级 undo 链抛 DataCloneError（已修复，D2）：
  *     根因：applyEntry 从 reactive operationLog 读出的操作是 proxy；引擎 execute 对 op.node

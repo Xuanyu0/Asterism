@@ -16,7 +16,7 @@
  */
 
 import type { GraphData, NodeRadiusMap } from '@my-project/graph-engine'
-import { DEFAULT_LAYOUT_RULES } from '@my-project/graph-engine'
+import { DEFAULT_LAYOUT_PARAMETERS } from '@my-project/graph-engine'
 
 /**
  * 功能：
@@ -32,7 +32,7 @@ export function computeNodeRadiusOverrides(graphView: GraphData): NodeRadiusMap 
     const overrides: NodeRadiusMap = new Map()
 
     for (const node of graphView.nodes) {
-        overrides.set(node.id, DEFAULT_LAYOUT_RULES.unitDistance * Math.sqrt(1 + node.degree))
+        overrides.set(node.id, DEFAULT_LAYOUT_PARAMETERS.unitDistance * Math.sqrt(1 + node.degree))
     }
 
     return overrides
