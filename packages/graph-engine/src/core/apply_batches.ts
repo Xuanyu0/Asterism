@@ -18,7 +18,7 @@
  */
 
 import type { GraphData, GraphId, GraphRegistry } from '../types/graph_data'
-import type { GraphOperation } from '../types/atomic_operations'
+import type { AtomicOperation } from '../types/atomic_operations'
 import type { ValidationIssue, ValidationResult } from '../types/validation'
 import type { BatchesLog } from '../types/operation_log'
 import type { OperationBatch } from '../types/compose_types'
@@ -93,11 +93,11 @@ export function applyBatches(
 
     for (const batch of batches) {
         // 批级契约校验：批内操作类型必须与批的 kind 一致（判别联合已收窄 operations，
-        // 此处经 as GraphOperation 检查运行时实际类型，防御 as 断言绕过 / 构造方错误）
+        // 此处经 as AtomicOperation 检查运行时实际类型，防御 as 断言绕过 / 构造方错误）
         const hasKindMismatch =
             batch.kind === 'inGraph'
-                ? batch.operations.some((op) => isGraphLevelType(op as GraphOperation))
-                : batch.operations.some((op) => !isGraphLevelType(op as GraphOperation))
+                ? batch.operations.some((op) => isGraphLevelType(op as AtomicOperation))
+                : batch.operations.some((op) => !isGraphLevelType(op as AtomicOperation))
         if (hasKindMismatch) {
             return aborted(registry, { valid: false, issues: [buildKindMismatchIssue(batch)] })
         }
@@ -114,7 +114,7 @@ export function applyBatches(
 
             // 图内批：委托 applyBatch（单图批事务）
             const inputGraph = latestGraphs.get(batch.graph.id) ?? batch.graph
-            const perOpReversals: GraphOperation[][] = []
+            const perOpReversals: AtomicOperation[][] = []
 
             const { graph, validation } = applyBatch(inputGraph, batch.operations, {
                 executedAt,

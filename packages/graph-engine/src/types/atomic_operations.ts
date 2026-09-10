@@ -8,6 +8,7 @@
  *     1. 12 种原子操作 interface
  *     2. AtomicOperationInGraph：图内 9 种联合
  *     3. AtomicGraphOperation：图级 3 种联合
+ *     4. AtomicOperation：全部原子操作的并集（图内 + 图级）
  *
  * 规则：
  *     - 图内原子操作由 execute_operation_in_graph.ts / rules/preconditions/in_graph.ts / create_reversal_in_graph.ts / replay.ts 处理
@@ -116,5 +117,5 @@ export type AtomicOperationInGraph =
 /** 图级原子操作：多图注册表层面的建图 / 删图 / 整图更新，由 applyBatches 兑现。 */
 export type AtomicGraphOperation = AddGraphOperation | DeleteGraphOperation | UpdateGraphOperation
 
-/** 向后兼容别名。前端 / 操作日志沿用此名称。 */
-export type GraphOperation = AtomicOperationInGraph | AtomicGraphOperation
+/** 全部原子操作的并集：图内（AtomicOperationInGraph）与图级（AtomicGraphOperation）。 */
+export type AtomicOperation = AtomicOperationInGraph | AtomicGraphOperation

@@ -5,7 +5,7 @@
  */
 
 import type { GraphData, GraphId, NodeId } from '../../src/types/graph_data'
-import type { GraphOperation } from '../../src/types/atomic_operations'
+import type { AtomicOperation } from '../../src/types/atomic_operations'
 import { applyBatch } from '../../src/core/apply_batch'
 import { createNode, createEdge, assembleGraph } from '../test_case_factory'
 
@@ -264,7 +264,7 @@ describe('applyBatch', () => {
                 node: createNode({ id: 'n3' as NodeId, graphId: G }),
             },
         ]
-        const seenOps: GraphOperation[] = []
+        const seenOps: AtomicOperation[] = []
         const snapshots: string[][] = []
 
         applyBatch(graph, ops, {

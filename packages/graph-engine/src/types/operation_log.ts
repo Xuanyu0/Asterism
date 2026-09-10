@@ -21,7 +21,7 @@
  * - 批粒度：一次 commitBatchToGraphs = 一条 entry = 一次回溯单元
  */
 
-import type { GraphOperation } from './atomic_operations'
+import type { AtomicOperation } from './atomic_operations'
 import type { GraphId } from './graph_data'
 
 /**
@@ -64,7 +64,7 @@ export interface CommitLog {
  */
 export interface BatchesLog {
     graphId: GraphId
-    operations: GraphOperation[]
+    operations: AtomicOperation[]
 }
 
 /**

@@ -37,8 +37,8 @@ export type {
     GraphData,
     GraphCognitiveState,
     FoldedDependencyState,
-    NodeKind as NodeRole,
-    KnowledgeState as KnowledgeNodeKind,
+    NodeRole,
+    KnowledgeNodeKind,
     RealNodeForm,
     ReferenceNodeKind,
     NodePosition,
@@ -75,7 +75,7 @@ export type {
     UpdateGraphOperation,
     AtomicOperationInGraph,
     AtomicGraphOperation,
-    GraphOperation,
+    AtomicOperation,
 } from './types/atomic_operations'
 
 /** 消费者：graph_store（多图注册表，applyBatches 参数）。 */
@@ -158,12 +158,12 @@ export type { OperationBatch } from './types/compose_types'
 /**
  * 功能：
  *
- *     图级操作类型守卫。收窄 GraphOperation 为 AtomicGraphOperation
+ *     图级操作类型守卫。收窄 AtomicOperation 为 AtomicGraphOperation
  *     （add_graph / delete_graph / update_graph）。
  *
  * 消费者：
  *
- *     operation_guards.ts — 前端提交前把混合 GraphOperation[] 拆成图内 / 图级批的类型收窄。
+ *     operation_guards.ts — 前端提交前把混合 AtomicOperation[] 拆成图内 / 图级批的类型收窄。
  */
 export { isGraphLevelType } from './core/utils/operation_guards'
 

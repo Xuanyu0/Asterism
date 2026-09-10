@@ -22,7 +22,7 @@
  */
 
 import type { NodeId, NodePosition, GraphData } from './graph_data'
-import type { AtomicOperationInGraph, AtomicGraphOperation, GraphOperation } from './atomic_operations'
+import type { AtomicOperationInGraph, AtomicGraphOperation, AtomicOperation } from './atomic_operations'
 
 /**
  * 功能：
@@ -31,7 +31,7 @@ import type { AtomicOperationInGraph, AtomicGraphOperation, GraphOperation } fro
  *
  * 规则：
  *
- *     草稿 ID 由引擎生成临时 ID。确认后通过 GraphOperation 写入正式 ID。
+ *     草稿 ID 由引擎生成临时 ID。确认后通过 AtomicOperation 写入正式 ID。
  */
 export interface DraftPosition {
     nodeId: NodeId
@@ -81,7 +81,7 @@ export interface ComposeResult<Draft extends DraftPosition = DraftPosition> {
     issues: ComposeIssue[]
 
     /** 确认后提交的操作序列。前端调 applyBatch(graph, operations) 执行。 */
-    operations: GraphOperation[]
+    operations: AtomicOperation[]
 }
 
 /**

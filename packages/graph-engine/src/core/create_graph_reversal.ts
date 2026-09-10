@@ -8,7 +8,7 @@
  * 纯函数：只读注册表，不修改入参。
  */
 
-import type { AtomicGraphOperation, GraphOperation } from '../types/atomic_operations'
+import type { AtomicGraphOperation, AtomicOperation } from '../types/atomic_operations'
 import type { GraphRegistry } from '../types/graph_data'
 
 /**
@@ -26,7 +26,7 @@ import type { GraphRegistry } from '../types/graph_data'
  * @param op - 图级操作
  * @returns 逆元操作序列（update_graph 未命中目标时返回空序列）。
  */
-export function createGraphReversal(registryBefore: GraphRegistry, op: AtomicGraphOperation): GraphOperation[] {
+export function createGraphReversal(registryBefore: GraphRegistry, op: AtomicGraphOperation): AtomicOperation[] {
     switch (op.type) {
         case 'add_graph':
             // add_graph 逆元 = delete_graph（携带图数据，签名统一）
