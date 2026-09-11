@@ -7,8 +7,7 @@
  * 实例；所有图操作通过引擎 compose → graphStore.commitBatchToGraphs 链路执行。
  */
 
-import type { NodeId, EdgeId, GraphData } from '@my-project/graph-engine'
-import type { GraphRegistry } from '@/graph/graph_registry'
+import type { NodeId, EdgeId, GraphData, GraphRegistry } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { useGraphOperation } from '@/graph/use-case/useGraphOperation'

@@ -26,7 +26,7 @@ import type {
 import { useGraphStore } from '@/graph/graph_store'
 import { lookupGraph } from '@/graph/graph_registry'
 import { hasErrors } from '@/graph/utils/issue_guard'
-import { isInGraphOperation, isGraphLevelOperation } from '@/graph/utils/operation_guards'
+import { splitOperationsIntoBatches } from '@/graph/utils/operation_batches'
 
 /**
  * useGraphOperation 返回的图操作用例单例 API。
@@ -134,20 +134,7 @@ function createGraphOperation(): GraphOperationAPI {
             throw new Error('commitToCurrentGraph: 当前无 graphView，无法提交操作')
         }
 
-        // 图级操作与图内操作分拆为独立批（applyBatches 判别联合要求）
-        const graphLevelOps = operations.filter(isGraphLevelOperation)
-        const inGraphOps = operations.filter(isInGraphOperation)
-        const batches: OperationBatch[] = []
-        if (graphLevelOps.length > 0) {
-            batches.push({ kind: 'graphLevel', operations: graphLevelOps })
-        }
-        if (inGraphOps.length > 0) {
-            batches.push({
-                kind: 'inGraph',
-                graph: graphView,
-                operations: inGraphOps,
-            })
-        }
+        const batches = splitOperationsIntoBatches(operations, graphView)
 
         const result = graphStore.commitBatchToGraphs(batches, options)
 
