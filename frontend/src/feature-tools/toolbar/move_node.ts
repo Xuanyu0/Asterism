@@ -53,7 +53,7 @@ export function useMoveNodeTool(): ToolHandler {
 
     // ── 命令式变量 ──
     /** 已拾取节点的 ID。 */
-    let pickedNodeId: string | null = null
+    let pickedNodeId: NodeId | null = null
 
     /** trackCursor 返回的 stop 句柄（handle）。 */
     let stopCursorTracking: { stop(): void } | null = null
@@ -155,7 +155,7 @@ export function useMoveNodeTool(): ToolHandler {
      *     待拾取 → 进入已拾取：记录 nodeId，节点开始跟随光标。
      *     已拾取 → 放置尝试（与 onCanvasClick 相同行为）。
      */
-    function onNodeClick(nodeId: string): void {
+    function onNodeClick(nodeId: NodeId): void {
         if (!isPicked.value) {
             // ── 进入已拾取 ──
 
@@ -194,7 +194,7 @@ export function useMoveNodeTool(): ToolHandler {
     function applyPreviewMove(pos: NodePosition): void {
         if (!graphStore.graphView || pickedNodeId === null) return
 
-        const { previewGraph, collides } = previewMoveNode(graphStore.graphView, pickedNodeId as NodeId, pos)
+        const { previewGraph, collides } = previewMoveNode(graphStore.graphView, pickedNodeId, pos)
 
         // 整图切换到预览图——sync 清空 class，以下 class 必须在 sync 后重施
         syncFromGraphData(previewGraph)
@@ -255,7 +255,7 @@ export function useMoveNodeTool(): ToolHandler {
 
         // 调引擎 composeMoveNode 做碰撞检测
         const result = composeMoveNode({
-            nodeId: pickedNodeId as NodeId,
+            nodeId: pickedNodeId,
             desiredPosition,
             allNodes: graphStore.graphView.nodes,
             nodeRadiusOverrides: computeNodeRadiusOverrides(graphStore.graphView),

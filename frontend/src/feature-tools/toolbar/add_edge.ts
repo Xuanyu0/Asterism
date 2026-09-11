@@ -80,21 +80,21 @@ export function useAddEdgeTool(kind: 'real' | 'virtual', direction: 'directed' |
      *
      *     1. source 未选中或悬停自身 → 跳过（不把自己当目标）。
      */
-    function onNodeHover(nodeId: string): void {
+    function onNodeHover(nodeId: NodeId): void {
         if (sourceNodeId.value === null) return
         if (nodeId === sourceNodeId.value) return
         if (!graphStore.graphView) return
 
         const { previewGraph, valid, sourceCollides, targetCollides } = previewAddEdge(graphStore.graphView, {
             sourceId: sourceNodeId.value,
-            targetId: nodeId as NodeId,
+            targetId: nodeId,
             kind,
             direction,
         })
 
         if (valid === false) return
 
-        applyHoverPreview(previewGraph, nodeId as NodeId, sourceCollides, targetCollides)
+        applyHoverPreview(previewGraph, nodeId, sourceCollides, targetCollides)
     }
 
     /**
@@ -102,7 +102,7 @@ export function useAddEdgeTool(kind: 'real' | 'virtual', direction: 'directed' |
      *
      *     处理节点悬停离开。切回真实图并重施 source 高亮（source 仍选中）。
      */
-    function onNodeHoverOut(_nodeId: string): void {
+    function onNodeHoverOut(_nodeId: NodeId): void {
         // 没有选中起始节点时跳过渲染同步
         if (hoverTargetId.value === null) return
 
@@ -130,10 +130,10 @@ export function useAddEdgeTool(kind: 'real' | 'virtual', direction: 'directed' |
      *     1. 校验失败或任一端碰撞 → 忽略点击，sourceNodeId 保持可重试。
      *     2. Graph.vue 内的 watch(graphView) 会自动触发 syncFromGraphData 同步真实图，无需手动 sync。
      */
-    function onNodeClick(nodeId: string): void {
+    function onNodeClick(nodeId: NodeId): void {
         // 第一次点击：记录 source 并施加起点高亮
         if (sourceNodeId.value === null) {
-            sourceNodeId.value = nodeId as NodeId
+            sourceNodeId.value = nodeId
             addNodeClass(nodeId, 'edge-source-target', 'add-edge')
             return
         }
@@ -150,7 +150,7 @@ export function useAddEdgeTool(kind: 'real' | 'virtual', direction: 'directed' |
         // 用预览层进行碰撞校验
         const { valid, sourceCollides, targetCollides } = previewAddEdge(graphStore.graphView, {
             sourceId: sourceNodeId.value,
-            targetId: nodeId as NodeId,
+            targetId: nodeId,
             kind,
             direction,
         })
@@ -162,7 +162,7 @@ export function useAddEdgeTool(kind: 'real' | 'virtual', direction: 'directed' |
             id: generateEdgeId(),
             graphId: graphStore.graphView.id,
             source: sourceNodeId.value,
-            target: nodeId as NodeId,
+            target: nodeId,
             kind,
             direction,
             label: '',

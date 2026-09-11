@@ -81,31 +81,31 @@ export function useDeleteTool(): ToolHandler {
 
     // ── 不同事件的处理 ──
 
-    function onNodeClick(nodeId: string): void {
+    function onNodeClick(nodeId: NodeId): void {
         const current = pendingDeleteNodeId.value
 
         if (current === nodeId) {
             // 再次点击同一节点 = 确认删除
-            executeDeleteNode(nodeId as NodeId)
+            executeDeleteNode(nodeId)
             clearPending()
             return
         }
 
-        pendingDeleteNodeId.value = nodeId as NodeId
+        pendingDeleteNodeId.value = nodeId
         pendingDeleteEdgeId.value = null
     }
 
-    function onEdgeClick(edgeId: string): void {
+    function onEdgeClick(edgeId: EdgeId): void {
         const current = pendingDeleteEdgeId.value
 
         if (current === edgeId) {
             // 再次点击同一边 = 确认删除
-            executeDeleteEdge(edgeId as EdgeId)
+            executeDeleteEdge(edgeId)
             clearPending()
             return
         }
 
-        pendingDeleteEdgeId.value = edgeId as EdgeId
+        pendingDeleteEdgeId.value = edgeId
         pendingDeleteNodeId.value = null
     }
 

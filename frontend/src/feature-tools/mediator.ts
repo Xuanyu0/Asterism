@@ -12,6 +12,8 @@
 
 import { ref, shallowRef, type ShallowRef, type Ref } from 'vue'
 
+import type { NodeId, EdgeId } from '@my-project/graph-engine'
+
 import type { ToolId, ToolHandler } from './types'
 import { useDefaultTool } from './default_tool'
 import { useFloatingWindow } from '@/composables/useFloatingWindow'
@@ -24,7 +26,7 @@ import { useFloatingWindow } from '@/composables/useFloatingWindow'
  * 调用契约：
  *
  *     1. 事件转发只送达当前激活的 handler。
- *     2. registry 可直接读取；修改请走 register()。
+ *     2. 注册表为内部态；外部需要 default 兜底 handler 时用 defaultHandler。
  */
 export interface ToolMediatorAPI {
     /** 当前激活工具 id（初始化即 default，不存在"无工具"状态）。 */
@@ -33,8 +35,8 @@ export interface ToolMediatorAPI {
     /** 当前激活的 handler 引用。 */
     activeHandler: ShallowRef<ToolHandler>
 
-    /** 工具注册表（id → handler）。修改请走 register()，勿直接写入。 */
-    registry: Map<ToolId, ToolHandler>
+    /** default 兜底 handler（初始化即存在且稳定）。供需要直接读取 default 状态（如浮空窗数据）的视图消费。 */
+    defaultHandler: ToolHandler
 
     /**
      * 说明：
@@ -79,19 +81,19 @@ export interface ToolMediatorAPI {
     onCanvasClick(pos: { x: number; y: number }): void
 
     /** 将节点点击事件转发给当前激活工具。 */
-    onNodeClick(nodeId: string): void
+    onNodeClick(nodeId: NodeId): void
 
     /** 将边点击事件转发给当前激活工具。 */
-    onEdgeClick(edgeId: string): void
+    onEdgeClick(edgeId: EdgeId): void
 
     /** 将节点双击事件转发给当前激活工具。 */
-    onNodeDoubleClick(nodeId: string): void
+    onNodeDoubleClick(nodeId: NodeId): void
 
     /** 将节点悬停事件转发给当前激活工具。 */
-    onNodeHover(nodeId: string): void
+    onNodeHover(nodeId: NodeId): void
 
     /** 将节点悬停离开事件转发给当前激活工具。 */
-    onNodeHoverOut(nodeId: string): void
+    onNodeHoverOut(nodeId: NodeId): void
 
     /** 画布右键：取消当前工具（最终会恢复为 default）。 */
     onRightClick(): void
@@ -154,10 +156,10 @@ function createMediator(): ToolMediatorAPI {
         activeHandler.value.deactivate()
 
         // 恢复 default 工具作为 baseline（createMediator 已注册，保证存在）
-        const defaultHandler = handlerRegistry.get('default')!
-        defaultHandler.activate()
+        const baselineHandler = handlerRegistry.get('default')!
+        baselineHandler.activate()
         activeToolId.value = 'default'
-        activeHandler.value = defaultHandler
+        activeHandler.value = baselineHandler
     }
 
     // ── 事件转发 ──
@@ -166,23 +168,23 @@ function createMediator(): ToolMediatorAPI {
         activeHandler.value?.onCanvasClick?.(pos)
     }
 
-    function onNodeClick(nodeId: string): void {
+    function onNodeClick(nodeId: NodeId): void {
         activeHandler.value?.onNodeClick?.(nodeId)
     }
 
-    function onEdgeClick(edgeId: string): void {
+    function onEdgeClick(edgeId: EdgeId): void {
         activeHandler.value?.onEdgeClick?.(edgeId)
     }
 
-    function onNodeDoubleClick(nodeId: string): void {
+    function onNodeDoubleClick(nodeId: NodeId): void {
         activeHandler.value?.onNodeDoubleClick?.(nodeId)
     }
 
-    function onNodeHover(nodeId: string): void {
+    function onNodeHover(nodeId: NodeId): void {
         activeHandler.value?.onNodeHover?.(nodeId)
     }
 
-    function onNodeHoverOut(nodeId: string): void {
+    function onNodeHoverOut(nodeId: NodeId): void {
         activeHandler.value?.onNodeHoverOut?.(nodeId)
     }
 
@@ -193,7 +195,7 @@ function createMediator(): ToolMediatorAPI {
     const api: ToolMediatorAPI = {
         activeToolId,
         activeHandler,
-        registry: handlerRegistry,
+        defaultHandler,
         register,
         activate,
         deactivate,
