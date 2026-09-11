@@ -15,6 +15,8 @@
 import type { GraphData } from '../../../types/graph_data'
 import type { ValidationIssue } from '../../../types/validation'
 
+import { indexNodesById } from '../../utils/graph_index'
+
 // ═══════════ 阈值内联 ═══════════
 
 // 偏好规则使用阈值集中内联于本文件（模块私有，无跨文件消费方）：
@@ -170,7 +172,7 @@ export function validateEdgeLabels(graph: GraphData): ValidationIssue[] {
 
 export function validateVirtualNodeNeighborCount(graph: GraphData): ValidationIssue[] {
     const issues: ValidationIssue[] = []
-    const nodeMap = new Map(graph.nodes.map((node) => [node.id, node]))
+    const nodeMap = indexNodesById(graph)
 
     const countVirtualNeighbors = (nodeId: string): number => {
         let count = 0
