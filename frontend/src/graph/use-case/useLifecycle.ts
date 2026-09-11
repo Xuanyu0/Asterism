@@ -8,7 +8,7 @@
  * 不直接 saveGraph / registerGraph——保证创建路径与用户操作路径一致。
  */
 
-import type { GraphData, GraphId } from '@my-project/graph-engine'
+import type { GraphId } from '@my-project/graph-engine'
 
 import { generateGraphId } from '@my-project/graph-engine'
 
@@ -16,6 +16,7 @@ import { useGraphStore } from '@/graph/graph_store'
 import { registerGraph } from '@/graph/graph_registry'
 import { loadGraph, listSavedGraphIds, loadLastActiveRootId, clearLastActiveRootId } from '@/graph/graph_persistence'
 import { DATA_INTEGRITY_PREFIX, reportCorruptedGraph } from '@/graph/utils/data_integrity_reporter'
+import { createEmptyRootGraph } from '@/graph/utils/empty_root_graph'
 
 /**
  * useLifecycle 返回的生命周期用例单例 API。
@@ -116,14 +117,7 @@ function createLifecycle(): LifecycleAPI {
         if (restoredRootId) return restoredRootId
 
         // 无健康根图：构造空根图并走统一管道创建（add_graph 信号 → 注册 + 持久化）
-        const graph: GraphData = {
-            id: generateGraphId(),
-            kind: 'root',
-            title: '新图谱',
-            nodes: [],
-            edges: [],
-            cognitiveState: { foldedDependencies: [] },
-        }
+        const graph = createEmptyRootGraph(generateGraphId(), '新图谱')
         useGraphStore().commitBatchToGraphs(
             [
                 {
