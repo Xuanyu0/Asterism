@@ -12,18 +12,19 @@
  *
  * 规则：
  *
- *     半径公式以 unitDistance 为基准缩放，公式见设计文档。
+ *     半径公式由引擎 computeNodeRadius 单一维护，本模块只负责遍历节点生成覆盖表。
  */
 
 import type { GraphData, NodeRadiusMap } from '@my-project/graph-engine'
-import { DEFAULT_LAYOUT_PARAMETERS } from '@my-project/graph-engine'
+
+import { computeNodeRadius, DEFAULT_LAYOUT_PARAMETERS } from '@my-project/graph-engine'
 
 /**
  * 功能：
  *     计算当前图全部节点的外接圆半径覆盖表。
  *
  * 规则：
- *     半径公式以 unitDistance 为基准缩放，公式见设计文档。
+ *     半径值委托引擎 computeNodeRadius 计算，公式单源维护。
  *
  * 参数：
  *     graphView — 当前图的 GraphData 实例。
@@ -32,7 +33,7 @@ export function computeNodeRadiusOverrides(graphView: GraphData): NodeRadiusMap 
     const overrides: NodeRadiusMap = new Map()
 
     for (const node of graphView.nodes) {
-        overrides.set(node.id, DEFAULT_LAYOUT_PARAMETERS.unitDistance * Math.sqrt(1 + node.degree))
+        overrides.set(node.id, computeNodeRadius(node.degree, DEFAULT_LAYOUT_PARAMETERS.unitDistance))
     }
 
     return overrides
