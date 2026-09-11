@@ -14,14 +14,7 @@ import { applyBatch, generateEdgeId, generateNodeId, hasCollisionAt, moveNode } 
 import { computeNodeRadiusOverrides } from '@/graph/utils/node_radius'
 import { hasErrors } from '@/graph/utils/issue_guard'
 
-import type {
-    AddEdgeOperation,
-    AddNodeOperation,
-    AtomicOperationInGraph,
-    GraphData,
-    NodeId,
-    NodePosition,
-} from '@my-project/graph-engine'
+import type { AddEdgeOperation, AddNodeOperation, GraphData, NodeId, NodePosition } from '@my-project/graph-engine'
 
 /**
  * 模拟在 position 添加一个 kind 节点，返回预览图与碰撞判定。
@@ -181,8 +174,7 @@ export function previewMoveNode(
         nodeRadiusOverrides: computeNodeRadiusOverrides(clone),
     })
 
-    // moveNode 的 operations 恒为图内操作（move_node），收窄类型以适配 applyBatch 图内批签名
-    const preview = applyBatch(clone, result.operations as AtomicOperationInGraph[], {
+    const preview = applyBatch(clone, result.operations, {
         executedAt: new Date().toISOString(),
     })
 

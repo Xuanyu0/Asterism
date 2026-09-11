@@ -22,7 +22,7 @@
  */
 
 import type { NodeId, NodePosition, GraphData } from './graph_data'
-import type { AtomicOperationInGraph, AtomicGraphOperation, AtomicOperation } from './atomic_operations'
+import type { AtomicOperationInGraph, AtomicGraphOperation } from './atomic_operations'
 
 /**
  * 功能：
@@ -80,8 +80,8 @@ export interface ComposeResult<Draft extends DraftPosition = DraftPosition> {
     /** 操作问题列表。含 error 时确认按钮灰掉。 */
     issues: ComposeIssue[]
 
-    /** 确认后提交的操作序列。前端调 applyBatch(graph, operations) 执行。 */
-    operations: AtomicOperation[]
+    /** 确认后提交的操作序列（arrangement compose 只产图内操作）。前端调 applyBatch(graph, operations) 执行。 */
+    operations: AtomicOperationInGraph[]
 }
 
 /**
