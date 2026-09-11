@@ -34,6 +34,7 @@ import { generateGraphId, generateNodeId, generateEdgeId } from '../../core/util
 import { distributeOnTiers, scatterInCircle } from '../../infrastructure/placement'
 import type { TierAssignment } from '../../infrastructure/placement'
 import { hasCollisionInDrafts, hasCollisionAt } from '../../infrastructure/collision'
+import { computeNodeRadius } from '../../infrastructure/compute_node_radius'
 import { distance } from '../../infrastructure/geometry'
 import { DEFAULT_LAYOUT_PARAMETERS } from '../../core/layout_parameters'
 
@@ -204,7 +205,7 @@ export function induce(params: InduceParams): {
     // ── 半径辅助 ──
 
     function getNodeRadius(node: { id: NodeId; degree: number }): number {
-        return nodeRadiusOverrides.get(node.id) ?? unitDistance * Math.sqrt(1 + node.degree)
+        return computeNodeRadius(node.degree, unitDistance, nodeRadiusOverrides.get(node.id))
     }
 
     // ── 确定沟通节点位置（碰撞则迭代） ──

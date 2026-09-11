@@ -317,6 +317,22 @@ export { hasCollisionAt } from './infrastructure'
 /**
  * 功能：
  *
+ *     节点外接圆半径公式单源。nodeRadiusOverrides 有覆盖值时优先，否则按
+ *     unitDistance * sqrt(1 + degree) 计算。
+ *
+ * 消费者：
+ *
+ *     前端 graph/utils/node_radius.ts — 计算节点半径覆盖表。
+ *
+ * 使用：
+ *
+ *     const radius = computeNodeRadius(node.degree, unitDistance, override)
+ */
+export { computeNodeRadius } from './infrastructure'
+
+/**
+ * 功能：
+ *
  *     全图 schema 校验。加载图时检查完整性。
  *
  * 消费者：
