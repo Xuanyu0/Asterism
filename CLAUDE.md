@@ -1,29 +1,5 @@
 # Asterism
 
-## 参考资料
-
-### 外部参考文档
-
-[Vue 3 官方文档](https://cn.vuejs.org/guide/introduction.html)
-[HTML 基础 参考文档](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Structuring_content)
-[CSS 基础 参考文档](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Styling_basics)
-[Tailwind CSS 参考文档](https://tailwindcss.zhcndoc.com/docs/styling-with-utility-classes)
-[Cytoscape 参考文档](https://js.cytoscape.org/)
-
-### 项目参考资料
-
-#### 时间戳
-
-**设计术语表**：`Last updated: 2026-09-07`
-**开发术语表**：`Last updated: 2026-09-10`
-**项目术语表**：`Last updated: 2026-09-07`
-
-#### 领域语言检索
-
-需要查询或者交流设计文档名词前，**Read**：[设计术语表](docs/设计/设计术语表.md)
-需要找前端或者 Graph Engine 的代码标识符前，**Read**：[开发术语表](docs/开发文档/开发术语表.md)
-讨论项目软件开发的一些其他术语时：[项目术语表](项目术语表.md)
-
 ## 核心定义
 
 - **狭义 GraphData**：`packages/graph-engine/src/types/graph_data.ts` 中需要持久化存储的图结构类型。
@@ -39,7 +15,7 @@
 - **Cytoscape 渲染/交互层**：GraphData 的只读映射/拷贝。接收 GraphData 渲染到画布，捕获交互事件后经交互逻辑层（feature-tools/）回流至 Runtime。禁止持有 GraphData 引用、禁止保存业务状态、禁止直接修改 GraphData
 - **工具**：前端页面中用户主动激活的状态。在此状态下，用户的画布交互（点击、拖拽）被解释为该工具特有的语义，并最终转化为对 GraphData 的修改。工具不直接操作 GraphData，通过 Runtime 层写入。目前按交互入口分为两类：
   - 常驻操作栏工具：通过工具栏按钮激活，生命周期由 `feature-tools/mediator.ts` 管理
-  - 模式工具：先进入 Cogniton 或 Arrangement 模式，再选择具体操作
+  - 模式工具：先进入 Cognition 或 Arrangement 模式，再选择具体操作
   - 规则：同一时刻最多一个工具处于激活状态，多个入口共享此互斥约束
 - **交互逻辑层**：用户与工具的交互通道。采用"水平分层 + 垂直自包含"混合架构，以下是其包含的内容：
   - 水平分层（所有工具共享）：
@@ -54,6 +30,8 @@
 ## 命令
 
 ```bash
+# 启动前端开发服务器
+pnpm dev
 # 跑所有前端测试
 pnpm --filter frontend test
 # 跑所有 GE 测试
@@ -72,6 +50,7 @@ npx prettier --write <文件路径>
 
 - vitest `globals: true` 已启用。`test` / `describe` / `expect` / `beforeEach` / `afterAll` / `vi` 均为全局函数，`.test.ts` 文件中**禁止** `import { ... } from 'vitest'`。
 - 使用 `test()`，禁止 `it()`。
+- 测试物理位置：前端 `frontend/src/**/*.test.ts`（单元 / 组件）+ `frontend/tests/**`（Runtime 集成）；引擎仅 `packages/graph-engine/tests/**`。
 
 ## 项目定位
 
@@ -120,6 +99,45 @@ npx prettier --write <文件路径>
    - GraphData 变更永远走引用替换（引擎返回新对象），浅层 watch 足够
    - 必要时的替代方案：去掉 `deep`，或窄化到具体叶子属性：`watch(() => store.x.y, cb)`
    - 理由：有经过测试的未知非预期行为
+
+## 文档地图与任务落点
+
+先按「我要做的事」定方向，再读「先读」。
+
+| 我要做的事 | 先读 |
+| --- | --- |
+| 查设计概念 / 设计名词 | [设计术语表](docs/设计/设计术语表.md) |
+| 查前端 / Graph Engine 代码标识符 | [开发术语表](docs/开发文档/开发术语表.md) |
+| 查交流口径 / 项目术语 | [项目术语表](项目术语表.md) |
+| 写 / 改代码注释 | [注释资料](FOR-AGENTS/注释资料.md) |
+| 了解设计意图 / 交互规则 | [docs/设计/](docs/设计/)（L1，最高权威，只读） |
+| 查开发历史 / 过程文档 | [docs/开发文档/](docs/开发文档/)（历史快照，不代表当前 API） |
+| 了解目录局部规则 | 该目录及祖先目录的 `AGENTS.md`（见下） |
+| 理解架构 / 依赖方向 | 本文件「项目架构（严格单向数据流）」节 |
+| 查阅外部技术文档 | [Vue 3](https://cn.vuejs.org/guide/introduction.html)、[HTML](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Structuring_content)、[CSS](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Styling_basics)、[Tailwind CSS](https://tailwindcss.zhcndoc.com/docs/styling-with-utility-classes)、[Cytoscape](https://js.cytoscape.org/) |
+
+当前版本 tag：`v0.2.0`。
+
+### 目录就地规则（AGENTS.md）
+
+各目录的就地约定写在该目录的 `AGENTS.md`：
+
+- 引擎：[packages/graph-engine/AGENTS.md](packages/graph-engine/AGENTS.md)
+- 渲染：[frontend/src/cytoscape/AGENTS.md](frontend/src/cytoscape/AGENTS.md)
+- 组件：[frontend/src/components/AGENTS.md](frontend/src/components/AGENTS.md)
+- 组合式函数：[frontend/src/composables/AGENTS.md](frontend/src/composables/AGENTS.md)
+- 开发工具：[frontend/src/dev/AGENTS.md](frontend/src/dev/AGENTS.md)
+
+**发现机制**：改动任何目录前，先查该目录及其**祖先目录**的 `AGENTS.md`。
+**优先级**：`AGENTS.md` 可覆盖 CLAUDE.md 的**默认习惯约定**（且必须在该文件内显式声明这是覆盖），但**不得覆盖核心原则与架构边界**。
+
+### 术语表时效
+
+#### 时间戳
+
+**设计术语表**：`Last updated: 2026-09-07`
+**开发术语表**：`Last updated: 2026-09-12`
+**项目术语表**：`Last updated: 2026-09-12`
 
 ## 项目架构（严格单向数据流）
 
@@ -179,34 +197,14 @@ GraphEngine (@my-project/graph-engine) — 框架无关；广义 GraphData 唯�
 Cytoscape Renderer
 ```
 
+> 依赖方向：工具 / 用例层 → store → 引擎（数据写入经 store 收口）；`compose/` 函数由交互逻辑层（feature-tools/）与遗留 `operation_controller.ts` 消费。
+
 ## 前端架构设计
 
 ### UI/UX设计指导
 
 - 对于 UX，代码中的状态设计应当遵循用户在交互时可感知的最小**交互单元**
 - 对于 UI 的架构设计，应当满足用户在页面上可见的最小可分类的**视觉单元**
-
-## Store（模块级单例）
-
-| Store       | 职责                                                             | 禁止                     |
-| ----------- | ---------------------------------------------------------------- | ------------------------ |
-| graph_store | GraphData 唯一事实源 + 共享运行时状态 + 四入口（切换/操作/回溯） | Draft/Cytoscape 禁止进入 |
-
-> 图数据业务逻辑（导航 / 工具提交 / 查询包装 / 生命周期）在 `graph/use-case/` 三个用例层，不进入 store。
-
-## 开发策略
-
-**Graph Engine 是整个项目的底层核心系统**，已作为独立、框架无关的 `@my-project/graph-engine` 包实现。前端通过 `graph_store.ts` 直接调用引擎 API（`applyBatches` / compose 函数）。
-
-## 项目演进
-
-**当前版本 tag**：`v0.2.0`
-
-开发的历史细节见 `docs/开发文档/` 各阶段文档。
-
-## 设计文档
-
-完整的功能设计文档见：`docs/设计/`
 
 ---
 
@@ -240,7 +238,7 @@ Cytoscape Renderer
 其他两类：
 
 1. **Vue 组件文件**（`.vue`）：统一 **PascalCase**（Vue 生态约定）
-   - ✅ `KnowledgeGraph.vue`, `NodeWindow.vue`, `OperationToolbar.vue`
+   - ✅ `GraphFloatingWindow.vue`, `GraphPermanentToolbar.vue`, `NotificationPanel.vue`
 
 2. **Vue 组合式函数**（以 `use` 开头的 `.ts` 文件）：统一 **camelCase**（Vue 生态约定 + 区分于普通工具函数）
    - ✅ `useRenderer.ts`, `useDragPosition.ts`, `useOverflowDetection.ts`
@@ -268,12 +266,12 @@ Cytoscape Renderer
 
 内联的价值是防止阅读时跳来跳去，但前提是和提取成工具函数后一样"职责清晰、分块明显、注意力引导明确"。判断依据是**参数数量**——参数数量约等于提取的理解成本与耦合度：
 
-| 场景                   | 拆不拆                                                                    |
-| ---------------------- | ------------------------------------------------------------------------- |
-| 无参 / 单参，只调 1 次 | ✅ 允许提取（提取成本低、函数名即注意力引导），不强制内联                 |
-| 多参，只调 1 次        | ❌ 倾向内联（多参提取会把与主流程的耦合摊到函数签名上，读者仍需停下来想） |
-| 被 ≥2 个函数调用       | ✅ 拆为辅助函数                                                           |
-| export 为公开 API      | ✅ 独立函数及文档注释                                                     |
+| 场景 | 拆不拆 |
+| --- | --- |
+| 无参 / 单参，只调 1 次 | ✅ 允许提取（提取成本低、函数名即注意力引导），不强制内联 |
+| 多参，只调 1 次 | ❌ 倾向内联（多参提取会把与主流程的耦合摊到函数签名上，读者仍需停下来想） |
+| 被 ≥2 个函数调用 | ✅ 拆为辅助函数 |
+| export 为公开 API | ✅ 独立函数及文档注释 |
 
 ### 私有函数放在文件末尾
 
@@ -291,22 +289,27 @@ function helperB() { ... }
 
 **禁止缩写**。Vue 模板中所有指令必须使用完整形式，不准使用@或者:缩写：
 
+### Markdown 文档格式
+
+- 根 `.prettierignore` 已排除 `*.md`：Markdown **不参与 Prettier 格式化**，由手工维护。
+- 表格统一**紧凑式**：单元格两侧各一个空格（`| 中文 | 英文 | 含义 |`），分隔行统一 `| --- | --- | --- |`，**不补空格对齐列宽**。
+
 ## 早期开发策略
 
 - 在目前这个早期开发阶段，不准任何形式的静默退出。具体做法可参考`graph_store.ts`，思想是报错代码不要打扰核心逻辑代码的阅读
   - 冗长错误消息的构造，提取为私有辅助函数进行调用
   - 校验结果统一模式：GE 产出 `ValidationResult`，前端用例层统一写入 `graphStore.lastValidationResult`，UI 按 `issue.code` 区分提示；业务规则校验（如 title 非空、根图谱间唯一）下沉 GE 图级校验（注册表全量可查），前端不散落
 - 本项目当前唯一用户是**开发者本人**（无外部 / 第三方用户）：不写面向外部用户的**数据兼容与版本迁移代码**，以保持代码简洁、核心逻辑突出。破坏性变更（含持久化字段 / 结构）由开发者自行承担——变更前按需备份本地数据（localStorage）
-- 写完代码后自查代码本身是否利于未来变更（ETC 原则），否则向上报告
+- 写完代码后自查代码本身是否利于未来变更（ETC：Easier To Change，易于变更），否则向上报告
 
 ## 设计决策权限
 
-| 行为                                                   | 允许              | 禁止 |
-| ------------------------------------------------------ | ----------------- | ---- |
-| 在对话中提供设计建议、架构方案                         | ✅                |      |
-| 将自发的设计决策写入文档文件（`docs/` 下的任何 `.md`） |                   | ❌   |
-| 经用户明确许可后修改文档                               | ✅                |      |
-| 修改代码（`.ts` / `.vue` 等源文件）                    | ✅ 按现有规范执行 |      |
+| 行为 | 允许 | 禁止 |
+| --- | --- | --- |
+| 在对话中提供设计建议、架构方案 | ✅ |  |
+| 将自发的设计决策写入文档文件（`docs/` 下的任何 `.md`） |  | ❌ |
+| 经用户明确许可后修改文档 | ✅ |  |
+| 修改代码（`.ts` / `.vue` 等源文件） | ✅ 按现有规范执行 |  |
 
 规则：
 
@@ -319,17 +322,17 @@ function helperB() { ... }
 
 `docs/` 下三个子目录存在严格的权威层级：
 
-| 层级 | 目录         | 角色      | 生命周期           | 内容                                                                                                                           |
-| ---- | ------------ | --------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| L1   | `docs/设计/` | 产品 spec | 持久               | 用户亲手书写的设计定义、交互规则、视觉规范。描述产品意图与用户体验目标。                                                       |
-| L2   | `步骤/`      | 过程文档  | 临时（完成后归档） | 步骤文档（步骤划分、进度跟踪、难度评估、产出 commit 的引用）和发现文档（BUG / 改进 / 不确定项）。服务于实现过程，不可违背 L1。 |
-| L3   | `提示词/`    | 施工手册  | 一次性             | Agent 执行时的工程契约。包含功能需求、验收标准、scope guard、交互规则。溯源引用 L1                                             |
+| 层级 | 目录 | 角色 | 生命周期 | 内容 |
+| --- | --- | --- | --- | --- |
+| L1 | `docs/设计/` | 产品 spec | 持久 | 用户亲手书写的设计定义、交互规则、视觉规范。描述产品意图与用户体验目标。 |
+| L2 | `步骤/` | 过程文档 | 临时（完成后归档） | 步骤文档（步骤划分、进度跟踪、难度评估、产出 commit 的引用）和发现文档（BUG / 改进 / 不确定项）。服务于实现过程，不可违背 L1。 |
+| L3 | `提示词/` | 施工手册 | 一次性 | Agent 执行时的工程契约。包含功能需求、验收标准、scope guard、交互规则。溯源引用 L1 |
 
 **冲突处理规则**：
 
 1. 出现设计冲突时，**优先参考上级文档**。L1 > L2 > L3。
 2. 当施工 spec（L3）与设计文档（L1）的意图矛盾时，以设计文档为准。
-3. 若施工 spec 未覆盖某话题，开发文档的结论为有效默认值。否则就根据L1设计自行推导，最后作为不确定项向上报告
+3. 若施工 spec 未覆盖某话题，开发文档的结论为有效默认值。否则就根据 L1 设计自行推导，最后作为不确定项向上报告
 
 ## 该项目 Debug 的特效药
 
