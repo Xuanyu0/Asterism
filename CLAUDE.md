@@ -128,10 +128,18 @@ npx prettier --write <文件路径>
   * `⊂`： 定义不包含实现
   * `⊃`： 实现落后于定义
 * 契约用 `s.t.` 引出**命题逻辑**，并用逻辑联结词（`∨ ∧ ¬ ⇒ ⟺`）构造由自然语言表达的各个简单命题，履行契约对应命题为真，违反契约对应命题为假
+  * `∨` 理解为：只要不是“两侧都假”就为真。
+  * `∧` 理解为：只要不是“任一侧假”就为真。
+  * `¬` 理解为：真值取反。
   * `⇒` 理解为：只要不是“前件真，后件假”就为真。
+  * `⟺` 理解为：只要不是“两侧真值不同”就为真（即 `A ⇒ B ∧ B ⇒ A`）。
 * **顶层各个架构层**默认**代码文件目录即精确实现的集合，故顶层不写**，但写定义行和契约行
-* 顶层架构的层与层之间 `↓` 表示为数据流方向
+* 顶层架构的层与层之间 `↓` 表示为数据流方向，多条 `↓` 按行、列排布
+  * 列 = 并行流：同一行可并排多条 `↓`，行内自左而右读，彼此并列
+  * 行 = 阶段递进：下行按列承接上行，同列即同一条流的下一阶段
+  * 某列流到达逻辑终点时，在该列显式写 `↓（无）`（不留空），其余列照常承接
 * 行末右侧 `←` 表注解
+* 同一架构层可在图中重复出现（表示数据流回经该层），重复处仅写层名并以【回经】标记；`≝` 定义与 `=` 目录展开只在首次出现处写一次
 
 ```text
 Asterism
@@ -140,24 +148,24 @@ Asterism
     s.t. ¬watch(deep:true)  ← GraphData 变更走引用替换，浅层 watch 足够；deep 有未知非预期行为；替代：去掉 deep 或窄化到叶子属性
 
     共享组合式函数
-        ≝ Vue 生态下工具与组件共用的通用组合式函数
+        ≝ 跨模块复用的 Vue 组合式函数
         =   frontend/src/composables/
             ├── useFloatingWindow.ts     ≝ 浮空窗单例
             ├── useCanvasFocus.ts        ≝ 画布视口定位请求单例
-            ├── useDragPosition.ts       ≝ 通用窗口拖拽单例
-            ├── useOverflowDetection.ts  ≝ DOM 水平溢出检测单例
-            └── useAutoFade.ts           ≝ 依指针位置的通用自动淡化单例
+            ├── useDragPosition.ts       ≝ 通用窗口拖拽工厂
+            ├── useOverflowDetection.ts  ≝ DOM 水平溢出检测工厂
+            └── useAutoFade.ts           ≝ 依指针位置的通用自动淡化工厂
         s.t. 组合式函数在横切方向上共享 ∧ ¬参与单向数据流
 
 
-    用户交互【外部数据源】
-        ≝ 用户与浏览器 DOM 的原生输入事件源
+    用户交互【外部事件源】  ← 非目录层
+        ≝ 用户经过浏览器 DOM 产生的原生输入事件源
+    
+    ↓ 原生 DOM 事件：用户的点击 / 双击 / 悬停 / 右键
+    ↓ 事件被 Cytoscape 捕获
 
-    ↓ 用户的点击、拖拽、悬停被 Cytoscape 捕获
-    ↓ 原始事件
-
-    渲染与交互层
-        ≝ GraphData 的只读映射/拷贝，渲染到画布并把 Cy 原始事件翻译为语义事件
+    Cytoscape 渲染与交互层
+        ≝ 持有 Cytoscape 实例；渲染到画布并把 Cy 原始事件翻译为语义事件；对外暴露光标追踪/高亮/预览渲染 API
         =   frontend/src/cytoscape/
             ├── useRenderer.ts        ≝ 渲染运行时 Cy 单例唯一持有者
             │                         s.t. 渲染 GraphData ⇒ 经 syncFromGraphData 唯一入口
@@ -170,12 +178,10 @@ Asterism
             └── cy_canvas.d.ts        ≝ Cy 扩展类型声明
         s.t. ¬持有 GraphData 引用 ∧ ¬保存业务状态 ∧ ¬修改 GraphData ∧ ¬作为事实源
 
-
-    ↓ 语义事件：onNodeClicked、onCanvasClicked 等
-    ↓ 预览经 renderer.syncFromGraphData 整图同步渲染，此时不写持久化的 GraphData
+    ↓ 语义事件：onNodeClicked / onEdgeClicked / onRightClick / onNodeDoubleClicked / onNodeHovered          ↓ 组件语义事件
 
     工具交互逻辑层
-        ≝ 负责操作/认知/布局/默认工具的管理/定义
+        ≝ 负责操作、认知、 布局与默认工具的管理与定义；把语义事件路由到活跃工具；工具自包含地完成选择/预览/确认
         ⊃  frontend/src/feature-tools/
             ├── types.ts         ≝ 工具系统类型契约接口
             ├── mediator.ts      ≝ 工具生命周期管理的唯一入口，采用中介者模式
@@ -191,11 +197,11 @@ Asterism
         s.t. ¬直接写 GraphData ∧ (写 GraphData ⇒ 经 commitToCurrentGraph ∨ commitBatches) ∧ ¬(存储 GraphData ∨ UI 模式切换)
 
 
-    ↓ 用户确认后提交写入：单图 commitToCurrentGraph，跨图 commitBatches
-    ↓ 数据进一步进入 useGraphStore().commitBatchToGraphs
+    ↓ 用户确认后提交写入：单图 commitToCurrentGraph，跨图 commitBatches  ↓ 切图：goToGraph（导航）/ default_tool 双击 →   ↓ 回溯：Graph.vue 快捷键
+    ↓ 数据进一步进入 useGraphStore().commitBatchToGraphs                ↓ loadGraphToView                              ↓ useGraphOperation.undo / redo
 
-    Runtime 状态层
-        ≝ 持有 GraphData 状态、编排引擎操作、并实现持久化
+    Runtime 状态与图业务层
+        ≝ 持有 GraphData 状态，是其唯一事实源与唯一写入口；编排引擎操作、封装业务用例、并实现持久化
         ⊂ frontend/src/graph/ + frontend/src/ui/
             ├── graph_store.ts              ≝ GraphData 唯一事实源 + 所有修改的唯一合法入口
             │                               = { loadGraphToView, commitBatchToGraphs, undo, redo }
@@ -206,13 +212,12 @@ Asterism
             ├── utils/                      ≝ graph/ 域下无状态私有纯函数
             ├── graph_registry.ts           ≝ 多图注册表
             ├── graph_persistence.ts        ≝ localStorage 持久化实现
-            │                               s.t. Local First
+            │                               s.t. Local First  ← 切图时 loadGraph 读入；提交时 saveGraph / deleteGraph 写出
             └── ui/operation_controller.ts  ≝ 认知与布局操作编排  ← 历史遗留，待迁 feature-tools/
         s.t. (图数据业务逻辑 ∈ use-case ∧ ∉ store) ∧ (内部单向依赖：业务 → 用例 → store)
         
-
-    ↓ commitBatchToGraphs/undo/redo 委托图引擎的 apply_batches
-
+    ↓ commitBatchToGraphs/undo/redo 委托图引擎的 apply_batches                       ↓ 调用 compose 产出 batches（不执行）：工具交互逻辑层【回经】 / ui 编排层
+    
     GraphEngine
         ≝ 纯函数式编写的唯一图数据定义与转换入口
         =   packages/graph-engine/src/
@@ -240,6 +245,9 @@ Asterism
             └── views/Graph.vue  ≝ 装配层
         s.t. 装配层渲染 GraphView ⇒ 经 renderer.syncFromGraphData
         
+    ↓ GraphView 引用替换（watch）→ renderer.syncFromGraphData             ↓ 预览图：工具层 preview_engine → renderer.syncFromGraphData，此时不写持久化的 GraphData
+
+    Cytoscape 渲染与交互层【回经】  ← 定义与展开见上
 
     ↓ CyElements
     Cytoscape Renderer
