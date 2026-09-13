@@ -131,12 +131,13 @@ npx prettier --write <文件路径>
   * `⇒` 理解为：只要不是“前件真，后件假”就为真。
 * **顶层各个架构层**默认**代码文件目录即精确实现的集合，故顶层不写**，但写定义行和契约行
 * 顶层架构的层与层之间 `↓` 表示为数据流方向
+* 行末右侧 `←` 表注解
 
 ```text
 Asterism
     ≝ 以"当前学习状态"为核心对象，以图论图为载体的可视化系统
-    s.t. GraphData 唯一事实源 ∧ Cytoscape 仅 Renderer ∧ Local First ∧ ¬watch(deep:true) ∧ ¬内部代码标识符别名的使用
-    ← ¬watch(deep:true)：GraphData 变更走引用替换，浅层 watch 足够；deep 有未知非预期行为；替代：去掉 deep 或窄化到叶子属性
+    s.t. GraphData 唯一事实源 ∧ Cytoscape 仅 Renderer ∧ Local First ∧ ¬内部代码标识符别名的使用
+    s.t. ¬watch(deep:true)  ← GraphData 变更走引用替换，浅层 watch 足够；deep 有未知非预期行为；替代：去掉 deep 或窄化到叶子属性
 
     共享组合式函数
         ≝ Vue 生态下工具与组件共用的通用组合式函数
@@ -220,8 +221,7 @@ Asterism
             │                    s.t. 只产出 operations / batches ∧ ¬执行 ∧ 返回值由原子操作构成
             ├── core/            ≝ 执行与事务
             │                    = {apply_batch、apply_batches、reversal、replay、derive、rules/、utils/}
-            │                    s.t. 时间戳 = 调用方经 executedAt 传入 ∧ (replay 外 ¬new Date()) ∧ 对象级 createdAt/updatedAt = 操作携带值 ?? executedAt
-            │                         ← new Date() 兜底仅存于 core/replay.ts 与前端 commitBatchToGraphs
+            │                    s.t. 时间戳 = 调用方经 executedAt 传入 ∧ (replay 外 ¬new Date()) ∧ 对象级 createdAt/updatedAt = 操作携带值 ?? executedAt  ← new Date() 兜底仅存于 core/replay.ts 与前端 commitBatchToGraphs
             ├── infrastructure/  ≝ 纯查询与计算几何
             ├── spi/             ≝ 持久化适配器接口
             └── index.ts         ≝ 包的公开入口
