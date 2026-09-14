@@ -7,17 +7,17 @@
  *     公式见 docs/设计/ 相关文档。
  */
 
-import { DEFAULT_LAYOUT_PARAMETERS } from '@my-project/graph-engine'
+import { computeNodeRadius, DEFAULT_LAYOUT_PARAMETERS } from '@my-project/graph-engine'
+
 import type { NodeId, NodePosition } from '@my-project/graph-engine'
 
 /**
  * 功能：
  *
- *     计算节点渲染直径。
+ *     计算节点渲染直径（由引擎半径派生）。
  */
 export function computeNodeDiameter(degree: number): number {
-    const scale = Math.sqrt(1 + degree)
-    return Math.round(2 * DEFAULT_LAYOUT_PARAMETERS.unitDistance * scale)
+    return Math.round(2 * computeNodeRadius(degree, DEFAULT_LAYOUT_PARAMETERS.unitDistance))
 }
 
 /**

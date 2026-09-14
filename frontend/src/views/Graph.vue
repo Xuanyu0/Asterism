@@ -67,16 +67,16 @@ function handleUndoRedoKeydown(event: KeyboardEvent): void {
     if (event.ctrlKey && event.key.toLowerCase() === 'z') {
         event.preventDefault()
         if (event.shiftKey) {
-            graphStore.redo()
+            useGraphOperation().redo()
         } else {
-            graphStore.undo()
+            useGraphOperation().undo()
         }
         return
     }
 
     if (event.ctrlKey && event.key.toLowerCase() === 'y') {
         event.preventDefault()
-        graphStore.redo()
+        useGraphOperation().redo()
     }
 }
 

@@ -14,6 +14,7 @@ import type { AtomicOperationInGraph } from '../../../types/atomic_operations'
 import type { ValidationIssue, ValidationResult } from '../../../types/validation'
 
 import { collectDependencyNodeIds } from '../../utils/traversal'
+import { toValidationResult } from '../../utils/validation_result'
 import { hasCollisionAt } from '../../../infrastructure/collision'
 
 /**
@@ -64,13 +65,6 @@ function hasNode(graph: GraphData, nodeId: NodeId): boolean {
     return graph.nodes.some((node) => node.id === nodeId)
 }
 
-function createResult(issues: ValidationIssue[]): ValidationResult {
-    return {
-        valid: issues.every((issue) => issue.severity !== 'error'),
-        issues,
-    }
-}
-
 // ═══════════ 操作校验 ═══════════
 
 function validateAddNode(graph: GraphData, operation: { type: 'add_node'; node: NodeData }): ValidationResult {
@@ -108,13 +102,13 @@ function validateAddNode(graph: GraphData, operation: { type: 'add_node'; node: 
         })
     }
 
-    return createResult(issues)
+    return toValidationResult(issues)
 }
 
 function validateAddEdge(graph: GraphData, operation: { type: 'add_edge'; edge: EdgeData }): ValidationResult {
     // 端点存在性已迁至 Phase 3 硬性不变量（structural.ts EDGE_*_NOT_FOUND 悬空边规则）
     // 刻意留空提醒该操作没有前置条件
-    return createResult([])
+    return toValidationResult([])
 }
 
 function validateDeleteNode(graph: GraphData, operation: { type: 'delete_node'; nodeId: NodeId }): ValidationResult {
@@ -130,7 +124,7 @@ function validateDeleteNode(graph: GraphData, operation: { type: 'delete_node'; 
         })
     }
 
-    return createResult(issues)
+    return toValidationResult(issues)
 }
 
 function validateDeleteEdge(graph: GraphData, operation: { type: 'delete_edge'; edgeId: string }): ValidationResult {
@@ -146,7 +140,7 @@ function validateDeleteEdge(graph: GraphData, operation: { type: 'delete_edge'; 
         })
     }
 
-    return createResult(issues)
+    return toValidationResult(issues)
 }
 
 function validateUpdateNode(graph: GraphData, operation: { type: 'update_node'; node: NodeData }): ValidationResult {
@@ -162,7 +156,7 @@ function validateUpdateNode(graph: GraphData, operation: { type: 'update_node'; 
         })
     }
 
-    return createResult(issues)
+    return toValidationResult(issues)
 }
 
 function validateUpdateEdge(graph: GraphData, operation: { type: 'update_edge'; edge: EdgeData }): ValidationResult {
@@ -180,7 +174,7 @@ function validateUpdateEdge(graph: GraphData, operation: { type: 'update_edge'; 
 
     // 端点存在性已迁至 Phase 3 硬性不变量（structural.ts EDGE_*_NOT_FOUND 悬空边规则）
 
-    return createResult(issues)
+    return toValidationResult(issues)
 }
 
 function validateMoveNode(
@@ -213,7 +207,7 @@ function validateMoveNode(
         })
     }
 
-    return createResult(issues)
+    return toValidationResult(issues)
 }
 
 function validateCollapseDependency(
@@ -263,7 +257,7 @@ function validateCollapseDependency(
         }
     }
 
-    return createResult(issues)
+    return toValidationResult(issues)
 }
 
 function validateExpandDependency(
@@ -282,7 +276,7 @@ function validateExpandDependency(
         })
     }
 
-    return createResult(issues)
+    return toValidationResult(issues)
 }
 
 function hasUndirectedEdgeInsideNodeSet(graph: GraphData, nodeIds: NodeId[]): boolean {

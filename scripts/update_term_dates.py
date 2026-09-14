@@ -3,7 +3,8 @@
 术语表时间戳更新脚本。
 
 为 CLAUDE.md「时间戳」小节的三行更新各术语表文件的最后修改日期：
-读取术语表文件的 mtime（最后写入时间），写入对应行末尾，格式 `Last updated: YYYY-MM-DD`。
+优先取术语表最后一次 git 提交日期（若术语表本身包含在本次提交中则取当天），
+写入对应行末尾，格式 `Last updated: YYYY-MM-DD`。
 
 用途：为 AGENT 提供术语表的时效性信息——读到 CLAUDE.md 即可判断
 各术语表文件最后更新于何时，无需逐个检查文件。
@@ -13,7 +14,9 @@
 
 行为：
 - 硬编码术语表名称→路径映射，校验路径存在
-- 无条件按各术语表文件的 mtime 更新三行日期（幂等：日期未变则无 diff）
+- 术语表包含在本次提交中时日期取当天，否则取该文件最后一次 git 提交日期
+  （无提交记录时回退到文件系统 mtime）；不再直接依赖 mtime——clone / worktree /
+  checkout 会重置 mtime，使“最后更新”失真（幂等：日期未变则无 diff）
 - 修改 CLAUDE.md 后自动 git add（**仅当 CLAUDE.md 无其他未暂存改动时**），使时间戳改动进入本次 commit；若存在非时间戳的未暂存改动，跳过 add 并提示（避免卷入用户无关改动）
 - 退出码：0 = 成功；1 = 解析/执行错误
 """
@@ -66,6 +69,28 @@ def update_stamp_in_line(line: str, stamp: str) -> str:
     return f"{line}`Last updated: {stamp}`"
 
 
+def read_staged_paths() -> set[str]:
+    """本次提交已暂存的文件路径集合（相对仓库根）。"""
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    return {line for line in result.stdout.splitlines() if line}
+
+
+def read_last_commit_date(rel_path: str) -> str | None:
+    """术语表最后一次内容提交的日期（YYYY-MM-DD）；无提交记录返回 None。"""
+    result = subprocess.run(
+        ["git", "log", "-1", "--format=%cs", "--", rel_path],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip() or None
+
+
 def main() -> int:
     if not CLAUDE_PATH.exists():
         print("[错误] CLAUDE.md 不存在")
@@ -79,6 +104,7 @@ def main() -> int:
 
     # 逐行匹配占位行（**名称**：），按硬编码映射更新日期
     lines = section.split("\n")
+    staged_paths = read_staged_paths()
     for i, line in enumerate(lines):
         m = re.match(r"\*\*([^*]+)\*\*：", line)
         if not m or m.group(1) not in GLOSSARIES:
@@ -90,7 +116,12 @@ def main() -> int:
             print(f"[错误] 术语表文件不存在: {rel_path}")
             return 1
 
-        stamp = date.fromtimestamp(path.stat().st_mtime).isoformat()
+        if rel_path in staged_paths:
+            stamp = date.today().isoformat()
+        else:
+            stamp = read_last_commit_date(rel_path) or date.fromtimestamp(
+                path.stat().st_mtime
+            ).isoformat()
         lines[i] = update_stamp_in_line(line, stamp)
 
     # 回写小节（用 split("\n") 保留行尾空行），再替换回全文

@@ -11,7 +11,7 @@
 
 import type { Component } from 'vue'
 
-import type { NodeData, EdgeData } from '@my-project/graph-engine'
+import type { NodeData, EdgeData, NodeId, EdgeId } from '@my-project/graph-engine'
 
 // 服务特定实现的类型
 import type { DraftNode } from './toolbar/add_node'
@@ -105,11 +105,11 @@ export interface ToolHandler {
     deactivate(): void
 
     onCanvasClick?(pos: { x: number; y: number }): void
-    onNodeClick?(nodeId: string): void
-    onEdgeClick?(edgeId: string): void
-    onNodeDoubleClick?(nodeId: string): void
-    onNodeHover?(nodeId: string): void
-    onNodeHoverOut?(nodeId: string): void
+    onNodeClick?(nodeId: NodeId): void
+    onEdgeClick?(edgeId: EdgeId): void
+    onNodeDoubleClick?(nodeId: NodeId): void
+    onNodeHover?(nodeId: NodeId): void
+    onNodeHoverOut?(nodeId: NodeId): void
 
     onConfirm?(label: string, summary: string): void
     onCancel?(): void

@@ -49,7 +49,7 @@ export function useFoldTool(): ToolHandler {
 
     // ── 事件的处理 ──
 
-    function onNodeClick(nodeId: string): void {
+    function onNodeClick(nodeId: NodeId): void {
         if (!graphStore.graphView) {
             return
         }
@@ -63,7 +63,7 @@ export function useFoldTool(): ToolHandler {
             [
                 {
                     type: operationType,
-                    targetNodeId: nodeId as NodeId,
+                    targetNodeId: nodeId,
                 },
             ],
             { source: id },

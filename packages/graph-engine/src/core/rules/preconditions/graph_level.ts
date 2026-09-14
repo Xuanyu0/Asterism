@@ -16,6 +16,8 @@ import type { AtomicGraphOperation } from '../../../types/atomic_operations'
 import type { GraphId, GraphRegistry } from '../../../types/graph_data'
 import type { ValidationIssue, ValidationResult } from '../../../types/validation'
 
+import { toValidationResult } from '../../utils/validation_result'
+
 /**
  * 校验单个图级操作的局部规则。
  *
@@ -89,10 +91,7 @@ export function validateGraphOperation(registry: GraphRegistry, op: AtomicGraphO
         }
     }
 
-    return {
-        valid: issues.every((issue) => issue.severity !== 'error'),
-        issues,
-    }
+    return toValidationResult(issues)
 }
 
 // ═══════════ title 校验辅助 ═══════════

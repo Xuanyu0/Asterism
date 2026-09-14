@@ -14,6 +14,8 @@
 import type { GraphData } from '../../../types/graph_data'
 import type { ValidationIssue } from '../../../types/validation'
 
+import { indexNodesById } from '../../utils/graph_index'
+
 // ═══════════ 结构类规则 ═══════════
 
 export function validateSelfLoops(graph: GraphData): ValidationIssue[] {
@@ -143,7 +145,7 @@ export function validateEdgeTargetExists(graph: GraphData): ValidationIssue[] {
 
 export function validateVirtualNodeEdgeType(graph: GraphData): ValidationIssue[] {
     const issues: ValidationIssue[] = []
-    const nodeMap = new Map(graph.nodes.map((node) => [node.id, node]))
+    const nodeMap = indexNodesById(graph)
 
     for (const edge of graph.edges) {
         const sourceNode = nodeMap.get(edge.source)
@@ -169,7 +171,7 @@ export function validateVirtualNodeEdgeType(graph: GraphData): ValidationIssue[]
 
 export function validateHeuristicReferences(graph: GraphData): ValidationIssue[] {
     const issues: ValidationIssue[] = []
-    const nodeMap = new Map(graph.nodes.map((node) => [node.id, node]))
+    const nodeMap = indexNodesById(graph)
 
     for (const edge of graph.edges) {
         const sourceNode = nodeMap.get(edge.source)

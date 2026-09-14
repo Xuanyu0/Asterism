@@ -20,8 +20,10 @@
 
 import type { NodeData, NodeId, NodePosition } from '../types/graph_data'
 import type { NodeRadiusMap } from '../types/infrastructure_types'
+
 import { DEFAULT_LAYOUT_PARAMETERS } from '../core/layout_parameters'
 import { squaredDistance } from './geometry'
+import { computeNodeRadius } from './compute_node_radius'
 
 // ═══════════ 常量 ═══════════
 
@@ -73,11 +75,7 @@ function getTarget(
  *     degree = 0 时半径为 unitDistance，保证孤立节点仍占可视空间。
  */
 function getRadius(node: NodeData, nodeRadiusOverrides: NodeRadiusMap): number {
-    const custom = nodeRadiusOverrides.get(node.id)
-
-    if (custom !== undefined) return custom
-
-    return unitDistance * Math.sqrt(1 + node.degree)
+    return computeNodeRadius(node.degree, unitDistance, nodeRadiusOverrides.get(node.id))
 }
 
 // ═══════════ 公开 API ═══════════

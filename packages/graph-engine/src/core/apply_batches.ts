@@ -27,7 +27,7 @@ import { createGraphReversal } from './create_graph_reversal'
 import { createReversalInGraph } from './create_reversal_in_graph'
 import { executeGraphOperation } from './execute_graph_operation'
 import { validateGraphOperation } from './rules/preconditions/graph_level'
-import { isGraphLevelType } from './utils/operation_guards'
+import { isGraphLevelType, isInGraphType } from './utils/operation_guards'
 
 /**
  * applyBatches 的返回值。
@@ -97,7 +97,7 @@ export function applyBatches(
         const hasKindMismatch =
             batch.kind === 'inGraph'
                 ? batch.operations.some((op) => isGraphLevelType(op as AtomicOperation))
-                : batch.operations.some((op) => !isGraphLevelType(op as AtomicOperation))
+                : batch.operations.some((op) => isInGraphType(op as AtomicOperation))
         if (hasKindMismatch) {
             return aborted(registry, { valid: false, issues: [buildKindMismatchIssue(batch)] })
         }

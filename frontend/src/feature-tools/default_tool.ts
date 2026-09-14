@@ -16,7 +16,7 @@ import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
 import { useCanvasFocus } from '@/composables/useCanvasFocus'
 import { useFloatingWindow } from '@/composables/useFloatingWindow'
 
-import type { NodeData, EdgeData, KnowledgeNodeData } from '@my-project/graph-engine'
+import type { NodeData, EdgeData, KnowledgeNodeData, NodeId, EdgeId } from '@my-project/graph-engine'
 import type { ToolHandler, ToolId } from './types'
 
 /**
@@ -57,7 +57,7 @@ export function useDefaultTool(): ToolHandler {
      *
      *     处理节点点击——在 graphView 中查找节点并打开浮空窗。
      */
-    function onNodeClick(nodeId: string): void {
+    function onNodeClick(nodeId: NodeId): void {
         const node = graphStore.graphView?.nodes.find((n) => n.id === nodeId)
         if (node) {
             floatingWindow.open(node)
@@ -69,7 +69,7 @@ export function useDefaultTool(): ToolHandler {
      *
      *     处理边点击——在 graphView 中查找边并打开浮空窗。
      */
-    function onEdgeClick(edgeId: string): void {
+    function onEdgeClick(edgeId: EdgeId): void {
         const edge = graphStore.graphView?.edges.find((e) => e.id === edgeId)
         if (edge) {
             floatingWindow.open(edge)
@@ -90,7 +90,7 @@ export function useDefaultTool(): ToolHandler {
      *     6. 本函数不检查 activeToolId——由 Graph.vue 的调用者完成。
      *     7. 本函数不调 mediator.deactivate()——由 Graph.vue 的调用者在调用前自行处理。
      */
-    function onNodeDoubleClick(nodeId: string): void {
+    function onNodeDoubleClick(nodeId: NodeId): void {
         if (!graphStore.graphView) return
 
         const node = graphStore.graphView.nodes.find((n) => n.id === nodeId)

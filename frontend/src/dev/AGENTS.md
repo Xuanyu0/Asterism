@@ -1,3 +1,5 @@
+> 上级入口：`CLAUDE.md`；本文件只写本目录特有规则
+
 # dev/ — 开发期测试工具注意事项
 
 ## 设计原则：走用户路径，不自创武功
@@ -5,9 +7,11 @@
 **开发工具构造的数据，必须通过用户实际操作时使用的同一套 API 获得。**
 
 用户创建图 → `createRootGraph`
-用户加节点 → `applyBatchToGraph([{ type: 'add_node' }])`
-用户加边 → `applyBatchToGraph([{ type: 'add_edge' }])`
-用户解构 → deconstruct handler → engine compose → `applyBatchToGraph`
+用户加节点 → `commitToCurrentGraph([{ type: 'add_node' }])`
+用户加边 → `commitToCurrentGraph([{ type: 'add_edge' }])`
+用户解构 → deconstruct handler → engine compose → `commitToCurrentGraph`
+
+`commitToCurrentGraph` 是用例层单图入口，内部经 store 唯一图操作入口 `commitBatchToGraphs` 写入；跨图场景用用例层 `commitBatches`。
 
 ❌ 自创武功——绕过运行时 API，直接拼装 GraphData 然后 `saveGraph`：
 
@@ -15,7 +19,7 @@
 - 与用户路径不一致，无法互相验证
 - 固定 ID 每次覆盖已有数据
 
-✅ 走用户路径——`createRootGraph` → `applyBatchToGraph` → 享用同一套幂等保护。
+✅ 走用户路径——`createRootGraph` → `commitToCurrentGraph` → 享用同一套幂等保护。
 
 ## bootstrap.ts：种子数据幂等性
 
@@ -30,7 +34,7 @@
 saveGraph(手动拼装的 GraphData)
 graphStore.loadGraphToView(fixedId)
 
-// ✅ 安全——createRootGraph 内置幂等检查（经导航适配层走 commitBatchToGraphs 统一管道）
+// ✅ 安全——createRootGraph 内置幂等检查（经导航用例层 useNavigation.createRootGraph 走 commitBatchToGraphs 统一管道）
 const rootId = navigation.createRootGraph('金牌测试图', { id: 'graph-golden' as GraphId })
 graphStore.loadGraphToView(rootId)
 ```
@@ -42,7 +46,7 @@ graphStore.loadGraphToView(rootId)
 ```ts
 // 安全：利用空图检测首次启动
 if (graphStore.graphView!.nodes.length === 0) {
-  // applyBatchToGraph 添加节点/边/子图
+  // commitToCurrentGraph 添加节点/边/子图
 }
 ```
 
@@ -50,6 +54,6 @@ if (graphStore.graphView!.nodes.length === 0) {
 
 ### 背景
 
-- `saveGraph` 是"覆盖写入"原语——`applyBatchToGraph` 内部第四阶段用它更新持久化数据
+- `saveGraph` 是"覆盖写入"原语——`commitBatchToGraphs` 的持久化阶段调用 `saveGraph`
 - 种子数据需要**固定 ID**（如金图 `node-g5` 通过 `sourceGraphId: 'graph-silver'` 引用银图）
 - `createRootGraph` 默认用随机 ID，加 `{ id }` 参数后同时获得固定 ID 和内置幂等保护

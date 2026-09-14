@@ -17,7 +17,7 @@
  *
  * 规则：
  *
- *     - execute / validate / sync / rules / collision / placement / geometry 不导出
+ *     - execute / sync / placement / geometry 不导出
  *     - compose 函数只产出 operations，不执行——执行统一经 apply / applyBatch
  *
  * 外部如何使用：
@@ -158,14 +158,15 @@ export type { OperationBatch } from './types/compose_types'
 /**
  * 功能：
  *
- *     图级操作类型守卫。收窄 AtomicOperation 为 AtomicGraphOperation
- *     （add_graph / delete_graph / update_graph）。
+ *     图级 / 图内操作类型守卫。前者收窄 AtomicOperation 为 AtomicGraphOperation
+ *     （add_graph / delete_graph / update_graph），后者取反收窄为 AtomicOperationInGraph。
  *
  * 消费者：
  *
- *     operation_guards.ts — 前端提交前把混合 AtomicOperation[] 拆成图内 / 图级批的类型收窄。
+ *     引擎 applyBatches 的批契约校验，以及前端提交前把混合 AtomicOperation[]
+ *     拆成图内 / 图级批的类型收窄。
  */
-export { isGraphLevelType } from './core/utils/operation_guards'
+export { isGraphLevelType, isInGraphType } from './core/utils/operation_guards'
 
 // ═══════════════════════════════════════════════════════════════════
 // replay — 历史回溯
@@ -312,6 +313,22 @@ export { searchNodes } from './infrastructure'
  *     const collides = hasCollisionAt(nodeId, position, allNodes, nodeRadiusOverrides)
  */
 export { hasCollisionAt } from './infrastructure'
+
+/**
+ * 功能：
+ *
+ *     节点外接圆半径公式单源。nodeRadiusOverrides 有覆盖值时优先，否则按
+ *     unitDistance * sqrt(1 + degree) 计算。
+ *
+ * 消费者：
+ *
+ *     前端 graph/utils/node_radius.ts — 计算节点半径覆盖表。
+ *
+ * 使用：
+ *
+ *     const radius = computeNodeRadius(node.degree, unitDistance, override)
+ */
+export { computeNodeRadius } from './infrastructure'
 
 /**
  * 功能：

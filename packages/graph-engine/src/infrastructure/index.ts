@@ -9,6 +9,8 @@ export { searchNodes } from './search'
 
 export { hasCollisionAt, hasCollisionInDrafts } from './collision'
 
+export { computeNodeRadius } from './compute_node_radius'
+
 export {
     positionOnCircle,
     snapOrbit,

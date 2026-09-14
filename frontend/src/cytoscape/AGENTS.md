@@ -1,4 +1,11 @@
+> 上级入口：`CLAUDE.md`；本文件只写本目录特有规则
+
 ## 文件夹特殊规则
 
-* frontend/src/cytoscape 下允许使用 cy 来作为 cytoscape 的简写
-* 函数语义明确就拆分，即使只有一处调用方。
+- frontend/src/cytoscape 下允许使用 cy 来作为 cytoscape 的简写
+- 函数语义明确就拆分，即使只有一处调用方（见下方「对上级规则的覆盖」）
+- cytoscape 库的 import 只出现在本目录（渲染运行时、popper、交互中的值/类型 import，含对应测试的类型 import）；其他目录不得直接 `import 'cytoscape'`，外部库隔离边界应保持
+
+## 对上级规则的覆盖
+
+「函数语义明确就拆分」显式覆盖 `CLAUDE.md`「单次调用函数是否内联」的默认规则：本目录以职责清晰优先，即使多参单次调用，只要语义明确同样拆分，不因参数多而内联。

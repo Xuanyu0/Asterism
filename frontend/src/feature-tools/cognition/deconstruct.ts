@@ -10,6 +10,8 @@ import { ref, computed } from 'vue'
 
 import { deconstruct as composeDeconstruct } from '@my-project/graph-engine'
 
+import type { NodeId } from '@my-project/graph-engine'
+
 import { useGraphStore } from '@/graph/graph_store'
 import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
 import { useToolMediator } from '@/feature-tools/mediator'
@@ -43,7 +45,7 @@ export function useDeconstructTool(): ToolHandler {
      * 直接提交（applyBatches 统一执行图内 / 图级批），完成后自动调用 mediator.deactivate()
      * 取消自身。
      */
-    function onNodeClick(nodeId: string): void {
+    function onNodeClick(nodeId: NodeId): void {
         if (!graphStore.graphView || !nodeId) {
             return
         }

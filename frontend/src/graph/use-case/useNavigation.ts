@@ -24,6 +24,7 @@ import {
     clearLastActiveRootId,
 } from '@/graph/graph_persistence'
 import { lookupGraph, unregisterGraph } from '@/graph/graph_registry'
+import { createEmptyRootGraph } from '@/graph/utils/empty_root_graph'
 import { isInRootTree } from '@/graph/utils/graph_tree'
 
 /**
@@ -204,14 +205,7 @@ function createNavigation(): NavigationAPI {
             return id
         }
 
-        const graph: GraphData = {
-            id,
-            kind: 'root',
-            title,
-            nodes: [],
-            edges: [],
-            cognitiveState: { foldedDependencies: [] },
-        }
+        const graph = createEmptyRootGraph(id, title)
 
         // 创建走 commitBatchToGraphs 统一管道（add_graph 信号 → 注册 + 持久化）；
         // 空名 / 重名由引擎 add_graph 校验兜底（EMPTY_TITLE / TITLE_DUPLICATE），失败整批丢弃

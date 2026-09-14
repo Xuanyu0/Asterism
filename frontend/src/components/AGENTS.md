@@ -1,3 +1,5 @@
+> 上级入口：`CLAUDE.md`；本文件只写本目录特有规则
+
 ## 组件间职责划分：「数据向下流，事件向上流」
 
 ### 规则
@@ -14,13 +16,28 @@
 
 - **数据向下流**：父组件从 store 读取数据，派生为子组件需要的视图模型，通过 props 传给子组件。子组件只读使用，不修改、不写 store。
 - **事件向上流**：用户与子组件交互时，子组件通过 emit 发送信号（事件名 + 载荷）。父组件监听事件，决定如何处理（包括写 store）。
-- **子组件决不做决策层操作**：不导入 `graphStore` 写方法、不导入 `operationController`、`toolMediator` 等编排模块。所有对 store 的写入（`loadGraphToView`、`applyBatchToGraph`、`createRootGraph`、`deleteRootGraphTree` 等）必须经由 emit → 父组件处理。
+- **子组件决不做决策层操作**：不导入 store 写入口（`commitBatchToGraphs`）与编排模块；写入经 emit 或已确立的用例层入口。
+
+### 只读 vs 写入
+
+- **只读门面 / 只读 store（允许）**：读取 store 或用例层派生状态，不产生写入。
+- **写 store / 编排（须经 emit）**：触发 GraphData 写入或工具编排，应由父组件统一处理。
+- 判定模板：「是否存在父组件需要做的编排？」是 → 必须走 emit；否 → 允许读 store，但写入仍优先走 emit。
 
 ### 已知技术债务
 
-`NavigationPanel.vue` 经适配层（`graph/adapters/useNavigationAdapter.ts`）调用 `createRoot` 和 `deleteRootTree` 等 store 写方法，而非通过 emit → 父组件处理。原因是这两个操作不涉及副作用编排，且子组件需要获取返回值（新 graphId）；适配层为写操作提供了图数据域内的统一入口，但仍未走 emit 链路。
+`NavigationPanel.vue` 经 `graph/use-case/useNavigation` 的 `useNavigation()` 调用 `createRootGraph` / `deleteRootGraphTree`，未走 emit → 父组件链路。
 
-**约束**：此类例外应极少。写 store 前确认：是否存在父组件需要做的编排？是 → 必须走 emit；否 → 可以读 store，但写入 store 仍应优先走 emit；中间路径（经适配层写）应仅在适配层提供领域化入口时使用。
+### 现状：例外边界（边界待定）
+
+以下组件当前未完全走 emit 链路。仅记录现状，边界设计尚未裁决，不代表已认可：
+
+- `NavigationPanel.vue`：直接调用导航用例层 `createRootGraph` / `deleteRootGraphTree`（见上「已知技术债务」）。
+- `GraphModeSelector.vue`：直接 import 编排模块 `operationController` 与 `mediator`。
+- `GraphFloatingWindow.vue`：读 `mediator.defaultHandler`，并调用活跃 handler 的浮空窗回调。
+- `GraphNavigationCard.vue`：使用 `mediator` 与导航用例层 `goToGraph`。
+- `GraphPermanentToolbar.vue`：使用 `mediator` 注册 / 激活 / 取消工具。
+- `SearchPanel.vue`：只读 store（属「只读 store」，仅作对照）。
 
 ---
 
@@ -40,19 +57,16 @@ Vue SFC 编译器自动将模板中的 kebab-case 映射到声明中的 camelCas
 ```ts
 // 子组件声明：camelCase
 const props = defineProps<{
-    pathSegments: PathSegment[]
+  pathSegments: PathSegment[]
 }>()
 
 // 子组件声明：camelCase，无引号
 const emits = defineEmits<{
-    goParentGraph: []
+  goParentGraph: []
 }>()
 ```
 
 ```vue
 <!-- 父组件模板：kebab-case，编译器自动映射 -->
-<Dock
-    v-bind:path-segments="pathSegments"
-    v-on:go-parent-graph="goUpOneLevel"
-/>
+<Dock v-bind:path-segments="pathSegments" v-on:go-parent-graph="goUpOneLevel" />
 ```

@@ -129,8 +129,8 @@ const renderer = useRenderer()
 const draftNode = computed(() => mediator.activeHandler.value?.draftNode ?? null)
 
 // 数据源切换：经 default handler 门面转发单例状态（getter 在 computed 内访问以建立响应式依赖）
-const defaultHandler = mediator.registry.get('default')
-const floatingData = computed(() => defaultHandler?.floatingWindowData ?? null)
+const defaultHandler = mediator.defaultHandler
+const floatingData = computed(() => defaultHandler.floatingWindowData ?? null)
 
 // ── 编辑草稿（本地状态，Confirm 时才提交）──
 

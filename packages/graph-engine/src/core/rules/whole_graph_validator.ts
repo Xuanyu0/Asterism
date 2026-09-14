@@ -13,13 +13,11 @@
 import type { GraphData } from '../../types/graph_data'
 import type { ValidationResult } from '../../types/validation'
 
+import { toValidationResult } from '../utils/validation_result'
 import { checkInvariants } from './invariants/check_invariants'
 
 export function validateGraph(graph: GraphData): ValidationResult {
     const issues = checkInvariants(graph)
 
-    return {
-        valid: issues.every((issue) => issue.severity !== 'error'),
-        issues,
-    }
+    return toValidationResult(issues)
 }

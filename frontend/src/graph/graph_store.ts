@@ -15,20 +15,25 @@
 
 import { shallowReactive } from 'vue'
 
-import type { GraphData, GraphId } from '@my-project/graph-engine'
-import type { ValidationResult } from '@my-project/graph-engine'
-import type { BatchesLog, OperationBatch, OperationLogTree, CommitLog } from '@my-project/graph-engine'
+import type {
+    BatchesLog,
+    CommitLog,
+    GraphData,
+    GraphId,
+    GraphRegistry,
+    OperationBatch,
+    OperationLogTree,
+    ValidationResult,
+} from '@my-project/graph-engine'
 
 import { applyBatches } from '@my-project/graph-engine'
 
-import type { GraphRegistry } from '@/graph/graph_registry'
 import { createRegistry, registerGraph, lookupGraph } from '@/graph/graph_registry'
 
 import { saveGraph, loadGraph, deleteGraph, saveLastActiveRootId } from '@/graph/graph_persistence'
 
 import { DATA_INTEGRITY_PREFIX, reportCorruptedGraph } from '@/graph/utils/data_integrity_reporter'
-
-import { isInGraphOperation, isGraphLevelOperation } from '@/graph/utils/operation_guards'
+import { splitOperationsIntoBatches } from '@/graph/utils/operation_batches'
 
 /**
  * GraphStore 公开 API：状态 + 方法入口。
@@ -623,22 +628,7 @@ function buildBatchesFromLogItems(items: BatchesLog[], registry: GraphRegistry):
             }
         }
 
-        // 图级操作与图内操作分拆为独立批（applyBatches 判别联合要求）
-        const graphLevelOps = item.operations.filter(isGraphLevelOperation)
-        const inGraphOps = item.operations.filter(isInGraphOperation)
-        if (graphLevelOps.length > 0) {
-            batch.push({
-                kind: 'graphLevel',
-                operations: graphLevelOps,
-            })
-        }
-        if (inGraphOps.length > 0) {
-            batch.push({
-                kind: 'inGraph',
-                graph,
-                operations: inGraphOps,
-            })
-        }
+        batch.push(...splitOperationsIntoBatches(item.operations, graph))
     }
 
     return batch
