@@ -5,14 +5,14 @@
 - **狭义 GraphData**：`packages/graph-engine/src/types/graph_data.ts` 中需要持久化存储的图结构类型。
 - **广义 GraphData**：需要持久化存储的图数据 + 由持久化存储图数据在运行时派生出来的数据。
 - **GraphEngine**：框架无关、本项目特定义下无副作用（不通过引用修改外部数据）的广义 GraphData 状态迁移引擎，是系统中所有 GraphData 转换操作的唯一入口。
-- **Runtime 层**：位于前端的 GraphData 状态所有者，负责持有运行时状态、编排引擎操作（调 Engine → 后处理）、实现持久化 I/O；框架绑定（当前为模块级单例 + Vue）。内部再分两层：
+- **Runtime 状态与图业务层**：位于前端的 GraphData 状态所有者，负责持有运行时状态、编排引擎操作（调 Engine → 后处理）、实现持久化 I/O；框架绑定（当前为模块级单例 + Vue）。内部再分两层：
   - **graph_store.ts（数据核心）**：公开能力为四入口。
   - **use-case/（业务用例层）**：图数据业务逻辑的封装，经 store 公开状态访问共享运行时数据。
-- **Cytoscape 渲染/交互层**：GraphData 的只读映射/拷贝。接收 GraphData 渲染到画布，捕获交互事件后经交互逻辑层（feature-tools/）回流至 Runtime。
+- **Cytoscape 渲染与交互层**：GraphData 的只读映射/拷贝。接收 GraphData 渲染到画布，捕获交互事件后经工具交互逻辑层（feature-tools/）回流至 Runtime。
 - **工具**：前端页面中用户主动激活的状态。在此状态下，用户的画布交互（点击、拖拽）被解释为该工具特有的语义，并最终转化为对 GraphData 的修改。按交互入口分为两类：
   - 常驻操作栏工具：通过工具栏按钮激活
   - 模式工具：先进入 Cognition 或 Arrangement 模式，再选择具体操作
-- **交互逻辑层**：用户与工具的交互通道，采用"水平分层 + 垂直自包含"混合架构——水平分层提供所有工具共享的按钮定义、生命周期管理与事件转发；垂直自包含使每个工具独立持有自己的激活状态、光标样式与画布交互处理。
+- **工具交互逻辑层**：用户与工具的交互通道，采用"水平分层 + 垂直自包含"混合架构——水平分层提供所有工具共享的按钮定义、生命周期管理与事件转发；垂直自包含使每个工具独立持有自己的激活状态、光标样式与画布交互处理。
 
 ## 命令
 
@@ -85,13 +85,13 @@ npx prettier --write <文件路径>
 | --- | --- |
 | 查设计概念 / 设计名词 | [设计术语表](docs/设计/设计术语表.md) |
 | 查代码标识符 | [开发术语表](docs/开发文档/开发术语表.md)（只做检索索引，**不定义文件 / 目录 / 层**） |
-| 查文件 / 文件夹 / 分层的定义 | [架构图](FOR-AGENTS/架构/README.md)（即本文件「项目架构」节） |
+| 查文件 / 文件夹 / 分层的定义 | [架构图](FOR-AGENTS/架构/README.md)（即本文件 §项目架构） |
 | 查交流口径 / 项目术语 | [项目术语表](项目术语表.md) |
 | 写 / 改代码注释 | [注释资料](FOR-AGENTS/注释资料.md) |
 | 了解设计意图 / 交互规则 | [docs/设计/](docs/设计/)（L1，最高权威，只读） |
 | 查开发历史 / 过程文档 | [docs/开发文档/](docs/开发文档/)（历史快照，不代表当前 API） |
 | 了解目录局部规则 | 该目录及祖先目录的 `AGENTS.md`（见下） |
-| 理解架构 / 依赖方向 | 本文件「项目架构（分层森林图 · 顶层视图）」节 |
+| 理解架构 / 依赖方向 | 本文件 §项目架构 |
 | 查阅外部技术文档 | [Vue 3](https://cn.vuejs.org/guide/introduction.html)、[HTML](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Structuring_content)、[CSS](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Styling_basics)、[Tailwind CSS](https://tailwindcss.zhcndoc.com/docs/styling-with-utility-classes)、[Cytoscape](https://js.cytoscape.org/) |
 
 > 分工：**文件 / 文件夹 / 分层的定义看架构图；代码标识符的检索看开发术语表。**
@@ -109,7 +109,7 @@ npx prettier --write <文件路径>
 - 开发工具：[frontend/src/dev/AGENTS.md](frontend/src/dev/AGENTS.md)
 
 **发现机制**：改动任何目录前，先查该目录及其**祖先目录**的 `AGENTS.md`。
-**优先级**：`AGENTS.md` 可覆盖 CLAUDE.md 的**默认习惯约定**（且必须在该文件内显式声明这是覆盖），但**不得覆盖「项目架构」节的契约与架构边界**。
+**优先级**：`AGENTS.md` 可覆盖 CLAUDE.md 的**默认习惯约定**（且必须在该文件内显式声明这是覆盖），但**不得覆盖 §项目架构 的契约与架构边界**。
 
 ### 术语表时效
 
@@ -134,15 +134,17 @@ npx prettier --write <文件路径>
   * `⇒` 理解为：只要不是“前件真，后件假”就为真。
   * `⟺` 理解为：只要不是“两侧真值不同”就为真（即 `A ⇒ B ∧ B ⇒ A`）。
 * **顶层各个架构层**默认**代码文件目录即精确实现的集合，故顶层不写**，但写定义行和契约行
+* 缩进 = 层级，每级 4 空格：根 `0` / 层与流 `4` / 层属性 `8` / 目录项 `12`
+  * 层间流（`↓` / 值 / `§` 引用）与层名同级，不缩进进层内
+  * 目录项续行对齐到该文件的 `≝`；语义续行以 `│` 引导，纯对齐可省 `│`
 * 数据流由**层**（黑盒行）与**值**（数据行）交替构成，行间以 `↓` 连接
-  * `↓` 独占一行，写 `↓ [函数]`：上一行是输入，下一行是输出，右侧是函数；`A / ↓ f / B` ⟺ `B = f(A)`
-  * 输入或输出为**层**时右侧留空（层自身即函数）；两侧都是值时必须写函数
+  * `↓` 独占一行，写 `↓ [函数]`：上面是输入或层，下面是输出或层，右边是转换动作，可留空
   * 层为黑盒：`≝` / `=` / `s.t.` 只声明接口；层上方的 `↓` 是其入口，下方的 `↓` 是其出口
   * 多条 `↓` 按行、列排布：列 = 一条管道，同行并列 = 并行管道；读序行自上而下、行内自左而右
-  * 某列终止时该格写 `↓（无）`（不留空），其余列照常承接
 * 行末右侧 `←` 表注解
-* 同一架构层可在图中重复出现（表示数据流回经该层），重复处仅写层名并以【回经】标记；`≝` 定义与 `=` 目录展开只在首次出现处写一次
-  * 反馈（逆层序）经【回经】把目标层重锚到下方，保持输入在上、输出在下
+* `§` 引用已定义的章节或层，写 `§<名>`
+  * 架构图中同一层重复出现（数据流回经该层）时写 `§<层名>`，不再重复 `≝` / `=` / 注解
+  * 反馈（逆层序）把目标层重锚到下方，保持输入在上、输出在下
 
 ```text
 Asterism
@@ -151,7 +153,7 @@ Asterism
     s.t. ¬watch(deep:true)  ← GraphData 变更走引用替换，浅层 watch 足够；deep 有未知非预期行为；替代：去掉 deep 或窄化到叶子属性
 
     共享组合式函数
-        ≝ 跨模块复用的 Vue 组合式函数
+        ≝  跨模块复用的 Vue 组合式函数
         =   frontend/src/composables/
             ├── useFloatingWindow.ts     ≝ 浮空窗单例
             ├── useCanvasFocus.ts        ≝ 画布视口定位请求单例
@@ -160,15 +162,17 @@ Asterism
             └── useAutoFade.ts           ≝ 依指针位置的通用自动淡化工厂
         s.t. 组合式函数在横切方向上共享 ∧ ¬参与单向数据流
 
-
     用户交互【外部事件源】  ← 非目录层
         ≝ 用户经过浏览器 DOM 产生的原生输入事件源
     
-    ↓ 原生 DOM 事件：用户的点击 / 双击 / 悬停 / 右键
-    ↓ 事件被 Cytoscape 捕获
+    ↓
+    原生 DOM 事件：用户的点击 / 双击 / 悬停 / 右键
+    ↓ Cytoscape 捕获 DOM 事件
+    合成的 Cy 原始事件
+    ↓
 
     Cytoscape 渲染与交互层
-        ≝ 持有 Cytoscape 实例；渲染到画布并把 Cy 原始事件翻译为语义事件；对外暴露光标追踪/高亮/预览渲染 API
+        ≝  持有 Cytoscape 实例；渲染到画布并把 Cy 原始事件翻译为语义事件；对外暴露光标追踪/高亮/预览渲染 API
         =   frontend/src/cytoscape/
             ├── useRenderer.ts        ≝ 渲染运行时 Cy 单例唯一持有者
             │                         s.t. 渲染 GraphData ⇒ 经 syncFromGraphData 唯一入口
@@ -181,10 +185,12 @@ Asterism
             └── cy_canvas.d.ts        ≝ Cy 扩展类型声明
         s.t. ¬持有 GraphData 引用 ∧ ¬保存业务状态 ∧ ¬修改 GraphData ∧ ¬作为事实源
 
-    ↓ 语义事件：onNodeClicked / onEdgeClicked / onRightClick / onNodeDoubleClicked / onNodeHovered          ↓ 组件语义事件
+    ↓
+    语义事件：onNodeClicked / onEdgeClicked / onRightClick / onNodeDoubleClicked / onNodeHovered          组件语义事件
+    ↓ mediator 转发到活跃工具
 
     工具交互逻辑层
-        ≝ 负责操作、认知、 布局与默认工具的管理与定义；把语义事件路由到活跃工具；工具自包含地完成选择/预览/确认
+        ≝  负责操作、认知、 布局与默认工具的管理与定义；把语义事件路由到活跃工具；工具自包含地完成选择/预览/确认
         ⊃  frontend/src/feature-tools/
             ├── types.ts         ≝ 工具系统类型契约接口
             ├── mediator.ts      ≝ 工具生命周期管理的唯一入口，采用中介者模式
@@ -199,13 +205,14 @@ Asterism
                                  s.t. 只计算不渲染 ∧ ¬写持久化 GraphData
         s.t. ¬直接写 GraphData ∧ (写 GraphData ⇒ 经 commitToCurrentGraph ∨ commitBatches) ∧ ¬(存储 GraphData ∨ UI 模式切换)
 
-
-    ↓ 用户确认后提交写入：单图 commitToCurrentGraph，跨图 commitBatches  ↓ 切图：goToGraph（导航）/ default_tool 双击 →   ↓ 回溯：Graph.vue 快捷键
-    ↓ 数据进一步进入 useGraphStore().commitBatchToGraphs                ↓ loadGraphToView                              ↓ useGraphOperation.undo / redo
+    ↓                                                 ↓                                                     ↓
+    操作 / 批次                                        图谱 ID                                               Graph.vue 快捷键事件
+    ↓ 单图 commitToCurrentGraph / 跨图 commitBatches   ↓ goToGraph / default_tool 双击                       ↓ useGraphOperation.undo / redo
+    ↓ useGraphStore().commitBatchToGraphs             ↓ useGraphStore().loadGraphToView                     ↓ 
 
     Runtime 状态与图业务层
-        ≝ 持有 GraphData 状态，是其唯一事实源与唯一写入口；编排引擎操作、封装业务用例、并实现持久化
-        ⊂ frontend/src/graph/ + frontend/src/ui/
+        ≝  持有 GraphData 状态，是其唯一事实源与唯一写入口；编排引擎操作、封装业务用例、并实现持久化
+        ⊂  frontend/src/graph/ + frontend/src/ui/
             ├── graph_store.ts              ≝ GraphData 唯一事实源 + 所有修改的唯一合法入口
             │                               = { loadGraphToView, commitBatchToGraphs, undo, redo }
             │                               s.t. (store 公开合法入口 ⟺ loadGraphToView ∨ commitBatchToGraphs ∨ undo ∨ redo) 
@@ -219,10 +226,12 @@ Asterism
             └── ui/operation_controller.ts  ≝ 认知与布局操作编排  ← 历史遗留，待迁 feature-tools/
         s.t. (图数据业务逻辑 ∈ use-case ∧ ∉ store) ∧ (内部单向依赖：业务 → 用例 → store)
         
-    ↓ commitBatchToGraphs/undo/redo 委托图引擎的 apply_batches                       ↓ 调用 compose 产出 batches（不执行）：工具交互逻辑层【回经】 / ui 编排层
+    ↓                                                                       ↓
+    注册表 + 批                                                              操作参数
+    ↓ apply_batches                                                         ↓ compose（§工具交互逻辑层 / ui 编排层 调用）
     
     GraphEngine
-        ≝ 纯函数式编写的唯一图数据定义与转换入口
+        ≝  纯函数式编写的唯一图数据定义与转换入口
         =   packages/graph-engine/src/
             ├── types/           ≝ 类型定义
             ├── compose/         ≝ 有实际语义与用户价值的一次编排操作
@@ -235,25 +244,34 @@ Asterism
             └── index.ts         ≝ 包的公开入口
         s.t. ¬副作用 ∧ ¬I/O ∧ ¬框架依赖 ∧ ¬持久化 ∧ ¬持有状态
         
+    ↓                                                                      ↓
+    新注册表（含新图数据）                                                   图规则校验结果
+    ↓ store.graphRegistry 引用替换                                          ↓ 写入 lastValidationResult
 
-    ↓ 返回新注册表（含新图数据）与图规则校验结果
-    ↓ store.graphRegistry 引用替换
-    ↓ 派生 graphView 随注册表引用替换自动指向新图数据（graphViewId 不变）
-    ↓ 图校验结果：lastValidationResult 写入点：commitBatchToGraphs（applyBatches 结果）/ reportComposeValidation（compose 转发）/ useNavigation（TARGET_NOT_FOUND）；并随 loadGraphToView、clearValidationResult 清空。
+    §Runtime 状态与图业务层
+
+    ↓                                           ↓
+    新 graphView                                lastValidationResult
+    ↓ watch(GraphView)                          ↓
 
     组件与装配层
-        ≝ 承载视图单元与页面装配
+        ≝  承载视图单元与页面装配
         =   frontend/src/components/ + frontend/src/views/
             ├── components/      ≝ 视觉单元
             └── views/Graph.vue  ≝ 装配层
         s.t. 装配层渲染 GraphView ⇒ 经 renderer.syncFromGraphData
-        
-    ↓ GraphView 引用替换（watch）→ renderer.syncFromGraphData             ↓ 预览图：工具层 preview_engine → renderer.syncFromGraphData，此时不写持久化的 GraphData
+    
+    ↓                                                                        ↓
+    GraphView（引用替换后）                                                   预览图
+    ↓ renderer.syncFromGraphData                                             ↓ renderer.syncFromGraphData  ← 此时不写持久化 GraphData
+    
+    §Cytoscape 渲染与交互层
 
-    Cytoscape 渲染与交互层【回经】  ← 定义与展开见上
+    ↓
+    CyElements
+    ↓
 
-    ↓ CyElements
-    Cytoscape Renderer
+    Cytoscape Renderer【外部渲染器】  ← 外部库，非目录层
 ```
 
 > 契约：本文件各层 `s.t.` 行与代码头「调用契约」　·　依赖与禁止边：见 [FOR-AGENTS/架构/依赖图.md](FOR-AGENTS/架构/依赖图.md)　·　模型与图例：见 [FOR-AGENTS/架构/README.md](FOR-AGENTS/架构/README.md)
@@ -283,7 +301,7 @@ Asterism
 - 用 `type B = A` 为已有类型起等价别名；或为同一概念维护两个类型 / 函数 / 常量名（含标注"向后兼容别名"者）
 
 一个概念只对应一个标识符。需要更名时，直接改定义处并同步全部引用，不保留别名。
-理由：别名使同一概念出现两个可检索名，破坏 grep 定位与一致性（同义两名）。本项目唯一用户是开发者本人，旧名无外部兼容负担——这是「早期开发策略」（见下）中"不写兼容代码"在标识符层的落地。
+理由：别名使同一概念出现两个可检索名，破坏 grep 定位与一致性（同义两名）。本项目唯一用户是开发者本人，旧名无外部兼容负担——这是 §早期开发策略 中"不写兼容代码"在标识符层的落地。
 
 > 注：`type NodeData = KnowledgeNodeData | ReferenceNodeData` 这类**并集/派生定义**是定义新概念，不属别名，允许。
 
