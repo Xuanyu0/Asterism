@@ -85,7 +85,7 @@ npx prettier --write <文件路径>
 | --- | --- |
 | 查设计概念 / 设计名词 | [设计术语表](docs/设计/设计术语表.md) |
 | 查代码标识符 | [开发术语表](docs/开发文档/开发术语表.md)（只做检索索引，**不定义文件 / 目录 / 层**） |
-| 查文件 / 文件夹 / 分层的定义 | [架构图](FOR-AGENTS/架构/README.md)（即本文件 §项目架构） |
+| 查文件 / 文件夹 / 分层的定义 | 本文件 §项目架构 |
 | 查交流口径 / 项目术语 | [项目术语表](项目术语表.md) |
 | 写 / 改代码注释 | [注释资料](FOR-AGENTS/注释资料.md) |
 | 了解设计意图 / 交互规则 | [docs/设计/](docs/设计/)（L1，最高权威，只读） |
@@ -116,7 +116,7 @@ npx prettier --write <文件路径>
 #### 时间戳
 
 **设计术语表**：`Last updated: 2026-09-07`
-**开发术语表**：`Last updated: 2026-09-12`
+**开发术语表**：`Last updated: 2026-09-14`
 **项目术语表**：`Last updated: 2026-09-12`
 
 ## 项目架构（分层森林图 · 顶层视图）
@@ -274,7 +274,7 @@ Asterism
     Cytoscape Renderer【外部渲染器】  ← 外部库，非目录层
 ```
 
-> 契约：本文件各层 `s.t.` 行与代码头「调用契约」　·　依赖与禁止边：见 [FOR-AGENTS/架构/依赖图.md](FOR-AGENTS/架构/依赖图.md)　·　模型与图例：见 [FOR-AGENTS/架构/README.md](FOR-AGENTS/架构/README.md)
+> 契约：本文件各层 `s.t.` 行与代码头「调用契约」。层间依赖**单向向下**：上层可 import 下层，反向禁止；`Runtime` 不得 import 上层，`cytoscape` 不得写 `graph_store`，`graph-engine` 不得 import `frontend`。
 
 ## 前端架构设计
 
