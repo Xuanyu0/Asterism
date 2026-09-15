@@ -152,6 +152,10 @@ python3 scripts/format_architecture_blocks.py --check
   * 架构图中同一层重复出现（数据流回经该层）时写 `§<层名>`，不再重复 `≝` / `=` / 注解
 * 反馈（逆层序）把目标层重锚到下方，保持输入在上、输出在下
 
+关于排版：
+  * `↓` 多列块里仅使用英文字符，不要使用汉字，除非汉字处于行末，且之后没有 `↓` 需要对齐
+  * `↓` 多列块里的代码用``包裹，以区分自然语言英语
+
 ```text
 Asterism
     ≝ 以"当前学习状态"为核心对象，以图论图为载体的可视化系统
@@ -211,17 +215,17 @@ Asterism
                                  s.t. 只计算不渲染 ∧ ¬写持久化 GraphData
         s.t. ¬直接写 GraphData ∧ (写 GraphData ⇒ 经 commitToCurrentGraph ∨ commitBatches) ∧ ¬(存储 GraphData ∨ UI 模式切换)
 
-    ↓                                                 ↓                                                     ↓
-    操作 / 批次                                        图谱 ID                                               Graph.vue 快捷键事件
-    ↓ 单图 commitToCurrentGraph / 跨图 commitBatches   ↓ goToGraph / default_tool 双击                       ↓ useGraphOperation.undo / redo
-    ↓ useGraphStore().commitBatchToGraphs             ↓ useGraphStore().loadGraphToView                     ↓ 
+    ↓                                                                      ↓                                              ↓
+    operations / batches                                                   graph ID                                       `Graph.vue` shortcuts
+    ↓ single-graph `commitToCurrentGraph` / cross-graph `commitBatches`    ↓ `goToGraph` / `default_tool` double-click    ↓ `useGraphOperation.undo` / `redo`
+    ↓ `useGraphStore().commitBatchToGraphs`                                ↓ `useGraphStore().loadGraphToView`            ↓
 
     Runtime 状态与图业务层
         ≝  持有 GraphData 状态，是其唯一事实源与唯一写入口；编排引擎操作、封装业务用例、并实现持久化
         ⊂  frontend/src/graph/ + frontend/src/ui/
             ├── graph_store.ts              ≝ GraphData 唯一事实源 + 所有修改的唯一合法入口
             │                               = { loadGraphToView, commitBatchToGraphs, undo, redo }
-            │                               s.t. (store 公开合法入口 ⟺ loadGraphToView ∨ commitBatchToGraphs ∨ undo ∨ redo) 
+            │                               s.t. (store 公开合法入口 ⟺ loadGraphToView ∨ commitBatchToGraphs ∨ undo ∨ redo)
             │                               s.t. ¬(Draft ∈ store) ∧ ¬(Cytoscape ∈ store)
             ├── use-case/                   ≝ 图数据业务用例
             │                               s.t. ¬持有状态本身
@@ -232,9 +236,9 @@ Asterism
             └── ui/operation_controller.ts  ≝ 认知与布局操作编排  ← 历史遗留，待迁 feature-tools/
         s.t. (图数据业务逻辑 ∈ use-case ∧ ∉ store) ∧ (内部单向依赖：业务 → 用例 → store)
         
-    ↓                                                                       ↓
-    注册表 + 批                                                              操作参数
-    ↓ apply_batches                                                         ↓ compose（§工具交互逻辑层 / ui 编排层 调用）
+    ↓                    ↓
+    registry + batch     operation params
+    ↓ `apply_batches`    ↓ `compose`  ← §工具交互逻辑层 / ui 编排层
     
     GraphEngine
         ≝  纯函数式编写的唯一图数据定义与转换入口
@@ -250,15 +254,15 @@ Asterism
             └── index.ts         ≝ 包的公开入口
         s.t. ¬副作用 ∧ ¬I/O ∧ ¬框架依赖 ∧ ¬持久化 ∧ ¬持有状态
         
-    ↓                                                                      ↓
-    新注册表（含新图数据）                                                   图规则校验结果
-    ↓ store.graphRegistry 引用替换                                          ↓ 写入 lastValidationResult
+    ↓                                         ↓
+    new registry (with new graph data)        graph-rule validation result
+    ↓ `store.graphRegistry` reference swap    ↓ write `lastValidationResult`
 
     §Runtime 状态与图业务层
 
-    ↓                                           ↓
-    新 graphView                                lastValidationResult
-    ↓ watch(GraphView)                          ↓
+    ↓                       ↓
+    new `graphView`         `lastValidationResult`
+    ↓ `watch(GraphView)`    ↓
 
     组件与装配层
         ≝  承载视图单元与页面装配
@@ -267,9 +271,9 @@ Asterism
             └── views/Graph.vue  ≝ 装配层
         s.t. 装配层渲染 GraphView ⇒ 经 renderer.syncFromGraphData
     
-    ↓                                                                        ↓
-    GraphView（引用替换后）                                                   预览图
-    ↓ renderer.syncFromGraphData                                             ↓ renderer.syncFromGraphData  ← 此时不写持久化 GraphData
+    ↓                                     ↓
+    `GraphView` (after reference swap)    preview graph
+    ↓ `renderer.syncFromGraphData`        ↓ `renderer.syncFromGraphData`  ← no write to persisted GraphData
     
     §Cytoscape 渲染与交互层
 
