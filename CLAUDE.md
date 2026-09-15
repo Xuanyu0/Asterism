@@ -27,10 +27,14 @@ pnpm --filter @my-project/graph-engine test
 pnpm --filter frontend type-check
 # GE 类型校验
 pnpm --filter @my-project/graph-engine type-check
-# 格式化全项目代码（frontend + graph-engine + docs + md）
+# 格式化前端 src 与引擎 src、tests（prettier；不含 docs、md、前端 tests）
 pnpm format
 # 格式化单个文件（自动读取根 .prettierrc.json 配置）
 npx prettier --write <文件路径>
+# 格式化 CLAUDE.md 架构图（显示列对齐，纯空白重排；md 不参与 prettier）
+python3 scripts/format_architecture_blocks.py --write
+# 校验 CLAUDE.md 架构图排版（只读；不合规时退出码 1）
+python3 scripts/format_architecture_blocks.py --check
 ```
 
 ### 测试文件约定
