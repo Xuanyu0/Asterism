@@ -186,7 +186,7 @@ Asterism
         s.t. ¬持有 GraphData 引用 ∧ ¬保存业务状态 ∧ ¬修改 GraphData ∧ ¬作为事实源
 
     ↓
-    语义事件：onNodeClicked / onEdgeClicked / onRightClick / onNodeDoubleClicked / onNodeHovered          组件语义事件
+    语义事件：onNodeClicked / onEdgeClicked / onRightClick / onNodeDoubleClicked / onNodeHovered 组件语义事件
     ↓ mediator 转发到活跃工具
 
     工具交互逻辑层
