@@ -129,7 +129,7 @@ python3 scripts/format_architecture_blocks.py --check
 **怎么读这张图**：一张**分层 DAG**——节点可以被多条边共享引用。节点分两类：**抽象节点**（只是一种概念或架构层）与**实体节点**（可以定位到文件或文件夹，或具体的一个数据）；边也只有两类：**组成目录树的边**（缩进 + 盒线）与**数据流边**（`↓`）。
 
 - **缩进 = 层级**（每级 4 空格）：根 `0` / 层与流 `4` / 层属性 `8` / 目录项与续行 `12`
-- **层 = 黑盒**，按三行状态读：`≝` 充要定义 / `= ⊂ ⊃` 精确实现 / `s.t.` 契约
+- **层 = 黑盒**，按三行状态读：`≝` 后解充要定义 / `= ⊂ ⊃` 后接精确实现集合 / `s.t.` 后接契约
   - `=` 定义与实现一致；`⊂` 定义不包含实现；`⊃` 实现落后于定义
   - 实现写成基目录（相对仓库根）+ 目录项；顶层默认“目录即实现”，故顶层不写 `=`，只写定义行与契约行（现存例外见细则 §7.1）
   - `s.t.` 是**命题逻辑**：`∨ ∧ ¬` 与数学上的用法一致；`⇒` 理解为只要不是“前件真，后件假”就为真；`⟺` 理解为只要不是“两侧真值不同”就为真。命题为真 ⇔ 契约被履行
@@ -145,27 +145,24 @@ python3 scripts/format_architecture_blocks.py --check
 ```text
 Asterism
     ≝ 以"当前学习状态"为核心对象，以图论图为载体的可视化系统
-    s.t. GraphData 唯一事实源 ∧ Cytoscape 仅 Renderer ∧ Local First ∧ ¬内部代码标识符别名的使用
+    s.t. GraphData 唯一事实源 ∧ Cytoscape 仅 Renderer ∧ ¬内部代码标识符别名的使用
     s.t. ¬watch(deep:true)  ← GraphData 变更走引用替换，浅层 watch 足够；deep 有未知非预期行为；替代：去掉 deep 或窄化到叶子属性
 
     共享组合式函数
-        ≝  跨模块复用的 Vue 组合式函数
+        ≝  跨模块复用的 Vue 组合式函数  ← 设计意图见文末附
         =   frontend/src/composables/
             ├── useFloatingWindow.ts     ≝ 浮空窗单例
             ├── useCanvasFocus.ts        ≝ 画布视口定位请求单例
             ├── useDragPosition.ts       ≝ 通用窗口拖拽工厂
             ├── useOverflowDetection.ts  ≝ DOM 水平溢出检测工厂
             └── useAutoFade.ts           ≝ 依指针位置的通用自动淡化工厂
-        s.t. 组合式函数在横切方向上共享 ∧ ¬参与单向数据流
 
     用户交互【外部事件源】  ← 非目录层
         ≝ 用户经过浏览器 DOM 产生的原生输入事件源
     
-    ↓
-    原生 DOM 事件：用户的点击 / 双击 / 悬停 / 右键
-    ↓ Cytoscape 捕获 DOM 事件
-    合成的 Cy 原始事件
-    ↓
+    Native DOM events: user click / double-click / hover / right-click
+    ↓ Cytoscape captures DOM events
+    Synthesized Cy raw events
 
     Cytoscape 渲染与交互层
         ≝  持有 Cytoscape 实例；渲染到画布并把 Cy 原始事件翻译为语义事件；对外暴露光标追踪/高亮/预览渲染 API
@@ -176,14 +173,14 @@ Asterism
             ├── mapper-utils/         ≝ 私有 Cy 样式转换器：折叠过滤、视觉样式映射、高亮
             ├── cy_style.ts           ≝ Cy 视觉样式配置
             ├── cy_interaction.ts     ≝ Cy 原始事件 → 语义事件
-            │                         s.t. 翻译 ∧ ¬转发 ∧ ¬直接写图
+            │                         s.t. ¬直接写图
             ├── cy_popper.ts          ≝ 浮空窗元素的锚定
             └── cy_canvas.d.ts        ≝ Cy 扩展类型声明
-        s.t. ¬持有 GraphData 引用 ∧ ¬保存业务状态 ∧ ¬修改 GraphData ∧ ¬作为事实源
+        s.t. ¬持有 GraphData 引用 ∧ ¬修改 GraphData
 
     ↓
-    语义事件：onCanvasClicked / onNodeClicked / onEdgeClicked / onRightClick / onNodeDoubleClicked / onNodeHovered / onNodeHoverOut 组件语义事件
-    ↓ `Graph.vue` 装配 handler 并施加分发门控 → mediator 转发到活跃工具
+    Semantic events: `onCanvasClicked` / `onNodeClicked` / `onEdgeClicked` / `onRightClick` / `onNodeDoubleClicked` / `onNodeHovered` / `onNodeHoverOut` component semantic events
+    ↓ Graph.vue wires up handlers and applies dispatch gating → mediator forwards to the active tool
 
     工具交互逻辑层
         ≝  负责操作、认知、 布局与默认工具的管理与定义；把语义事件路由到活跃工具；工具自包含地完成选择/预览/确认
@@ -194,11 +191,10 @@ Asterism
             │                    s.t. 同一时刻一个活跃工具 ∧ (deactivate ⇒ 恢复 default 工具) ∧ ¬存在"无工具"状态
             ├── default_tool.ts  ≝ 默认工具：点节点/边 → 浮空窗 → 确认后写入
             ├── toolbar/         ≝ 常驻（操作）工具栏的按钮配置与各工具处理器
-            ├── cognition/       ≝ 认知工具 handler
+            ├── cognition/       ≝ 认知工具 handler  ← 设计意图见文末附
             │                    ⊃ {deconstruct}
-            │                    s.t. induce / internalize / diverge 待从 operation_controller 迁入
             └── preview/         ≝ 预览模拟管道
-                                 s.t. 只计算不渲染 ∧ ¬写持久化 GraphData
+                                 s.t. ¬写持久化 GraphData
         s.t. ¬直接写 GraphData ∧ (写 GraphData ⇒ 经 commitToCurrentGraph ∨ commitBatches) ∧ ¬(存储 GraphData ∨ UI 模式切换)
 
     ↓                                                                      ↓                                              ↓
@@ -212,14 +208,13 @@ Asterism
             │                               = { loadGraphToView, commitBatchToGraphs, undo, redo }
             │                               s.t. (store 公开合法入口 ⟺ loadGraphToView ∨ commitBatchToGraphs ∨ undo ∨ redo)
             │                               s.t. ¬(Draft ∈ store) ∧ ¬(Cytoscape ∈ store)
-            ├── use-case/                   ≝ 图数据业务用例
-            │                               s.t. ¬持有状态本身
+            ├── use-case/                   ≝ 图数据业务用例  ← 设计意图见文末附
             ├── utils/                      ≝ graph/ 域下无状态私有纯函数
             ├── graph_registry.ts           ≝ 多图注册表
             ├── graph_persistence.ts        ≝ localStorage 持久化实现
             │                               s.t. Local First  ← 切图时 loadGraph 读入；提交时 saveGraph / deleteGraph 写出
             └── ui/operation_controller.ts  ≝ 认知与布局操作编排  ← 历史遗留，待迁 feature-tools/
-        s.t. (图数据业务逻辑 ∈ use-case ∧ ∉ store) ∧ (内部单向依赖：业务 → 用例 → store)
+        s.t. 内部单向依赖：业务 → 用例 → store
         
                          §工具交互逻辑层 / ui 编排层
     ↓                    ↓
@@ -234,7 +229,7 @@ Asterism
             │                    s.t. 只产出 operations / batches ∧ ¬执行 ∧ 返回值由原子操作构成
             ├── core/            ≝ 执行与事务
             │                    = {apply_batch、apply_batches、reversal、replay、derive、rules/、utils/}
-            │                    s.t. 时间戳 = 调用方经 executedAt 传入 ∧ (replay 外 ¬new Date()) ∧ 对象级 createdAt/updatedAt = 操作携带值 ?? executedAt  ← new Date() 兜底仅存于 core/replay.ts 与前端 commitBatchToGraphs
+            │                    s.t. 时间戳 = 调用方经 executedAt 传入 ∧ (replay 外 ¬new Date()) ∧ 对象级 createdAt/updatedAt = 操作携带值 ?? executedAt
             ├── infrastructure/  ≝ 纯查询与计算几何
             └── index.ts         ≝ 包的公开入口
         s.t. ¬副作用 ∧ ¬I/O ∧ ¬框架依赖 ∧ ¬持久化 ∧ ¬持有状态
@@ -273,6 +268,20 @@ Asterism
 > 契约：本文件各层 `s.t.` 行与代码头「调用契约」。层间依赖**单向向下**：上层可 import 下层，反向禁止；`Runtime` 不得 import 上层，`cytoscape` 不得写 `graph_store`，`graph-engine` 不得 import `frontend`。
 
 ## 前端架构设计
+
+### 附：设计意图与约定
+
+> 以下内容原先写在图内的 `s.t.` 位置，但它们不是可判定命题（属设计意图、使用惯例或待办），故移出图外、以散文记述。**图内 `s.t.` 只放可判定命题**。
+
+1. **本地优先（Local First）** — 持久化只落浏览器本地存储，不引入远端存储或网络 I/O。
+2. **组合式函数的横切共享** — `frontend/src/composables/` 下的组合式函数被多个模块横切复用，不参与单向数据流。
+3. **渲染层只翻译、不转发** — `cy_interaction.ts` 只把 Cy 原始事件翻译为语义事件回调，不向上转发。
+4. **渲染层不承担业务** — Cytoscape 层是 GraphData 的只读映射/拷贝：不保存业务状态，也不作为事实源。
+5. **认知工具的迁移待办** — `induce` / `internalize` / `diverge` 仍走 `operation_controller`（`ui/`），待迁入 `feature-tools/cognition/`。
+6. **预览层不自行渲染** — `preview/` 只做模拟计算，不在自身上落渲染状态；渲染统一由调用方交给渲染层（见图中 `preview graph → renderer.syncFromGraphData`）。
+7. **用例层不持有状态** — `use-case/` 只编排 store 与引擎，状态由 store 持有。
+8. **业务逻辑归用例层** — 图数据业务逻辑写在 `use-case/` 中，不写进 store。
+9. **`new Date()` 兜底的落点（实现快照，随代码演进更新）** — 作为兜底的 `new Date()` 仅存于 `core/replay.ts` 与前端 `commitBatchToGraphs`；`preview_engine.ts`、`dev/test_case_factory.ts` 里的 `new Date()` 是调用方自选的时间源，不算引擎兜底。
 
 ### UI/UX设计指导
 
