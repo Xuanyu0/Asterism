@@ -182,8 +182,8 @@ Asterism
         s.t. ¬持有 GraphData 引用 ∧ ¬保存业务状态 ∧ ¬修改 GraphData ∧ ¬作为事实源
 
     ↓
-    语义事件：onNodeClicked / onEdgeClicked / onRightClick / onNodeDoubleClicked / onNodeHovered 组件语义事件
-    ↓ mediator 转发到活跃工具
+    语义事件：onCanvasClicked / onNodeClicked / onEdgeClicked / onRightClick / onNodeDoubleClicked / onNodeHovered / onNodeHoverOut 组件语义事件
+    ↓ `Graph.vue` 装配 handler 并施加分发门控 → mediator 转发到活跃工具
 
     工具交互逻辑层
         ≝  负责操作、认知、 布局与默认工具的管理与定义；把语义事件路由到活跃工具；工具自包含地完成选择/预览/确认
@@ -202,9 +202,8 @@ Asterism
         s.t. ¬直接写 GraphData ∧ (写 GraphData ⇒ 经 commitToCurrentGraph ∨ commitBatches) ∧ ¬(存储 GraphData ∨ UI 模式切换)
 
     ↓                                                                      ↓                                              ↓
-    operations / batches                                                   graph ID                                       `Graph.vue` shortcuts
+    operations / batches                                                   graph ID (switch request)                      `Graph.vue` shortcuts
     ↓ single-graph `commitToCurrentGraph` / cross-graph `commitBatches`    ↓ `goToGraph` / `default_tool` double-click    ↓ `useGraphOperation.undo` / `redo`
-    ↓ `useGraphStore().commitBatchToGraphs`                                ↓ `useGraphStore().loadGraphToView`            ↓
 
     Runtime 状态与图业务层
         ≝  持有 GraphData 状态，是其唯一事实源与唯一写入口；编排引擎操作、封装业务用例、并实现持久化
@@ -222,9 +221,10 @@ Asterism
             └── ui/operation_controller.ts  ≝ 认知与布局操作编排  ← 历史遗留，待迁 feature-tools/
         s.t. (图数据业务逻辑 ∈ use-case ∧ ∉ store) ∧ (内部单向依赖：业务 → 用例 → store)
         
+                         §工具交互逻辑层 / ui 编排层
     ↓                    ↓
     registry + batch     operation params
-    ↓ `apply_batches`    ↓ `compose`  ← §工具交互逻辑层 / ui 编排层
+    ↓ `apply_batches`    ↓ `compose`
     
     GraphEngine
         ≝  纯函数式编写的唯一图数据定义与转换入口
@@ -257,9 +257,10 @@ Asterism
             └── views/Graph.vue  ≝ 装配层
         s.t. 装配层渲染 GraphView ⇒ 经 renderer.syncFromGraphData
     
+                                          §工具交互逻辑层
     ↓                                     ↓
     `GraphView` (after reference swap)    preview graph
-    ↓ `renderer.syncFromGraphData`        ↓ `renderer.syncFromGraphData`  ← no write to persisted GraphData
+    ↓ `renderer.syncFromGraphData`        ↓ `renderer.syncFromGraphData`
     
     §Cytoscape 渲染与交互层
 
