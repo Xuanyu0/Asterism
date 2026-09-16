@@ -15,9 +15,7 @@ import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
 import { computeNodeRadiusOverrides } from '@/graph/utils/node_radius'
 
 // compose — cognitive
-import { induce as composeInduce } from '@my-project/graph-engine'
-import { internalize as composeInternalize } from '@my-project/graph-engine'
-import { diverge as composeDiverge } from '@my-project/graph-engine'
+import * as graphEngine from '@my-project/graph-engine'
 
 // ── 模块级私有辅助函数 ──
 
@@ -57,7 +55,7 @@ export function useOperationController() {
      * 归纳——多个节点聚合为抽象节点 + 子图 + 沟通节点。
      *
      * @remarks
-     * 委托引擎 composeInduce 产出 batches（判别联合），commitBatchToGraphs 批量提交
+     * 委托引擎 induce 产出 batches（判别联合），commitBatchToGraphs 批量提交
      * 父图和子图；任一图失败则整批丢弃。
      */
     function induce(nodeIds: NodeId[]): void {
@@ -65,7 +63,7 @@ export function useOperationController() {
             return
         }
 
-        const result = composeInduce({
+        const result = graphEngine.induce({
             nodeIds,
             parentGraph: graphStore.graphView,
             // 待 operation_controller 迁移后移除：经用例层取 makeLookup
@@ -87,7 +85,7 @@ export function useOperationController() {
      * 内化——将知识节点从工作区转移至常识层。
      *
      * @remarks
-     * 委托引擎 composeInternalize 产出 batches（判别联合，父图 / 子图 / 常识层各成
+     * 委托引擎 internalize 产出 batches（判别联合，父图 / 子图 / 常识层各成
      * inGraph 批），commitBatchToGraphs 直接提交（applyBatches 统一执行）。当前 registry
      * 中未找到常识层图时拒绝执行。
      */
@@ -104,7 +102,7 @@ export function useOperationController() {
             throw new Error('COMMON_LAYER_NOT_FOUND: 未找到常识层图谱，无法执行内化操作。')
         }
 
-        const result = composeInternalize({
+        const result = graphEngine.internalize({
             nodeIds,
             parentGraph: graphStore.graphView,
             commonLayer,
@@ -128,7 +126,7 @@ export function useOperationController() {
      * 发散——在两个知识节点间创建有向虚边，跨图时自动创建启发节点并镜像。
      *
      * @remarks
-     * 委托引擎 composeDiverge 产出 batches（判别联合）。heuristicPosition 为 null 时两
+     * 委托引擎 diverge 产出 batches（判别联合）。heuristicPosition 为 null 时两
      * 节点直连（同图）；非 null 时在点击位置创建启发节点（跨图）。commitBatchToGraphs
      * 批量提交 current 与 peer。
      */
@@ -141,7 +139,7 @@ export function useOperationController() {
             return
         }
 
-        const result = composeDiverge({
+        const result = graphEngine.diverge({
             sourceNodeId,
             targetNodeId,
             currentGraph: graphStore.graphView,

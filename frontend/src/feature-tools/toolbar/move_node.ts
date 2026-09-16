@@ -20,7 +20,7 @@ import { useGraphStore } from '@/graph/graph_store'
 import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
 import { computeNodeRadiusOverrides } from '@/graph/utils/node_radius'
 import { hasErrors } from '@/graph/utils/issue_guard'
-import { moveNode as composeMoveNode } from '@my-project/graph-engine'
+import { moveNode } from '@my-project/graph-engine'
 import { useRenderer } from '@/cytoscape/useRenderer'
 import { previewMoveNode } from '@/feature-tools/preview/preview_engine'
 
@@ -40,7 +40,7 @@ import type { ToolId, ToolHandler, ToolNotification } from '../types'
  *     1. 内部维护拾取放置状态机（idle ↔ picked）。
  *     2. 鼠标追踪通过 renderer 的 trackCursor 完成坐标转换。
  *     3. 拖动预览走 preview_engine.previewMoveNode（clone+sync 单通道），
- *        放置碰撞检测委托引擎 composeMoveNode。
+ *        放置碰撞检测委托引擎 moveNode。
  *     4. 碰撞错误通过 notification 暴露供视图消费。
  *     5. 右键返回 true 阻止 mediator 默认 deactivate，由本 handler 内部处理取消。
  */
@@ -253,8 +253,8 @@ export function useMoveNodeTool(): ToolHandler {
 
         const desiredPosition = { x: currentPos.x, y: currentPos.y }
 
-        // 调引擎 composeMoveNode 做碰撞检测
-        const result = composeMoveNode({
+        // 调引擎 moveNode 做碰撞检测
+        const result = moveNode({
             nodeId: pickedNodeId,
             desiredPosition,
             allNodes: graphStore.graphView.nodes,
