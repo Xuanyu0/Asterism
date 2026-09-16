@@ -20,7 +20,7 @@ import { useAddNodeTool } from './toolbar/add_node'
 import { useFoldTool } from './toolbar/fold'
 
 import type { ToolMediatorAPI } from './mediator'
-import type { ToolHandler } from './types'
+import type { ToolHandler, ToolId } from './types'
 
 // ── Mock useRenderer ──
 // useAddNodeTool 构造时调用 useRenderer（实时预览接线）；jsdom 无 Cytoscape 容器，
@@ -76,6 +76,16 @@ describe('useToolMediator', () => {
     })
 
     test('初始化即激活 default（不存在"无工具"状态）', () => {
+        expect(mediator.activeToolId.value).toBe('default')
+        expect(mediator.activeHandler.value.id).toBe('default')
+    })
+
+    test('activate 未注册 id 回退 default（不进入"无工具"状态）', () => {
+        mediator.register('add-real-node', useAddNodeTool('real'))
+        mediator.activate('add-real-node')
+
+        mediator.activate('not-registered' as ToolId)
+
         expect(mediator.activeToolId.value).toBe('default')
         expect(mediator.activeHandler.value.id).toBe('default')
     })

@@ -137,13 +137,14 @@ function createMediator(): ToolMediatorAPI {
     }
 
     function activate(id: ToolId): void {
-        activeHandler.value.deactivate()
-
+        // 未注册 id 回退 default——契约：不存在"无工具"状态
         const handler = handlerRegistry.get(id)
         if (!handler) {
+            deactivate()
             return
         }
 
+        activeHandler.value.deactivate()
         handler.activate()
         activeToolId.value = id
         activeHandler.value = handler
