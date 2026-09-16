@@ -241,10 +241,10 @@ Asterism
     浏览器本地存储（localStorage）【外部存储】  ← 外部设施，非目录层
         ≝ 浏览器提供的同步键值存储，GraphData 与视图标记（`lastActiveRootId`）的唯一落点
 
-    §Runtime 状态与图业务层    §Runtime 状态与图业务层
-    ↓                         ↓ write `lastValidationResult`（GE 校验结果）
-    new `graphView`           `lastValidationResult`
-    ↓ `watch(GraphView)`      ↓
+    §Runtime 状态与图业务层
+    ↓                          ↓ write `lastValidationResult`（GE 校验结果）
+    new `graphView`            `lastValidationResult`
+    ↓ `watch(GraphView)`       ↓
 
     组件与装配层
         ≝  承载视图单元与页面装配
