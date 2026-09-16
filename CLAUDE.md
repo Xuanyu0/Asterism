@@ -211,8 +211,7 @@ Asterism
             ├── use-case/                   ≝ 图数据业务用例  ← 设计意图见文末附
             ├── utils/                      ≝ graph/ 域下无状态私有纯函数
             ├── graph_registry.ts           ≝ 多图注册表
-            ├── graph_persistence.ts        ≝ localStorage 持久化实现
-            │                               s.t. Local First  ← 切图时 loadGraph 读入；提交时 saveGraph / deleteGraph 写出
+            ├── graph_persistence.ts        ≝ localStorage 持久化实现  ← 启动扫盘 / 切图 / 列根图时由 store 与用例层读入
             └── ui/operation_controller.ts  ≝ 认知与布局操作编排  ← 历史遗留，待迁 feature-tools/
         s.t. 内部单向依赖：业务 → 用例 → store
         
@@ -234,15 +233,18 @@ Asterism
             └── index.ts         ≝ 包的公开入口
         s.t. ¬副作用 ∧ ¬I/O ∧ ¬框架依赖 ∧ ¬持久化 ∧ ¬持有状态
         
-    ↓                                         ↓
-    new registry (with new graph data)        graph-rule validation result
-    ↓ `store.graphRegistry` reference swap    ↓ write `lastValidationResult`
+    ↓
+    new registry (with new graph data)
+    ↓ `store.graphRegistry` reference swap
+    ↓ 提交时 `saveGraph` / `deleteGraph` 写出
 
-    §Runtime 状态与图业务层
+    浏览器本地存储（localStorage）【外部存储】  ← 外部设施，非目录层
+        ≝ 浏览器提供的同步键值存储，GraphData 与视图标记（`lastActiveRootId`）的唯一落点
 
-    ↓                       ↓
-    new `graphView`         `lastValidationResult`
-    ↓ `watch(GraphView)`    ↓
+    §Runtime 状态与图业务层    §Runtime 状态与图业务层
+    ↓                         ↓ write `lastValidationResult`（GE 校验结果）
+    new `graphView`           `lastValidationResult`
+    ↓ `watch(GraphView)`      ↓
 
     组件与装配层
         ≝  承载视图单元与页面装配
@@ -267,8 +269,6 @@ Asterism
 
 > 契约：本文件各层 `s.t.` 行与代码头「调用契约」。层间依赖**单向向下**：上层可 import 下层，反向禁止；`Runtime` 不得 import 上层，`cytoscape` 不得写 `graph_store`，`graph-engine` 不得 import `frontend`。
 
-## 前端架构设计
-
 ### 附：设计意图与约定
 
 > 以下内容原先写在图内的 `s.t.` 位置，但它们不是可判定命题（属设计意图、使用惯例或待办），故移出图外、以散文记述。**图内 `s.t.` 只放可判定命题**。
@@ -282,6 +282,8 @@ Asterism
 7. **用例层不持有状态** — `use-case/` 只编排 store 与引擎，状态由 store 持有。
 8. **业务逻辑归用例层** — 图数据业务逻辑写在 `use-case/` 中，不写进 store。
 9. **`new Date()` 兜底的落点（实现快照，随代码演进更新）** — 作为兜底的 `new Date()` 仅存于 `core/replay.ts` 与前端 `commitBatchToGraphs`；`preview_engine.ts`、`dev/test_case_factory.ts` 里的 `new Date()` 是调用方自选的时间源，不算引擎兜底。
+
+## 前端架构设计
 
 ### UI/UX设计指导
 
