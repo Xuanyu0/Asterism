@@ -13,7 +13,6 @@
  */
 
 import type { GraphData, GraphId } from '@my-project/graph-engine'
-import type { PersistenceAdapter } from '@my-project/graph-engine'
 
 const GRAPH_STORAGE_PREFIX = 'graph'
 
@@ -212,39 +211,4 @@ export function loadLastActiveRootId(): GraphId | null {
  */
 export function clearLastActiveRootId(): void {
     localStorage.removeItem(LAST_ACTIVE_ROOT_KEY)
-}
-
-/**
- * 功能：
- *
- *     localStorage 持久化适配器。实现引擎 PersistenceAdapter 接口契约。
- *
- * 规则：
- *
- *     1. 所有方法返回 Promise——引擎接口要求异步，当前实现为同步包装。
- *     2. Phase 3 切换 Supabase 时只需替换此对象，调用方（graph_store）无需修改。
- */
-export const localStorageAdapter: PersistenceAdapter = {
-    async load(graphId: GraphId): Promise<GraphData | null> {
-        // 引擎 PersistenceAdapter 契约保持 GraphData | null，此处桥接判别联合为 null 语义。
-        const result = loadGraph(graphId)
-        return result.ok ? result.graph : null
-    },
-
-    async save(graph: GraphData): Promise<void> {
-        saveGraph(graph)
-    },
-
-    async delete(graphId: GraphId): Promise<void> {
-        deleteGraph(graphId)
-    },
-
-    async list(): Promise<GraphData[]> {
-        const ids = listSavedGraphIds()
-
-        return ids
-            .map((id) => loadGraph(id))
-            .filter((result): result is LoadGraphResult & { ok: true } => result.ok)
-            .map((result) => result.graph)
-    },
 }

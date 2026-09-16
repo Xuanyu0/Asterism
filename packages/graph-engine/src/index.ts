@@ -98,9 +98,6 @@ export type { ValidationSeverity, ValidationTargetType, ValidationIssue, Validat
 /** 消费者：graph_store（操作日志 & undo/redo）。 */
 export type { BatchesLog, CommitLog, OperationLogTree, State } from './types/operation_log'
 
-/** 消费者：graph_persistence.ts（localStorage 实现 SPI 契约）。Phase 3 扩展点。 */
-export type { PersistenceAdapter } from './spi/persistence'
-
 // ═══════════════════════════════════════════════════════════════════
 // applyBatch — 批量事务（GraphData 修改唯一入口）
 //

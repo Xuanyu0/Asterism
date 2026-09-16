@@ -121,7 +121,7 @@ python3 scripts/format_architecture_blocks.py --check
 #### 时间戳
 
 **设计术语表**：`Last updated: 2026-09-07`
-**开发术语表**：`Last updated: 2026-09-14`
+**开发术语表**：`Last updated: 2026-09-16`
 **项目术语表**：`Last updated: 2026-09-12`
 
 ## 项目架构（分层森林图 · 顶层视图）
@@ -236,7 +236,6 @@ Asterism
             │                    = {apply_batch、apply_batches、reversal、replay、derive、rules/、utils/}
             │                    s.t. 时间戳 = 调用方经 executedAt 传入 ∧ (replay 外 ¬new Date()) ∧ 对象级 createdAt/updatedAt = 操作携带值 ?? executedAt  ← new Date() 兜底仅存于 core/replay.ts 与前端 commitBatchToGraphs
             ├── infrastructure/  ≝ 纯查询与计算几何
-            ├── spi/             ≝ 持久化适配器接口
             └── index.ts         ≝ 包的公开入口
         s.t. ¬副作用 ∧ ¬I/O ∧ ¬框架依赖 ∧ ¬持久化 ∧ ¬持有状态
         
