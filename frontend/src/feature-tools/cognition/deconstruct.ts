@@ -8,7 +8,7 @@
 
 import { ref, computed } from 'vue'
 
-import { deconstruct as composeDeconstruct } from '@my-project/graph-engine'
+import { deconstruct } from '@my-project/graph-engine'
 
 import type { NodeId } from '@my-project/graph-engine'
 
@@ -38,11 +38,11 @@ export function useDeconstructTool(): ToolHandler {
     }
 
     /**
-     * 处理节点点击——执行解构操作（compose → 校验 → commitBatchToGraphs → 自取消）。
+     * 处理节点点击——执行解构操作（compose → 校验 → 用例层提交 → 自取消）。
      *
      * @remarks
-     * 委托引擎 composeDeconstruct 产出 batches（判别联合），经 store.commitBatchToGraphs
-     * 直接提交（applyBatches 统一执行图内 / 图级批），完成后自动调用 mediator.deactivate()
+     * 委托引擎 deconstruct 产出 batches（判别联合），经用例层 commitBatches 提交
+     * （applyBatches 统一执行图内 / 图级批），完成后自动调用 mediator.deactivate()
      * 取消自身。
      */
     function onNodeClick(nodeId: NodeId): void {
@@ -50,7 +50,7 @@ export function useDeconstructTool(): ToolHandler {
             return
         }
 
-        const result = composeDeconstruct({
+        const result = deconstruct({
             nodeId,
             parentGraph: graphStore.graphView,
         })
@@ -60,8 +60,8 @@ export function useDeconstructTool(): ToolHandler {
             return
         }
 
-        // 批次判别联合 → commitBatchToGraphs 直接提交（父图 update_node + 子图 add_node 填充 + 图级 add_graph）
-        graphStore.commitBatchToGraphs(result.batches, {
+        // 批次判别联合经用例层提交（父图 update_node + 子图 add_node 填充 + 图级 add_graph）
+        operations.commitBatches(result.batches, {
             source: 'deconstruct',
         })
 
