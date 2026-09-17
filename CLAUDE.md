@@ -157,12 +157,24 @@ Asterism
             ├── useOverflowDetection.ts  ≝ DOM 水平溢出检测工厂
             └── useAutoFade.ts           ≝ 依指针位置的通用自动淡化工厂
 
+    浏览器本地存储（localStorage）【外部存储】  ← 外部设施，非目录层
+        ≝ 浏览器提供的同步键值存储，GraphData 与视图标记（`lastActiveRootId`）的唯一落点
+
+    组件与装配层
+        ≝  承载视图单元与页面装配
+        =   frontend/src/components/ + frontend/src/views/
+            ├── components/      ≝ 视觉单元
+            └── views/Graph.vue  ≝ 装配层
+        s.t. 装配层渲染 GraphView ⇒ 经 renderer.syncFromGraphData
+
     用户交互【外部事件源】  ← 非目录层
         ≝ 用户经过浏览器 DOM 产生的原生输入事件源
     
+    ↓
     Native DOM events: user click / double-click / hover / right-click
     ↓ Cytoscape captures DOM events
     Synthesized Cy raw events
+    ↓
 
     Cytoscape 渲染与交互层
         ≝  持有 Cytoscape 实例；渲染到画布并把 Cy 原始事件翻译为语义事件；对外暴露光标追踪/高亮/预览渲染 API
@@ -180,7 +192,9 @@ Asterism
 
     ↓
     Semantic events: `onCanvasClicked` / `onNodeClicked` / `onEdgeClicked` / `onRightClick` / `onNodeDoubleClicked` / `onNodeHovered` / `onNodeHoverOut` component semantic events
-    ↓ Graph.vue wires up handlers and applies dispatch gating → mediator forwards to the active tool
+    ↓ `Graph.vue` supplies a `CyInteractionHandlers` implementation to `renderer.mount`
+    `CyInteractionHandlers`
+    ↓ callbacks forward into mediator
 
     工具交互逻辑层
         ≝  负责操作、认知、 布局与默认工具的管理与定义；把语义事件路由到活跃工具；工具自包含地完成选择/预览/确认
@@ -196,7 +210,8 @@ Asterism
             └── preview/         ≝ 预览模拟管道
                                  s.t. ¬写持久化 GraphData
         s.t. ¬直接写 GraphData ∧ (写 GraphData ⇒ 经 commitToCurrentGraph ∨ commitBatches) ∧ ¬(存储 GraphData ∨ UI 模式切换)
-
+    
+                                                                                                                          §组件与装配层  ← 数据源的临时入口，未来计划移除
     ↓                                                                      ↓                                              ↓
     operations / batches                                                   graph ID (switch request)                      `Graph.vue` shortcuts
     ↓ single-graph `commitToCurrentGraph` / cross-graph `commitBatches`    ↓ `goToGraph` / `default_tool` double-click    ↓ `useGraphOperation.undo` / `redo`
@@ -232,27 +247,20 @@ Asterism
             ├── infrastructure/  ≝ 纯查询与计算几何
             └── index.ts         ≝ 包的公开入口
         s.t. ¬副作用 ∧ ¬I/O ∧ ¬框架依赖 ∧ ¬持久化 ∧ ¬持有状态
-        
+    
+    ↓                                         ↓
+    new registry (with new graph data)        new `lastValidationResult` 
+    ↓ `store.graphRegistry` reference swap    ↓ `store.lastValidationResult` reference swap
+    new store.graphRegistry                   new store.lastValidationResult
     ↓
-    new registry (with new graph data)
-    ↓ `store.graphRegistry` reference swap
-    ↓ 提交时 `saveGraph` / `deleteGraph` 写出
-
-    浏览器本地存储（localStorage）【外部存储】  ← 外部设施，非目录层
-        ≝ 浏览器提供的同步键值存储，GraphData 与视图标记（`lastActiveRootId`）的唯一落点
 
     §Runtime 状态与图业务层
-    ↓                          ↓ write `lastValidationResult`（GE 校验结果）
-    new `graphView`            `lastValidationResult`
-    ↓ `watch(GraphView)`       ↓
 
-    组件与装配层
-        ≝  承载视图单元与页面装配
-        =   frontend/src/components/ + frontend/src/views/
-            ├── components/      ≝ 视觉单元
-            └── views/Graph.vue  ≝ 装配层
-        s.t. 装配层渲染 GraphView ⇒ 经 renderer.syncFromGraphData
-    
+    ↓                       ↓                         ↓  `saveGraph` / `deleteGraph` 
+    new `graphView`         `lastValidationResult`    §浏览器本地存储（localStorage）【外部存储】
+    ↓ `watch(GraphView)`    ↓
+
+    §组件与装配层
                                           §工具交互逻辑层
     ↓                                     ↓
     `GraphView` (after reference swap)    preview graph
@@ -265,6 +273,7 @@ Asterism
     ↓
 
     Cytoscape Renderer【外部渲染器】  ← 外部库，非目录层
+        ≝ 外部渲染库：消费 CyElements 并把图绘制到画布
 ```
 
 > 契约：本文件各层 `s.t.` 行与代码头「调用契约」。层间依赖**单向向下**：上层可 import 下层，反向禁止；`Runtime` 不得 import 上层，`cytoscape` 不得写 `graph_store`，`graph-engine` 不得 import `frontend`。
