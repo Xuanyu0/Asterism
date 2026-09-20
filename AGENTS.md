@@ -270,14 +270,14 @@ Asterism
         s.t. ¬副作用 ∧ ¬I/O ∧ ¬框架依赖 ∧ ¬持久化 ∧ ¬持有状态
     
     ↓                                         ↓
-    new registry (with new graph data)        new `lastValidationResult` 
+    new registry (with new graph data)        new `lastValidationResult`
     ↓ `store.graphRegistry` reference swap    ↓ `store.lastValidationResult` reference swap
     new store.graphRegistry                   new store.lastValidationResult
     ↓
 
     §Runtime 状态与图业务层
 
-    ↓                       ↓                         ↓  `saveGraph` / `deleteGraph` 
+    ↓                       ↓                         ↓ `saveGraph` / `deleteGraph`
     new `graphView`         `lastValidationResult`    §浏览器本地存储（localStorage）【外部存储】
     ↓ `watch(GraphView)`    ↓
 
