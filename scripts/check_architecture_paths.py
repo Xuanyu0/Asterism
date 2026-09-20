@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-CLAUDE.md 架构树路径存在性校验脚本。
+项目级 AGENTS.md 架构树路径存在性校验脚本。
 
-提取 CLAUDE.md「项目架构（分层森林图 · 顶层视图）」的 ```text 围栏块中记录的
+提取项目级 AGENTS.md「项目架构（分层森林图 · 顶层视图）」的 ```text 围栏块中记录的
 目录路径（层基目录 + 顶层目录项），校验其在仓库中仍然存在。
 
-校验规则依据（见 CLAUDE.md 架构图语法说明）：
+校验规则依据（见项目级 AGENTS.md 架构图语法说明）：
 - 层声明行（缩进 8、首字符为 = / ⊂ / ⊃）：运算符后为基目录，` + ` 连接多个基目录。
 - 目录项行（缩进 12、以 ├── / └── 起头）：条目名相对该层基目录解析。
 - 条目名可能自带基目录前缀（如 ui/operation_controller.ts），也可能不自带
@@ -25,7 +25,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_DOC = ROOT / "CLAUDE.md"
+DEFAULT_DOC = ROOT / "AGENTS.md"
 
 ITEM_NAME_SPLIT_RE = re.compile(r"≝|⊃|=")
 

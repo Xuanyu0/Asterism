@@ -31,9 +31,9 @@ pnpm --filter @my-project/graph-engine type-check
 pnpm format
 # 格式化单个文件（自动读取根 .prettierrc.json 配置）
 npx prettier --write <文件路径>
-# 格式化 CLAUDE.md 架构图（显示列对齐，纯空白重排；md 不参与 prettier）
+# 格式化项目级 AGENTS.md 架构图（显示列对齐，纯空白重排；md 不参与 prettier）
 python3 scripts/format_architecture_blocks.py --write
-# 校验 CLAUDE.md 架构图排版（只读；不合规时退出码 1）
+# 校验项目级 AGENTS.md 架构图排版（只读；不合规时退出码 1）
 python3 scripts/format_architecture_blocks.py --check
 ```
 
@@ -105,8 +105,11 @@ python3 scripts/format_architecture_blocks.py --check
 
 ### 目录就地规则（AGENTS.md）
 
+本仓库存在多个 `AGENTS.md`。位于**项目根目录**的那份是**项目级 `AGENTS.md`**，承载全项目通行规则（含 §项目架构）；其余均为各目录的就地约定。下文及仓库其他文档中，凡单独写「`AGENTS.md`」而未加限定的，均指**项目级 `AGENTS.md`**。
+
 各目录的就地约定写在该目录的 `AGENTS.md`：
 
+- 项目级（项目根目录）：[AGENTS.md](AGENTS.md)
 - 引擎：[packages/graph-engine/AGENTS.md](packages/graph-engine/AGENTS.md)
 - 渲染：[frontend/src/cytoscape/AGENTS.md](frontend/src/cytoscape/AGENTS.md)
 - 组件：[frontend/src/components/AGENTS.md](frontend/src/components/AGENTS.md)
@@ -114,7 +117,7 @@ python3 scripts/format_architecture_blocks.py --check
 - 开发工具：[frontend/src/dev/AGENTS.md](frontend/src/dev/AGENTS.md)
 
 **发现机制**：改动任何目录前，先查该目录及其**祖先目录**的 `AGENTS.md`。
-**优先级**：`AGENTS.md` 可覆盖 CLAUDE.md 的**默认习惯约定**（且必须在该文件内显式声明这是覆盖），但**不得覆盖 §项目架构 的契约与架构边界**。
+**优先级**：目录级 `AGENTS.md` 可覆盖**项目级 `AGENTS.md`** 的**默认习惯约定**（且必须在该文件内显式声明这是覆盖），但**不得覆盖项目级 `AGENTS.md` 的 §项目架构 契约与架构边界**。
 
 ### 术语表时效
 
@@ -122,7 +125,7 @@ python3 scripts/format_architecture_blocks.py --check
 
 **设计术语表**：`Last updated: 2026-09-07`
 **开发术语表**：`Last updated: 2026-09-16`
-**项目术语表**：`Last updated: 2026-09-12`
+**项目术语表**：`Last updated: 2026-09-20`
 
 ## 项目架构（分层森林图 · 顶层视图）
 
@@ -424,7 +427,7 @@ function helperB() { ... }
 
 规则：
 
-1. **文档修改必须由用户明确许可后执行。** 文档 = `docs/` 目录下所有 `.md` 文件 + `CLAUDE.md` + 项目根目录 `.md`。
+1. **文档修改必须由用户明确许可后执行。** 文档 = `docs/` 目录下所有 `.md` 文件 + 项目根目录 `.md`（含项目级 `AGENTS.md`）。
 2. **不允许主动提出"要不要我把这个写进文档"。** 只在用户问到时回答"需要的话可以"。
 3. **代码按现有规范自由修改**，无需额外确认。
 4. 此规则旨在确保用户（而非 AI）是设计文档的唯一作者——AI 的产出进入对话和代码，不进设计文档。

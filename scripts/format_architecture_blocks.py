@@ -8,11 +8,11 @@
 - 规则 2（↓ 流块）：组内第 k 列起点满足 C1 = 4、C_{k+1} = C_k + W_k + 4，
   W_k 为组内所有具备第 k 段的行的该段最大长度。
 
-宽度口径（显示宽度，与本仓库 CLAUDE.md 的排版一致）：
+宽度口径（显示宽度，与本仓库项目级 AGENTS.md 的排版一致）：
 - East Asian Width ∈ {W, F} 的字符（CJK 等）记 2 格；
 - 其余字符（ASCII、盒线 ├ ─ └ │、箭头 ↓ ← → 等歧义 A 字符）记 1 格。
 
-规则依据（CLAUDE.md「项目架构（分层森林图 · 顶层视图）」的书写模型）：
+规则依据（项目级 AGENTS.md「项目架构（分层森林图 · 顶层视图）」的书写模型）：
 - 缩进 = 层级：4 = 层名 / 数据流，8 = 层属性，12 = 目录项与续行。
 - 层属性行（缩进 8）不属于本脚本范围，一律不动。
 - 目录项续行以 │ 引导，纯对齐可省 │ → 续行的判据是「缩进 ≥ 12 且非条目行」，
@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import TypedDict
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_DOC = ROOT / "CLAUDE.md"
+DEFAULT_DOC = ROOT / "AGENTS.md"
 
 LAYER_INDENT = 4
 ITEM_INDENT = 12

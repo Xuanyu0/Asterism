@@ -2,11 +2,11 @@
 """
 术语表时间戳更新脚本。
 
-为 CLAUDE.md「时间戳」小节的三行更新各术语表文件的最后修改日期：
+为项目级 AGENTS.md「时间戳」小节的三行更新各术语表文件的最后修改日期：
 优先取术语表最后一次 git 提交日期（若术语表本身包含在本次提交中则取当天），
 写入对应行末尾，格式 `Last updated: YYYY-MM-DD`。
 
-用途：为 AGENT 提供术语表的时效性信息——读到 CLAUDE.md 即可判断
+用途：为 AGENT 提供术语表的时效性信息——读到项目级 AGENTS.md 即可判断
 各术语表文件最后更新于何时，无需逐个检查文件。
 
 用法（pre-commit 钩子调用）：
@@ -17,7 +17,7 @@
 - 术语表包含在本次提交中时日期取当天，否则取该文件最后一次 git 提交日期
   （无提交记录时回退到文件系统 mtime）；不再直接依赖 mtime——clone / worktree /
   checkout 会重置 mtime，使“最后更新”失真（幂等：日期未变则无 diff）
-- 修改 CLAUDE.md 后自动 git add（**仅当 CLAUDE.md 无其他未暂存改动时**），使时间戳改动进入本次 commit；若存在非时间戳的未暂存改动，跳过 add 并提示（避免卷入用户无关改动）
+- 修改项目级 AGENTS.md 后自动 git add（**仅当项目级 AGENTS.md 无其他未暂存改动时**），使时间戳改动进入本次 commit；若存在非时间戳的未暂存改动，跳过 add 并提示（避免卷入用户无关改动）
 - 退出码：0 = 成功；1 = 解析/执行错误
 """
 
@@ -30,7 +30,7 @@ from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CLAUDE_PATH = ROOT / "CLAUDE.md"
+AGENTS_PATH = ROOT / "AGENTS.md"
 
 # 术语表名称 → 文件路径（相对仓库根）
 GLOSSARIES = {
@@ -42,9 +42,9 @@ GLOSSARIES = {
 STAMP_RE = re.compile(r"`Last updated: \d{4}-\d{2}-\d{2}`")
 
 
-def read_claude_section(claude_text: str, heading: str) -> str:
+def read_agents_section(agents_text: str, heading: str) -> str:
     """提取指定四级标题到下一个四级标题之间的文本（含行尾空行）。"""
-    lines = claude_text.splitlines()
+    lines = agents_text.splitlines()
     start: int | None = None
     for i, line in enumerate(lines):
         if line.strip() == f"#### {heading}":
@@ -92,14 +92,14 @@ def read_last_commit_date(rel_path: str) -> str | None:
 
 
 def main() -> int:
-    if not CLAUDE_PATH.exists():
-        print("[错误] CLAUDE.md 不存在")
+    if not AGENTS_PATH.exists():
+        print("[错误] 项目级 AGENTS.md 不存在")
         return 1
 
-    claude_text = CLAUDE_PATH.read_text(encoding="utf-8")
-    section = read_claude_section(claude_text, "时间戳")
+    agents_text = AGENTS_PATH.read_text(encoding="utf-8")
+    section = read_agents_section(agents_text, "时间戳")
     if not section:
-        print("[错误] CLAUDE.md 中未找到「时间戳」小节")
+        print("[错误] 项目级 AGENTS.md 中未找到「时间戳」小节")
         return 1
 
     # 逐行匹配占位行（**名称**：），按硬编码映射更新日期
@@ -126,13 +126,13 @@ def main() -> int:
 
     # 回写小节（用 split("\n") 保留行尾空行），再替换回全文
     new_section = "\n".join(lines)
-    claude_text = claude_text.replace(section, new_section, 1)
-    CLAUDE_PATH.write_text(claude_text, encoding="utf-8")
+    agents_text = agents_text.replace(section, new_section, 1)
+    AGENTS_PATH.write_text(agents_text, encoding="utf-8")
 
-    # 重新暂存 CLAUDE.md：仅当 diff 只含时间戳行改动时 add。
+    # 重新暂存项目级 AGENTS.md：仅当 diff 只含时间戳行改动时 add。
     # git add 是文件级操作——若用户有未暂存的非时间戳改动，add 会一并卷入本次 commit。
     diff = subprocess.run(
-        ["git", "diff", "--", "CLAUDE.md"], cwd=ROOT, capture_output=True, text=True
+        ["git", "diff", "--", "AGENTS.md"], cwd=ROOT, capture_output=True, text=True
     ).stdout.splitlines()
     changed_lines = [
         line
@@ -143,9 +143,9 @@ def main() -> int:
     ]
     non_stamp_changes = [line for line in changed_lines if "Last updated: " not in line]
     if non_stamp_changes:
-        print("⚠ CLAUDE.md 存在非时间戳的未暂存改动，本次不自动暂存术语表时间戳")
+        print("⚠ 项目级 AGENTS.md 存在非时间戳的未暂存改动，本次不自动暂存术语表时间戳")
     else:
-        subprocess.run(["git", "add", "CLAUDE.md"], cwd=ROOT, check=True)
+        subprocess.run(["git", "add", "AGENTS.md"], cwd=ROOT, check=True)
 
     print("术语表时间戳已更新")
     return 0
