@@ -5,9 +5,12 @@
 提取项目级 AGENTS.md「项目架构（分层森林图 · 顶层视图）」的 ```text 围栏块中记录的
 目录路径（层基目录 + 顶层目录项），校验其在仓库中仍然存在。
 
-校验规则依据（见项目级 AGENTS.md 架构图语法说明）：
-- 层声明行（缩进 8、首字符为 = / ⊂ / ⊃）：运算符后为基目录，` + ` 连接多个基目录。
-- 目录项行（缩进 12、以 ├── / └── 起头）：条目名相对该层基目录解析。
+校验规则依据（见 FOR-AGENTS/分层森林图详细规则.md §4，缩进是相对规则）：
+- 层声明行（首字符为 = / ⊂ / ⊃）：运算符后为基目录，` + ` 连接多个基目录。
+- 目录项行（以 ├── / └── 起头）：条目名相对该层基目录解析。
+- 归属：目录项归属于缩进恰少 4 的最近层声明。层声明即所属节点的三元组
+  （节点缩进 + 4），目录项在节点缩进 + 8，故两者相差 +4——层声明在 8 则条目在 12
+  （常规形态），根节点自带目录树时层声明在 4、条目在 8。
 - 条目名可能自带基目录前缀（如 ui/operation_controller.ts），也可能不自带
   （如 graph_store.ts），故候选集取该层各基目录及其公共前缀的并集去重。
 
@@ -52,14 +55,14 @@ def extract_text_block(doc_path: Path) -> list[tuple[int, str]]:
 def collect_paths(
     block: list[tuple[int, str]],
 ) -> tuple[list[tuple[int, str]], list[tuple[int, str, list[str]]]]:
-    """按缩进判据收集基目录与目录项。
+    """按相对缩进判据收集基目录与目录项。
 
     返回 ([(基目录行号, 基目录), ...], [(目录项行号, 条目名, 该层基目录列表), ...])。
     语义续行 / ≝ / s.t. / ↓ / § 等行不满足下述判据，天然跳过。
     """
     bases: list[tuple[int, str]] = []
     items: list[tuple[int, str, list[str]]] = []
-    current_bases: list[str] = []
+    bases_by_decl_indent: dict[int, list[str]] = {}
 
     for lineno, line in block:
         stripped = line.strip()
@@ -69,16 +72,17 @@ def collect_paths(
         indent = len(line) - len(line.lstrip(" "))
 
         # 层声明行：运算符后为该层基目录
-        if indent == 8 and stripped[0] in "=⊂⊃":
-            current_bases = parse_layer_bases(line)
-            bases.extend((lineno, base) for base in current_bases)
+        if stripped[0] in "=⊂⊃":
+            bases_by_decl_indent[indent] = parse_layer_bases(line)
+            bases.extend((lineno, base) for base in bases_by_decl_indent[indent])
             continue
 
-        # 目录项行：├── / └── 前缀
-        if indent == 12 and stripped[0] in ("├", "└"):
+        # 目录项行：├── / └── 前缀，归属于缩进恰少 4 的最近层声明
+        if stripped.startswith(("├──", "└──")):
             name = parse_item_name(line)
             if name:
-                items.append((lineno, name, current_bases))
+                owning_bases = bases_by_decl_indent.get(indent - 4, [])
+                items.append((lineno, name, owning_bases))
 
     return bases, items
 
