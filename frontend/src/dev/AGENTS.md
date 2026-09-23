@@ -13,7 +13,7 @@
 
 `commitToCurrentGraph` 是用例层单图入口，内部经 store 唯一图操作入口 `commitBatchToGraphs` 写入；跨图场景用用例层 `commitBatches`。
 
-❌ 自创武功——绕过运行时 API，直接拼装 GraphData 然后 `saveGraph`：
+❌ 自创武功——绕过运行时 API，直接拼装 GraphData 然后 `commitGraphs`：
 
 - 跳过引擎 validate → execute → normalize 流水线
 - 与用户路径不一致，无法互相验证
@@ -27,11 +27,11 @@
 
 ### 核心规则
 
-**用 `createRootGraph(title, { id })` 替代 `saveGraph(手动拼装) + loadGraphToView`。**
+**用 `createRootGraph(title, { id })` 替代 `commitGraphs(手动拼装) + loadGraphToView`。**
 
 ```ts
 // ❌ 危险——每次刷新覆盖已有数据
-saveGraph(手动拼装的 GraphData)
+commitGraphs({ upserts: [手动拼装的 GraphData], deletes: [] })
 graphStore.loadGraphToView(fixedId)
 
 // ✅ 安全——createRootGraph 内置幂等检查（经导航用例层 useNavigation.createRootGraph 走 commitBatchToGraphs 统一管道）
@@ -54,6 +54,6 @@ if (graphStore.graphView!.nodes.length === 0) {
 
 ### 背景
 
-- `saveGraph` 是"覆盖写入"原语——`commitBatchToGraphs` 的持久化阶段调用 `saveGraph`
+- `commitGraphs` 是"覆盖写入"原语（`{ upserts, deletes }`）——`commitBatchToGraphs` 的持久化阶段调用 `commitGraphs`
 - 种子数据需要**固定 ID**（如金图 `node-g5` 通过 `sourceGraphId: 'graph-silver'` 引用银图）
 - `createRootGraph` 默认用随机 ID，加 `{ id }` 参数后同时获得固定 ID 和内置幂等保护

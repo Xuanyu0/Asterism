@@ -26,13 +26,13 @@
 
 ### 已知技术债务
 
-`NavigationPanel.vue` 经 `graph/use-case/useNavigation` 的 `useNavigation()` 调用 `createRootGraph` / `deleteRootGraphTree`，未走 emit → 父组件链路。
+`NavigationPanel.vue` 经 `graph/use-case/useNavigation` 的 `useNavigation()` 调用 `createRootGraph` / `deleteGraphTree`，未走 emit → 父组件链路。
 
 ### 现状：例外边界（边界待定）
 
 以下组件当前未完全走 emit 链路。仅记录现状，边界设计尚未裁决，不代表已认可：
 
-- `NavigationPanel.vue`：直接调用导航用例层 `createRootGraph` / `deleteRootGraphTree`（见上「已知技术债务」）。
+- `NavigationPanel.vue`：直接调用导航用例层 `createRootGraph` / `deleteGraphTree`（见上「已知技术债务」）。
 - `GraphModeSelector.vue`：直接 import 编排模块 `operationController` 与 `mediator`。
 - `GraphFloatingWindow.vue`：读 `mediator.defaultHandler`，并调用活跃 handler 的浮空窗回调。
 - `GraphNavigationCard.vue`：使用 `mediator` 与导航用例层 `goToGraph`。
