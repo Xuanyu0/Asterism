@@ -17,7 +17,8 @@
 
 import type { GraphId, NodeId } from '@my-project/graph-engine'
 
-import { saveGraph, loadGraph } from '@/graph/graph_persistence'
+import { commitGraphs, loadGraph } from '@/persistence'
+import * as medium from '@/persistence/medium/local_storage'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 
 import type { NavigationAPI } from './useNavigation'
@@ -34,7 +35,7 @@ describe('useNavigation', () => {
         // 会与用例层内部的新模块实例分叉成两个单例。
         // （vue 为 vitest 外部化依赖，重置后仍为同一实例，不会产生双实例。）
         vi.resetModules()
-        localStorage.clear()
+        medium.resetMediumForTests()
         storeModule = await import('@/graph/graph_store')
         storeModule.resetGraphStoreForTests()
         lifecycleModule = await import('./useLifecycle')
@@ -45,7 +46,7 @@ describe('useNavigation', () => {
     /** 写入金牌图、全量注册并加载为当前视图，返回对应 store（无图态用例不调用）。 */
     function loadGoldenGraph() {
         const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
+        commitGraphs({ upserts: [golden], deletes: [] })
         // loadGraphToView 不再负责注册——先经 registerAllGraphs 全量注册所有持久化图
         lifecycleModule.useLifecycle().registerAllGraphs()
         const store = storeModule.useGraphStore()
@@ -132,7 +133,7 @@ describe('useNavigation', () => {
         const result = loadGraph(id)
         expect(result.ok).toBe(true)
         if (result.ok) {
-            expect(result.graph.title).toBe('新建根图')
+            expect(result.value.title).toBe('新建根图')
         }
         expect(navigation.listRootGraphInfos().some((info) => info.id === id && info.title === '新建根图')).toBe(true)
     })
@@ -147,7 +148,7 @@ describe('useNavigation', () => {
         const firstLoad = loadGraph('graph-fixed' as GraphId)
         expect(firstLoad.ok).toBe(true)
         if (firstLoad.ok) {
-            expect(firstLoad.graph.title).toBe('原始标题')
+            expect(firstLoad.value.title).toBe('原始标题')
         }
 
         const secondId = navigation.createRootGraph('新标题', {
@@ -157,39 +158,44 @@ describe('useNavigation', () => {
         const secondLoad = loadGraph('graph-fixed' as GraphId)
         expect(secondLoad.ok).toBe(true)
         if (secondLoad.ok) {
-            expect(secondLoad.graph.title).toBe('原始标题')
+            expect(secondLoad.value.title).toBe('原始标题')
         }
     })
 
-    test('deleteRootGraphTree 级联删除根图，listRootGraphInfos 不再可见', () => {
+    test('deleteGraphTree 级联删除根图，listRootGraphInfos 不再可见', () => {
         loadGoldenGraph()
 
         const id = navigation.createRootGraph('待删除图')
         expect(navigation.listRootGraphInfos().some((info) => info.id === id)).toBe(true)
 
-        navigation.deleteRootGraphTree(id)
+        navigation.deleteGraphTree(id)
         expect(navigation.listRootGraphInfos().some((info) => info.id === id)).toBe(false)
     })
 
-    test('deleteRootGraphTree 级联删除根图及其子图', () => {
+    test('deleteGraphTree 级联删除根图及其子图', () => {
         loadGoldenGraph()
         const rootId = navigation.createRootGraph('待删根图')
 
         // 构造子图并持久化（模拟子图创建结果）
-        saveGraph({
-            id: 'sub-todelete' as GraphId,
-            kind: 'subgraph',
-            title: '待删子图',
-            parentGraphId: rootId,
-            ownerNodeId: 'node-x' as NodeId,
-            nodes: [],
-            edges: [],
-            cognitiveState: { foldedDependencies: [] },
+        commitGraphs({
+            upserts: [
+                {
+                    id: 'sub-todelete' as GraphId,
+                    kind: 'subgraph',
+                    title: '待删子图',
+                    parentGraphId: rootId,
+                    ownerNodeId: 'node-x' as NodeId,
+                    nodes: [],
+                    edges: [],
+                    cognitiveState: { foldedDependencies: [] },
+                },
+            ],
+            deletes: [],
         })
 
         expect(navigation.listRootGraphInfos().some((info) => info.id === rootId)).toBe(true)
 
-        navigation.deleteRootGraphTree(rootId)
+        navigation.deleteGraphTree(rootId)
 
         expect(navigation.listRootGraphInfos().some((info) => info.id === rootId)).toBe(false)
         expect(loadGraph('sub-todelete' as GraphId)).toEqual({
@@ -198,10 +204,10 @@ describe('useNavigation', () => {
         })
     })
 
-    test('deleteRootGraphTree 防御：当前视图所在根图不可删除', () => {
+    test('deleteGraphTree 防御：当前视图所在根图不可删除', () => {
         loadGoldenGraph()
 
-        navigation.deleteRootGraphTree('graph-golden' as GraphId)
+        navigation.deleteGraphTree('graph-golden' as GraphId)
 
         expect(navigation.listRootGraphInfos().some((info) => info.id === 'graph-golden')).toBe(true)
     })
@@ -217,7 +223,7 @@ describe('useNavigation', () => {
         const loaded = loadGraph('graph-golden' as GraphId)
         expect(loaded.ok).toBe(true)
         if (loaded.ok) {
-            expect(loaded.graph.title).toBe('金牌改名图')
+            expect(loaded.value.title).toBe('金牌改名图')
         }
 
         // recordLog 默认 true：更名进操作日志（undo 逆元来源）
@@ -339,7 +345,7 @@ describe('useNavigation', () => {
         const afterUndo = loadGraph('graph-golden' as GraphId)
         expect(afterUndo.ok).toBe(true)
         if (afterUndo.ok) {
-            expect(afterUndo.graph.title).toBe('金牌测试图')
+            expect(afterUndo.value.title).toBe('金牌测试图')
         }
 
         // redo：正向批重放，title 恢复新值
@@ -348,7 +354,7 @@ describe('useNavigation', () => {
         const afterRedo = loadGraph('graph-golden' as GraphId)
         expect(afterRedo.ok).toBe(true)
         if (afterRedo.ok) {
-            expect(afterRedo.graph.title).toBe('金牌改名图')
+            expect(afterRedo.value.title).toBe('金牌改名图')
         }
     })
 })

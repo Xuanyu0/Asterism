@@ -21,7 +21,7 @@ import type {
 } from '@my-project/graph-engine'
 
 import { validateGraph } from '@my-project/graph-engine'
-import { loadGraph, saveGraph } from '@/graph/graph_persistence'
+import { commitGraphs, loadGraph } from '@/persistence'
 
 // ═══════════ 构造节点/边 ═══════════
 
@@ -137,7 +137,7 @@ export function assembleGraph(params: {
 /**
  * 功能：
  *
- *     创建银牌测试图及其子图，持久化子图到 localStorage。
+ *     创建银牌测试图及其子图，持久化子图。
  *
  * 图结构：
  *
@@ -146,7 +146,7 @@ export function assembleGraph(params: {
  *
  * 规则：
  *
- *     1. 子图通过 saveGraph 持久化，根图由调用方自行 persist。
+ *     1. 子图通过 commitGraphs 持久化，根图由调用方自行 persist。
  *     2. 本函数不校验银牌图中 reference 节点指向的金牌图是否存在；
  *        调用方（如 createGoldenTestGraphV2）应确保金牌图已持久化。
  *     3. 返回的银牌根图引用 sv-node-4 (reference) 指向金牌图节点 node-g1。
@@ -259,7 +259,7 @@ export function createSilverTestGraph(graphId?: GraphId): GraphData {
         nodes: subNodes,
         edges: subEdges,
     })
-    saveGraph(subGraph)
+    commitGraphs({ upserts: [subGraph], deletes: [] })
 
     return parentGraph
 }
@@ -288,7 +288,7 @@ export function createGoldenTestGraphV2(graphId?: GraphId): GraphData {
     // 确保银牌测试图已存在（金牌引用节点指向它）
     if (!loadGraph('graph-silver' as GraphId).ok) {
         const silverGraph = createSilverTestGraph()
-        saveGraph(silverGraph)
+        commitGraphs({ upserts: [silverGraph], deletes: [] })
     }
 
     // — 金牌父图 —
@@ -411,7 +411,7 @@ export function createGoldenTestGraphV2(graphId?: GraphId): GraphData {
         nodes: subNodes,
         edges: subEdges,
     })
-    saveGraph(subGraph)
+    commitGraphs({ upserts: [subGraph], deletes: [] })
 
     return parentGraph
 }

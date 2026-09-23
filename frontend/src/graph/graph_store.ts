@@ -2,7 +2,7 @@
  * GraphData 唯一事实源与所有图修改的唯一合法入口（模块级单例）。
  *
  * @remarks
- * 持有当前视图图 / 路径 / 操作日志，协调多图注册表与 localStorage 持久化。
+ * 持有当前视图图 / 路径 / 操作日志，协调多图注册表与持久化层。
  * 留在本 store 的判定标准（四入口）：
  * 唯一切换（loadGraphToView）∨ 唯一图操作（commitBatchToGraphs）∨ 唯一回溯（undo / redo）。
  * 生命周期管理（恢复 / 创建根图）与校验清理已下沉至用例层（useLifecycle / 操作用例层）。
@@ -30,17 +30,28 @@ import { applyBatches } from '@my-project/graph-engine'
 
 import { createRegistry, registerGraph, lookupGraph } from '@/graph/graph_registry'
 
-import { saveGraph, loadGraph, deleteGraph, saveLastActiveRootId } from '@/graph/graph_persistence'
+import { commitGraphs, loadGraph, saveLastActiveRootId, type WriteFailureReason } from '@/persistence'
 
 import { DATA_INTEGRITY_PREFIX, reportCorruptedGraph } from '@/graph/utils/data_integrity_reporter'
 import { splitOperationsIntoBatches } from '@/graph/utils/operation_batches'
+
+/**
+ * 持久化写入失败的用户可见错误（存储错误通道，独立于业务校验通道 lastValidationResult）。
+ */
+export interface StorageError {
+    /** 失败成因，来自持久化层的写结果。 */
+    reason: WriteFailureReason
+
+    /** 用户可见的错误文案。 */
+    message: string
+}
 
 /**
  * GraphStore 公开 API：状态 + 方法入口。
  *
  * @remarks
  * 状态按职责分组：
- * - 视图态（响应式）：graphViewId / graphPath / lastValidationResult（graphView 为派生 accessor）
+ * - 视图态（响应式）：graphViewId / graphPath / lastValidationResult / storageError（graphView 为派生 accessor）
  * - 多图注册表（响应式，引用替换）：graphRegistry
  * - 撤销日志（普通字段）：operationLog / redoStack
  */
@@ -52,6 +63,14 @@ export interface GraphStoreAPI {
     readonly graphView: GraphData | null
     graphPath: GraphId[]
     lastValidationResult: ValidationResult | null
+
+    /**
+     * 最近一次持久化写入失败的错误；null 表示无存储错误。
+     *
+     * @remarks
+     * 与 lastValidationResult 分属不同通道——落盘失败不是业务校验失败。
+     */
+    storageError: StorageError | null
 
     // 多图注册表（响应式，引用替换触发更新；Map 本身保持 raw）
     graphRegistry: GraphRegistry
@@ -106,6 +125,7 @@ function createGraphStore(): GraphStoreAPI {
         graphViewId: null as GraphId | null,
         graphPath: [] as GraphId[],
         lastValidationResult: null as ValidationResult | null,
+        storageError: null as StorageError | null,
 
         // 派生 accessor：graphView 按 graphViewId 从 graphRegistry 查询。
         // getter 读取两个顶层属性，watch 依赖自动建立——任一变化触发重新求值。
@@ -155,13 +175,13 @@ function createGraphStore(): GraphStoreAPI {
         }
 
         // 图已在注册表全量注册，仅切换视图
-        store.graphViewId = loadedResult.graph.id
+        store.graphViewId = loadedResult.value.id
 
-        // 操作日志的生命周期：根图谱 = 日志——仅当切换到不同根图树时重置操作日志与 redo 栈。
-        // 同根图树内导航（子图↔根图）不清空。
+        // 操作日志的生命周期：根图谱 = 日志——仅当切换到不同图谱树时重置操作日志与 redo 栈。
+        // 同一图谱树内导航（子图↔根图）不清空。
         // previousRootId 必须在覆盖 graphPath 之前读取
         const previousRootId = store.graphPath[0]
-        const { path, terminal } = buildGraphPath(loadedResult.graph)
+        const { path, terminal } = buildGraphPath(loadedResult.value)
         store.graphPath = path
         if (path.length > 0 && previousRootId !== undefined && previousRootId !== path[0]) {
             store.operationLog = { entries: [], cursor: -1 }
@@ -189,8 +209,8 @@ function createGraphStore(): GraphStoreAPI {
      * （add_graph / delete_graph 兑现）操作，返回新注册表 + 聚合校验 + 逆元序列。
      *
      * 成功后处理链：
-     * 1. 引用替换注册表（store.graphRegistry = result.registry，触发响应式）
-     * 2. 持久化批内涉及的图（跟随注册表生命周期：有则 saveGraph、无则 deleteGraph 真删）
+     * 1. 先落盘批内涉及的图（经 persistence.commitGraphs，跟随注册表生命周期：有则写、无则真删）
+     * 2. 落盘成功后引用替换注册表（store.graphRegistry = result.registry，触发响应式）
      * 3. 日志组装（operation + 逆元全量，recordLog !== false 时）
      *
      * graphView 为派生 accessor：注册表引用替换后自动指向新图，无需手动同步。
@@ -199,6 +219,8 @@ function createGraphStore(): GraphStoreAPI {
      * 1. 任一操作校验失败整批丢弃，注册表不变（applyBatches 事务性）
      * 2. 图内批目标图必须在注册表中（applyBatches 校验 BATCH_GRAPH_NOT_FOUND）
      * 3. options.recordLog 默认 true；false（undo/redo 执行）不追加 entry、不动 cursor、不清 redoStack
+     * 4. 落盘失败不推进内存：注册表不替换、日志不追加，置 storageError 并返回含
+     *    STORAGE_WRITE_FAILED 的失败校验结果（不写 lastValidationResult，避免与业务校验混淆）
      *
      * @param operationBatch - 多批次操作（图内 / 图级判别联合）
      * @param options - [可选] recordLog：是否写入操作日志（默认 true）；
@@ -209,7 +231,8 @@ function createGraphStore(): GraphStoreAPI {
      *                  source：操作来源的工具标识
      *                  （缺省 undefined = 未知来源，供操作日志树 UI 按来源分类）；
      *                  executedAt：时间戳来源（缺省内部生成当前时刻）
-     * @returns 校验结果（valid + issues 汇总）。
+     * @returns 校验结果（valid + issues 汇总）；落盘失败时 valid 为 false、issues 含
+     *          STORAGE_WRITE_FAILED，真实错误另见 store.storageError。
      */
     function commitBatchToGraphs(
         operationBatch: OperationBatch[],
@@ -234,9 +257,6 @@ function createGraphStore(): GraphStoreAPI {
             store.lastValidationResult = result.validation
             return { validation: result.validation }
         }
-        // 引用替换注册表（applyBatches 返回新 Map，复用未变化图引用，不深拷贝）
-        store.graphRegistry = result.registry
-        store.lastValidationResult = result.validation
 
         // 批内涉及的图 id：持久化范围推导。
         const affectedGraphIds = new Set<GraphId>()
@@ -245,20 +265,32 @@ function createGraphStore(): GraphStoreAPI {
                 affectedGraphIds.add(batch.graph.id)
             } else if (batch.kind === 'graphLevel') {
                 for (const op of batch.operations) {
-                    // 被 delete_graph 注销的图在新注册表不存在 → 下方 deleteGraph 真删
+                    // 被 delete_graph 注销的图在新注册表不存在 → 下方作为 deletes 真删
                     affectedGraphIds.add(op.graph.id)
                 }
             }
         }
-        // 持久化跟随注册表生命周期：有则保存（含 undo 逆元重建的图）、无则真删（delete_graph 注销）
+
+        // 落盘先行、内存不前进：跟随注册表生命周期——有则写（含 undo 逆元重建的图）、无则真删（delete_graph 注销）
+        const upserts: GraphData[] = []
+        const deletes: GraphId[] = []
         for (const graphId of affectedGraphIds) {
             const graph = result.registry.get(graphId)
-            if (graph) {
-                saveGraph(graph)
-            } else {
-                deleteGraph(graphId)
-            }
+            if (graph) upserts.push(graph)
+            else deletes.push(graphId)
         }
+
+        const writeResult = commitGraphs({ upserts, deletes })
+        if (!writeResult.ok) {
+            const storageError = createStorageError(writeResult.reason)
+            store.storageError = storageError
+            return { validation: toStorageFailureValidation(storageError) }
+        }
+
+        // 落盘成功，才引用替换注册表（applyBatches 返回新 Map，复用未变化图引用，不深拷贝）
+        store.graphRegistry = result.registry
+        store.lastValidationResult = result.validation
+        store.storageError = null
 
         // 操作日志写入（正逆操作双存模型）
         // 整批成功后组装 entry 追加、cursor 前进、清空 redoStack
@@ -452,7 +484,7 @@ function createGraphStore(): GraphStoreAPI {
         const { path, terminal } = buildGraphPath(fallback)
         store.graphPath = path
 
-        // 必要时更新最后活跃根图（undo/redo 不改变根图树，防御性更新）
+        // 必要时更新最后活跃根图（undo/redo 不改变根图谱，防御性更新）
         if (terminal.kind === 'root') {
             saveLastActiveRootId(terminal.id)
         }
@@ -525,8 +557,8 @@ function findParentGraph(registry: GraphRegistry, parentId: GraphId): GraphData 
 
     const result = loadGraph(parentId)
     if (result.ok) {
-        registerGraph(registry, result.graph)
-        return result.graph
+        registerGraph(registry, result.value)
+        return result.value
     }
 
     return undefined
@@ -632,4 +664,37 @@ function buildBatchesFromLogItems(items: BatchesLog[], registry: GraphRegistry):
     }
 
     return batch
+}
+
+// ── 私有辅助（存储错误通道） ──
+
+const STORAGE_ERROR_MESSAGES: Record<WriteFailureReason, string> = {
+    'quota-exceeded': '保存失败：浏览器存储空间不足',
+    unavailable: '保存失败：浏览器存储不可用',
+    unknown: '保存失败：未知存储错误',
+}
+
+/** 构造存储错误状态（reason + 用户可见文案）。 */
+function createStorageError(reason: WriteFailureReason): StorageError {
+    return { reason, message: STORAGE_ERROR_MESSAGES[reason] }
+}
+
+/**
+ * 把存储错误包装为 commitBatchToGraphs 的失败返回，供工具 handler 据此中止收尾。
+ *
+ * @remarks
+ * 仅作返回值，不写 lastValidationResult——存储错误走独立通道，不与业务校验混为一谈。
+ */
+function toStorageFailureValidation(storageError: StorageError): ValidationResult {
+    return {
+        valid: false,
+        issues: [
+            {
+                severity: 'error',
+                code: 'STORAGE_WRITE_FAILED',
+                message: storageError.message,
+                targetType: 'graph',
+            },
+        ],
+    }
 }

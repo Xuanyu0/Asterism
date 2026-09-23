@@ -17,26 +17,28 @@
  */
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
-import { saveGraph } from '@/graph/graph_persistence'
-import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
+import { registerGraph } from '@/graph/graph_registry'
+import { commitGraphs } from '@/persistence'
+import * as medium from '@/persistence/medium/local_storage'
+import { createGoldenTestGraphV2, createNode } from '@/dev/test_case_factory'
 
-import type { GraphId, NodeId } from '@my-project/graph-engine'
+import type { GraphData, GraphId, NodeId } from '@my-project/graph-engine'
 
 describe('graph_store loadGraphToView 错误出口（08.2）', () => {
     beforeEach(() => {
         resetGraphStoreForTests()
-        localStorage.clear()
+        medium.resetMediumForTests()
         vi.restoreAllMocks()
     })
 
     afterAll(() => {
-        localStorage.clear()
+        medium.resetMediumForTests()
         vi.restoreAllMocks()
     })
 
     test('loadGraphToView 不再注册图：图未预注册时 graphView 为 null', () => {
         const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
+        commitGraphs({ upserts: [golden], deletes: [] })
         const store = useGraphStore()
 
         const loaded = store.loadGraphToView(golden.id)
@@ -63,7 +65,7 @@ describe('graph_store loadGraphToView 错误出口（08.2）', () => {
     })
 
     test('corrupted：返回 false，不写 lastValidationResult，入开发者通道（含 code 与 targetId）', () => {
-        localStorage.setItem('graph:graph-corrupt', 'not-valid-json{{{')
+        medium.writeString('graph:graph-corrupt', 'not-valid-json{{{')
         const store = useGraphStore()
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
         // 预置 sentinel：证明 corrupted 路径不覆盖 lastValidationResult（08.1 前此处会写 LOAD_FAILED）
@@ -80,15 +82,20 @@ describe('graph_store loadGraphToView 错误出口（08.2）', () => {
 
     test('祖先链断裂：图加载成功返回 true，不再写 lastValidationResult，message 含三要素（graphId / terminalId / 缺失父图 id）', () => {
         // 子图的父图不存在 → buildGraphPath 回溯在子图处中断
-        saveGraph({
-            id: 'graph-broken-sub' as GraphId,
-            kind: 'subgraph',
-            title: '断裂子图',
-            parentGraphId: 'graph-missing-parent' as GraphId,
-            ownerNodeId: 'node-x' as NodeId,
-            nodes: [],
-            edges: [],
-            cognitiveState: { foldedDependencies: [] },
+        commitGraphs({
+            upserts: [
+                {
+                    id: 'graph-broken-sub' as GraphId,
+                    kind: 'subgraph',
+                    title: '断裂子图',
+                    parentGraphId: 'graph-missing-parent' as GraphId,
+                    ownerNodeId: 'node-x' as NodeId,
+                    nodes: [],
+                    edges: [],
+                    cognitiveState: { foldedDependencies: [] },
+                },
+            ],
+            deletes: [],
         })
         const store = useGraphStore()
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -108,25 +115,30 @@ describe('graph_store loadGraphToView 错误出口（08.2）', () => {
 
     test('环检测：parentGraphId 链成环（A→B→A），console.warn 恰好一次且含 CYCLE_DETECTED 与环入口 id', () => {
         // 构造成环的持久化数据：A.parentGraphId = B，B.parentGraphId = A
-        saveGraph({
-            id: 'graph-cyc-a' as GraphId,
-            kind: 'subgraph',
-            title: '环图 A',
-            parentGraphId: 'graph-cyc-b' as GraphId,
-            ownerNodeId: 'node-a' as NodeId,
-            nodes: [],
-            edges: [],
-            cognitiveState: { foldedDependencies: [] },
-        })
-        saveGraph({
-            id: 'graph-cyc-b' as GraphId,
-            kind: 'subgraph',
-            title: '环图 B',
-            parentGraphId: 'graph-cyc-a' as GraphId,
-            ownerNodeId: 'node-b' as NodeId,
-            nodes: [],
-            edges: [],
-            cognitiveState: { foldedDependencies: [] },
+        commitGraphs({
+            upserts: [
+                {
+                    id: 'graph-cyc-a' as GraphId,
+                    kind: 'subgraph',
+                    title: '环图 A',
+                    parentGraphId: 'graph-cyc-b' as GraphId,
+                    ownerNodeId: 'node-a' as NodeId,
+                    nodes: [],
+                    edges: [],
+                    cognitiveState: { foldedDependencies: [] },
+                },
+                {
+                    id: 'graph-cyc-b' as GraphId,
+                    kind: 'subgraph',
+                    title: '环图 B',
+                    parentGraphId: 'graph-cyc-a' as GraphId,
+                    ownerNodeId: 'node-b' as NodeId,
+                    nodes: [],
+                    edges: [],
+                    cognitiveState: { foldedDependencies: [] },
+                },
+            ],
+            deletes: [],
         })
         const store = useGraphStore()
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -142,5 +154,46 @@ describe('graph_store loadGraphToView 错误出口（08.2）', () => {
         expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('CYCLE_DETECTED'))
         // 环入口 id（被重复访问的父图）应在 message 中
         expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('graph-cyc-a'))
+    })
+
+    test('落盘失败：内存注册表不前进、storageError 置位、返回 STORAGE_WRITE_FAILED', () => {
+        const store = useGraphStore()
+        const graph: GraphData = {
+            id: 'graph-write-fail' as GraphId,
+            kind: 'root',
+            title: '写失败图',
+            nodes: [],
+            edges: [],
+            cognitiveState: { foldedDependencies: [] },
+        }
+        registerGraph(store.graphRegistry, graph)
+        vi.spyOn(medium, 'writeString').mockReturnValue({ ok: false, reason: 'quota-exceeded' })
+
+        const { validation } = store.commitBatchToGraphs([
+            {
+                kind: 'inGraph',
+                graph,
+                operations: [
+                    {
+                        type: 'add_node',
+                        node: createNode({
+                            id: 'node-fail' as NodeId,
+                            graphId: graph.id,
+                            label: '写失败节点',
+                            position: { x: 0, y: 0 },
+                        }),
+                    },
+                ],
+            },
+        ])
+
+        // 返回失败信号（供工具 handler 中止收尾），真实错误走 storageError 独立通道
+        expect(validation.valid).toBe(false)
+        expect(validation.issues.some((issue) => issue.code === 'STORAGE_WRITE_FAILED')).toBe(true)
+        expect(store.storageError?.reason).toBe('quota-exceeded')
+        expect(store.lastValidationResult).toBeNull()
+        // 内存不前进：注册表未替换、日志未追加
+        expect(store.graphRegistry.get('graph-write-fail' as GraphId)!.nodes).toHaveLength(0)
+        expect(store.operationLog.entries).toHaveLength(0)
     })
 })

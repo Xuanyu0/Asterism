@@ -15,27 +15,20 @@
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
 import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
 import { useLifecycle } from '@/graph/use-case/useLifecycle'
-import {
-    saveGraph,
-    loadGraph,
-    deleteGraph,
-    listRootGraphIds,
-} from '@/graph/graph_persistence'
-import {
-    createGoldenTestGraphV2,
-    createSilverTestGraph,
-} from '@/dev/test_case_factory'
+import { commitGraphs, loadGraph, listRootGraphIds } from '@/persistence'
+import * as medium from '@/persistence/medium/local_storage'
+import { createGoldenTestGraphV2, createSilverTestGraph } from '@/dev/test_case_factory'
 import { validateGraph } from '@my-project/graph-engine'
 import type { NodeId } from '@my-project/graph-engine'
 
 describe('数据合法性校验', () => {
     beforeEach(() => {
         resetGraphStoreForTests()
-        localStorage.clear()
+        medium.resetMediumForTests()
     })
 
     afterAll(() => {
-        localStorage.clear()
+        medium.resetMediumForTests()
     })
 
     test('金牌图通过全图所有全局规则校验', () => {
@@ -54,16 +47,16 @@ describe('数据合法性校验', () => {
 describe('Store 加载', () => {
     beforeEach(() => {
         resetGraphStoreForTests()
-        localStorage.clear()
+        medium.resetMediumForTests()
     })
 
     afterAll(() => {
-        localStorage.clear()
+        medium.resetMediumForTests()
     })
 
     test('保存并加载金牌图后 graphView 不为 null', () => {
         const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
+        commitGraphs({ upserts: [golden], deletes: [] })
         // loadGraphToView 不再负责注册——先全量注册所有持久化图
         useLifecycle().registerAllGraphs()
         const store = useGraphStore()
@@ -74,7 +67,7 @@ describe('Store 加载', () => {
 
     test('金牌图节点数 === 6', () => {
         const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
+        commitGraphs({ upserts: [golden], deletes: [] })
         // loadGraphToView 不再负责注册——先全量注册所有持久化图
         useLifecycle().registerAllGraphs()
         const store = useGraphStore()
@@ -84,7 +77,7 @@ describe('Store 加载', () => {
 
     test('金牌图边数 === 4', () => {
         const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
+        commitGraphs({ upserts: [golden], deletes: [] })
         // loadGraphToView 不再负责注册——先全量注册所有持久化图
         useLifecycle().registerAllGraphs()
         const store = useGraphStore()
@@ -94,7 +87,7 @@ describe('Store 加载', () => {
 
     test('graphPath 长度 === 1', () => {
         const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
+        commitGraphs({ upserts: [golden], deletes: [] })
         // loadGraphToView 不再负责注册——先全量注册所有持久化图
         useLifecycle().registerAllGraphs()
         const store = useGraphStore()
@@ -106,16 +99,16 @@ describe('Store 加载', () => {
 describe('原子操作链路', () => {
     beforeEach(() => {
         resetGraphStoreForTests()
-        localStorage.clear()
+        medium.resetMediumForTests()
     })
 
     afterAll(() => {
-        localStorage.clear()
+        medium.resetMediumForTests()
     })
 
     test('add_node：节点数从 6 变为 7', () => {
         const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
+        commitGraphs({ upserts: [golden], deletes: [] })
         // loadGraphToView 不再负责注册——先全量注册所有持久化图
         useLifecycle().registerAllGraphs()
         const store = useGraphStore()
@@ -145,16 +138,16 @@ describe('原子操作链路', () => {
 describe('fold/expand + undo', () => {
     beforeEach(() => {
         resetGraphStoreForTests()
-        localStorage.clear()
+        medium.resetMediumForTests()
     })
 
     afterAll(() => {
-        localStorage.clear()
+        medium.resetMediumForTests()
     })
 
     test('fold：折叠 node-g2 后 foldedDependencies 非空', () => {
         const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
+        commitGraphs({ upserts: [golden], deletes: [] })
         // loadGraphToView 不再负责注册——先全量注册所有持久化图
         useLifecycle().registerAllGraphs()
         const store = useGraphStore()
@@ -167,14 +160,12 @@ describe('fold/expand + undo', () => {
             },
         ])
 
-        expect(
-            store.graphView!.cognitiveState.foldedDependencies.length,
-        ).toBeGreaterThan(0)
+        expect(store.graphView!.cognitiveState.foldedDependencies.length).toBeGreaterThan(0)
     })
 
     test('undo：撤销折叠后 foldedDependencies 为空', () => {
         const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
+        commitGraphs({ upserts: [golden], deletes: [] })
         // loadGraphToView 不再负责注册——先全量注册所有持久化图
         useLifecycle().registerAllGraphs()
         const store = useGraphStore()
@@ -187,9 +178,7 @@ describe('fold/expand + undo', () => {
             },
         ])
 
-        expect(
-            store.graphView!.cognitiveState.foldedDependencies.length,
-        ).toBeGreaterThan(0)
+        expect(store.graphView!.cognitiveState.foldedDependencies.length).toBeGreaterThan(0)
 
         const undone = store.undo()
         expect(undone).toBe(true)
@@ -200,7 +189,7 @@ describe('fold/expand + undo', () => {
 
     test('非法操作拒绝：delete 不存在的节点', () => {
         const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
+        commitGraphs({ upserts: [golden], deletes: [] })
         // loadGraphToView 不再负责注册——先全量注册所有持久化图
         useLifecycle().registerAllGraphs()
         const store = useGraphStore()
@@ -221,36 +210,39 @@ describe('fold/expand + undo', () => {
 describe('持久化', () => {
     beforeEach(() => {
         resetGraphStoreForTests()
-        localStorage.clear()
+        medium.resetMediumForTests()
     })
 
     afterAll(() => {
-        localStorage.clear()
+        medium.resetMediumForTests()
     })
 
     test('save → load 往返：节点数不变', () => {
         const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
+        commitGraphs({ upserts: [golden], deletes: [] })
 
         const loaded = loadGraph(golden.id)
         expect(loaded.ok).toBe(true)
         if (loaded.ok) {
-            expect(loaded.graph.nodes.length).toBe(6)
+            expect(loaded.value.nodes.length).toBe(6)
         }
     })
 
     test('delete → load 返回 missing', () => {
         const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
-        deleteGraph(golden.id)
+        commitGraphs({ upserts: [golden], deletes: [] })
+        commitGraphs({ upserts: [], deletes: [golden.id] })
         const loaded = loadGraph(golden.id)
         expect(loaded).toEqual({ ok: false, reason: 'missing' })
     })
 
     test('listRootGraphIds 包含金牌图 ID', () => {
         const golden = createGoldenTestGraphV2()
-        saveGraph(golden)
+        commitGraphs({ upserts: [golden], deletes: [] })
         const ids = listRootGraphIds()
-        expect(ids).toContain(golden.id)
+        expect(ids.ok).toBe(true)
+        if (ids.ok) {
+            expect(ids.value).toContain(golden.id)
+        }
     })
 })

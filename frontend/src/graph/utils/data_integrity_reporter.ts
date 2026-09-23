@@ -27,3 +27,16 @@ export function reportCorruptedGraph(graphId: GraphId, context?: string): void {
         `${DATA_INTEGRITY_PREFIX} [CORRUPTED_GRAPH] 图谱 "${graphId}" 持久化数据损坏（JSON 解析失败）${suffix}`,
     )
 }
+
+/**
+ * 持久化介质不可用报告（开发者通道）。介质枚举失败、无法列出图谱时调用。
+ *
+ * @remarks
+ * 「介质不可用」与「没有数据」必须可区分：调用方据本报告中止流程，
+ * 不得把读不到降级为空结果（用户会以为数据丢失）。
+ *
+ * @param context - 报告场景（调用方函数名）
+ */
+export function reportStorageUnavailable(context: string): void {
+    console.warn(`${DATA_INTEGRITY_PREFIX} [STORAGE_UNAVAILABLE] ${context}：持久化介质不可用，无法枚举图谱`)
+}

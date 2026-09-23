@@ -10,13 +10,13 @@
  * 总体结构：
  *
  *     1. vi.mock useRenderer / previewAddEdge — 共享 mock 状态（vi.hoisted）
- *     2. 顶层 beforeEach — 重置 store 单例 / localStorage 并加载金牌图
+ *     2. 顶层 beforeEach — 重置 store 单例 / 持久化介质并加载金牌图
  *     3. 测试用例分组 — 生命周期 / 点击流程 / hover 预览 / 碰撞拦截 / 计算属性 / 四种变体
  *
  * 规则：
  *
  *     1. 使用金牌图作为测试数据。
- *     2. 每个测试独立环境（beforeEach 重置 store 单例和 localStorage）。
+ *     2. 每个测试独立环境（beforeEach 重置 store 单例和持久化介质）。
  *     3. useRenderer 被 vi.mock 拦截（Cytoscape 在 jsdom 下不可用）。
  *     4. previewAddEdge 被 vi.mock 拦截——handler 只关心其返回值的分支行为，
  *        碰撞判定本身的正确性由 preview_engine.test.ts 覆盖。
@@ -25,7 +25,8 @@
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
 import { useLifecycle } from '@/graph/use-case/useLifecycle'
-import { saveGraph } from '@/graph/graph_persistence'
+import { commitGraphs } from '@/persistence'
+import * as medium from '@/persistence/medium/local_storage'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 import { useAddEdgeTool } from './add_edge'
 
@@ -55,9 +56,9 @@ vi.mock('@/feature-tools/preview/preview_engine', () => ({
 
 beforeEach(() => {
     resetGraphStoreForTests()
-    localStorage.clear()
+    medium.resetMediumForTests()
     const golden = createGoldenTestGraphV2()
-    saveGraph(golden)
+    commitGraphs({ upserts: [golden], deletes: [] })
     // loadGraphToView 不再负责注册——先全量注册所有持久化图
     useLifecycle().registerAllGraphs()
     const store = useGraphStore()

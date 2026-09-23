@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 /**
- * 导航面板：根图谱的列表管理（切换 / 重命名 / 级联删除）与占位入口。浮层，不参与 Dock 尺寸计算。
+ * 导航面板：根图谱的列表管理（切换 / 重命名 / 级联删除）与图数据导出入口。浮层，不参与 Dock 尺寸计算。
  *
  * @remarks
  * 规则：
@@ -10,6 +10,8 @@
  * 4. 删除需二次点击确认；当前根图不渲染删除按钮（更名按钮仍渲染，更名对当前根图允许）。
  * 5. 编辑态与删除 armed 态互斥：同一行同一时刻只处于一种操作状态。
  * 6. 本组件自管理 rootInfos / newRootTitle / editingId / editTitle / armedDeleteId / noticeText 状态。
+ * 7. 导出选择弹窗为受控子组件：显隐（exportDialogVisible）与导出调用在本组件，
+ *    弹窗只上报选中项与关闭。一次操作只导出一棵图谱树（规避浏览器连续多文件下载拦截）。
  */
 
 import { ref, computed, onMounted, nextTick } from 'vue'
@@ -17,14 +19,24 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import type { GraphId } from '@my-project/graph-engine'
 import type { RootGraphInfo } from '@/graph/use-case/useNavigation'
 
-import { PlusIcon, TrashIcon, PencilIcon, BookOpenIcon, GlobeAltIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, TrashIcon, PencilIcon, ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/vue/24/outline'
 import AsterismLogo from '@/assets/icon-asterism.svg?component'
 
+import { useGraphStore } from '@/graph/graph_store'
 import { useNavigation } from '@/graph/use-case/useNavigation'
+import { useGraphExport } from '@/graph/use-case/export_graphs'
+
+import GraphExportDialog from './GraphExportDialog.vue'
 
 // ── 常量（新建与更名流程共用） ──
 const ROOT_TITLE_MAX_LENGTH = 40
 const DUPLICATE_TITLE_NOTICE = '已存在同名根图谱'
+
+// 导出失败文案（按用例层 ExportResult 的失败成因区分），经既有存储错误通道展示
+const EXPORT_FAILURE_MESSAGES: Record<'unavailable' | 'unknown', string> = {
+    unavailable: '导出失败：浏览器存储不可用',
+    unknown: '导出失败：未知错误',
+}
 
 const props = defineProps<{
     currentRootId: GraphId | null
@@ -38,17 +50,18 @@ const emits = defineEmits<{
 }>()
 
 const navigation = useNavigation()
+const graphExport = useGraphExport()
 
 // 新建 + 重命名共用的轻量提示文本（空名 / 重名 / 失败拦截反馈）
 const noticeText = ref('')
 
 // ── 根图谱列表 ──
 const rootInfos = ref<RootGraphInfo[]>([])
-function refreshRootList(): void {
+function refreshRootInfos(): void {
     rootInfos.value = navigation.listRootGraphInfos()
 }
 onMounted(() => {
-    refreshRootList()
+    refreshRootInfos()
 })
 
 function selectRootGraph(info: RootGraphInfo): void {
@@ -77,7 +90,7 @@ function createAndSwitch(): void {
     noticeText.value = ''
 
     emits('switchRootGraph', graphId)
-    refreshRootList()
+    refreshRootInfos()
     emits('close')
 }
 
@@ -88,7 +101,7 @@ const armedDeleteId = ref<GraphId | null>(null)
  *
  * @remarks
  * 1. 当前浏览中的根图不可删除。
- * 2. 确认后经导航用例层 deleteRootGraphTree 级联删除整棵图树。
+ * 2. 确认后经导航用例层 deleteGraphTree 级联删除整棵图谱树。
  * 3. 与行内编辑互斥：任何删除点击先取消编辑态（编辑内容不提交）。
  */
 function requestDeleteRoot(info: RootGraphInfo): void {
@@ -98,9 +111,9 @@ function requestDeleteRoot(info: RootGraphInfo): void {
     cancelRename()
 
     if (armedDeleteId.value === info.id) {
-        navigation.deleteRootGraphTree(info.id)
+        navigation.deleteGraphTree(info.id)
         armedDeleteId.value = null
-        refreshRootList()
+        refreshRootInfos()
         return
     }
 
@@ -152,7 +165,7 @@ function confirmRename(): void {
     const validation = navigation.renameRootGraph(targetId, title)
     if (validation.valid) {
         cancelRename()
-        refreshRootList()
+        refreshRootInfos()
         return
     }
 
@@ -182,6 +195,40 @@ function onRenameBlur(event: FocusEvent): void {
     if (next && next.closest('.root-rename-btn, .root-delete-btn')) return
 
     confirmRename()
+}
+
+// ── 导出（导出选择弹窗 + 导出调用）──
+const exportDialogVisible = ref(false)
+
+/** 打开导出选择弹窗。打开前刷新列表，保证弹窗内的可导出单位与持久化一致。 */
+function openExportDialog(): void {
+    refreshRootInfos()
+    exportDialogVisible.value = true
+}
+
+/**
+ * 导出一棵图谱树（弹窗选中项的落地处理）。
+ *
+ * @remarks
+ * 1. 先关弹窗，再触发导出：失败反馈落在底部通知面板（z-index 998），不关弹窗会被遮罩盖住。
+ * 2. 已关弹窗后的重复选中直接忽略——淡出期内连点仍可能再报一次选中，忽略它才保证
+ *    一次操作只落一个文件（规避浏览器对连续多文件下载的拦截）。
+ * 3. 失败反馈走既有存储错误通道（Graph.vue 按 graphStore.storageError 渲染），不新开提示机制。
+ *
+ * @param rootId - 选中的根图 ID，其整棵树（含全部子图）为一个导出文件。
+ */
+function handleExportRootGraph(rootId: GraphId): void {
+    if (!exportDialogVisible.value) return
+
+    exportDialogVisible.value = false
+
+    const result = graphExport.exportGraphTree(rootId)
+    if (result.ok) return
+
+    useGraphStore().storageError = {
+        reason: result.reason,
+        message: EXPORT_FAILURE_MESSAGES[result.reason],
+    }
 }
 </script>
 
@@ -260,20 +307,28 @@ function onRenameBlur(event: FocusEvent): void {
 
         <div class="panel-divider"></div>
 
-        <div class="placeholder-row">
-            <button type="button" class="btn-secondary placeholder-btn" disabled v-bind:title="'笔记库 — 后续阶段'">
-                <BookOpenIcon class="size-4" />
-                <span>笔记库</span>
+        <div class="export-row">
+            <button
+                type="button"
+                class="btn-secondary export-btn"
+                v-bind:title="'导出图谱树为 JSON 文件'"
+                v-on:click="openExportDialog"
+            >
+                <ArrowDownTrayIcon class="size-4" />
+                <span>导出</span>
             </button>
-            <button type="button" class="btn-secondary placeholder-btn" disabled v-bind:title="'常识层 — 后续阶段'">
-                <GlobeAltIcon class="size-4" />
-                <span>常识层</span>
-            </button>
-            <button type="button" class="btn-secondary placeholder-btn" disabled v-bind:title="'设置 — 后续阶段'">
-                <Cog6ToothIcon class="size-4" />
-                <span>设置</span>
+            <button type="button" class="btn-secondary export-btn" disabled v-bind:title="'导入 — 后续阶段'">
+                <ArrowUpTrayIcon class="size-4" />
+                <span>导入</span>
             </button>
         </div>
+
+        <GraphExportDialog
+            v-bind:visible="exportDialogVisible"
+            v-bind:root-infos="rootInfos"
+            v-on:select-root-graph="handleExportRootGraph"
+            v-on:close="exportDialogVisible = false"
+        />
     </div>
 </template>
 
@@ -459,7 +514,7 @@ function onRenameBlur(event: FocusEvent): void {
     cursor: not-allowed;
 }
 
-/* ── 占位入口 ── */
+/* ── 导出 / 导入入口 ── */
 
 .panel-divider {
     height: 1px;
@@ -467,13 +522,13 @@ function onRenameBlur(event: FocusEvent): void {
     background: #e2e8f0;
 }
 
-.placeholder-row {
+.export-row {
     display: flex;
     flex-direction: row;
     gap: 6px;
 }
 
-.placeholder-btn {
+.export-btn {
     flex: 1 1 0;
     display: flex;
     flex-direction: row;

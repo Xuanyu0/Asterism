@@ -16,16 +16,17 @@ import { generateGraphId } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
 import {
+    commitGraphs,
     listRootGraphIds,
-    listSavedGraphIds,
+    listGraphIds,
     loadGraph,
-    deleteGraph,
     loadLastActiveRootId,
     clearLastActiveRootId,
-} from '@/graph/graph_persistence'
+} from '@/persistence'
 import { lookupGraph, unregisterGraph } from '@/graph/graph_registry'
+import { reportStorageUnavailable } from '@/graph/utils/data_integrity_reporter'
 import { createEmptyRootGraph } from '@/graph/utils/empty_root_graph'
-import { isInRootTree } from '@/graph/utils/graph_tree'
+import { isInGraphTree } from '@/graph/utils/graph_tree'
 
 /**
  * 根图谱列表项的摘要信息，供导航卡片展示根图谱列表。
@@ -83,11 +84,11 @@ export interface NavigationAPI {
     goToGraph(graphId: GraphId): boolean
 
     /**
-     * 列出 localStorage 中全部根图谱的摘要，按标题排序（zh-Hans-CN）。
+     * 列出持久化中全部根图谱的摘要，按标题排序（zh-Hans-CN）。
      *
      * @remarks
      * 数据来自持久化全量扫描，不经过 graphRegistry——
-     * registry 只持有当前根图树，无法覆盖全部根图。
+     * registry 只持有当前图谱树，无法覆盖全部根图。
      */
     listRootGraphInfos(): RootGraphInfo[]
 
@@ -103,7 +104,7 @@ export interface NavigationAPI {
      *
      * @remarks
      * 创建经 store.commitBatchToGraphs 统一管道（add_graph 信号操作，recordLog: false），
-     * 不直接 saveGraph / registerGraph。opts.id 指定固定 GraphId（幂等——已存在则跳过创建）：
+     * 不直接写持久化 / registerGraph。opts.id 指定固定 GraphId（幂等——已存在则跳过创建）：
      * dev 种子数据（bootstrap）用它保证跨图引用（sourceGraphId）指向稳定 ID；
      * 生产路径（NavigationPanel）不传，走随机 ID。
      * 空名 / 重名（root 图间 title 唯一）由引擎 add_graph 校验兜底（EMPTY_TITLE /
@@ -138,7 +139,7 @@ export interface NavigationAPI {
      *
      * @param rootId - 要删除的根图 ID，与其全部子孙子图一并删除。
      */
-    deleteRootGraphTree(rootId: GraphId): void
+    deleteGraphTree(rootId: GraphId): void
 }
 
 let singleton: NavigationAPI | null = null
@@ -181,12 +182,19 @@ function createNavigation(): NavigationAPI {
     }
 
     function listRootGraphInfos(): RootGraphInfo[] {
+        const listed = listRootGraphIds()
+        if (!listed.ok) {
+            // 介质不可用：不把空列表冒充「没有根图」——报告后返回空
+            reportStorageUnavailable('listRootGraphInfos')
+            return []
+        }
+
         const infos: RootGraphInfo[] = []
 
-        for (const graphId of listRootGraphIds()) {
+        for (const graphId of listed.value) {
             const result = loadGraph(graphId)
             if (!result.ok) continue
-            const graph = result.graph
+            const graph = result.value
             infos.push({
                 id: graph.id,
                 title: graph.title,
@@ -256,7 +264,7 @@ function createNavigation(): NavigationAPI {
         ]).validation
     }
 
-    function deleteRootGraphTree(rootId: GraphId): void {
+    function deleteGraphTree(rootId: GraphId): void {
         const graphStore = useGraphStore()
 
         // 防御：禁止删除当前视图所在的根图。
@@ -266,22 +274,31 @@ function createNavigation(): NavigationAPI {
         }
 
         // 收集整棵树的成员。
+        const listed = listGraphIds()
+        if (!listed.ok) {
+            // 介质不可用：无法枚举树成员，中止删除（避免误删 / 半删）
+            reportStorageUnavailable('deleteGraphTree')
+            return
+        }
+
         const treeIds: GraphId[] = []
-        for (const graphId of listSavedGraphIds()) {
+        for (const graphId of listed.value) {
             if (graphId === rootId) {
                 treeIds.push(graphId)
                 continue
             }
 
             const result = loadGraph(graphId)
-            if (!result.ok || !isInRootTree(result.graph, rootId)) continue
+            if (!result.ok || !isInGraphTree(result.value, rootId)) continue
 
             treeIds.push(graphId)
         }
 
         // 收集完后，统一删除
         for (const graphId of treeIds) {
-            deleteAndUnregisterGraph(graphId)
+            if (commitGraphs({ upserts: [], deletes: [graphId] }).ok) {
+                unregisterGraph(useGraphStore().graphRegistry, graphId)
+            }
         }
 
         if (loadLastActiveRootId() === rootId) {
@@ -300,13 +317,6 @@ function createNavigation(): NavigationAPI {
         getGraphById,
         createRootGraph,
         renameRootGraph,
-        deleteRootGraphTree,
+        deleteGraphTree,
     }
-}
-
-// ── 私有辅助（随 deleteRootGraphTree 从 graph_store 迁入） ──
-
-function deleteAndUnregisterGraph(graphId: GraphId): void {
-    deleteGraph(graphId)
-    unregisterGraph(useGraphStore().graphRegistry, graphId)
 }

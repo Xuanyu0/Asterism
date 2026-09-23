@@ -8,7 +8,7 @@
  *
  * 规则：
  *     1. 使用金牌图作为测试数据。
- *     2. 每个测试独立环境（beforeEach 重置 store 单例和 localStorage）。
+ *     2. 每个测试独立环境（beforeEach 重置 store 单例和持久化介质）。
  *     3. useRenderer 被 vi.mock 拦截（Cytoscape 在 jsdom 下不可用），
  *        trackCursor 的 mock 暴露回调句柄供测试手动触发以模拟光标位置。
  *     4. previewAddNode 被 vi.mock 拦截——handler 只关心其返回值的分支行为，
@@ -17,7 +17,8 @@
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
 import { useLifecycle } from '@/graph/use-case/useLifecycle'
-import { saveGraph } from '@/graph/graph_persistence'
+import { commitGraphs } from '@/persistence'
+import * as medium from '@/persistence/medium/local_storage'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 import { useAddNodeTool } from './add_node'
 
@@ -71,9 +72,9 @@ vi.mock('@/feature-tools/preview/preview_engine', () => ({
 
 beforeEach(() => {
     resetGraphStoreForTests()
-    localStorage.clear()
+    medium.resetMediumForTests()
     const golden = createGoldenTestGraphV2()
-    saveGraph(golden)
+    commitGraphs({ upserts: [golden], deletes: [] })
     // loadGraphToView 不再负责注册——先全量注册所有持久化图
     useLifecycle().registerAllGraphs()
     const store = useGraphStore()

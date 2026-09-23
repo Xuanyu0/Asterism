@@ -96,6 +96,18 @@ const canvasErrorIssues = computed(() => {
     return []
 })
 
+/**
+ * 功能：
+ *     存储错误文案（持久化写入失败）。
+ *
+ * 规则：
+ *     存储错误优先于业务校验错误：有存储错误时错误面板只显示它，不显示业务校验问题。
+ */
+const storageErrorMessage = computed(() => graphStore.storageError?.message ?? null)
+
+/** 错误面板显隐：存储错误或业务校验错误任一存在即可见。 */
+const errorPanelVisible = computed(() => storageErrorMessage.value !== null || canvasErrorIssues.value.length > 0)
+
 const activeNotification = computed(() => mediator.activeHandler.value?.notification ?? null)
 
 // 错误通知面板根元素（组件 ref → $el 取根 DOM）
@@ -103,7 +115,7 @@ const errorPanelRef = ref<ComponentPublicInstance | null>(null)
 
 /**
  * 功能：
- *     错误通知面板的外部交互关闭：点击面板外任意处清空校验结果。
+ *     错误通知面板的外部交互关闭：点击面板外任意处清空校验结果与存储错误。
  *
  * 规则：
  *     1. 点击目标在面板根元素内（含子孙）不清错——用户在面板内交互。
@@ -116,6 +128,7 @@ function handleErrorPanelPointerdown(event: PointerEvent): void {
         return
     }
     useGraphOperation().clearValidationResult()
+    graphStore.storageError = null
 }
 
 onMounted(() => {
@@ -287,14 +300,17 @@ onBeforeUnmount(() => {
             功能：
                 画布操作错误通知区。浮空窗关闭或打开时均显示错误，统一展示位置。
         -->
-        <NotificationPanel ref="errorPanelRef" v-bind:visible="canvasErrorIssues.length > 0" accent="red">
-            <p
-                v-for="(issue, index) in canvasErrorIssues"
-                v-bind:key="issue.code + '-' + index"
-                class="canvas-error-text"
-            >
-                {{ issue.message }}
-            </p>
+        <NotificationPanel ref="errorPanelRef" v-bind:visible="errorPanelVisible" accent="red">
+            <p v-if="storageErrorMessage" class="canvas-error-text">{{ storageErrorMessage }}</p>
+            <template v-else>
+                <p
+                    v-for="(issue, index) in canvasErrorIssues"
+                    v-bind:key="issue.code + '-' + index"
+                    class="canvas-error-text"
+                >
+                    {{ issue.message }}
+                </p>
+            </template>
         </NotificationPanel>
 
         <!--

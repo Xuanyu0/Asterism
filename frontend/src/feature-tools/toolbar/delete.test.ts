@@ -7,12 +7,13 @@
  *
  * 规则：
  *     1. 使用金牌图作为测试数据。
- *     2. 每个测试独立环境（beforeEach 重置 store 单例和 localStorage）。
+ *     2. 每个测试独立环境（beforeEach 重置 store 单例和持久化介质）。
  */
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
 import { useLifecycle } from '@/graph/use-case/useLifecycle'
-import { saveGraph } from '@/graph/graph_persistence'
+import { commitGraphs } from '@/persistence'
+import * as medium from '@/persistence/medium/local_storage'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 import { useDeleteTool } from './delete'
 
@@ -20,9 +21,9 @@ import type { GraphId } from '@my-project/graph-engine'
 
 beforeEach(() => {
     resetGraphStoreForTests()
-    localStorage.clear()
+    medium.resetMediumForTests()
     const golden = createGoldenTestGraphV2()
-    saveGraph(golden)
+    commitGraphs({ upserts: [golden], deletes: [] })
     // loadGraphToView 不再负责注册——先全量注册所有持久化图
     useLifecycle().registerAllGraphs()
     const store = useGraphStore()

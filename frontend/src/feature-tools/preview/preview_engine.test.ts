@@ -9,6 +9,7 @@
  */
 
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
+import * as medium from '@/persistence/medium/local_storage'
 import { previewAddEdge, previewAddNode, previewMoveNode } from './preview_engine'
 
 import type { EdgeData, GraphData, GraphId, KnowledgeNodeData, NodeData, NodeId } from '@my-project/graph-engine'
@@ -17,7 +18,7 @@ describe('previewAddEdge', () => {
     let golden: GraphData
 
     beforeEach(() => {
-        localStorage.clear()
+        medium.resetMediumForTests()
         golden = createGoldenTestGraphV2()
     })
 
@@ -171,7 +172,7 @@ describe('previewMoveNode', () => {
     let golden: GraphData
 
     beforeEach(() => {
-        localStorage.clear()
+        medium.resetMediumForTests()
         golden = createGoldenTestGraphV2()
     })
 
@@ -213,7 +214,7 @@ describe('previewAddNode', () => {
     let golden: GraphData
 
     beforeEach(() => {
-        localStorage.clear()
+        medium.resetMediumForTests()
         golden = createGoldenTestGraphV2()
     })
 

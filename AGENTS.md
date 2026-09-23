@@ -123,7 +123,7 @@ python3 scripts/format_architecture_blocks.py --check
 
 #### 时间戳
 
-**设计术语表**：`Last updated: 2026-09-07`
+**设计术语表**：`Last updated: 2026-09-23`
 **开发术语表**：`Last updated: 2026-09-16`
 **项目术语表**：`Last updated: 2026-09-20`
 
@@ -247,9 +247,9 @@ Asterism
             ├── use-case/                   ≝ 图数据业务用例  ← 设计意图见文末附
             ├── utils/                      ≝ graph/ 域下无状态私有纯函数
             ├── graph_registry.ts           ≝ 多图注册表
-            ├── graph_persistence.ts        ≝ localStorage 持久化实现  ← 启动扫盘 / 切图 / 列根图时由 store 与用例层读入
             └── ui/operation_controller.ts  ≝ 认知与布局操作编排  ← 历史遗留，待迁 feature-tools/
         s.t. 内部单向依赖：业务 → 用例 → store
+        ← frontend/src/persistence/ 本图暂未收录（待补）
         
                          §工具交互逻辑层 / ui 编排层
     ↓                    ↓
@@ -277,7 +277,7 @@ Asterism
 
     §Runtime 状态与图业务层
 
-    ↓                       ↓                         ↓ `saveGraph` / `deleteGraph`
+    ↓                       ↓                         ↓ `commitGraphs`
     new `graphView`         `lastValidationResult`    §浏览器本地存储（localStorage）【外部存储】
     ↓ `watch(GraphView)`    ↓
 
@@ -346,7 +346,7 @@ Asterism
 
 所有 `.ts` 文件统一 `snake_case`：
 
-- ✅ `graph_store.ts`, `graph_registry.ts`, `graph_persistence.ts`
+- ✅ `graph_store.ts`, `graph_registry.ts`, `local_storage.ts`
 - ❌ `GraphStore.ts`, `graphStore.ts`, `Graph_Store.ts`
 
 其他两类：

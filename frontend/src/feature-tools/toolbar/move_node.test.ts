@@ -9,13 +9,13 @@
  * 总体结构：
  *
  *     1. vi.mock useRenderer — 共享 mock 状态（vi.hoisted）
- *     2. 顶层 beforeEach — 重置 store 单例 / localStorage 并加载金牌图
+ *     2. 顶层 beforeEach — 重置 store 单例 / 持久化介质并加载金牌图
  *     3. 测试用例分组 — 生命周期 / 状态转换 / 放置 / 取消拾取 / 计算属性
  *
  * 规则：
  *
  *     1. 使用金牌图作为测试数据。
- *     2. 每个测试独立环境（beforeEach 重置 store 单例和 localStorage）。
+ *     2. 每个测试独立环境（beforeEach 重置 store 单例和持久化介质）。
  *     3. useRenderer 被 vi.mock 拦截（Cytoscape 在 jsdom 下不可用）。
  *     4. trackCursor 的 mock 暴露回调句柄供测试手动触发以模拟光标位置。
  *     5. syncFromGraphData mock 将图节点位置写回 nodePositionsMap（模拟真实 sync），
@@ -25,7 +25,8 @@
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
 import { useLifecycle } from '@/graph/use-case/useLifecycle'
-import { saveGraph } from '@/graph/graph_persistence'
+import { commitGraphs } from '@/persistence'
+import * as medium from '@/persistence/medium/local_storage'
 import { createGoldenTestGraphV2 } from '@/dev/test_case_factory'
 import { useMoveNodeTool } from './move_node'
 import { useRenderer } from '@/cytoscape/useRenderer'
@@ -113,9 +114,9 @@ function resetNodePositionsToGolden(): void {
 
 beforeEach(() => {
     resetGraphStoreForTests()
-    localStorage.clear()
+    medium.resetMediumForTests()
     const golden = createGoldenTestGraphV2()
-    saveGraph(golden)
+    commitGraphs({ upserts: [golden], deletes: [] })
     // loadGraphToView 不再负责注册——先全量注册所有持久化图
     useLifecycle().registerAllGraphs()
     const store = useGraphStore()

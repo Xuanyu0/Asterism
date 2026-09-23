@@ -5,7 +5,7 @@
  * 与 useNavigation / useGraphOperation 形态一致（懒创建 + 公开 interface）。
  * 消费方：Graph.vue 启动引导（registerAllGraphs → ensureWorkspaceRoot → loadGraphToView）。
  * 创建兜底根图走 store.commitBatchToGraphs 统一管道（add_graph 信号），
- * 不直接 saveGraph / registerGraph——保证创建路径与用户操作路径一致。
+ * 不直接写持久化 / registerGraph——保证创建路径与用户操作路径一致。
  */
 
 import type { GraphId } from '@my-project/graph-engine'
@@ -14,8 +14,12 @@ import { generateGraphId } from '@my-project/graph-engine'
 
 import { useGraphStore } from '@/graph/graph_store'
 import { registerGraph } from '@/graph/graph_registry'
-import { loadGraph, listSavedGraphIds, loadLastActiveRootId, clearLastActiveRootId } from '@/graph/graph_persistence'
-import { DATA_INTEGRITY_PREFIX, reportCorruptedGraph } from '@/graph/utils/data_integrity_reporter'
+import { loadGraph, listGraphIds, loadLastActiveRootId, clearLastActiveRootId } from '@/persistence'
+import {
+    DATA_INTEGRITY_PREFIX,
+    reportCorruptedGraph,
+    reportStorageUnavailable,
+} from '@/graph/utils/data_integrity_reporter'
 import { createEmptyRootGraph } from '@/graph/utils/empty_root_graph'
 
 /**
@@ -26,7 +30,7 @@ export interface LifecycleAPI {
      * 全量注册所有持久化图到注册表。
      *
      * @remarks
-     * 启动时遍历全部持久化图逐图加载注册（不再按根图树过滤），
+     * 启动时遍历全部持久化图逐图加载注册（不再按图谱树过滤），
      * 使注册表覆盖全部图，保证跨图查询（makeLookup）与任意图导航都能命中。
      * 只做注册，恢复上次视图由 {@link restoreLastActiveRootId} 负责。
      */
@@ -54,7 +58,7 @@ export interface LifecycleAPI {
      * @remarks
      * 无副作用（不做注册）——注册由 registerAllGraphs 负责，本函数只恢复或创建。
      * 创建兜底根图（title '新图谱'）经 store.commitBatchToGraphs 统一管道
-     * （add_graph 信号操作，recordLog: false），不直接 saveGraph / registerGraph。
+     * （add_graph 信号操作，recordLog: false），不直接写持久化 / registerGraph。
      *
      * @returns 可用的根图 ID（恢复的或新建的）。
      */
@@ -80,8 +84,15 @@ function createLifecycle(): LifecycleAPI {
     function registerAllGraphs(): void {
         const registry = useGraphStore().graphRegistry
 
-        // 全量注册：遍历所有持久化图逐图加载注册（不再按根图树过滤）
-        for (const graphId of listSavedGraphIds()) {
+        // 全量注册：遍历所有持久化图逐图加载注册（不再按图谱树过滤）
+        const listed = listGraphIds()
+        if (!listed.ok) {
+            // 介质枚举失败：不把「读不到」当作「没有图」（否则用户会以为数据丢失）
+            reportStorageUnavailable('registerAllGraphs')
+            return
+        }
+
+        for (const graphId of listed.value) {
             const result = loadGraph(graphId)
             if (!result.ok) {
                 if (result.reason === 'corrupted') {
@@ -89,7 +100,7 @@ function createLifecycle(): LifecycleAPI {
                 }
                 continue
             }
-            registerGraph(registry, result.graph)
+            registerGraph(registry, result.value)
         }
     }
 

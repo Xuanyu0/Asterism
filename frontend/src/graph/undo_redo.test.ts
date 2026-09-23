@@ -17,7 +17,7 @@
  *        批内允许先 add_node 再 add_edge（undo/redo 逆元重放即依赖该语义）。
  *     3. 图级操作（add_graph / delete_graph）独立成 graphLevel 批；add_graph 只建空图、
  *        delete_graph 只删空图（引擎 06.1 语义），内容经图内批填充。
- * 3. 每用例独立环境：resetGraphStoreForTests() + localStorage.clear() + vi.restoreAllMocks()。
+ * 3. 每用例独立环境：resetGraphStoreForTests() + resetMediumForTests() + vi.restoreAllMocks()。
  * 4. 010.1 缺陷 #1（删除带关联边节点的撤销失败）与缺陷 #2（多级 undo 链 DataCloneError）
  *    已由 010.1 回流修复（D1 操作级逆序、D2 状态去 proxy 化）；后续 EDGE 端点检查迁入
  *    Phase 3 不变量、undo/redo 撤销 skipValidate 改走完整校验后，D1 的批内依赖误报被根治。
@@ -26,7 +26,8 @@
 
 import { useGraphStore, resetGraphStoreForTests } from '@/graph/graph_store'
 import { lookupGraph, registerGraph } from '@/graph/graph_registry'
-import { loadGraph, saveGraph } from '@/graph/graph_persistence'
+import { commitGraphs, loadGraph } from '@/persistence'
+import * as medium from '@/persistence/medium/local_storage'
 import { assembleGraph, createNode, createEdge } from '@/dev/test_case_factory'
 
 import type {
@@ -77,12 +78,12 @@ function registerGraphs(store: ReturnType<typeof useGraphStore>, ...graphs: Grap
 describe('双存接线（commitBatchToGraphs → CommitLog）', () => {
     beforeEach(() => {
         resetGraphStoreForTests()
-        localStorage.clear()
+        medium.resetMediumForTests()
         vi.restoreAllMocks()
     })
 
     afterAll(() => {
-        localStorage.clear()
+        medium.resetMediumForTests()
         vi.restoreAllMocks()
     })
 
@@ -296,12 +297,12 @@ describe('双存接线（commitBatchToGraphs → CommitLog）', () => {
 describe('undo 链', () => {
     beforeEach(() => {
         resetGraphStoreForTests()
-        localStorage.clear()
+        medium.resetMediumForTests()
         vi.restoreAllMocks()
     })
 
     afterAll(() => {
-        localStorage.clear()
+        medium.resetMediumForTests()
         vi.restoreAllMocks()
     })
 
@@ -548,12 +549,12 @@ describe('undo 链', () => {
 describe('redo 链', () => {
     beforeEach(() => {
         resetGraphStoreForTests()
-        localStorage.clear()
+        medium.resetMediumForTests()
         vi.restoreAllMocks()
     })
 
     afterAll(() => {
-        localStorage.clear()
+        medium.resetMediumForTests()
         vi.restoreAllMocks()
     })
 
@@ -681,12 +682,12 @@ describe('redo 链', () => {
 describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
     beforeEach(() => {
         resetGraphStoreForTests()
-        localStorage.clear()
+        medium.resetMediumForTests()
         vi.restoreAllMocks()
     })
 
     afterAll(() => {
-        localStorage.clear()
+        medium.resetMediumForTests()
         vi.restoreAllMocks()
     })
 
@@ -734,7 +735,7 @@ describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
             },
         ])
 
-        // undo：子图从 registry 注销，持久化同步删除（策略 A：注册表无 → deleteGraph 真删，
+        // undo：子图从 registry 注销，持久化同步删除（策略 A：注册表无 → 持久化真删，
         // 不再保留软删残留）
         expect(store.undo()).toBe(true)
         expect(lookupGraph(store.graphRegistry, 'graph-sub')).toBeUndefined()
@@ -799,7 +800,7 @@ describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
         })
 
         // root 先持久化并加载为视图（保证 undo 上溯时父图在 registry 中可达）
-        saveGraph(root)
+        commitGraphs({ upserts: [root], deletes: [] })
         store.loadGraphToView(ROOT)
 
         // 提交 add_graph + 子图内 add_node 的批
@@ -846,7 +847,7 @@ describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
             ownerNodeId: 'node-owner' as NodeId,
         })
 
-        saveGraph(root)
+        commitGraphs({ upserts: [root], deletes: [] })
         store.loadGraphToView(ROOT)
         store.commitBatchToGraphs([
             {
@@ -990,12 +991,12 @@ describe('图级操作（add_graph / delete_graph）与视图一致性', () => {
 describe('边界', () => {
     beforeEach(() => {
         resetGraphStoreForTests()
-        localStorage.clear()
+        medium.resetMediumForTests()
         vi.restoreAllMocks()
     })
 
     afterAll(() => {
-        localStorage.clear()
+        medium.resetMediumForTests()
         vi.restoreAllMocks()
     })
 
@@ -1061,12 +1062,12 @@ describe('边界', () => {
 describe('缺陷修复回归（D1 级联撤销 / D2 多级 undo）', () => {
     beforeEach(() => {
         resetGraphStoreForTests()
-        localStorage.clear()
+        medium.resetMediumForTests()
         vi.restoreAllMocks()
     })
 
     afterAll(() => {
-        localStorage.clear()
+        medium.resetMediumForTests()
         vi.restoreAllMocks()
     })
 
