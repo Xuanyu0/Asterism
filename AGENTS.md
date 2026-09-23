@@ -124,7 +124,7 @@ python3 scripts/format_architecture_blocks.py --check
 #### 时间戳
 
 **设计术语表**：`Last updated: 2026-09-23`
-**开发术语表**：`Last updated: 2026-09-16`
+**开发术语表**：`Last updated: 2026-09-23`
 **项目术语表**：`Last updated: 2026-09-20`
 
 ## 项目架构（分层森林图 · 顶层视图）
@@ -398,6 +398,10 @@ export function publicApi() { ... }          // 公开函数在前
 function helperA() { ... }                   // 私有辅助在末尾
 function helperB() { ... }
 ```
+
+### 就近声明（colocation）
+
+前端非 OOP 的 TypeScript 模块中，类型/接口声明在**紧邻其使用者**的位置（而非集中堆在文件顶部）；函数之间仍遵守"公开在前、私有在末尾"。
 
 ### Vue 模板语法规范
 
