@@ -141,15 +141,15 @@ export function assembleGraph(params: {
  *
  * 图结构：
  *
- *     银牌根图 (id="graph-silver") + 银牌子图 (id="sub-silver")
+ *     银牌图 (id="graph-silver"，挂在金图树内的子图) + 银牌子图 (id="sub-silver")
  *     覆盖 real / abstract / reference（communication）节点和 directed 边。
  *
  * 规则：
  *
- *     1. 子图通过 commitGraphs 持久化，根图由调用方自行 persist。
- *     2. 本函数不校验银牌图中 reference 节点指向的金牌图是否存在；
- *        调用方（如 createGoldenTestGraphV2）应确保金牌图已持久化。
- *     3. 返回的银牌根图引用 sv-node-4 (reference) 指向金牌图节点 node-g1。
+ *     1. 子图通过 commitGraphs 持久化，银牌图由调用方自行 persist。
+ *     2. 银牌图挂进金牌树（parentGraphId 指向金图），使银图内 reference 节点指向的金图
+ *        与之同树 —— 森林级不变量「引用不得跨树」要求引用闭合在同一棵树内。
+ *     3. 返回的银牌图引用 sv-node-4 (reference) 指向金牌图节点 node-g1。
  */
 export function createSilverTestGraph(graphId?: GraphId): GraphData {
     const gId = graphId ?? ('graph-silver' as GraphId)
@@ -220,7 +220,9 @@ export function createSilverTestGraph(graphId?: GraphId): GraphData {
     ]
     const parentGraph = assembleGraph({
         id: gId,
+        kind: 'subgraph',
         title: '银牌测试图',
+        parentGraphId: 'graph-golden' as GraphId,
         nodes,
         edges,
     })
