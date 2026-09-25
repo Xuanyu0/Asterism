@@ -12,6 +12,7 @@ import type { NodeId, EdgeId, GraphData, GraphRegistry } from '@my-project/graph
 import { useGraphStore } from '@/graph/graph_store'
 import { useGraphOperation } from '@/graph/use-case/useGraphOperation'
 
+import { collectDescendantIds } from '@/graph/utils/graph_tree'
 import { computeNodeRadiusOverrides } from '@/graph/utils/node_radius'
 
 // compose — cognitive
@@ -128,7 +129,8 @@ export function useOperationController() {
      * @remarks
      * 委托引擎 diverge 产出 batches（判别联合）。heuristicPosition 为 null 时两
      * 节点直连（同图）；非 null 时在点击位置创建启发节点（跨图）。commitBatchToGraphs
-     * 批量提交 current 与 peer。
+     * 批量提交 current 与 peer。peer 搜索域收敛为当前视图所在图谱树的成员，
+     * 使跨树引用在正常路径上不可产生。
      */
     function diverge(
         sourceNodeId: NodeId,
@@ -139,6 +141,9 @@ export function useOperationController() {
             return
         }
 
+        // 树根：graphPath 首段（图存在即路径非空）；peer 域据此限定在本树
+        const rootId = graphStore.graphPath[0] ?? graphStore.graphView.id
+
         const result = graphEngine.diverge({
             sourceNodeId,
             targetNodeId,
@@ -146,7 +151,8 @@ export function useOperationController() {
             heuristicPosition,
             // 待 operation_controller 迁移后移除：经用例层取 makeLookup
             lookupGraph: graphOperations.makeLookup(),
-            graphIds: Array.from(graphStore.graphRegistry.keys()),
+            // peer 域 = 本图谱树成员（数据源为纯内存注册表，不经 I/O）——不回退全量 registry
+            graphIds: collectDescendantIds(rootId, graphStore.graphRegistry.values()),
         })
 
         // compose 校验收口在用例层：失败则写 lastValidationResult 并阻断本次操作

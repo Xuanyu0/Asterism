@@ -4,7 +4,8 @@
  * 功能：
  *     导出用例层 exportGraphTree 的单元测试。
  *     覆盖文件名生成（含非法字符替换）、下载内容为信封、【延后】revoke、
- *     下载环节抛出归为 unknown、根图缺失 / 介质不可用的可判别失败。
+ *     下载环节抛出归为 unknown、以及树成员收集的失败归因
+ *     （介质枚举不可用 → unavailable；根图缺失 / 损坏、任一图损坏、根图可读却枚举不到 → unknown）。
  *
  * 规则：
  *     1. jsdom 无 URL.createObjectURL —— 用例经 mock 注入，捕获 Blob 与 revoke 调用。
@@ -97,6 +98,43 @@ describe('useGraphExport', () => {
 
         expect(useGraphExport().exportGraphTree('r' as GraphId)).toEqual({ ok: false, reason: 'unavailable' })
     })
+
+    test('介质枚举失败（根图可读）→ unavailable，不冒充空结果', () => {
+        commitGraphs({ upserts: [makeGraph('r', '根图')], deletes: [] })
+        vi.spyOn(medium, 'listKeys').mockReturnValue({ ok: false, reason: 'unavailable' })
+
+        expect(useGraphExport().exportGraphTree('r' as GraphId)).toEqual({ ok: false, reason: 'unavailable' })
+    })
+
+    test('根图可读但枚举不到 → unknown（不得退回「只导根图」的静默不完整导出）', () => {
+        commitGraphs({
+            upserts: [makeGraph('r', '根图'), makeGraph('a', '子图', 'r')],
+            deletes: [],
+        })
+        // 模拟介质「可读却不可枚举」：读取真实、枚举为空 —— 跨通道假设不成立
+        vi.spyOn(medium, 'listKeys').mockReturnValue({ ok: true, value: [] })
+
+        expect(useGraphExport().exportGraphTree('r' as GraphId)).toEqual({ ok: false, reason: 'unknown' })
+        expect(clicked).toHaveLength(0)
+    })
+
+    test('根图损坏 → unknown', () => {
+        commitGraphs({ upserts: [makeGraph('r', '根图')], deletes: [] })
+        corruptGraphRead('graph:r')
+
+        expect(useGraphExport().exportGraphTree('r' as GraphId)).toEqual({ ok: false, reason: 'unknown' })
+    })
+
+    test('非根图损坏 → unknown（索引构建任一图读不到整体失败，不静默跳过）', () => {
+        commitGraphs({
+            upserts: [makeGraph('r', '根图'), makeGraph('a', '中间子图', 'r'), makeGraph('b', '深层子图', 'a')],
+            deletes: [],
+        })
+        // 把中间图 'a' 的读取伪造成损坏：若遍历静默跳过它，'b' 会整支从可达域消失
+        corruptGraphRead('graph:a')
+
+        expect(useGraphExport().exportGraphTree('r' as GraphId)).toEqual({ ok: false, reason: 'unknown' })
+    })
 })
 
 function makeGraph(id: string, title: string, parentGraphId?: string): GraphData {
@@ -109,6 +147,15 @@ function makeGraph(id: string, title: string, parentGraphId?: string): GraphData
         edges: [],
         cognitiveState: { foldedDependencies: [] },
     }
+}
+
+/** 把某个 graph key 的读取伪造成损坏（其余 key 走真实介质）。 */
+function corruptGraphRead(key: string): void {
+    const realReadString = medium.readString
+    vi.spyOn(medium, 'readString').mockImplementation((storageKey: string) => {
+        if (storageKey === key) return { ok: true, value: '{ 损坏的 JSON' }
+        return realReadString(storageKey)
+    })
 }
 
 /** jsdom 的 Blob 无 text()，经 FileReader 读取内容。 */

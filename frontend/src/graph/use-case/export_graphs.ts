@@ -2,15 +2,15 @@
  * 图数据导出用例层模块级单例。
  *
  * @remarks
- * 编排「根图谱 → 下载文件」：子树遍历（域层）→ 组装信封（持久化层）→ 序列化 → 触发浏览器下载。
+ * 编排「根图谱 → 下载文件」：树成员收集（本层枚举/读取 + 域层纯算法）→ 组装信封（持久化层）→ 序列化 → 触发浏览器下载。
  * 文件 I/O（Blob / URL.createObjectURL / <a download>）只落在本层 —— 持久化层保持可脱离浏览器测试。
  * 与 useNavigation / useGraphOperation 同风格：懒创建，后续调用返回同一实例。
  */
 
-import type { GraphId } from '@my-project/graph-engine'
+import type { GraphData, GraphId } from '@my-project/graph-engine'
 
-import { exportGraphs, loadGraph } from '@/persistence'
-import { collectGraphTreeIds } from '@/graph/utils/graph_tree'
+import { exportGraphs, listGraphIds, loadGraph, type ReadResult } from '@/persistence'
+import { collectDescendantIds } from '@/graph/utils/graph_tree'
 
 /**
  * 图谱树导出的结果。
@@ -53,13 +53,13 @@ export function useGraphExport(): GraphExportAPI {
 
 function createGraphExport(): GraphExportAPI {
     function exportGraphTree(rootId: GraphId): ExportResult {
-        // 先取根图：标题用于文件名，同时兜住根图缺失 / 损坏（子树遍历对缺失根返回 missing）
+        // 先取根图：标题用于文件名，同时兜住根图缺失 / 损坏
         const root = loadGraph(rootId)
         if (!root.ok) {
             return toExportFailure(root.reason)
         }
 
-        const treeIds = collectGraphTreeIds(rootId)
+        const treeIds = collectTreeIds(rootId)
         if (!treeIds.ok) {
             return toExportFailure(treeIds.reason)
         }
@@ -73,6 +73,50 @@ function createGraphExport(): GraphExportAPI {
     }
 
     return { exportGraphTree }
+}
+
+// ── 私有辅助（导出场景的树成员收集） ──
+
+/**
+ * 收集以 rootId 为首的整棵图谱树的图 id。
+ *
+ * @remarks
+ * 枚举持久化全量图 + 逐图读取建立 parentGraphId 索引，再交给纯算法
+ * {@link collectDescendantIds} 做 BFS。
+ *
+ * 索引构建阶段任一图读取失败都整体失败：
+ * 读不到 parentGraphId 就无法判断该图是否属于目标树 —— 跳过会把
+ * 「父图损坏 → 其后代整支消失」变成一次【不完整却报成功】的导出，
+ * 而数据层的不变式是「缺图的导出是不完整副本，比失败更危险」
+ * （见 persistence/coordination/export_graphs.ts 头注释）。
+ * 代价（接受）：一张【无关】图损坏也会导致导出失败 —— 可见的失败优于静默的不完整。
+ *
+ * 根图存在性：正常介质下 `loadGraph(rootId)` 成功 ⟹ `listGraphIds()` 必含 rootId（readString 与
+ * listKeys 走同一 localStorage）。但这是**跨通道假设**：一旦介质「可读却不可枚举」，纯算法
+ * {@link collectDescendantIds} 会退回「只含根图自身」—— 那是一次【不完整却报成功】的导出。
+ * 故此处**仍显式断言**根图在枚举结果内，把该情形变成可见失败。
+ *
+ * @param rootId - 要导出的根图 id
+ * @returns 成功 `{ ok: true, value }`（至少含 rootId 本身）；介质枚举 / 读取不可用为
+ *          unavailable；任一图读取失败原因（missing / corrupted）原样返回
+ */
+function collectTreeIds(rootId: GraphId): ReadResult<GraphId[]> {
+    const listed = listGraphIds()
+    if (!listed.ok) return listed
+
+    // 见 @remarks「根图存在性」：跨通道假设不成立时，不得退回「只导根图」的不完整导出
+    if (!listed.value.includes(rootId)) {
+        return { ok: false, reason: 'missing' }
+    }
+
+    const graphs: GraphData[] = []
+    for (const graphId of listed.value) {
+        const result = loadGraph(graphId)
+        if (!result.ok) return result
+        graphs.push(result.value)
+    }
+
+    return { ok: true, value: collectDescendantIds(rootId, graphs) }
 }
 
 // ── 私有辅助（失败归因） ──
