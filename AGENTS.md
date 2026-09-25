@@ -124,7 +124,7 @@ python3 scripts/format_architecture_blocks.py --check
 #### 时间戳
 
 **设计术语表**：`Last updated: 2026-09-23`
-**开发术语表**：`Last updated: 2026-09-23`
+**开发术语表**：`Last updated: 2026-09-25`
 **项目术语表**：`Last updated: 2026-09-20`
 
 ## 项目架构（分层森林图 · 顶层视图）
