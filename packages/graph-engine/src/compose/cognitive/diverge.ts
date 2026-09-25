@@ -65,7 +65,7 @@ export interface DivergeParams {
     /** 跨图查询函数。给定 graphId 返回对应 GraphData 或 undefined。 */
     lookupGraph: GraphLookup
 
-    /** 已注册图谱的全部 ID 列表，用于跨图查找节点所属图。 */
+    /** 本图谱树内的图 ID 列表，用于跨图查找节点所属图。 */
     graphIds: GraphId[]
 }
 
@@ -206,7 +206,7 @@ export function diverge(params: DivergeParams): {
         issues.push({
             severity: 'error',
             code: 'DIVERGE_PEER_NODE_NOT_FOUND',
-            message: `节点 ${missingNodeId} 在所有已注册图谱中均不存在。`,
+            message: `节点 ${missingNodeId} 不在本图谱树内。`,
         })
         return { batches: [], drafts: [], issues }
     }
@@ -337,10 +337,12 @@ export function diverge(params: DivergeParams): {
 /**
  * 功能：
  *
- *     在已注册图中查找缺失节点所在的图。
+ *     在本图谱树内查找缺失节点所在的图。
  *
- *     遍历 graphIds 中除 currentGraphId 之外的所有图，通过 lookupGraph 获取 GraphData，
- *     返回第一个包含 missingNodeId 的图及其 GraphData。
+ *     graphIds 由调用方限定为本图谱树内的图 id；遍历其中除 currentGraphId 之外的图，
+ *     通过 lookupGraph 获取 GraphData，返回第一个包含 missingNodeId 的图及其 GraphData。
+ *
+ *     找不到即「不在本图谱树内」（DIVERGE_PEER_NODE_NOT_FOUND）。
  */
 function findPeerGraph(
     graphIds: GraphId[],

@@ -397,6 +397,8 @@ export function createCommunicationTestGraph(graphId: GraphId = G): GraphData {
 
     return assembleGraph({
         id: graphId,
+        kind: 'subgraph',
+        parentGraphId,
         title: '沟通节点/边测试',
         nodes: layoutChain(nodes),
         edges,
@@ -438,6 +440,8 @@ export function createHeuristicTestGraph(graphId: GraphId = G): GraphData {
 
     return assembleGraph({
         id: graphId,
+        kind: 'subgraph',
+        parentGraphId: peerGraphId,
         title: '启发节点测试',
         nodes: layoutChain([real, heuristic]),
         edges,
@@ -722,6 +726,8 @@ export function createInduceInputGraph(graphId: GraphId = 'graph-induce' as Grap
  *     induce 含启发节点的输入图。一个启发引用节点参与归纳。
  */
 export function createInduceWithHeuristicInputGraph(graphId: GraphId = 'graph-ind-heur' as GraphId): GraphData {
+    const peerGraphId = 'graph-other' as GraphId
+
     const a = createNode({ id: 'ih-A' as NodeId, graphId, label: '被选A' })
     const h = createNode({
         id: 'ih-H' as NodeId,
@@ -729,7 +735,7 @@ export function createInduceWithHeuristicInputGraph(graphId: GraphId = 'graph-in
         label: '被选启发节点',
         role: 'reference',
         referenceKind: 'heuristic',
-        sourceGraphId: 'graph-other' as GraphId,
+        sourceGraphId: peerGraphId,
         sourceNodeId: 'other-node' as NodeId,
     })
     const x = createNode({ id: 'ih-X' as NodeId, graphId, label: '未选X' })
@@ -755,6 +761,8 @@ export function createInduceWithHeuristicInputGraph(graphId: GraphId = 'graph-in
 
     return assembleGraph({
         id: graphId,
+        kind: 'subgraph',
+        parentGraphId: peerGraphId,
         title: '归纳含启发节点',
         nodes: layoutChain([a, h, x]),
         edges,
@@ -771,6 +779,8 @@ export function createInduceWithHeuristicInputGraph(graphId: GraphId = 'graph-in
  *     测试内化时引用节点自动删除、知识节点正常迁入常识层。
  */
 export function createInternalizeInputGraph(graphId: GraphId = 'graph-intern' as GraphId): GraphData {
+    const parentGraphId = 'graph-parent' as GraphId
+
     const k1 = createNode({
         id: 'int-K1' as NodeId,
         graphId,
@@ -787,7 +797,7 @@ export function createInternalizeInputGraph(graphId: GraphId = 'graph-intern' as
         label: '沟通节点',
         role: 'reference',
         referenceKind: 'communication',
-        sourceGraphId: 'graph-parent' as GraphId,
+        sourceGraphId: parentGraphId,
         sourceNodeId: 'parent-node' as NodeId,
     })
 
@@ -812,6 +822,8 @@ export function createInternalizeInputGraph(graphId: GraphId = 'graph-intern' as
 
     return assembleGraph({
         id: graphId,
+        kind: 'subgraph',
+        parentGraphId,
         title: '内化输入',
         nodes: layoutChain([k1, k2, ref]),
         edges,
@@ -881,12 +893,20 @@ export function createDivergeInputGraph(graphId: GraphId = 'graph-div' as GraphI
 /**
  * 功能：
  *
- *     diverge 跨图输入——当前图只有目标节点，源节点在对端图中。
+ *     diverge 跨图输入——当前图与对端图同属一个共同根图谱树。
+ *     当前图只有目标节点，源节点在对端图中。
+ *
+ * 规则：
+ *
+ *     current / peer 均为共同根图 root 的子图。跨图引用必须同树（森林级不变量），
+ *     故 root 必须一并放入 registry，两图才能解析出相同根、通过校验。
  */
 export function createDivergeCrossGraphInput(graphId: GraphId = 'graph-div-cur' as GraphId): {
+    root: GraphData
     current: GraphData
     peer: GraphData
 } {
+    const rootId = 'graph-div-root' as GraphId
     const peerId = 'graph-div-peer' as GraphId
     const peerNode = createNode({
         id: 'div-peer-A' as NodeId,
@@ -899,8 +919,17 @@ export function createDivergeCrossGraphInput(graphId: GraphId = 'graph-div-cur' 
         label: '当前目标节点',
     })
 
+    const root = assembleGraph({
+        id: rootId,
+        title: '发散跨图-共同根',
+        nodes: [],
+        edges: [],
+    })
+
     const current = assembleGraph({
         id: graphId,
+        kind: 'subgraph',
+        parentGraphId: rootId,
         title: '发散跨图-当前',
         nodes: [curNode],
         edges: [],
@@ -908,12 +937,14 @@ export function createDivergeCrossGraphInput(graphId: GraphId = 'graph-div-cur' 
 
     const peer = assembleGraph({
         id: peerId,
+        kind: 'subgraph',
+        parentGraphId: rootId,
         title: '发散跨图-对端',
         nodes: [peerNode],
         edges: [],
     })
 
-    return { current, peer }
+    return { root, current, peer }
 }
 
 /**

@@ -90,9 +90,10 @@ describe('diverge', () => {
     })
 
     test('集成：Case B compose → applyBatches 完整执行（A-1 回归防护）', () => {
-        const { current, peer } = createDivergeCrossGraphInput()
-        const { graphIds, lookupGraph } = makeLookup([current, peer])
+        const { root, current, peer } = createDivergeCrossGraphInput()
+        const { graphIds, lookupGraph } = makeLookup([root, current, peer])
         const registry: GraphRegistry = new Map([
+            [root.id, root],
             [current.id, current],
             [peer.id, peer],
         ])

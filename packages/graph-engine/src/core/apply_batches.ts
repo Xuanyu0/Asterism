@@ -15,6 +15,9 @@
  *   add ↔ delete 互逆；update 以同型操作携带旧图全量；签名统一为操作图数据 { type, graph }
  *
  * 事务性：任一操作校验失败整批丢弃，注册表不变。
+ *
+ * 校验分两段：批循环内单图 / 图级校验，批循环结束后对后置注册表跑一次注册表级不变量
+ * （森林级，恒跑、无开关），失败同样整批丢弃。
  */
 
 import type { GraphData, GraphId, GraphRegistry } from '../types/graph_data'
@@ -27,6 +30,7 @@ import { createGraphReversal } from './create_graph_reversal'
 import { createReversalInGraph } from './create_reversal_in_graph'
 import { executeGraphOperation } from './execute_graph_operation'
 import { validateGraphOperation } from './rules/preconditions/graph_level'
+import { checkRegistryInvariants } from './rules/registry_invariants/check_registry_invariants'
 import { isGraphLevelType, isInGraphType } from './utils/operation_guards'
 
 /**
@@ -67,6 +71,9 @@ export interface ApplyBatchesOptions {
  *   delete_graph 注销 / update_graph 整图替换），逆元经 createGraphReversal 构造。
  *
  * 事务性：任一操作校验失败整批丢弃，返回入参注册表（不变）。
+ * 
+ * 批循环结束后对后置注册表跑一次注册表级（森林级）不变量——违反（引用跨树）同样整批丢弃，
+ * 且该不变量恒跑、不受 skipValidate 影响。
  *
  * @param registry - 操作前的多图注册表（不修改）
  * @param batches - 多批次操作（图内 / 图级判别联合）
@@ -176,11 +183,49 @@ export function applyBatches(
         }
     }
 
+    // 后置状态不变量：批循环结束后对注册表跑一次注册表级（森林级）规则。
+    // 作用域 = 本批涉及的图（性能取舍：未触碰的坏图不会被发现）。
+    // 与 apply_batch.ts 的 Phase 3 同性质：失败整批丢弃（复用 aborted），注册表不变、逆元清空。
+    const registryInvariantIssues = checkRegistryInvariants(newRegistry, collectScopeGraphIds(batches))
+    const hasInvariantFailure = registryInvariantIssues.some((issue) => issue.severity === 'error')
+
+    if (hasInvariantFailure) {
+        return aborted(registry, { valid: false, issues: registryInvariantIssues })
+    }
+
     return {
         registry: newRegistry,
         validation: { valid: true, issues: allIssues },
         reversalBatches: reversalItems.reverse(), // item 间逆序
     }
+}
+
+// ═══════════ 注册表不变量作用域辅助 ═══════════
+
+/**
+ * 推导本批校验作用域：只覆盖本批涉及的图。
+ *
+ * @remarks
+ * inGraph 批取 `batch.graph.id`；graphLevel 批取每个操作的 `op.graph.id`。
+ * 作用域是性能取舍，已知代价是未被本批触碰的坏图不会被发现（刻意接受）。
+ *
+ * @param batches - 本批操作
+ * @returns 本批涉及的图 id 集合
+ */
+function collectScopeGraphIds(batches: OperationBatch[]): Set<GraphId> {
+    const scopeGraphIds = new Set<GraphId>()
+
+    for (const batch of batches) {
+        if (batch.kind === 'inGraph') {
+            scopeGraphIds.add(batch.graph.id)
+        } else {
+            for (const op of batch.operations) {
+                scopeGraphIds.add(op.graph.id)
+            }
+        }
+    }
+
+    return scopeGraphIds
 }
 
 // ═══════════ 批级契约辅助 ═══════════
